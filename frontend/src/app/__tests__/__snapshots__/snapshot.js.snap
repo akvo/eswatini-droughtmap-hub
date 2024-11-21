@@ -1,0 +1,31 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders homepage unchanged 1`] = `
+<div>
+  <div
+    class="w-full h-screen flex items-start justify-between"
+  >
+    <div
+      class="w-full h-full lg:w-1/2"
+    >
+      <div
+        role="figure"
+      />
+    </div>
+    <div
+      class="w-full block lg:w-1/2 p-2"
+    >
+      <input
+        id="trix-editor"
+        name="content"
+        type="hidden"
+        value=""
+      />
+      <trix-editor
+        class="w-full min-h-20 block"
+        input="trix-editor"
+      />
+    </div>
+  </div>
+</div>
+`;
