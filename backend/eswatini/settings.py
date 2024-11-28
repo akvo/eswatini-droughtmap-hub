@@ -192,3 +192,5 @@ Q_CLUSTER = {
     "bulk": 10,
     "orm": "default",
 }
+
+GEONODE_BASE_URL = environ.get("GEONODE_BASE_URL")

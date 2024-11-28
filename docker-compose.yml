@@ -26,6 +26,7 @@ services:
       - DB_HOST=db
       - DEBUG=True
       - SECRET_KEY=secret
+      - GEONODE_BASE_URL
     depends_on:
       - db
   frontend:
@@ -49,6 +50,7 @@ services:
       - DB_HOST=db
       - DEBUG=True
       - SECRET_KEY=secret
+      - GEONODE_BASE_URL
     depends_on:
       - backend
 volumes:
