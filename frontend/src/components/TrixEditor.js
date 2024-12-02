@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import Trix from "trix";
 import { ReactTrixRTEInput } from "react-trix-rte";
