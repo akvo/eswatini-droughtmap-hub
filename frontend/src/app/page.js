@@ -1,30 +1,36 @@
-"use client";
+import dynamic from "next/dynamic";
 
-import { Map, TrixEditor } from "@/components";
+const TrixEditor = dynamic(() => import("@/components/TrixEditor"), {
+  ssr: false,
+});
 
-const DEFAULT_CENTER = [-26.3263561, 31.1441558];
+const ChoroplethMap = dynamic(() => import("@/components/ChoroplethMap"), {
+  ssr: false,
+});
 
-export default function Home() {
+const Home = async () => {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_GEONODE_BASE_URL}/api/v2/datasets/43?format=json`
+  );
+  const { dataset: apiDataset } = await res.json();
+  const { links } = apiDataset;
+  const geolink = links.find((l) => l?.extension === "geojson");
+  let geoData = null;
+  if (geolink) {
+    const geoResponse = await fetch(geolink.url);
+    geoData = await geoResponse.json();
+  }
+
   return (
     <div className="w-full h-screen flex items-start justify-between">
       <div className="w-full h-full lg:w-1/2">
-        <Map className="w-full h-screen" center={DEFAULT_CENTER} zoom={12}>
-          {({ TileLayer, Marker, Popup }) => (
-            <>
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <Marker position={DEFAULT_CENTER}>
-                <Popup>Mbabane, Eswatini</Popup>
-              </Marker>
-            </>
-          )}
-        </Map>
+        {geoData && <ChoroplethMap geoData={geoData} />}
       </div>
       <div className="w-full block lg:w-1/2 p-2">
         <TrixEditor id="trix-editor" />
       </div>
     </div>
   );
-}
+};
+
+export default Home;
