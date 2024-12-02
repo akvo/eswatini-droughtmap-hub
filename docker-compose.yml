@@ -35,6 +35,8 @@ services:
     volumes:
       - ./frontend:/app:delegated
     working_dir: /app
+    environment:
+      - GEONODE_BASE_URL
     depends_on:
       - backend
   worker:
