@@ -1,10 +1,11 @@
 "use client";
 
-import { Map, TrixEditor } from "@/components";
-
-const DEFAULT_CENTER = [-26.3263561, 31.1441558];
+import { Map, TinyEditor } from "@/components";
+import { DEFAULT_CENTER } from "@/static/config";
+import { useState } from "react";
 
 export default function Home() {
+  const [content, setContent] = useState("");
   return (
     <div className="w-full h-screen flex items-start justify-between">
       <div className="w-full h-full lg:w-1/2">
@@ -22,8 +23,10 @@ export default function Home() {
           )}
         </Map>
       </div>
-      <div className="w-full block lg:w-1/2 p-2">
-        <TrixEditor id="trix-editor" />
+      <div className="w-full block lg:w-1/2 p-2 space-y-6 p-2">
+        <TinyEditor id="tiny-editor" value={content} setValue={setContent} />
+        <hr />
+        <div dangerouslySetInnerHTML={{ __html: content }} />
       </div>
     </div>
   );
