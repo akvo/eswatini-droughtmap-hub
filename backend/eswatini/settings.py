@@ -45,6 +45,7 @@ DJANGO_APPS = [
 # Add API apps below
 API_APPS = [
     "api.v1.v1_init",
+    "api.v1.v1_jobs",
 ]
 
 # Add third party apps below
