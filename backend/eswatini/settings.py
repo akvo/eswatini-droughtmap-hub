@@ -165,8 +165,8 @@ REST_FRAMEWORK = {
 # https://drf-spectacular.readthedocs.io/en/latest/settings.html
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "partos_pat",
-    "DESCRIPTION": "API for partos_pat",
+    "TITLE": "eswatini",
+    "DESCRIPTION": "API for eswatini",
     "VERSION": "1.0.0",
     "SORT_OPERATIONS": False,
     "SERVE_INCLUDE_SCHEMA": False,
