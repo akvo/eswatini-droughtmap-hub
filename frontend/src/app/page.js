@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 
-const TrixEditor = dynamic(() => import("@/components/TrixEditor"), {
+const TinyEditor = dynamic(() => import("@/components/TinyEditor"), {
   ssr: false,
 });
 
@@ -26,8 +26,10 @@ const Home = async () => {
       <div className="w-full h-full lg:w-1/2">
         {geoData && <ChoroplethMap geoData={geoData} />}
       </div>
-      <div className="w-full block lg:w-1/2 p-2">
-        <TrixEditor id="trix-editor" />
+      <div className="w-full block lg:w-1/2 p-2 space-y-6 p-2">
+        <TinyEditor id="tiny-editor" value={content} setValue={setContent} />
+        <hr />
+        <div dangerouslySetInnerHTML={{ __html: content }} />
       </div>
     </div>
   );
