@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 
-const TinyEditor = dynamic(() => import("@/components/TinyEditor"), {
+const EditorPage = dynamic(() => import("@/components/EditorPage"), {
   ssr: false,
 });
 
@@ -23,13 +23,11 @@ const Home = async () => {
 
   return (
     <div className="w-full h-screen flex items-start justify-between">
-      <div className="w-full h-full lg:w-1/2">
+      <div className="w-full h-full lg:w-2/3">
         {geoData && <ChoroplethMap geoData={geoData} />}
       </div>
-      <div className="w-full block lg:w-1/2 p-2 space-y-6 p-2">
-        <TinyEditor id="tiny-editor" value={content} setValue={setContent} />
-        <hr />
-        <div dangerouslySetInnerHTML={{ __html: content }} />
+      <div className="w-full block lg:w-1/3 p-2 space-y-6 p-2">
+        <EditorPage />
       </div>
     </div>
   );
