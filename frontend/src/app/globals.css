@@ -24,3 +24,8 @@ table td {
   border-style: solid;
   border-color: var(--table-border);
 }
+
+.leaflet-container {
+  background: var(--background) !important;
+  outline: 0;
+}
