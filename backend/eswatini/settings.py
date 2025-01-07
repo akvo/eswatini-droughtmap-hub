@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-(5=8zy-b0)pmqe%yh&frrho7*2mx6om+*kqwk^v82)tcp34q$8"
+SECRET_KEY = environ["SECRET_KEY"]
 
 # SECURITY WARNING: don"t run with debug turned on in production!
 DEBUG = environ.get("DEBUG", False)
@@ -54,6 +54,7 @@ EXTERNAL_APPS = [
     "rest_framework_simplejwt",
     "drf_spectacular",
     "django_q",
+    "django_dbml",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + API_APPS + EXTERNAL_APPS
