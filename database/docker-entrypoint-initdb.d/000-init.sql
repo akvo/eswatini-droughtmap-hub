@@ -10,3 +10,6 @@ WITH OWNER = akvo
 \c eswatini
 
 CREATE EXTENSION IF NOT EXISTS ltree WITH SCHEMA public;
+
+-- Fix CI: permission denied to create a database
+ALTER USER akvo CREATEDB;
