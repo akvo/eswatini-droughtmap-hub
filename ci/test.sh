@@ -40,7 +40,7 @@ update_dbdocs() {
     if [[ "${CI_BRANCH}" == "main" ]]; then
         npm install -g dbdocs
         # dbdocs build doc/dbml/schema.dbml --project eswatini
-        dbdocs build backend/db.dbml --project "eswatini"
+        dbdocs build backend/db.dbml --project "eswatini-droughtmap-hub"
     fi
 }
 
