@@ -39,6 +39,7 @@ frontend_test() {
 update_dbdocs() {
     if [[ "${CI_BRANCH}" == "main" ]]; then
         npm install -g dbdocs
+        dbdocs ls # check if its authenticated
         # dbdocs build doc/dbml/schema.dbml --project eswatini
         dbdocs build backend/db.dbml --project "eswatini"
     fi
