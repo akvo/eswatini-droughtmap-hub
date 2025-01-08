@@ -28,6 +28,9 @@ services:
       - SECRET_KEY=secret
       - GEONODE_BASE_URL
       - COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN:-}
+      - MAILJET_APIKEY=$MAILJET_APIKEY
+      - MAILJET_SECRET=$MAILJET_SECRET
+      - WEBDOMAIN=notset
     depends_on:
       - db
   frontend:
