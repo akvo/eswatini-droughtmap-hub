@@ -46,6 +46,7 @@ DJANGO_APPS = [
 API_APPS = [
     "api.v1.v1_init",
     "api.v1.v1_jobs",
+    "api.v1.v1_users",
 ]
 
 # Add third party apps below
@@ -74,7 +75,7 @@ ROOT_URLCONF = "eswatini.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [Path.joinpath(BASE_DIR, "eswatini/templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -150,9 +151,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # https://www.django-rest-framework.org/api-guide/settings/
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
+    ),
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
     "DATE_FORMAT": "%d-%m-%Y",
     "DEFAULT_VERSION": "v1",
@@ -180,9 +181,9 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "AUTH_TOKEN_CLASSES": {
+    "AUTH_TOKEN_CLASSES": (
         "rest_framework_simplejwt.tokens.AccessToken",
-    },
+    ),
 }
 
 Q_CLUSTER = {
@@ -196,3 +197,14 @@ Q_CLUSTER = {
 }
 
 GEONODE_BASE_URL = environ.get("GEONODE_BASE_URL")
+# Override the default user model
+AUTH_USER_MODEL = "v1_users.SystemUser"
+# MAIL SETUP
+EMAIL_BACKEND = "django_mailjet.backends.MailjetBackend"
+MAILJET_API_KEY = environ["MAILJET_APIKEY"]
+MAILJET_API_SECRET = environ["MAILJET_SECRET"]
+EMAIL_FROM = environ.get("EMAIL_FROM") or "noreply@akvo.org"
+
+# APP CONFIG
+WEBDOMAIN = environ.get("WEBDOMAIN", "http://localhost:3000")
+TEST_ENV = environ.get("TEST_ENV") or False
