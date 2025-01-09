@@ -1,2 +1,4 @@
 export * from "./api";
-export * from "./auth";
+import * as auth from "./auth";
+
+export { auth };

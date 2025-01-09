@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "antd";
-import { signOut } from "@/lib";
+import { auth } from "@/lib";
 
 const LogoutButton = () => {
   const [loading, setLoading] = useState(false);
@@ -11,7 +11,7 @@ const LogoutButton = () => {
 
   const onLogout = async () => {
     setLoading(true);
-    await signOut();
+    await auth.signOut();
     router.push("/");
   };
   return (

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { decrypt } from "./lib";
+import { auth } from "./lib";
 
 const protectedRoutes = ["/profile"];
 const authRoutes = ["/login"];
@@ -15,7 +15,7 @@ export default async function middleware(request) {
     if (authRoutes.includes(pathName)) {
       return NextResponse.redirect(new URL("/profile", request.url));
     }
-    const { token: authToken } = await decrypt(session);
+    const { token: authToken } = await auth.decrypt(session);
     const req = await fetch(
       `${process.env.WEBDOMAIN}/api/v1/users/me?format=json`,
       {

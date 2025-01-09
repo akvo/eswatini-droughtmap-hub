@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Form, Input, Typography } from "antd";
+import { Card, Form, Input, Typography } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib";
+import { auth } from "@/lib";
 import { PasswordInput, SubmitButton } from "@/components";
 
 const { Title, Text } = Typography;
@@ -18,7 +18,7 @@ const LoginPage = () => {
   const onFinish = async (values) => {
     setSubmitting(true);
     try {
-      const { status, message: errorKey } = await signIn(values);
+      const { status, message: errorKey } = await auth.signIn(values);
       if (status === 200) {
         router.push("/profile");
       } else {

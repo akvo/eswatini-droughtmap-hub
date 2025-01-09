@@ -1,6 +1,6 @@
 import { Button } from "antd";
 import dynamic from "next/dynamic";
-import { getSession } from "@/lib";
+import { auth } from "@/lib";
 import Link from "next/link";
 
 const ExampleMap = dynamic(() => import("../components/Map/ExampleMap"), {
@@ -26,7 +26,7 @@ export const Navbar = ({ session = null }) => (
 );
 
 const Home = async () => {
-  const session = await getSession();
+  const session = await auth.getSession();
   return (
     <div className="w-full h-screen">
       <Navbar session={session} />
