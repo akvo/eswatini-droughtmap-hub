@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.contrib.auth import authenticate
 from django.http import HttpResponseRedirect
 from django.conf import settings
+from django_q.tasks import async_task
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
@@ -30,22 +31,8 @@ from api.v1.v1_users.serializers import (
 from api.v1.v1_users.models import SystemUser
 from utils.custom_serializer_fields import validate_serializers_message
 from utils.default_serializers import DefaultResponseSerializer
-from utils.email_helper import send_email, EmailTypes
 from uuid import uuid4
-
-
-def send_verification_email(
-    email: str,
-    user: SystemUser
-):
-    if not settings.TEST_ENV:
-        send_email(
-            type=EmailTypes.verification_email,
-            context={
-                "send_to": [email],
-                "verification_code": user.email_verification_code,
-            },
-        )
+from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 
 
 @extend_schema(
@@ -165,10 +152,19 @@ def resend_verification_email(request, version):
     user.email_verification_code = uuid4()
     user.email_verification_expiry = code_expiry
     user.save()
-    send_verification_email(
-        serializer.validated_data["email"],
-        user=user
+    job = Jobs.objects.create(
+        type=JobTypes.verification_email,
+        status=JobStatus.on_progress,
+        result=serializer.validated_data["email"],
     )
+    task_id = async_task(
+        "api.v1.v1_jobs.job.notify_verification_email",
+        serializer.validated_data["email"],
+        user.email_verification_code,
+        hook="api.v1.v1_jobs.job.email_notification_results",
+    )
+    job.task_id = task_id
+    job.save()
     return Response(
         {"message": "Verification email sent successfully"},
         status=status.HTTP_200_OK,
@@ -213,10 +209,21 @@ class ProfileView(APIView):
             request.user.email_verified = False
             request.user.email_verification_code = uuid4()
             request.user.save()
-            send_verification_email(
-                email=serializer.validated_data["email"],
-                user=request.user
+
+            # Dispatch verification email job
+            job = Jobs.objects.create(
+                type=JobTypes.verification_email,
+                status=JobStatus.on_progress,
+                result=serializer.validated_data["email"],
             )
+            task_id = async_task(
+                "api.v1.v1_jobs.job.notify_verification_email",
+                serializer.validated_data["email"],
+                request.user.email_verification_code,
+                hook="api.v1.v1_jobs.job.email_notification_results",
+            )
+            job.task_id = task_id
+            job.save()
         user = serializer.save()
         return Response(
             UserSerializer(instance=user).data,
@@ -241,15 +248,20 @@ def forgot_password(request, version):
     email = serializer.validated_data["email"]
     user = SystemUser.objects.get(email=email)
     user.generate_reset_password_code()
-    if not settings.TEST_ENV:
-        send_email(
-            type=EmailTypes.forgot_password,
-            context={
-                "send_to": [user.email],
-                "name": user.name,
-                "reset_password_code": user.reset_password_code,
-            },
-        )
+
+    # Dispatch forgot password job
+    job = Jobs.objects.create(
+        type=JobTypes.forgot_password,
+        status=JobStatus.on_progress,
+        result=serializer.validated_data["email"],
+    )
+    task_id = async_task(
+        "api.v1.v1_jobs.job.notify_forgot_password",
+        user,
+        hook="api.v1.v1_jobs.job.email_notification_results",
+    )
+    job.task_id = task_id
+    job.save()
     return Response(
         {"message": "OK"},
         status=status.HTTP_200_OK,
