@@ -1,0 +1,30 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`HomePage renders correctly & match with the snapshot 1`] = `
+<div>
+  <div
+    class="w-full py-2 bg-primary"
+  >
+    <div
+      class="w-full container flex flex-row justify-end items-center"
+    >
+      <nav
+        class="w-fit px-4"
+      >
+        <a
+          href="/profile"
+        >
+          <button
+            class="ant-btn css-dev-only-do-not-override-7ny38l ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            type="button"
+          >
+            <span>
+              Profile
+            </span>
+          </button>
+        </a>
+      </nav>
+    </div>
+  </div>
+</div>
+`;

@@ -7,28 +7,34 @@ const ExampleMap = dynamic(() => import("../components/Map/ExampleMap"), {
   ssr: false,
 });
 
-export default async function Home() {
+export const Navbar = ({ session = null }) => (
+  <div className="w-full py-2 bg-primary">
+    <div className="w-full container flex flex-row justify-end items-center">
+      <nav className="w-fit px-4">
+        {session ? (
+          <Link href={"/profile"}>
+            <Button>Profile</Button>
+          </Link>
+        ) : (
+          <Link href={"/login"}>
+            <Button type="primary">Login</Button>
+          </Link>
+        )}
+      </nav>
+    </div>
+  </div>
+);
+
+const Home = async () => {
   const session = await getSession();
   return (
     <div className="w-full h-screen">
-      <div className="w-full py-2 bg-primary">
-        <div className="w-full container flex flex-row justify-end items-center">
-          <nav className="w-fit px-4">
-            {session ? (
-              <Link href={"/profile"}>
-                <Button>Profile</Button>
-              </Link>
-            ) : (
-              <Link href={"/login"}>
-                <Button type="primary">Login</Button>
-              </Link>
-            )}
-          </nav>
-        </div>
-      </div>
+      <Navbar session={session} />
       <div className="w-full h-full">
         <ExampleMap />
       </div>
     </div>
   );
-}
+};
+
+export default Home;
