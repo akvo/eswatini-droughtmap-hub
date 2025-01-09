@@ -2,15 +2,66 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SubmitButton } from "@/components";
-import { Alert, Form, Input, Typography } from "antd";
+import { Alert, Button, Form, Input, message, Typography } from "antd";
 import { useUserContext, useUserDispatch } from "@/context/UserContextProvider";
-import { api } from "@/lib";
+import { api, storage } from "@/lib";
+import dayjs from "dayjs";
 
 const { useForm } = Form;
 const { Title } = Typography;
 
+const UnverifiedAlert = ({ email }) => {
+  const [isSent, setIsSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const resendVerify = storage.get("RESEND_VERIFY");
+
+  const handleOnClick = async () => {
+    setLoading(true);
+    try {
+      await api("POST", "/email/resend-verify", {
+        email,
+      });
+      message.success("Verification email resent successfully.");
+      storage.set("RESEND_VERIFY", dayjs().add(1, "hour").toISOString());
+
+      setIsSent(true);
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.error(error);
+      message.error("Failed to resend verification email.");
+    }
+  };
+  return (
+    <Alert
+      message="Warning"
+      description={
+        <>
+          {isSent || (resendVerify && dayjs().isBefore(dayjs(resendVerify))) ? (
+            <>
+              Verification email sent. Please wait until 1 hour before
+              requesting again.
+            </>
+          ) : (
+            <>
+              Please verify your email address to activate your account. Didn't
+              receive the email?
+              <Button type="link" onClick={handleOnClick} loading={loading}>
+                Resend Verification Email
+              </Button>
+            </>
+          )}
+        </>
+      }
+      type="warning"
+      showIcon
+    />
+  );
+};
+
 const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
+
   const [form] = useForm();
   const userContext = useUserContext();
   const userDispatch = useUserDispatch();
@@ -47,15 +98,10 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="w-full md:w-1/2 h-full">
+    <div className="w-full md:w-1/2 h-full space-y-4">
       <Title level={2}>Your profile</Title>
       {userContext?.id && !userContext?.email_verified && (
-        <Alert
-          message="Warning"
-          description="Please verify your email address to activate your account"
-          type="warning"
-          showIcon
-        />
+        <UnverifiedAlert email={userContext?.email} />
       )}
       <Form layout="vertical" form={form} onFinish={onFinish}>
         <Form.Item
