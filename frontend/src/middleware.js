@@ -7,6 +7,7 @@ const authRoutes = ["/login"];
 export default async function middleware(request) {
   const session = request.cookies.get("currentUser")?.value;
   const pathName = request.nextUrl.pathname;
+  const response = NextResponse.next();
 
   if (!session && protectedRoutes.includes(pathName)) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -27,10 +28,14 @@ export default async function middleware(request) {
       }
     );
     if (!req.ok) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.set({
+        name: "currentUser",
+        value: "",
+        httpOnly: true,
+        expires: new Date(0),
+      });
     }
   }
-  const response = NextResponse.next();
   return response;
 }
 
