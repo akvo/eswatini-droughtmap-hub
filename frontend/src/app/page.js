@@ -1,32 +1,33 @@
-"use client";
+import { Button } from "antd";
+import dynamic from "next/dynamic";
+import { getSession } from "@/lib";
+import Link from "next/link";
 
-import { Map, TinyEditor } from "@/components";
-import { DEFAULT_CENTER } from "@/static/config";
-import { useState } from "react";
+const ExampleMap = dynamic(() => import("../components/Map/ExampleMap"), {
+  ssr: false,
+});
 
-export default function Home() {
-  const [content, setContent] = useState("");
+export default async function Home() {
+  const session = await getSession();
   return (
-    <div className="w-full h-screen flex items-start justify-between">
-      <div className="w-full h-full lg:w-1/2">
-        <Map className="w-full h-screen" center={DEFAULT_CENTER} zoom={12}>
-          {({ TileLayer, Marker, Popup }) => (
-            <>
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <Marker position={DEFAULT_CENTER}>
-                <Popup>Mbabane, Eswatini</Popup>
-              </Marker>
-            </>
-          )}
-        </Map>
+    <div className="w-full h-screen">
+      <div className="w-full py-2 bg-primary">
+        <div className="w-full container flex flex-row justify-end items-center">
+          <nav className="w-fit px-4">
+            {session ? (
+              <Link href={"/profile"}>
+                <Button>Profile</Button>
+              </Link>
+            ) : (
+              <Link href={"/login"}>
+                <Button type="primary">Login</Button>
+              </Link>
+            )}
+          </nav>
+        </div>
       </div>
-      <div className="w-full block lg:w-1/2 p-2 space-y-6 p-2">
-        <TinyEditor id="tiny-editor" value={content} setValue={setContent} />
-        <hr />
-        <div dangerouslySetInnerHTML={{ __html: content }} />
+      <div className="w-full h-full">
+        <ExampleMap />
       </div>
     </div>
   );
