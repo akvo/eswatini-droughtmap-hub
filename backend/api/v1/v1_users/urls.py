@@ -4,6 +4,9 @@ from api.v1.v1_users.views import (
     login,
     verify_email,
     resend_verification_email,
+    forgot_password,
+    verify_password_code,
+    reset_password,
     ProfileView,
 )
 
@@ -15,4 +18,9 @@ urlpatterns = [
         resend_verification_email
     ),
     re_path(r"^(?P<version>(v1))/users/me", ProfileView.as_view()),
+    re_path(r"^(?P<version>(v1))/auth/forgot-password", forgot_password),
+    re_path(
+        r"^(?P<version>(v1))/auth/verify-password-code", verify_password_code
+    ),
+    re_path(r"^(?P<version>(v1))/auth/reset-password", reset_password),
 ]

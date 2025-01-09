@@ -23,6 +23,9 @@ from api.v1.v1_users.serializers import (
     UpdateUserSerializer,
     VerifyEmailSerializer,
     ResendVerificationEmailSerializer,
+    ForgotPasswordSerializer,
+    VerifyPasswordTokenSerializer,
+    ResetPasswordSerializer,
 )
 from api.v1.v1_users.models import SystemUser
 from utils.custom_serializer_fields import validate_serializers_message
@@ -201,3 +204,114 @@ class ProfileView(APIView):
             UserSerializer(instance=user).data,
             status=status.HTTP_200_OK
         )
+
+
+@extend_schema(
+    request=ForgotPasswordSerializer,
+    responses={200: ForgotPasswordSerializer},
+    tags=["Auth"],
+    summary="Forgot password",
+)
+@api_view(["POST"])
+def forgot_password(request, version):
+    serializer = ForgotPasswordSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {"message": "OK"},
+            status=status.HTTP_200_OK,
+        )
+    email = serializer.validated_data["email"]
+    user = SystemUser.objects.get(email=email)
+    user.generate_reset_password_code()
+    if not settings.TEST_ENV:
+        send_email(
+            type=EmailTypes.forgot_password,
+            context={
+                "send_to": [user.email],
+                "name": user.name,
+                "reset_password_code": user.reset_password_code,
+            },
+        )
+    return Response(
+        {"message": "OK"},
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(
+    responses={200: DefaultResponseSerializer},
+    tags=["Auth"],
+    summary="Verify password code",
+    parameters=[
+        OpenApiParameter(
+            name="code",
+            required=True,
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+        ),
+    ],
+)
+@api_view(["GET"])
+def verify_password_code(request, version):
+    serializer = VerifyPasswordTokenSerializer(data=request.GET)
+    if not serializer.is_valid():
+        return Response(
+            {"message": validate_serializers_message(serializer.errors)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    code = serializer.validated_data.get("code")
+    user = SystemUser.objects.get(reset_password_code=code)
+    if not user.is_reset_code_valid():
+        return Response(
+            {"message": "Invalid code"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(
+        {"message": "OK"},
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(
+    request=ResetPasswordSerializer,
+    responses={200: DefaultResponseSerializer},
+    tags=["Auth"],
+    summary="Reset password",
+    parameters=[
+        OpenApiParameter(
+            name="code",
+            required=True,
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+        ),
+    ],
+)
+@api_view(["POST"])
+def reset_password(request, version):
+    new_password = ResetPasswordSerializer(data=request.data)
+    if not new_password.is_valid():
+        return Response(
+            {"message": validate_serializers_message(new_password.errors)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    serializer = VerifyPasswordTokenSerializer(data=request.GET)
+    if not serializer.is_valid():
+        return Response(
+            {"message": validate_serializers_message(serializer.errors)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    code = serializer.validated_data.get("code")
+    user = SystemUser.objects.get(reset_password_code=code)
+    if not user.is_reset_code_valid():
+        return Response(
+            {"message": "Invalid code"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    user.set_password(new_password.validated_data["password"])
+    user.reset_password_code = None
+    user.reset_password_code_expiry = None
+    user.save()
+    return Response(
+        {"message": "Password reset successfully"},
+        status=status.HTTP_200_OK,
+    )
