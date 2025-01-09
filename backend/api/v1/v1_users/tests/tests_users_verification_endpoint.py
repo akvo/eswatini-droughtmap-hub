@@ -29,6 +29,7 @@ class VerificationTestCase(TestCase):
 
         current_user = SystemUser.objects.first()
         self.assertTrue(current_user.email_verified)
+        self.assertIsNone(current_user.email_verification_expiry)
 
     def test_invalid_code(self):
         req = self.client.get(
