@@ -20,6 +20,10 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
     )
     email_verified = models.BooleanField(default=False)
     email_verification_code = models.UUIDField(default=None, null=True)
+    email_verification_expiry = models.DateTimeField(
+        null=True,
+        blank=True
+    )
     reset_password_code = models.UUIDField(default=None, null=True, blank=True)
     reset_password_code_expiry = models.DateTimeField(null=True, blank=True)
 
