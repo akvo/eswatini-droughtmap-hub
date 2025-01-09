@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiParameter,
@@ -120,6 +120,7 @@ def verify_email(request, version):
         return HttpResponseRedirect(f"{settings.WEBDOMAIN}/login")
     user.email_verified = True
     user.updated = timezone.now()
+    user.email_verification_expiry = None
     user.save()
     return HttpResponseRedirect(f"{settings.WEBDOMAIN}/login?verified=true")
 
@@ -145,7 +146,24 @@ def resend_verification_email(request, version):
             status=status.HTTP_400_BAD_REQUEST,
         )
     user = request.user
+    # Response 400 when email_verification_expiry less than 1 hour
+    code_expiry = user.email_verification_expiry
+    if (
+        code_expiry and
+        code_expiry > timezone.now()
+    ):
+        return Response(
+            {
+                "message": (
+                    "Verification email already sent. "
+                    "Please wait before requesting a new one."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    code_expiry = timezone.now() + timedelta(hours=1)
     user.email_verification_code = uuid4()
+    user.email_verification_expiry = code_expiry
     user.save()
     send_verification_email(
         serializer.validated_data["email"],
