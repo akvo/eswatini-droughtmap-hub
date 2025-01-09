@@ -10,6 +10,20 @@ module.exports = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        primary: "#3e5eb9",
+      },
+      backgroundImage: {
+        "image-login": "url('/images/bg-image-login.png')",
+      },
+    },
+    container: {
+      center: true,
+      padding: {
+        DEFAULT: "1rem",
+        sm: "2rem", // 640px
+        md: "3rem", // 768px
+        lg: "3rem", // 1024px
+        xl: "4rem", // 1280px
       },
     },
   },
