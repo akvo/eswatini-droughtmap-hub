@@ -53,5 +53,7 @@ jobs:
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
           DBDOCS_TOKEN: ${{ secrets.DBDOCS_TOKEN }}
+          WEBDOMAIN: ${{ secrets.WEBDOMAIN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
           ./ci/test.sh
