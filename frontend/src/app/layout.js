@@ -1,5 +1,7 @@
 import localFont from "next/font/local";
 import "./globals.css";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { ConfigProvider } from "antd";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -24,7 +26,39 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`}
       >
-        {children}
+        <AntdRegistry>
+          <ConfigProvider
+            theme={{
+              token: {
+                borderRadius: 0,
+                fontFamily: "inherit",
+                colorPrimary: "#3E5EB9",
+                colorLink: "#3E5EB9",
+              },
+              components: {
+                Form: {
+                  itemMarginBottom: 16,
+                },
+                Tabs: {
+                  inkBarColor: "#3E5EB9",
+                  itemActiveColor: "#3E5EB9",
+                  itemColor: "#3E4958",
+                  itemHoverColor: "#3E4958",
+                  itemSelectedColor: "#3E5EB9",
+                  titleFontSize: 16,
+                  titleFontSizeLG: 20,
+                  titleFontSizeSM: 16,
+                },
+                Table: {
+                  cellPaddingInline: 8,
+                  cellPaddingBlock: 4,
+                },
+              },
+            }}
+          >
+            {children}
+          </ConfigProvider>
+        </AntdRegistry>
       </body>
     </html>
   );
