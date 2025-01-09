@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Form, Input, Typography } from "antd";
+import { Alert, Card, Form, Input, Typography } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib";
@@ -12,19 +12,19 @@ const { useForm } = Form;
 
 const LoginPage = () => {
   const [submitting, setSubmitting] = useState(false);
+  const [invalid, setInvalid] = useState(false);
   const router = useRouter();
   const [form] = useForm();
 
   const onFinish = async (values) => {
     setSubmitting(true);
     try {
-      const { status, message: errorKey } = await auth.signIn(values);
+      const { status } = await auth.signIn(values);
       if (status === 200) {
         router.push("/profile");
       } else {
         setSubmitting(false);
-        console.log("error", errorKey);
-        // message.error(tr(errorKey));
+        setInvalid(true);
       }
     } catch (error) {
       const errorKey = error.message.replace(/^Error:\s*/, "");
@@ -42,7 +42,16 @@ const LoginPage = () => {
       }}
       title={<Title level={3}>Log in to your account</Title>}
     >
-      <Text>Welcome back! Please enter your details.</Text>
+      {invalid && (
+        <Alert
+          message="Invalid email or password"
+          type="error"
+          showIcon
+          closeable
+        />
+      )}
+      <Text className="my-4">Welcome back! Please enter your details.</Text>
+
       <Form layout="vertical" name="login" form={form} onFinish={onFinish}>
         <Form.Item
           label="Email"
