@@ -63,17 +63,19 @@ const ForgotPasswordPage = () => {
             <SubmitButton form={form} loading={loading} block>
               Send reset link
             </SubmitButton>
-            <Button
-              htmlType="button"
-              type="link"
-              onClick={() => router.push("/login")}
-              block
-            >
-              Back to Login
-            </Button>
           </Form>
         </>
       )}
+      <Button
+        htmlType="button"
+        type="primary"
+        className="my-3"
+        onClick={() => router.push("/login")}
+        ghost
+        block
+      >
+        Back to Login
+      </Button>
     </Card>
   );
 };
