@@ -20,7 +20,7 @@ coverage report -m --rcfile=./.coveragerc
 if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
     git config --global --add safe.directory /app
-    coveralls
+    coveralls --verbose
 fi
 
 echo "Generate Django DBML"
