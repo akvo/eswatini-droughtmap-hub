@@ -1,4 +1,5 @@
 [run]
+source = .
 relative_files = True
 branch = True
 omit = */__init__*
