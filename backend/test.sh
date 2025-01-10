@@ -20,7 +20,8 @@ coverage report -m --rcfile=./.coveragerc
 if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
     # Navigate to script's directory
     SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-    cd "$SCRIPT_DIR"
+    echo "SCRIPT_DIR: ${SCRIPT_DIR}"
+    # cd "$SCRIPT_DIR"
 
     # Set Git root and safe directory
     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
