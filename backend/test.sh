@@ -26,8 +26,8 @@ if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
     GIT_ROOT=$(git rev-parse --show-toplevel)
     git config --global --add safe.directory "$GIT_ROOT"
-    export GIT_ROOT
 
+    # Debugging
     echo "Git root: $GIT_ROOT"
     echo "Safe directories: $(git config --global --get-all safe.directory)"
 
