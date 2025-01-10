@@ -4,6 +4,7 @@ on:
     branches:
       - main
   pull_request:
+    types: [synchronize]
     branches:
       - main
       - feature/**
@@ -51,9 +52,12 @@ jobs:
           CI_PULL_REQUEST: ${{ env.PULL_REQUEST_EVENT }}
           COMPOSE_INTERACTIVE_NO_CLI: 1
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
           DBDOCS_TOKEN: ${{ secrets.DBDOCS_TOKEN }}
           WEBDOMAIN: ${{ secrets.WEBDOMAIN }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
           ./ci/test.sh
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.COVERALLS_REPO_TOKEN }}

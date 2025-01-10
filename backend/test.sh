@@ -17,14 +17,11 @@ echo "Coverage"
 coverage combine --rcfile=./.coveragerc
 coverage report -m --rcfile=./.coveragerc
 
-if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
-    export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
-    git config --global --add safe.directory /app/backend
-
-    ls -ld /app
-
-    coveralls --verbose
-fi
+# if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
+#     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+#     git config --global --add safe.directory /app
+#     coveralls --verbose
+# fi
 
 echo "Generate Django DBML"
 ./manage.py dbml >> db.dbml
