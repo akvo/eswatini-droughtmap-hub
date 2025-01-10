@@ -61,5 +61,9 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
             return timezone.now() < self.reset_password_code_expiry
         return False
 
+    @property
+    def is_staff(self):
+        return self.is_superuser
+
     class Meta:
         db_table = "system_user"
