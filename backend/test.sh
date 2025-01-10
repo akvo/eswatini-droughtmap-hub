@@ -21,9 +21,7 @@ if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
     git config --global --add safe.directory /app
 
-    chown -R $(id -u):$(id -g) /app
-
-    coveralls --verbose
+    coveralls --verbose --root /app/backend
 fi
 
 echo "Generate Django DBML"
