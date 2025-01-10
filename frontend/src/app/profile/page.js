@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SubmitButton } from "@/components";
-import { Alert, Button, Form, Input, message, Typography } from "antd";
+import { Alert, Button, Form, Input, message, Modal, Typography } from "antd";
 import { useUserContext, useUserDispatch } from "@/context/UserContextProvider";
 import { api, storage } from "@/lib";
 import dayjs from "dayjs";
 
 const { useForm } = Form;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const UnverifiedAlert = ({ email }) => {
   const [isSent, setIsSent] = useState(false);
@@ -86,6 +86,21 @@ const ProfilePage = () => {
     setLoading(true);
     try {
       const payload = await api("PUT", "/users/me", values);
+
+      if (values?.email !== userContext?.email) {
+        Modal.success({
+          content: (
+            <>
+              <Text>
+                Verification email has been sent to your new email address.
+              </Text>
+              <Text>Please verify to activate your account.</Text>
+            </>
+          ),
+        });
+      } else {
+        message.success("Profile updated successfully.");
+      }
       userDispatch({
         type: "UPDATE",
         payload,
