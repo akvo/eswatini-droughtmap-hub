@@ -1,4 +1,5 @@
 service_name: github
-coverage_dir: ./backend/
+coverage_dir: backend/
 coverage_file: coverage.xml
 root: .
+subdirectory: backend/
