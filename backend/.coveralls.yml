@@ -1,3 +1,0 @@
-service_name: github
-coverage_dir: ./app/backend/coverage
-root: ./app/backend

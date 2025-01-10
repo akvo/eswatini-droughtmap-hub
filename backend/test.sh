@@ -21,6 +21,8 @@ if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
     git config --global --add safe.directory /app/backend
 
+    ls -ld /app
+
     coveralls --verbose
 fi
 
