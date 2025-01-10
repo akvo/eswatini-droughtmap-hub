@@ -17,6 +17,9 @@ echo "Coverage"
 coverage combine --rcfile=./.coveragerc
 coverage report -m --rcfile=./.coveragerc
 
+# Generate the coverage.xml file required by Coveralls
+coverage xml --rcfile=./.coveragerc  # Add this to generate the XML file
+
 # if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
 #     export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
 #     git config --global --add safe.directory /app
