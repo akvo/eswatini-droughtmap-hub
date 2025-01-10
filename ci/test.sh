@@ -28,6 +28,12 @@ if [[ "${CI_TAG}" =~ $tag_pattern || "${CI_BRANCH}" == "main" && "${CI_PULL_REQU
     FRONTEND_CHANGES=1
 fi
 
+dc () {
+    docker compose \
+        --ansi never \
+        "$@"
+}
+
 frontend_test() {
     docker compose -f docker-compose.test.yml run \
         --rm \
@@ -45,9 +51,9 @@ update_dbdocs() {
 }
 
 backend_test() {
-    docker compose \
-        -f docker-compose.test.yml \
-        run -T backend ./test.sh
+    dc -f docker-compose.test.yml -p backend-test run \
+        --rm \
+        backend ./test.sh
 }
 
 if [[ ${FRONTEND_CHANGES} == 1 ]]; then
