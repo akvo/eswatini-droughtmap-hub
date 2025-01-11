@@ -56,6 +56,7 @@ EXTERNAL_APPS = [
     "drf_spectacular",
     "django_q",
     "django_dbml",
+    "django_json_widget",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + API_APPS + EXTERNAL_APPS
