@@ -1,0 +1,89 @@
+from django import forms
+from django.contrib.auth.admin import UserAdmin
+from django.contrib import admin
+from django_json_widget.widgets import JSONEditorWidget
+from .models import SystemUser, Ability
+
+
+# Add manage users in admin django
+class SystemUserAdmin(UserAdmin):
+    site_header = "Manage Users"
+    model = SystemUser
+    list_display = (
+        "email",
+        "name",
+        "role",
+        "email_verified",
+    )
+    list_filter = (
+        "role",
+        "email_verified",
+    )
+    fieldsets = (
+        (None, {"fields": ("email", "name", "password")}),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "role",
+                    "email_verified",
+                )
+            },
+        ),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "email",
+                    "name",
+                    "password1",
+                    "password2",
+                    "role",
+                ),
+            },
+        ),
+    )
+    search_fields = (
+        "email",
+        "name",
+    )
+    ordering = ("email",)
+
+
+class AbilityForm(forms.ModelForm):
+    class Meta:
+        model = Ability
+        fields = "__all__"
+        widgets = {
+            "conditions": JSONEditorWidget,
+        }
+
+
+class AbilityAdmin(admin.ModelAdmin):
+    site_header = "Manage Permissions"
+    model = Ability
+    form = AbilityForm
+
+    list_display = ("role", "action", "subject", "conditions")
+    list_filter = ("role", "action", "subject")
+    fieldsets = (
+        (None, {"fields": ("role", "action", "subject", "conditions")}),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("role", "action", "subject", "conditions"),
+            },
+        ),
+    )
+    search_fields = ("action", "subject")
+    ordering = ("role",)
+
+
+admin.site.register(SystemUser, SystemUserAdmin)
+admin.site.register(Ability, AbilityAdmin)
