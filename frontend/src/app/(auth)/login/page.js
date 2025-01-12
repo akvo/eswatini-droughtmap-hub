@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib";
 import { PasswordInput, SubmitButton } from "@/components";
+import { HOME_PAGE } from "@/static/config";
 
 const { Title, Text } = Typography;
 const { useForm } = Form;
@@ -19,9 +20,10 @@ const LoginPage = () => {
   const onFinish = async (values) => {
     setSubmitting(true);
     try {
-      const { status } = await auth.signIn(values);
+      const { status, role } = await auth.signIn(values);
       if (status === 200) {
-        router.push("/profile");
+        const dashboardURL = HOME_PAGE?.[role] || "/";
+        router.push(dashboardURL);
       } else {
         setSubmitting(false);
         setInvalid(true);
