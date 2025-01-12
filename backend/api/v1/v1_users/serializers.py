@@ -1,10 +1,20 @@
 import re
 from rest_framework import serializers
-from api.v1.v1_users.models import SystemUser
+from drf_spectacular.utils import extend_schema_field
+from api.v1.v1_users.models import (
+    SystemUser,
+    Ability,
+)
 from utils.custom_serializer_fields import (
     CustomCharField,
     CustomEmailField,
 )
+
+
+class AbilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ability
+        fields = ['action', 'subject', 'conditions']
 
 
 class LoginSerializer(serializers.Serializer):
@@ -13,6 +23,15 @@ class LoginSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    abilities = serializers.SerializerMethodField()
+
+    @extend_schema_field(AbilitySerializer(many=True))
+    def get_abilities(self, instance):
+        _abilities = Ability.objects.filter(
+            role=instance.role
+        ).all()
+        return AbilitySerializer(_abilities, many=True).data
+
     class Meta:
         model = SystemUser
         fields = [
@@ -21,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "email_verified",
+            "abilities",
         ]
 
 
