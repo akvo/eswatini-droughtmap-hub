@@ -1,11 +1,18 @@
 from django.core.management.base import BaseCommand
+from django.conf import settings
 from api.v1.v1_users.models import Ability, ActionEnum, UserRoleTypes
 
 
 class Command(BaseCommand):
     help = "Seed the database with default roles and abilities."
 
-    def handle(self, *args, **kwargs):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "-t", "--test", nargs="?", const=False, default=False, type=bool,
+        )
+
+    def handle(self, *args, **options):
+        test = options.get("test")
         # Define default roles and abilities
         default_data = [
             {
@@ -71,6 +78,18 @@ class Command(BaseCommand):
             },
         ]
 
+        if test:
+            default_data = [
+                {
+                    "role": UserRoleTypes.admin,
+                    "abilities": [
+                        {
+                            "action": ActionEnum.CREATE.value,
+                            "subject": "TEST"
+                        }
+                    ]
+                }
+            ]
         # Seed roles and abilities
         for role_data in default_data:
             for ability_data in role_data["abilities"]:
@@ -81,6 +100,7 @@ class Command(BaseCommand):
                     conditions=ability_data.get("conditions"),
                 )
 
-        self.stdout.write(
-            self.style.SUCCESS("Successfully seeded roles and abilities.")
-        )
+        if not settings.TEST_ENV:
+            self.stdout.write(  # pragma: no cover
+                self.style.SUCCESS("Successfully seeded roles and abilities.")
+            )
