@@ -1,8 +1,11 @@
 from django.test import TestCase
+from django.core.management import call_command
+from django.test.utils import override_settings
 from django.core.exceptions import ValidationError
 from api.v1.v1_users.models import Ability, ActionEnum, UserRoleTypes
 
 
+@override_settings(USE_TZ=False, TEST_ENV=True)
 class AbilityModelTestCase(TestCase):
     def test_create_ability(self):
         # Create an ability for the Admin role
@@ -67,3 +70,9 @@ class AbilityModelTestCase(TestCase):
             "'INVALID_ACTION' is not a valid action.",
             context.exception.error_dict["action"][0]
         )
+
+    def test_roles_n_abilities_seeder(self):
+        call_command(
+            "generate_roles_n_abilities_seeder"
+        )
+        self.assertEqual(Ability.objects.count(), 12)
