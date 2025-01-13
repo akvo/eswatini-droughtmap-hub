@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoutButton } from "@/components";
+import { Button } from "antd";
 import { UserContextProvider } from "@/context";
 import { auth } from "@/lib";
 
@@ -12,12 +12,14 @@ const ReviewLayout = async ({ children }) => {
         <div className="w-full py-2 bg-primary">
           <div className="w-full container flex flex-row justify-between items-center">
             <div>
-              <Link href={"/"} className="text-white">
+              <Link href={"/reviews"} className="text-white">
                 Home
               </Link>
             </div>
             <div>
-              <LogoutButton />
+              <Link href={"/profile"}>
+                <Button>Profile</Button>
+              </Link>
             </div>
           </div>
         </div>
