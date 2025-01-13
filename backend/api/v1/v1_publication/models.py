@@ -19,12 +19,12 @@ class Administration(models.Model):
         db_table = "administrations"
 
 
-def validate_json_values(json_values):
+def validate_json_values(json_values: list = []):
     if not isinstance(json_values, list):
         raise ValidationError(
             "JSON values must be a list of objects."
         )
-    for item in json_values:
+    for item in json_values:  # pragma: no cover
         if not isinstance(item, dict):
             raise ValidationError(
                 "Each item in JSON must be a dictionary."

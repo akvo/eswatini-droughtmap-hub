@@ -20,4 +20,4 @@ class Command(BaseCommand):
         if not settings.TEST_ENV:
             self.stdout.write(self.style.SUCCESS(
                 "config.js successfully generated!"
-            ))
+            ))  # pragma: no cover
