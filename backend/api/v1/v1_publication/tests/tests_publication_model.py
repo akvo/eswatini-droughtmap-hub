@@ -1,0 +1,51 @@
+from django.test import TestCase
+from django.core.exceptions import ValidationError
+from datetime import date
+from api.v1.v1_publication.constants import PublicationStatus
+from api.v1.v1_publication.models import Publication
+
+
+class PublicationModelTest(TestCase):
+    def test_create_valid_publication(self):
+        initial_values = [{"administration_id": 1, "value": 100}]
+        publication = Publication.objects.create(
+            year_month=date(2025, 1, 1),
+            cdi_geonode_id=12345,
+            initial_values=initial_values,
+            due_date=date(2025, 2, 1),
+            status=PublicationStatus.in_review,
+        )
+        self.assertEqual(
+            str(publication),
+            "Publication: 12345 - 2025-01"
+        )
+        self.assertEqual(publication.status, PublicationStatus.in_review)
+
+    def test_validate_json_values_success(self):
+        valid_json = [{"administration_id": 1, "value": 50}]
+        Publication.objects.create(
+            year_month=date(2025, 1, 1),
+            cdi_geonode_id=12345,
+            initial_values=valid_json,
+            due_date=date(2025, 2, 1),
+        )
+
+    def test_year_month_value(self):
+        publication = Publication.objects.create(
+            year_month=date(2025, 3, 15),
+            cdi_geonode_id=12345,
+            initial_values=[{"administration_id": 1, "value": 100}],
+            due_date=date(2025, 4, 1),
+        )
+        self.assertEqual(publication.year_month_value, "2025-03")
+
+    def test_validate_json_values_failure(self):
+        invalid_json = {"invalid": "json"}
+        publication = Publication(
+            year_month=date(2025, 1, 1),
+            cdi_geonode_id=12345,
+            initial_values=invalid_json,
+            due_date=date(2025, 2, 1),
+        )
+        with self.assertRaises(ValidationError):
+            publication.full_clean()
