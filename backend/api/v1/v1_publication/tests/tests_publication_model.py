@@ -46,6 +46,65 @@ class PublicationModelTest(TestCase):
             cdi_geonode_id=12345,
             initial_values=invalid_json,
             due_date=date(2025, 2, 1),
+            status=PublicationStatus.in_review,
         )
         with self.assertRaises(ValidationError):
             publication.full_clean()
+
+    def test_validate_json_item_is_not_dict(self):
+        invalid_json = ["invalid", "json"]
+        publication = Publication(
+            year_month=date(2025, 1, 1),
+            cdi_geonode_id=12345,
+            initial_values=invalid_json,
+            due_date=date(2025, 2, 1),
+            status=PublicationStatus.in_review,
+        )
+        with self.assertRaises(ValidationError) as context:
+            publication.full_clean()
+        self.assertEqual(
+            str(context.exception),
+            (
+                "{'initial_values': "
+                "['Each item in JSON must be a dictionary.']}"
+            )
+        )
+
+    def test_validate_json_adm_id_not_in_item(self):
+        invalid_json = [{
+            "value": 11
+        }]
+        publication = Publication(
+            year_month=date(2025, 1, 1),
+            cdi_geonode_id=12345,
+            initial_values=invalid_json,
+            due_date=date(2025, 2, 1),
+            status=PublicationStatus.in_review,
+        )
+        with self.assertRaises(ValidationError) as context:
+            publication.full_clean()
+        self.assertEqual(
+            str(context.exception),
+            (
+                "{'initial_values': "
+                "[\"Each item must contain an 'administration_id' key.\"]}"
+            )
+        )
+
+    def test_validate_json_value_not_in_item(self):
+        invalid_json = [{
+            "administration_id": 1100
+        }]
+        publication = Publication(
+            year_month=date(2025, 1, 1),
+            cdi_geonode_id=12345,
+            initial_values=invalid_json,
+            due_date=date(2025, 2, 1),
+            status=PublicationStatus.in_review,
+        )
+        with self.assertRaises(ValidationError) as context:
+            publication.full_clean()
+        self.assertEqual(
+            str(context.exception),
+            "{'initial_values': [\"Each item must contain a 'value' key.\"]}"
+        )
