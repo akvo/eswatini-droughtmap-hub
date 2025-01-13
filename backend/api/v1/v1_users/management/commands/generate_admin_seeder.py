@@ -21,6 +21,6 @@ class Command(BaseCommand):
         )
         test = options.get("test")
         if not test:
-            self.stdout.write(
+            self.stdout.write(  # pragma: no cover
                 self.style.SUCCESS(f"{email} created successfully")
             )

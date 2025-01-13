@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@ant-design/nextjs-registry": "^1.0.2",
+    "@casl/ability": "^6.7.3",
+    "@casl/react": "^5.0.0",
     "@tinymce/tinymce-react": "^5.1.1",
     "antd": "^5.23.0",
     "classnames": "^2.5.1",

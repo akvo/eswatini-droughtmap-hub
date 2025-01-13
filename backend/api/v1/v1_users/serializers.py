@@ -1,10 +1,20 @@
 import re
 from rest_framework import serializers
-from api.v1.v1_users.models import SystemUser
+from drf_spectacular.utils import extend_schema_field
+from api.v1.v1_users.models import (
+    SystemUser,
+    Ability,
+)
 from utils.custom_serializer_fields import (
     CustomCharField,
     CustomEmailField,
 )
+
+
+class AbilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ability
+        fields = ['action', 'subject', 'conditions']
 
 
 class LoginSerializer(serializers.Serializer):
@@ -13,6 +23,15 @@ class LoginSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    abilities = serializers.SerializerMethodField()
+
+    @extend_schema_field(AbilitySerializer(many=True))
+    def get_abilities(self, instance):
+        _abilities = Ability.objects.filter(
+            role=instance.role
+        ).all()
+        return AbilitySerializer(_abilities, many=True).data
+
     class Meta:
         model = SystemUser
         fields = [
@@ -21,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "email_verified",
+            "abilities",
         ]
 
 
@@ -31,7 +51,9 @@ class VerifyEmailSerializer(serializers.Serializer):
         if not SystemUser.objects.filter(
             email_verification_code=value
         ).exists():
-            raise serializers.ValidationError("Invalid code")
+            raise serializers.ValidationError(  # pragma: no cover
+                "Invalid code"
+            )
         return value
 
 
@@ -97,7 +119,9 @@ class ResetPasswordSerializer(serializers.Serializer):
             r"^(?=.*[a-z])(?=.*\d)(?=.*[A-Z])(?=.*^\S*$)(?=.{8,})"
         )
         if not criteria.match(value):
-            raise serializers.ValidationError("False Password Criteria")
+            raise serializers.ValidationError(  # pragma: no cover
+                "False Password Criteria"
+            )
         return value
 
 

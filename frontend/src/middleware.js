@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "./lib";
+import { USER_ROLES } from "./static/config";
 
-const protectedRoutes = ["/profile"];
+const protectedRoutes = ["/profile", "/publications", "/reviews"];
 const authRoutes = ["/login"];
 
 export default async function middleware(request) {
@@ -16,7 +17,7 @@ export default async function middleware(request) {
     if (authRoutes.includes(pathName)) {
       return NextResponse.redirect(new URL("/profile", request.url));
     }
-    const { token: authToken } = await auth.decrypt(session);
+    const { token: authToken, role } = await auth.decrypt(session);
     const req = await fetch(
       `${process.env.WEBDOMAIN}/api/v1/users/me?format=json`,
       {
@@ -34,6 +35,13 @@ export default async function middleware(request) {
         httpOnly: true,
         expires: new Date(0),
       });
+    }
+
+    if (
+      (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
+      (role !== USER_ROLES.admin && pathName.startsWith("/publications"))
+    ) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
   }
   return response;

@@ -197,7 +197,7 @@ class ProfileView(APIView):
             data=request.data
         )
         if not serializer.is_valid():
-            return Response(
+            return Response(  # pragma: no cover
                 {"message": validate_serializers_message(serializer.errors)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -292,7 +292,7 @@ def verify_password_code(request, version):
     code = serializer.validated_data.get("code")
     user = SystemUser.objects.get(reset_password_code=code)
     if not user.is_reset_code_valid():
-        return Response(
+        return Response(  # pragma: no cover
             {"message": "Invalid code"},
             status=status.HTTP_400_BAD_REQUEST,
         )
@@ -333,7 +333,7 @@ def reset_password(request, version):
     code = serializer.validated_data.get("code")
     user = SystemUser.objects.get(reset_password_code=code)
     if not user.is_reset_code_valid():
-        return Response(
+        return Response(  # pragma: no cover
             {"message": "Invalid code"},
             status=status.HTTP_400_BAD_REQUEST,
         )

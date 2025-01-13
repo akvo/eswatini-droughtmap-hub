@@ -6,7 +6,7 @@ from django.test.client import Client
 
 class HasTestClientProtocol(typing.Protocol):
     @property
-    def client(self) -> Client: ...
+    def client(self) -> Client: ...  # pragma: no cover
 
 
 class ProfileTestHelperMixin:

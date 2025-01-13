@@ -1,13 +1,18 @@
 from django.test import TestCase
 from django.core.management import call_command
+from django.test.utils import override_settings
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_users.constants import UserRoleTypes
 
 
+@override_settings(USE_TZ=False, TEST_ENV=True)
 class LoginTestCase(TestCase):
     def setUp(self):
         call_command(
             "generate_admin_seeder", "--test", True
+        )
+        call_command(
+            "generate_roles_n_abilities_seeder", "--test", True
         )
         self.user = SystemUser.objects.filter(
             role=UserRoleTypes.admin
@@ -32,8 +37,9 @@ class LoginTestCase(TestCase):
         )
         self.assertEqual(
             list(res["user"]),
-            ["id", "name", "email", "role", "email_verified"]
+            ["id", "name", "email", "role", "email_verified", "abilities"]
         )
+        self.assertEqual(len(res["user"]["abilities"]), 1)
 
     def test_all_inputs_are_required(self):
         payload = {
