@@ -8,6 +8,7 @@ urlpatterns = [
     path("api/", include("api.v1.v1_init.urls"), name="v1_init"),
     path("api/", include("api.v1.v1_jobs.urls"), name="v1_jobs"),
     path("api/", include("api.v1.v1_users.urls"), name="v1_users"),
+    path("api/", include("api.v1.v1_publication.urls"), name="v1_publication"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
