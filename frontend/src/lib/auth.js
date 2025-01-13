@@ -54,14 +54,16 @@ export const signIn = async (formData) => {
       const expires = new Date(expirationTime);
       // Create the session
       const currentUser = await encrypt({
-        id: user.id,
+        id: user?.id,
+        role: user?.role,
+        abilities: user?.abilities,
         token,
         expirationTime,
       });
 
       // Save the session in a cookie
       cookies().set("currentUser", currentUser, { expires, httpOnly: true });
-      return { message: "success", status: 200 };
+      return { message: "success", status: 200, role: user?.role };
     } else {
       return { message: "invalidLogin", status: 401 };
     }

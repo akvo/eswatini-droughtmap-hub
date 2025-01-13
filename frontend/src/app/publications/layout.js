@@ -1,25 +1,25 @@
 import Link from "next/link";
-import { LogoutButton } from "@/components";
+import { Button } from "antd";
 import { UserContextProvider } from "@/context";
 import { auth } from "@/lib";
-import { HOME_PAGE } from "@/static/config";
 
-const ProfileTemplate = async ({ children }) => {
+const PublicationLayout = async ({ children }) => {
   const session = await auth.getSession();
-  const role = session?.role || null;
-  const homeURL = role ? HOME_PAGE?.[role] : "/";
+  const abilities = session?.abilities || [];
   return (
-    <UserContextProvider>
+    <UserContextProvider abilities={abilities}>
       <div className="w-full h-screen">
         <div className="w-full py-2 bg-primary">
           <div className="w-full container flex flex-row justify-between items-center">
             <div>
-              <Link href={homeURL} className="text-white">
+              <Link href={"/publications"} className="text-white">
                 Home
               </Link>
             </div>
             <div>
-              <LogoutButton />
+              <Link href={"/profile"}>
+                <Button>Profile</Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -29,4 +29,4 @@ const ProfileTemplate = async ({ children }) => {
   );
 };
 
-export default ProfileTemplate;
+export default PublicationLayout;

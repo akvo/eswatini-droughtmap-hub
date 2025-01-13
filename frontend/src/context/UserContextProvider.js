@@ -9,6 +9,7 @@ const initialValues = {
   email: null,
   role: null,
   email_verified: false,
+  abilities: [],
 };
 
 const userReducer = (state, action) => {
@@ -27,8 +28,11 @@ const userReducer = (state, action) => {
   }
 };
 
-const UserContextProvider = ({ children }) => {
-  const [user, dispatch] = useReducer(userReducer, initialValues);
+const UserContextProvider = ({ children, abilities = [] }) => {
+  const [user, dispatch] = useReducer(userReducer, {
+    ...initialValues,
+    abilities,
+  });
 
   return (
     <UserContext.Provider value={user}>
