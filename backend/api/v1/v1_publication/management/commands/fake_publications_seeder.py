@@ -164,18 +164,17 @@ class Command(BaseCommand):
                     user=reviewer
                 )
 
-                is_completed = fake.boolean()
+                is_completed = (
+                    publication.status == PublicationStatus.published
+                )
 
                 suggestion_values = []
                 for v in initial_values:
                     s_value = v["value"]
                     comment = None
-                    approved = random.choice([
-                        None,
-                        fake.boolean()
-                    ])
+                    reviewed = None
                     if is_completed:
-                        approved = True
+                        reviewed = True
 
                     is_diff = fake.boolean()
                     if is_diff:
@@ -186,14 +185,14 @@ class Command(BaseCommand):
                         "administration_id": v["administration_id"],
                         "value": s_value,
                         "comment": comment,
-                        "approved": approved,
+                        "reviewed": reviewed,
                         "category": get_category(s_value),
                     })
 
                 review.is_completed = is_completed
                 review.suggestion_values = suggestion_values
 
-                if publication.status == PublicationStatus.published:
+                if is_completed:
                     completed_at = start_date + timedelta(
                         days=random.randint(0, (due_date - start_date).days)
                     )
