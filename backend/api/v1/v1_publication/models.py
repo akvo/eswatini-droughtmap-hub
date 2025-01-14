@@ -54,7 +54,7 @@ class Publication(SoftDeletes):
     due_date = models.DateField(null=False)
     status = models.IntegerField(
         choices=PublicationStatus.FieldStr.items(),
-        default=None,
+        default=PublicationStatus.in_review,
         null=True
     )
     narrative = models.TextField(null=True, blank=True)
