@@ -2,6 +2,7 @@ import random
 import json
 from django.core.management.base import BaseCommand
 from django.conf import settings
+from django.utils import timezone
 from faker import Faker
 from datetime import datetime, timedelta
 from calendar import monthrange
@@ -140,7 +141,7 @@ class Command(BaseCommand):
                     days=random.randint(1, 7)
                 )
                 publication.status = PublicationStatus.published
-                publication.published_at = published_at
+                publication.published_at = timezone.make_aware(published_at)
                 publication.narrative = generate_dummy_narrative()
                 publication.bulletin_url = (
                     "https://www.ipcinfo.org/fileadmin/"
@@ -197,7 +198,7 @@ class Command(BaseCommand):
                         days=random.randint(0, (due_date - start_date).days)
                     )
                     review.is_completed = True
-                    review.completed_at = completed_at
+                    review.completed_at = timezone.make_aware(completed_at)
 
                 review.save()
 
