@@ -39,7 +39,7 @@ class UserModelTestCase(TestCase):
         )
 
     def test_successfully_created_superuser(self):
-        admin = SystemUser.objects.create_admin(
+        admin = SystemUser.objects.create_superuser(
             email="admin@mail.com",
             password="admin",
             name="admin"
@@ -53,7 +53,7 @@ class UserModelTestCase(TestCase):
 
     def test_create_admin_without_is_superuser(self):
         with self.assertRaises(ValueError) as context:
-            SystemUser.objects.create_admin(
+            SystemUser.objects.create_superuser(
                 email="admin@mail.com",
                 password="admin",
                 name="admin",
