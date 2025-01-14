@@ -9,3 +9,5 @@ export const HOME_PAGE = {
   [USER_ROLES.admin]: "/publications",
   [USER_ROLES.reviewer]: "/reviews",
 };
+
+export const PAGE_SIZE = 10;
