@@ -46,7 +46,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Review.objects.filter(user_id=user.id)
+        return Review.objects.filter(
+            user_id=user.id
+        ).order_by("publication__due_date")
 
     def list(self, request, *args, **kwargs):
         """
