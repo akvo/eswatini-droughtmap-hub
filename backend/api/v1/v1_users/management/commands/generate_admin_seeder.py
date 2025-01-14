@@ -14,7 +14,7 @@ class Command(BaseCommand):
         ).count()
         index = total_admins + 1
         email = f"admin{index}@mail.com"
-        SystemUser.objects.create_admin(
+        SystemUser.objects.create_superuser(
             email=email,
             password="Changeme123",
             name=f"Admin {index}",
