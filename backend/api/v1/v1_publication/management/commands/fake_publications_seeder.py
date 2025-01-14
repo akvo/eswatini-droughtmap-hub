@@ -172,7 +172,10 @@ class Command(BaseCommand):
                 for v in initial_values:
                     s_value = v["value"]
                     comment = None
-                    reviewed = None
+                    reviewed = random.choice([
+                        None,
+                        True
+                    ])
                     if is_completed:
                         reviewed = True
 
