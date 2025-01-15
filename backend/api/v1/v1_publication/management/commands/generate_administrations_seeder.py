@@ -1,6 +1,5 @@
 import json
 from django.core.management.base import BaseCommand
-from django.conf import settings
 from api.v1.v1_publication.models import Administration
 
 
@@ -25,17 +24,6 @@ class Command(BaseCommand):
             for fg in features
             for f in fg.get('geometries', [])
         ]
-        if test:
-            administrations = [
-                {
-                    "administration_id": 1,
-                    "name": "Inkhundla #1"
-                },
-                {
-                    "administration_id": 2,
-                    "name": "Inkhundla #2"
-                },
-            ]
         for adm in administrations:
             adm_exits = Administration.objects.filter(
                 pk=adm["administration_id"]
@@ -47,7 +35,7 @@ class Command(BaseCommand):
                     name=adm["name"],
                     wikidata=adm["wikidata"]
                 )
-        if not settings.TEST_ENV:
+        if not test:
             self.stdout.write(self.style.SUCCESS(
                 f"Created {len(administrations)} Administrations successfully."
             ))
