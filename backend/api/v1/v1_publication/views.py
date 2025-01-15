@@ -1,6 +1,7 @@
 from pathlib import Path
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
@@ -87,8 +88,20 @@ class ReviewViewSet(viewsets.ModelViewSet):
             return ReviewListSerializer
         return ReviewSerializer
 
+    def get_serializer(self, *args, **kwargs):
+        kwargs["context"] = self.get_serializer_context()
+        kwargs["context"]["total"] = Administration.objects.count()
+        return super().get_serializer(*args, **kwargs)
+
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        if not self.request.data.get("publication_id"):
+            raise ValidationError({
+                "publication_id": "This field is required."
+            })
+        serializer.save(
+            user_id=self.request.user.id,
+            publication_id=self.request.data["publication_id"],
+        )
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
