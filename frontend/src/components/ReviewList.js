@@ -13,6 +13,7 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
   const { administrations } = useAppContext();
   const [form] = useForm();
   const [marking, setMarking] = useState(false);
+  const [search, setSearch] = useState(null);
   const router = useRouter();
 
   const onOpen = (data) => {
@@ -95,7 +96,12 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
           return (
             <>
               <div className="p-4 sticky top-0 left-0 border-b border-neutral-200 bg-neutral-100 space-y-4 z-50">
-                <Search />
+                <Search
+                  placeholder="Search Inkhundla"
+                  onSearch={setSearch}
+                  onClear={() => setSearch(null)}
+                  allowClear
+                />
                 <Flex align="center" justify="space-between">
                   <Checkbox onChange={onCheckAll} />
                   <div>
@@ -113,50 +119,60 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
               <Form.List name="administrations">
                 {(fields) => (
                   <div className="w-full px-4">
-                    {fields.map((field) => {
-                      const isReviewed = formInstance.getFieldValue([
-                        "administrations",
-                        field.name,
-                        "reviewed",
-                      ]);
-                      return (
-                        <div
-                          className="w-full flex flex-row flex-wrap items-start justify-between"
-                          key={field.key}
-                        >
-                          <div className="flex">
-                            <Form.Item
-                              valuePropName="checked"
-                              name={[field.name, "checked"]}
-                            >
-                              <Checkbox />
-                            </Form.Item>
-                            <Button
-                              onClick={() =>
-                                onOpen(
-                                  formInstance.getFieldValue([
-                                    "administrations",
-                                    field.name,
-                                  ])
-                                )
-                              }
-                              type="link"
-                            >
-                              {formInstance.getFieldValue([
-                                "administrations",
-                                field.name,
-                                "name",
-                              ])}
-                            </Button>
+                    {fields
+                      .filter((f) => {
+                        if (search) {
+                          return formInstance
+                            .getFieldValue(["administrations", f.name, "name"])
+                            ?.toLowerCase()
+                            ?.includes(search?.toLowerCase());
+                        }
+                        return f;
+                      })
+                      .map((field) => {
+                        const isReviewed = formInstance.getFieldValue([
+                          "administrations",
+                          field.name,
+                          "reviewed",
+                        ]);
+                        return (
+                          <div
+                            className="w-full flex flex-row flex-wrap items-start justify-between"
+                            key={field.key}
+                          >
+                            <div className="flex">
+                              <Form.Item
+                                valuePropName="checked"
+                                name={[field.name, "checked"]}
+                              >
+                                <Checkbox />
+                              </Form.Item>
+                              <Button
+                                onClick={() =>
+                                  onOpen(
+                                    formInstance.getFieldValue([
+                                      "administrations",
+                                      field.name,
+                                    ])
+                                  )
+                                }
+                                type="link"
+                              >
+                                {formInstance.getFieldValue([
+                                  "administrations",
+                                  field.name,
+                                  "name",
+                                ])}
+                              </Button>
+                            </div>
+                            <div className="pt-2">
+                              <Tag color={isReviewed ? "success" : null}>
+                                {isReviewed ? "Reviewed" : "Pending"}
+                              </Tag>
+                            </div>
                           </div>
-                          <div className="pt-2">
-                            <Tag color={isReviewed ? "success" : null}>
-                              {isReviewed ? "Reviewed" : "Pending"}
-                            </Tag>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 )}
               </Form.List>
