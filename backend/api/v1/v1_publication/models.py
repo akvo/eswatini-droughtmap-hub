@@ -64,11 +64,10 @@ class Publication(SoftDeletes):
     updated_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Publication: {self.cdi_geonode_id} - {self.year_month_value}"
-
-    @property
-    def year_month_value(self):
-        return self.year_month.strftime("%Y-%m")
+        return (
+            f"Publication: {self.cdi_geonode_id} - "
+            f"{self.year_month.strftime('%Y-%m')}"
+        )
 
     class Meta:
         db_table = "publications"
