@@ -20,7 +20,7 @@ const ReviewsPage = () => {
       title: "DEADLINE",
       dataIndex: "due_date",
       key: "due_date",
-      defaultSortOrder: "ascend",
+      defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.due_date) - new Date(b.due_date),
     },
     {

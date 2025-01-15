@@ -49,7 +49,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Review.objects.filter(
             user_id=user.id
-        ).order_by("publication__due_date")
+        ).order_by("-publication__due_date")
 
     def list(self, request, *args, **kwargs):
         """
