@@ -15,6 +15,11 @@ module.exports = {
       backgroundImage: {
         "image-login": "url('/images/bg-image-login.png')",
       },
+      maxWidth: {
+        "8xl": "90rem",
+        "9xl": "120rem",
+        "10xl": "150rem",
+      },
     },
     container: {
       center: true,
@@ -29,6 +34,6 @@ module.exports = {
   },
   plugins: [],
   corePlugins: {
-    preflight: false,
+    preflight: true,
   },
 };
