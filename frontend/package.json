@@ -21,13 +21,15 @@
     "dayjs": "^1.11.13",
     "jose": "^5.9.6",
     "leaflet": "^1.9.4",
+    "leaflet.pattern": "^0.1.0",
     "next": "14.2.18",
     "react": "^18",
     "react-dom": "^18",
     "react-leaflet": "^4.2.1",
     "sass": "^1.81.0",
     "sharp": "^0.33.5",
-    "tinymce": "^7.5.1"
+    "tinymce": "^7.5.1",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
