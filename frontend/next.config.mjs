@@ -51,6 +51,10 @@ const nextConfig = {
         source: '/admin/:path*',
         destination: 'http://localhost:8000/admin/:path*',
       },
+      {
+        source: "/config.js",
+        destination: "http://localhost:8000/api/v1/config.js",
+      },
     ];
   },
 };
