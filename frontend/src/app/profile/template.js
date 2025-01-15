@@ -15,7 +15,7 @@ const ProfileTemplate = async ({ children }) => {
           <div className="w-full container flex flex-row justify-between items-center">
             <div>
               <Link href={homeURL} className="text-white">
-                Home
+                Dashboard
               </Link>
             </div>
             <div>

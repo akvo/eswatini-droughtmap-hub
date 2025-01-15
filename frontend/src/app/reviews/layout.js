@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button, Menu } from "antd";
+import { Button, Flex, Space } from "antd";
 import { UserContextProvider } from "@/context";
 import { auth } from "@/lib";
 
@@ -8,26 +8,29 @@ const ReviewLayout = async ({ children }) => {
   const abilities = session?.abilities || [];
   return (
     <UserContextProvider abilities={abilities}>
-      <div className="w-full h-screen">
-        <div className="w-full py-2 bg-primary">
-          <div className="w-full container flex flex-row justify-between items-center">
-            <div>
-              <ul className="w-full flex flex-row gap-3 list-none">
-                <li>
-                  <Link href={"/reviews"} className="text-white">
-                    Home
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <Link href={"/profile"}>
-                <Button>Profile</Button>
-              </Link>
-            </div>
+      <div className="w-full max-w-9xl h-screen relative text-base text-dark-10 overflow-hidden">
+        <div className="w-full flex items-center bg-primary py-2 sticky top-0 z-50">
+          <div className="container mx-auto">
+            <Flex className="w-full" justify="space-between" align="center">
+              <Space>
+                <Link href={"/"} className="text-white">
+                  Home
+                </Link>
+                <Link href={"/reviews"} className="text-white">
+                  Dashboard
+                </Link>
+              </Space>
+              <div>
+                <Link href={"/profile"}>
+                  <Button>Profile</Button>
+                </Link>
+              </div>
+            </Flex>
           </div>
         </div>
-        <div className="w-full container">{children}</div>
+        <main className="w-full flex items-center relative">
+          <div className="container mx-auto">{children}</div>
+        </main>
       </div>
     </UserContextProvider>
   );
