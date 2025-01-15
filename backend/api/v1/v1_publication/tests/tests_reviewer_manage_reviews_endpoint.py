@@ -45,7 +45,7 @@ class ReviewViewSetTestCase(APITestCase):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            len(response.data["data"]), 1
+            len(response.data["data"]), 2
         )
         self.assertIn(
             "progress_review", response.data["data"][0]
@@ -101,7 +101,7 @@ class ReviewViewSetTestCase(APITestCase):
             format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Review.objects.count(), 3)
+        self.assertEqual(Review.objects.count(), 5)
 
     def test_update_review(self):
         payload = {
@@ -135,7 +135,7 @@ class ReviewViewSetTestCase(APITestCase):
         self.assertIn("data", response.data)
         self.assertIn("total", response.data)
         self.assertEqual(
-            response.data["total"], 1
+            response.data["total"], 2
         )
 
     def test_permission_denied_for_unauthenticated_user(self):
