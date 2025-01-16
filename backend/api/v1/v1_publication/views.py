@@ -1,9 +1,23 @@
 from pathlib import Path
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 from django.core.management import call_command
 from django.http import HttpResponse
 from jsmin import jsmin
+from api.v1.v1_publication.serializers import (
+    ReviewListSerializer,
+    ReviewSerializer
+)
+from api.v1.v1_publication.models import (
+    Administration,
+    Review
+)
+from utils.custom_permissions import IsReviewer
+from utils.custom_pagination import Pagination
 
 
 @extend_schema(
@@ -19,3 +33,85 @@ def get_config_file(request, version):
         data, content_type="application/x-javascript; charset=utf-8"
     )
     return response
+
+
+@extend_schema(
+    responses={200: ReviewSerializer},
+    tags=["Reviewer"],
+    description="Manage publication reviews",
+)
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated, IsReviewer]
+    pagination_class = Pagination
+
+    def get_queryset(self):
+        user = self.request.user
+        return Review.objects.filter(
+            user_id=user.id
+        ).order_by("-publication__due_date")
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override the list method to add extra context.
+        """
+        queryset = self.get_queryset()
+        total = Administration.objects.count()
+
+        # Paginate the queryset
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(
+                page,
+                many=True,
+                context={
+                    "request": request, "total": total
+                }
+            )
+            return self.get_paginated_response(serializer.data)
+
+        # For non-paginated response (fallback)
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+            context={
+                "request": request, "total": total
+            }
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def get_serializer_class(self):
+        """
+        Use different serializers for list and detail views.
+        """
+        if self.action == 'list':
+            return ReviewListSerializer
+        return ReviewSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        kwargs["context"] = self.get_serializer_context()
+        kwargs["context"]["total"] = Administration.objects.count()
+        return super().get_serializer(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        if not self.request.data.get("publication_id"):
+            raise ValidationError({
+                "publication_id": "This field is required."
+            })
+        serializer.save(
+            user_id=self.request.user.id,
+            publication_id=self.request.data["publication_id"],
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.user != request.user:
+            return Response(
+                {
+                    "message": (
+                        "You do not have permission to delete this review."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)

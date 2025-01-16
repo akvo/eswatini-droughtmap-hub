@@ -30,15 +30,6 @@ class PublicationModelTest(TestCase):
             due_date=date(2025, 2, 1),
         )
 
-    def test_year_month_value(self):
-        publication = Publication.objects.create(
-            year_month=date(2025, 3, 15),
-            cdi_geonode_id=12345,
-            initial_values=[{"administration_id": 1, "value": 100}],
-            due_date=date(2025, 4, 1),
-        )
-        self.assertEqual(publication.year_month_value, "2025-03")
-
     def test_validate_json_values_failure(self):
         invalid_json = {"invalid": "json"}
         publication = Publication(

@@ -29,3 +29,16 @@ table td {
   border-style: solid;
   border-color: var(--table-border);
 }
+
+ul {
+  padding-inline-start: 0;
+}
+
+.leaflet-container {
+  background: var(--background) !important;
+  outline: 0;
+}
+
+h1, h2, h3, h4, h5 {
+  margin: 0;
+}

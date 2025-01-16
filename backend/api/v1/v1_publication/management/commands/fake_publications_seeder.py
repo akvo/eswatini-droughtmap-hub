@@ -78,20 +78,18 @@ class Command(BaseCommand):
 
         cdi_geonode_ids = [108, 107, 106, 44]
         if test:
-            cdi_geonode_ids = [44]
+            cdi_geonode_ids = [44, 106]
 
-        for cdi_geonode_id in cdi_geonode_ids:
-            # Generate a random date
-            random_date = (
-                fake.date_this_year()
-            )  # You can use any Faker date method here
+        # Initialize the start date to December of the previous year
+        current_date = datetime(datetime.now().year, datetime.now().month, 1)
 
-            # Get the year and month from the random date
-            year = random_date.year
-            month = random_date.month
+        for index, cdi_geonode_id in enumerate(cdi_geonode_ids):
+            # Calculate the last day of the current month
+            year = current_date.year
+            month = current_date.month
+            last_day_of_month = monthrange(year, month)[1]
+            due_date = datetime(year, month, last_day_of_month)
 
-            # Calculate the last day of the month
-            due_date = datetime(year, month, monthrange(year, month)[1])
             # Calculate the previous month from due_date
             due_date_obj = datetime.strptime(
                 due_date.strftime("%Y-%m-%d"), "%Y-%m-%d"
@@ -102,7 +100,15 @@ class Command(BaseCommand):
             # Get the start of the previous month
             start_date = datetime(prev_month.year, prev_month.month, 1)
 
-            status = random.choice(list(PublicationStatus.FieldStr.keys()))
+            # Decrement the current date by one month for the next iteration
+            current_date -= relativedelta(months=1)
+
+            status = PublicationStatus.in_review
+            if index > 0:
+                status = random.choice([
+                    PublicationStatus.in_validation,
+                    PublicationStatus.published
+                ])
             initial_values = []
             for a_id in administration_ids:
                 init_value = random.uniform(0, 100)
@@ -165,7 +171,7 @@ class Command(BaseCommand):
                 )
 
                 is_completed = (
-                    publication.status == PublicationStatus.published
+                    publication.status != PublicationStatus.in_review
                 )
 
                 suggestion_values = []
