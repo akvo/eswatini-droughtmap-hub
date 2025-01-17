@@ -12,7 +12,7 @@ from utils.custom_serializer_fields import (
     CustomURLField,
     CustomDateTimeField,
 )
-from .constants import CDIGeonodeCategory
+from .constants import CDIGeonodeCategory, PublicationStatus
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -61,6 +61,7 @@ class PublicationInfoSerializer(serializers.ModelSerializer):
             "year_month",
             "due_date",
             "initial_values",
+            "status",
         ]
 
 
@@ -139,6 +140,18 @@ class CDIGeonodeCategorySerializer(serializers.Serializer):
         allow_null=True,
         help_text="Category to filter resources by (e.g., 'CDI Raster Map')."
     )
+    status = serializers.ChoiceField(
+        choices=[
+            (key, value)
+            for key, value in PublicationStatus.FieldStr.items()
+        ],
+        required=False,
+        allow_null=True,
+        help_text="Status of publication process"
+    )
+
+    class Meta:
+        fields = ["category", "status"]
 
 
 class CDIGeonodeListSerializer(serializers.Serializer):
@@ -149,7 +162,9 @@ class CDIGeonodeListSerializer(serializers.Serializer):
     thumbnail_url = CustomURLField()
     download_url = CustomURLField()
     created = CustomDateTimeField()
-    publication = CustomIntegerField()
+    publication = PublicationInfoSerializer(
+        read_only=True,
+    )
 
     class Meta:
         fields = [
