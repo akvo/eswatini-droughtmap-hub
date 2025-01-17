@@ -1,23 +1,37 @@
+import requests
 from pathlib import Path
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
+from rest_framework.views import APIView
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    extend_schema,
+    inline_serializer,
+    OpenApiParameter
+)
 from django.core.management import call_command
 from django.http import HttpResponse
+from django.conf import settings
 from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
-    ReviewSerializer
+    ReviewSerializer,
+    CDIGeonodeListSerializer,
+    CDIGeonodeCategorySerializer,
 )
 from api.v1.v1_publication.models import (
     Administration,
-    Review
+    Review,
+    Publication,
 )
-from utils.custom_permissions import IsReviewer
+from api.v1.v1_publication.constants import CDIGeonodeCategory
+from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
+from utils.default_serializers import DefaultResponseSerializer
+from math import ceil
 
 
 @extend_schema(
@@ -115,3 +129,134 @@ class ReviewViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         return super().destroy(request, *args, **kwargs)
+
+
+class CDIGeonodeAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Fetch CDI Geonode resources",
+        description=(
+            "Fetch geodata resources from a specific category "
+            "to start publication process"
+        ),
+        tags=["Admin"],
+        parameters=[
+            OpenApiParameter(
+                name="page",
+                default=1,
+                required=True,
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="category",
+                default=CDIGeonodeCategory.cdi,
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        request=CDIGeonodeCategorySerializer,
+        responses={
+            200: CDIGeonodeListSerializer(many=True),
+            (200, "application/json"): inline_serializer(
+                "CDIGeonodeListResponse",
+                fields={
+                    "current": serializers.IntegerField(),
+                    "total": serializers.IntegerField(),
+                    "total_page": serializers.IntegerField(),
+                    "data": CDIGeonodeListSerializer(many=True),
+                },
+            ),
+            400: DefaultResponseSerializer,
+            500: DefaultResponseSerializer,
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        serializer = CDIGeonodeCategorySerializer(data=request.query_params)
+        if not serializer.is_valid():
+            raise ValidationError({
+                "message": "Invalid category parameter."
+            })
+        category = serializer.validated_data.get(
+            "category",
+            CDIGeonodeCategory.cdi
+        )
+        page = int(request.GET.get("page", "1"))
+        url = (
+            "{0}/api/v2/resources?filter{{category.identifier}}={1}&page={2}"
+            .format(
+                settings.GEONODE_BASE_URL,
+                category,
+                page,
+            )
+        )
+        username = settings.GEONODE_ADMIN_USERNAME
+        password = settings.GEONODE_ADMIN_PASSWORD
+        response = requests.get(
+            url,
+            auth=(username, password),
+        )
+        if response.status_code == 200:
+            data = response.json()
+            serialized_data = [
+                {
+                    "pk": item.get("pk"),
+                    "title": item.get("title"),
+                    "detail_url": item.get("detail_url"),
+                    "embed_url": item.get("embed_url"),
+                    "thumbnail_url": item.get("thumbnail_url"),
+                    "download_url": item.get("download_url"),
+                    "created": item.get("created"),
+                    "publication": None
+                }
+                for item in data.get("resources", [])
+            ]
+            cdi_geonode_ids = [
+                int(s["pk"])
+                for s in serialized_data
+            ]
+            publications = Publication.objects.filter(
+                cdi_geonode_id__in=cdi_geonode_ids
+            )
+            if publications.count() > 0:
+                publications = [
+                    {
+                        "id": p.cdi_geonode_id,
+                        "publication_id": p.pk
+                    }
+                    for p in publications
+                ]
+                serialized_data = [
+                    {
+                        **s,
+                        "publication": next(
+                            (
+                                x["publication_id"]
+                                for x in publications if x["id"] == s["pk"]
+                            ),
+                            None
+                        )
+                    }
+                    for s in serialized_data
+                ]
+            total_page = ceil(int(data["total"]) / int(data["page_size"]))
+            return Response(
+                {
+                    "current": page,
+                    "total": data["total"],
+                    "total_page": total_page,
+                    "data": serialized_data
+                },
+                status=status.HTTP_200_OK
+            )
+        elif response.status_code == 400:
+            return Response(
+                {"message": "Bad Request: Invalid parameters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {"message": "Server Error: Unable to fetch data."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

@@ -6,6 +6,13 @@ from .models import (
     Publication,
     Review,
 )
+from utils.custom_serializer_fields import (
+    CustomIntegerField,
+    CustomCharField,
+    CustomURLField,
+    CustomDateTimeField,
+)
+from .constants import CDIGeonodeCategory
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -119,4 +126,39 @@ class ReviewListSerializer(serializers.ModelSerializer):
             "completed_at",
             "is_completed",
             "progress_review",
+        ]
+
+
+class CDIGeonodeCategorySerializer(serializers.Serializer):
+    category = serializers.ChoiceField(
+        choices=[
+            (key, value)
+            for key, value in CDIGeonodeCategory.FieldStr.items()
+        ],
+        required=False,
+        allow_null=True,
+        help_text="Category to filter resources by (e.g., 'CDI Raster Map')."
+    )
+
+
+class CDIGeonodeListSerializer(serializers.Serializer):
+    pk = CustomIntegerField()
+    title = CustomCharField()
+    detail_url = CustomURLField()
+    embed_url = CustomURLField()
+    thumbnail_url = CustomURLField()
+    download_url = CustomURLField()
+    created = CustomDateTimeField()
+    publication = CustomIntegerField()
+
+    class Meta:
+        fields = [
+            "pk",
+            "title",
+            "detail_url",
+            "embed_url",
+            "thumbnail_url",
+            "download_url",
+            "created",
+            "publication",
         ]
