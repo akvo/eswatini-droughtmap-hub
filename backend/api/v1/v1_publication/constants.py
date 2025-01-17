@@ -26,3 +26,11 @@ class DroughtCategory:
         d3: "Extreme Drought",
         d4: "Exceptional Drought",
     }
+
+
+class CDIGeonodeCategory:
+    cdi = "cdi-raster-map"
+
+    FieldStr = {
+        cdi: "CDI Raster Map"
+    }
