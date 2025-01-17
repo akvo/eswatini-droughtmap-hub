@@ -21,6 +21,7 @@ from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     CDIGeonodeListSerializer,
     CDIGeonodeCategorySerializer,
+    PublicationInfoSerializer,
 )
 from api.v1.v1_publication.models import (
     Administration,
@@ -183,6 +184,10 @@ class CDIGeonodeAPI(APIView):
             "category",
             CDIGeonodeCategory.cdi
         )
+        publication_status = serializer.validated_data.get(
+            "status",
+            None
+        )
         page = int(request.GET.get("page", "1"))
         url = (
             "{0}/api/v2/resources?filter{{category.identifier}}={1}&page={2}"
@@ -200,6 +205,7 @@ class CDIGeonodeAPI(APIView):
         )
         if response.status_code == 200:
             data = response.json()
+            # Prepare the serialized data
             serialized_data = [
                 {
                     "pk": item.get("pk"),
@@ -209,38 +215,33 @@ class CDIGeonodeAPI(APIView):
                     "thumbnail_url": item.get("thumbnail_url"),
                     "download_url": item.get("download_url"),
                     "created": item.get("created"),
-                    "publication": None
+                    "publication": None,
                 }
                 for item in data.get("resources", [])
             ]
-            cdi_geonode_ids = [
-                int(s["pk"])
-                for s in serialized_data
-            ]
-            publications = Publication.objects.filter(
+
+            # Extract IDs from serialized data
+            cdi_geonode_ids = [int(item["pk"]) for item in serialized_data]
+
+            # Fetch related publications based on the IDs and status
+            publications_query = Publication.objects.filter(
                 cdi_geonode_id__in=cdi_geonode_ids
             )
-            if publications.count() > 0:
-                publications = [
-                    {
-                        "id": p.cdi_geonode_id,
-                        "publication_id": p.pk
-                    }
-                    for p in publications
-                ]
-                serialized_data = [
-                    {
-                        **s,
-                        "publication": next(
-                            (
-                                x["publication_id"]
-                                for x in publications if x["id"] == s["pk"]
-                            ),
-                            None
-                        )
-                    }
-                    for s in serialized_data
-                ]
+            if publication_status:
+                publications_query = publications_query.filter(
+                    status=publication_status
+                )
+
+            # Optimize lookup by creating a dictionary of publications
+            publications_dict = {
+                publication.cdi_geonode_id: PublicationInfoSerializer(
+                    instance=publication
+                ).data
+                for publication in publications_query
+            }
+            # Merge publication data into serialized_data
+            for item in serialized_data:
+                item["publication"] = publications_dict.get(item["pk"])
             total_page = ceil(int(data["total"]) / int(data["page_size"]))
             return Response(
                 {
