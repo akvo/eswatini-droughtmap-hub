@@ -3,8 +3,8 @@ from rest_framework import status
 from django.core.management import call_command
 from unittest.mock import patch
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
-from api.v1.v1_publication.models import Publication
-from api.v1.v1_publication.constants import DroughtCategory
+from api.v1.v1_publication.models import Publication, PublicationStatus
+from api.v1.v1_publication.constants import DroughtCategory, CDIGeonodeCategory
 
 
 class CDIGeonodeAPITestCase(APITestCase):
@@ -125,11 +125,22 @@ class CDIGeonodeAPITestCase(APITestCase):
         )
 
         # Perform the GET request
-        response = self.client.get(self.url)
+        response = self.client.get(
+            f"{self.url}?status={PublicationStatus.in_review}"
+            f"&category={CDIGeonodeCategory.cdi}"
+        )
 
         # Assertions
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.data["data"][0]["publication"],
+            response.data["data"][0]["publication"]["id"],
             publication.pk
+        )
+        self.assertEqual(
+            response.data["data"][0]["publication"]["year_month"],
+            "2024-12"
+        )
+        self.assertEqual(
+            response.data["data"][0]["publication"]["due_date"],
+            "31-01-2025"
         )
