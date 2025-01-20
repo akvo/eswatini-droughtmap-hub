@@ -11,3 +11,21 @@ export const HOME_PAGE = {
 };
 
 export const PAGE_SIZE = 10;
+
+export const PUBLICATION_STATUS = [
+  {
+    value: 1,
+    label: "In Review",
+    color: "orange",
+  },
+  {
+    value: 2,
+    label: "In Validation",
+    color: "blue",
+  },
+  {
+    value: 3,
+    label: "Published",
+    color: "green",
+  },
+];
