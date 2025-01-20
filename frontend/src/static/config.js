@@ -11,3 +11,36 @@ export const HOME_PAGE = {
 };
 
 export const PAGE_SIZE = 10;
+
+export const DROUGHT_CATEGORY = [
+  {
+    value: 0,
+    label: "Normal or wet conditions",
+    color: "#ffffff",
+  },
+  {
+    value: 1,
+    label: "Abnormally Dry",
+    color: "#ffff00",
+  },
+  {
+    value: 2,
+    label: "Moderate Drought",
+    color: "#fcd37f",
+  },
+  {
+    value: 3,
+    label: "Severe Drought",
+    color: "#ffaa00",
+  },
+  {
+    value: 4,
+    label: "Extreme Drought",
+    color: "#e60000",
+  },
+  {
+    value: 5,
+    label: "Exceptional Drought",
+    color: "#730000",
+  },
+];
