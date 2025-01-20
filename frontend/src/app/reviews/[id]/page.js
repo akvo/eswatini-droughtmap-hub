@@ -1,6 +1,7 @@
-import { ReviewList } from "@/components";
+import { ReviewAdmModal, ReviewList, SubmitReviewButton } from "@/components";
 import { api } from "@/lib";
 import { Flex } from "antd";
+import dayjs from "dayjs";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
@@ -15,6 +16,17 @@ const ReviewDetailsPage = async ({ params }) => {
   }
   const [reviewed, total] = review.progress_review?.split("/");
   const remaining = total - reviewed;
+  const dataSource = review?.publication?.initial_values?.map((v) => {
+    const suggestion =
+      review?.suggestion_values?.find(
+        (s) => s?.administration_id === v?.administration_id
+      ) || {};
+    return {
+      ...v,
+      initial_category: v?.category,
+      ...suggestion,
+    };
+  });
   return (
     <div className="w-full h-screen">
       <Flex align="center" justify="space-between" gap={4}>
@@ -22,10 +34,23 @@ const ReviewDetailsPage = async ({ params }) => {
           <h1 className="text-3xl font-bold">{`CDI Review for: ${review?.publication?.year_month}`}</h1>
           <h2 className="text-xl">{`Review Deadline: ${review?.publication?.due_date}`}</h2>
         </div>
-        <div className="leading-2 p-4 text-center">
-          <strong>REMAINING Tinkhundla</strong>
-          <h2 className="text-2xl">{remaining}</h2>
-        </div>
+        {!review?.is_completed && remaining === 0 && (
+          <SubmitReviewButton review={review} />
+        )}
+        {!review?.is_completed && remaining > 0 && (
+          <div className="leading-2 p-4 text-center">
+            <strong>REMAINING Tinkhundla</strong>
+            <h2 className="text-2xl">{remaining}</h2>
+          </div>
+        )}
+        {review?.is_completed && (
+          <div className="leading-2 p-4 text-center">
+            <strong>Review Completed</strong><br/>
+            <small>{` at ${dayjs(review?.completed_at).format(
+              "DD/MM/YYYY h:mm A"
+            )}`}</small>
+          </div>
+        )}
       </Flex>
       <div className="w-full flex flex-row items-start">
         <div
@@ -33,15 +58,16 @@ const ReviewDetailsPage = async ({ params }) => {
           style={{ borderStyle: "solid" }}
         >
           <ReviewList
-            suggestions={review?.suggestion_values}
-            initialValues={review?.initial_values}
+            dataSource={dataSource}
             id={review?.id}
+            isCompleted={review?.is_completed}
           />
         </div>
         <div className="w-full lg:w-8/12 2xl:w-9/12 border border-neutral-200">
-          <CDIMap />
+          <CDIMap data={dataSource} />
         </div>
       </div>
+      <ReviewAdmModal review={review} />
     </div>
   );
 };
