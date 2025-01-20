@@ -21,7 +21,6 @@ from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     CDIGeonodeListSerializer,
     CDIGeonodeCategorySerializer,
-    PublicationInfoSerializer,
 )
 from api.v1.v1_publication.models import (
     Administration,
@@ -37,7 +36,8 @@ from math import ceil
 
 @extend_schema(
     description="Get required configuration",
-    tags=["Development"]
+    tags=["Development"],
+    responses={200: {"type": "string", "format": "binary"}},
 )
 @api_view(["GET"])
 def get_config_file(request, version):
@@ -207,16 +207,14 @@ class CDIGeonodeAPI(APIView):
             data = response.json()
             # Prepare the serialized data
             serialized_data = [
-                {
-                    "pk": item.get("pk"),
-                    "title": item.get("title"),
-                    "detail_url": item.get("detail_url"),
-                    "embed_url": item.get("embed_url"),
-                    "thumbnail_url": item.get("thumbnail_url"),
-                    "download_url": item.get("download_url"),
-                    "created": item.get("created"),
-                    "publication": None,
-                }
+                CDIGeonodeListSerializer(
+                    instance={
+                        **item,
+                        "year_month": item.get("date"),
+                        "publication_id": None,
+                        "status": None,
+                    }
+                ).data
                 for item in data.get("resources", [])
             ]
 
@@ -234,14 +232,26 @@ class CDIGeonodeAPI(APIView):
 
             # Optimize lookup by creating a dictionary of publications
             publications_dict = {
-                publication.cdi_geonode_id: PublicationInfoSerializer(
-                    instance=publication
-                ).data
+                publication.cdi_geonode_id: {
+                    "id": publication.pk,
+                    "status": publication.status
+                }
                 for publication in publications_query
             }
             # Merge publication data into serialized_data
             for item in serialized_data:
-                item["publication"] = publications_dict.get(item["pk"])
+                publication = publications_dict.get(
+                    int(item["pk"])
+                )
+                if publication:
+                    item["publication_id"] = publication["id"]
+                    item["status"] = publication["status"]
+            if publication_status:
+                serialized_data = list(filter(
+                    lambda s: s["publication_id"],
+                    serialized_data
+                ))
+                data["total"] = len(serialized_data)
             total_page = ceil(int(data["total"]) / int(data["page_size"]))
             return Response(
                 {

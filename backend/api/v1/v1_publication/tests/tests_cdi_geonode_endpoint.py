@@ -34,7 +34,7 @@ class CDIGeonodeAPITestCase(APITestCase):
                     "/dataset_download"
                 ),
                 "created": "2025-01-15T12:00:00Z",
-                "publication": None,
+                "date": "2024-12-31T12:00:00Z",
             },
             {
                 "pk": 2,
@@ -49,7 +49,7 @@ class CDIGeonodeAPITestCase(APITestCase):
                     "/dataset_download"
                 ),
                 "created": "2025-01-16T14:00:00Z",
-                "publication": None,
+                "date": "2024-11-31T16:00:00Z",
             },
         ]
         self.mock_response_data = {
@@ -133,14 +133,40 @@ class CDIGeonodeAPITestCase(APITestCase):
         # Assertions
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.data["data"][0]["publication"]["id"],
+            response.data["data"][0]["publication_id"],
             publication.pk
         )
         self.assertEqual(
-            response.data["data"][0]["publication"]["year_month"],
-            "2024-12"
+            response.data["data"][0]["year_month"],
+            "2024-12-31T12:00:00Z"
         )
         self.assertEqual(
-            response.data["data"][0]["publication"]["due_date"],
-            "31-01-2025"
+            response.data["data"][0]["status"],
+            PublicationStatus.in_review
+        )
+
+    @patch("requests.get")
+    def test_empty_results_publication_filtering_by_status(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-12-01",
+            due_date="2025-01-31",
+            initial_values=[{
+                "administration_id": 1,
+                "value": 6,
+                "category": DroughtCategory.d3
+            }]
+        )
+
+        response = self.client.get(
+            f"{self.url}?status={PublicationStatus.in_validation}"
+            f"&category={CDIGeonodeCategory.cdi}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["total"],
+            0
         )
