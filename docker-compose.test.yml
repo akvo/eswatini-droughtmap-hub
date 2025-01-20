@@ -44,6 +44,7 @@ services:
     environment:
       - WEBDOMAIN=notset
       - SESSION_SECRET=secret
+      - GEONODE_BASE_URL=http://localhost
     depends_on:
       - backend
 volumes:

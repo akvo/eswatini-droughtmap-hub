@@ -44,6 +44,7 @@ services:
     environment:
       - WEBDOMAIN=${WEBDOMAIN}
       - SESSION_SECRET=${SESSION_SECRET}
+      - GEONODE_BASE_URL=${GEONODE_BASE_URL}
     depends_on:
       - backend
   worker:
