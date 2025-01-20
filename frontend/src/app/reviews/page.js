@@ -58,7 +58,7 @@ const ReviewsPage = () => {
   }, [fetchData]);
 
   return (
-    <div className="w-full h-auto space-y-4">
+    <div className="w-full h-auto space-y-4 pt-6">
       <Title level={2}>My reviews</Title>
       <Can I="read" a="Review">
         <Table
