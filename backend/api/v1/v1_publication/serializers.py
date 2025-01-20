@@ -162,8 +162,12 @@ class CDIGeonodeListSerializer(serializers.Serializer):
     thumbnail_url = CustomURLField()
     download_url = CustomURLField()
     created = CustomDateTimeField()
-    publication = PublicationInfoSerializer(
-        read_only=True,
+    year_month = CustomCharField()
+    publication_id = CustomIntegerField(
+        allow_null=True
+    )
+    status = CustomIntegerField(
+        allow_null=True
     )
 
     class Meta:
@@ -175,5 +179,7 @@ class CDIGeonodeListSerializer(serializers.Serializer):
             "thumbnail_url",
             "download_url",
             "created",
-            "publication",
+            "year_month",
+            "publication_id",
+            "status",
         ]
