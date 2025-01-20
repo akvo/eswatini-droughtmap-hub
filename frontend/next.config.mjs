@@ -5,6 +5,7 @@ import CopyPlugin from "copy-webpack-plugin";
 /** @type {import('next').NextConfig} */
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const geonodeURL = process.env.GEONODE_BASE_URL.split("://");
 
 const nextConfig = {
   reactStrictMode: true,
@@ -48,14 +49,25 @@ const nextConfig = {
         destination: "http://localhost:8000/api/:path*",
       },
       {
-        source: '/admin/:path*',
-        destination: 'http://localhost:8000/admin/:path*',
+        source: "/admin/:path*",
+        destination: "http://localhost:8000/admin/:path*",
       },
       {
         source: "/config.js",
         destination: "http://localhost:8000/api/v1/config.js",
       },
     ];
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: geonodeURL[0],
+        hostname: geonodeURL[1],
+        port: "",
+        pathname: "/uploaded/**",
+        search: "",
+      },
+    ],
   },
 };
 
