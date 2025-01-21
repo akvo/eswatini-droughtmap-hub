@@ -44,3 +44,21 @@ export const DROUGHT_CATEGORY = [
     color: "#730000",
   },
 ];
+
+export const PUBLICATION_STATUS = [
+  {
+    value: 1,
+    label: "In Review",
+    color: "orange",
+  },
+  {
+    value: 2,
+    label: "In Validation",
+    color: "blue",
+  },
+  {
+    value: 3,
+    label: "Published",
+    color: "green",
+  },
+];

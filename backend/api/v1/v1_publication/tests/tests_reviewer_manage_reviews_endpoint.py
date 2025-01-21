@@ -74,6 +74,7 @@ class ReviewViewSetTestCase(APITestCase):
                 "year_month",
                 "due_date",
                 "initial_values",
+                "status",
             ]
         )
 
