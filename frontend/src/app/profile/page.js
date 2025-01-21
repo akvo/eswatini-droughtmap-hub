@@ -44,8 +44,7 @@ const UnverifiedAlert = ({ email }) => {
             </>
           ) : (
             <>
-              Please verify your email address to activate your account. Didn't
-              receive the email?
+              {`Please verify your email address to activate your account. Didn\'t receive the email?`}
               <Button type="link" onClick={handleOnClick} loading={loading}>
                 Resend Verification Email
               </Button>
@@ -76,7 +75,7 @@ const ProfilePage = () => {
         payload,
       });
     }
-  }, [userContext]);
+  }, [userContext, userDispatch, form]);
 
   useEffect(() => {
     fetchProfile();
