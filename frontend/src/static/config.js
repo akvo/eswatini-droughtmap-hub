@@ -62,3 +62,14 @@ export const PUBLICATION_STATUS = [
     color: "green",
   },
 ];
+
+export const FILTER_VALUE_TYPES = [
+  {
+    value: "category",
+    label: "Reviewed Values",
+  },
+  {
+    value: "initial_category",
+    label: "Raw Values",
+  },
+];
