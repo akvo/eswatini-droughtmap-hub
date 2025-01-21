@@ -1,43 +1,48 @@
 "use client";
 
-import { useAppContext } from "@/context/AppContextProvider";
+import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 import { api } from "@/lib";
-import { Checkbox, Flex, Form, Tag, Input, Button, Modal } from "antd";
+import { Checkbox, Flex, Form, Tag, Input, Button, Modal, Space } from "antd";
+import classNames from "classnames";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const { Search } = Input;
 const { useForm } = Form;
 
-const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
-  const { administrations } = useAppContext();
+const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
+  const { administrations, activeAdm } = useAppContext();
   const [form] = useForm();
   const [marking, setMarking] = useState(false);
   const [search, setSearch] = useState(null);
   const router = useRouter();
+  const appDispatch = useAppDispatch();
 
   const onOpen = (data) => {
-    Modal.info({
-      title: data?.name,
-      content: (
-        <ul>
-          <li>
-            <strong>Category</strong>: {data?.category}
-          </li>
-          <li>
-            <strong>value</strong>: {data?.value}
-          </li>
-        </ul>
-      ),
+    appDispatch({
+      type: "SET_ACTIVE_ADM",
+      payload: data,
     });
   };
 
   const onCheckAll = (e) => {
     const isChecked = e.target.checked;
+    appDispatch({
+      type: "SET_IS_BULK_ACTION",
+      payload: isChecked,
+    });
     const admValues = form
       .getFieldValue("administrations")
       .map((a) => ({ ...a, checked: isChecked }));
     form.setFieldValue("administrations", admValues);
+  };
+
+  const onCheckAdm = (e, administration_id = 0) => {
+    const isChecked = e.target.checked;
+    appDispatch({
+      type: isChecked ? "ADD_SELECTED_ADM" : "REMOVE_SELECTED_ADM",
+      payload: parseInt(administration_id, 10),
+    });
   };
 
   const onMarkAll = async () => {
@@ -45,13 +50,25 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
     try {
       const admValues = form.getFieldValue("administrations").map((a) => {
         if (a?.checked) {
-          return { ...a, reviewed: true };
+          return {
+            ...a,
+            category: a?.category || a?.initial_category,
+            reviewed: true,
+          };
         }
         return a;
       });
       await api("PUT", `/reviewer/review/${id}`, {
-        suggestion_values: admValues,
+        suggestion_values: admValues.map(({ name: _, ...a }) => a),
       });
+      appDispatch({
+        type: "REFRESH_MAP_TRUE",
+      });
+      setTimeout(() => {
+        appDispatch({
+          type: "REFRESH_MAP_FALSE",
+        });
+      }, 500);
       form.setFieldValue("administrations", admValues);
       setMarking(false);
       router.refresh(`/reviews/${id}`);
@@ -60,6 +77,19 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
       console.error(err);
     }
   };
+
+  const resetState = useCallback(() => {
+    /**
+     * Reset all selected administrations at first render time
+     **/
+    appDispatch({
+      type: "RESET_SELECTED_ADM",
+    });
+  }, [appDispatch]);
+
+  useEffect(() => {
+    resetState();
+  }, [resetState]);
 
   if (!administrations?.length) {
     return null;
@@ -71,18 +101,13 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
         form={form}
         initialValues={{
           administrations: administrations?.map((a) => {
-            const initial =
-              initialValues?.find(
-                (i) => i?.administration_id === a?.administration_id
-              ) || {};
-            const suggestion =
-              suggestions?.find(
+            const findData =
+              dataSource.find(
                 (d) => d?.administration_id === a?.administration_id
               ) || {};
             return {
               ...a,
-              ...initial,
-              ...suggestion,
+              ...findData,
               checked: false,
             };
           }),
@@ -102,23 +127,25 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
                   onClear={() => setSearch(null)}
                   allowClear
                 />
-                <Flex align="center" justify="space-between">
-                  <Checkbox onChange={onCheckAll} />
-                  <div>
-                    <Button
-                      size="small"
-                      disabled={numberChecked === 0}
-                      onClick={onMarkAll}
-                      loading={marking}
-                    >{`Mark as Reviewed ${
-                      numberChecked ? `(${numberChecked})` : ""
-                    }`}</Button>
-                  </div>
-                </Flex>
+                {!isCompleted && (
+                  <Flex align="center" justify="space-between">
+                    <Checkbox onChange={onCheckAll} />
+                    <div>
+                      <Button
+                        size="small"
+                        disabled={numberChecked === 0}
+                        onClick={onMarkAll}
+                        loading={marking}
+                      >{`Mark as Reviewed ${
+                        numberChecked ? `(${numberChecked})` : ""
+                      }`}</Button>
+                    </div>
+                  </Flex>
+                )}
               </div>
               <Form.List name="administrations">
                 {(fields) => (
-                  <div className="w-full px-4">
+                  <div className="w-full">
                     {fields
                       .filter((f) => {
                         if (search) {
@@ -137,16 +164,34 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
                         ]);
                         return (
                           <div
-                            className="w-full flex flex-row flex-wrap items-start justify-between"
+                            className={classNames(
+                              "w-full flex flex-row flex-wrap items-center justify-between px-4 py-2 border-b border-neutral-200",
+                              {
+                                "bg-neutral-100": isReviewed,
+                              }
+                            )}
                             key={field.key}
                           >
-                            <div className="flex">
-                              <Form.Item
-                                valuePropName="checked"
-                                name={[field.name, "checked"]}
-                              >
-                                <Checkbox />
-                              </Form.Item>
+                            <Space>
+                              {!isCompleted && (
+                                <Form.Item
+                                  valuePropName="checked"
+                                  name={[field.name, "checked"]}
+                                >
+                                  <Checkbox
+                                    onClick={(e) =>
+                                      onCheckAdm(
+                                        e,
+                                        formInstance.getFieldValue([
+                                          "administrations",
+                                          field.name,
+                                          "administration_id",
+                                        ])
+                                      )
+                                    }
+                                  />
+                                </Form.Item>
+                              )}
                               <Button
                                 onClick={() =>
                                   onOpen(
@@ -164,8 +209,8 @@ const ReviewList = ({ id, suggestions = [], initialValues = [] }) => {
                                   "name",
                                 ])}
                               </Button>
-                            </div>
-                            <div className="pt-2">
+                            </Space>
+                            <div>
                               <Tag color={isReviewed ? "success" : null}>
                                 {isReviewed ? "Reviewed" : "Pending"}
                               </Tag>

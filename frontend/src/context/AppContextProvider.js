@@ -7,10 +7,62 @@ const AppDispatchContext = createContext(null);
 const initialValues = {
   administrations: [],
   geoData: null,
+  activeAdm: null,
+  selectedAdms: [],
+  isBulkAction: false,
+  refreshMap: false,
 };
 
 const appReducer = (state, action) => {
   switch (action.type) {
+    case "REFRESH_MAP_FALSE":
+      return {
+        ...state,
+        refreshMap: false,
+      };
+    case "REFRESH_MAP_TRUE":
+      return {
+        ...state,
+        refreshMap: true,
+      };
+    case "REMOVE_ACTIVE_ADM":
+      return {
+        ...state,
+        activeAdm: null,
+      };
+    case "UPDATE_ACTIVE_ADM":
+      return {
+        ...state,
+        activeAdm: {
+          ...state.activeAdm,
+          ...action.payload,
+        },
+      };
+    case "SET_ACTIVE_ADM":
+      return {
+        ...state,
+        activeAdm: action.payload,
+      };
+    case "RESET_SELECTED_ADM":
+      return {
+        ...state,
+        selectedAdms: [],
+      };
+    case "REMOVE_SELECTED_ADM":
+      return {
+        ...state,
+        selectedAdms: state.selectedAdms.filter((s) => s !== action.payload),
+      };
+    case "ADD_SELECTED_ADM":
+      return {
+        ...state,
+        selectedAdms: [...state.selectedAdms, action.payload],
+      };
+    case "SET_IS_BULK_ACTION":
+      return {
+        ...state,
+        isBulkAction: action.payload,
+      };
     case "SET_ADM":
       return {
         ...state,

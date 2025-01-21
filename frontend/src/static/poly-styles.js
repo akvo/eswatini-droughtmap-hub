@@ -1,8 +1,8 @@
 const styleOptions = {
-  color: "green",
+  color: "#485D92",
   fillOpacity: 1,
-  opacity: 0.9,
-  weight: 4,
+  opacity: 0.5,
+  weight: 2,
 };
 
 const patternOptions = {
