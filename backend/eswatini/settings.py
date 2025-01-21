@@ -199,6 +199,8 @@ Q_CLUSTER = {
 }
 
 GEONODE_BASE_URL = environ.get("GEONODE_BASE_URL")
+GEONODE_ADMIN_USERNAME = environ.get("GEONODE_ADMIN_USERNAME")
+GEONODE_ADMIN_PASSWORD = environ.get("GEONODE_ADMIN_PASSWORD")
 # Override the default user model
 AUTH_USER_MODEL = "v1_users.SystemUser"
 # MAIL SETUP

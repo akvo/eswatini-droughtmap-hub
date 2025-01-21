@@ -27,6 +27,8 @@ services:
       - DEBUG=True
       - SECRET_KEY=secret
       - GEONODE_BASE_URL
+      - GEONODE_ADMIN_USERNAME
+      - GEONODE_ADMIN_PASSWORD
       - COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN:-}
       - MAILJET_APIKEY=$MAILJET_APIKEY
       - MAILJET_SECRET=$MAILJET_SECRET
@@ -42,6 +44,7 @@ services:
     environment:
       - WEBDOMAIN=${WEBDOMAIN}
       - SESSION_SECRET=${SESSION_SECRET}
+      - GEONODE_BASE_URL=${GEONODE_BASE_URL}
     depends_on:
       - backend
   worker:
@@ -58,6 +61,8 @@ services:
       - DEBUG=True
       - SECRET_KEY=secret
       - GEONODE_BASE_URL
+      - GEONODE_ADMIN_USERNAME
+      - GEONODE_ADMIN_PASSWORD
       - MAILJET_APIKEY=$MAILJET_APIKEY
       - MAILJET_SECRET=$MAILJET_SECRET
       - WEBDOMAIN=$WEBDOMAIN
