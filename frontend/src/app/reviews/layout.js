@@ -8,7 +8,7 @@ const ReviewLayout = async ({ children }) => {
   const abilities = session?.abilities || [];
   return (
     <UserContextProvider abilities={abilities}>
-      <div className="w-full max-w-9xl h-screen relative text-base text-dark-10 overflow-hidden">
+      <div className="w-full max-w-9xl h-screen relative text-base text-dark-10">
         <div className="w-full flex items-center bg-primary py-2 sticky top-0 z-50">
           <div className="container mx-auto">
             <Flex className="w-full" justify="space-between" align="center">
