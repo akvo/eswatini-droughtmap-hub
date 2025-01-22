@@ -6,7 +6,9 @@
   class="os-html"
 >
   <head>
-    <title></title>
+    <title>
+      {% if subject %}{{ subject }}{% else %}Eswatini Drought-map Hub{% endif %}
+    </title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--[if mso
@@ -349,9 +351,6 @@
                                             <p style="margin: 0">
                                               {{ body|safe }}
                                             </p>
-                                            <p style="margin: 0">
-                                              {{ body|safe }}
-                                            </p>
                                           </div>
                                         </td>
                                       </tr>
@@ -494,9 +493,9 @@
                                                 margin-bottom: 16px;
                                               "
                                             >
-                                              <br />Thank You,
+                                              <br />Regards,
                                             </p>
-                                            <p style="margin: 0">EDH Team</p>
+                                            <p style="margin: 0">DroughtMap Hub</p>
                                           </div>
                                         </td>
                                       </tr>
