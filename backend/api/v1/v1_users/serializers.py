@@ -1,6 +1,7 @@
 import re
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
 from api.v1.v1_users.models import (
     SystemUser,
     Ability,
@@ -9,6 +10,7 @@ from utils.custom_serializer_fields import (
     CustomCharField,
     CustomEmailField,
 )
+from .constants import TechnicalWorkingGroup
 
 
 class AbilitySerializer(serializers.ModelSerializer):
@@ -78,12 +80,20 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    technical_working_group = serializers.ChoiceField(
+        choices=[
+            (key, value)
+            for key, value in TechnicalWorkingGroup.FieldStr.items()
+        ],
+        required=False,
+    )
 
     class Meta:
         model = SystemUser
         fields = [
             "name",
             "email",
+            "technical_working_group",
         ]
 
     def update(self, instance, validated_data):
@@ -132,3 +142,20 @@ class VerifyPasswordTokenSerializer(serializers.Serializer):
         if not SystemUser.objects.filter(reset_password_code=value).exists():
             raise serializers.ValidationError("Invalid code")
         return value
+
+
+class UserReviewerSerializer(serializers.ModelSerializer):
+    technical_working_group = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_technical_working_group(self, obj):
+        return TechnicalWorkingGroup.FieldStr[obj.technical_working_group]
+
+    class Meta:
+        model = SystemUser
+        fields = [
+            "id",
+            "name",
+            "email",
+            "technical_working_group",
+        ]
