@@ -170,3 +170,25 @@ class CDIGeonodeAPITestCase(APITestCase):
             response.data["total"],
             0
         )
+
+    @patch("requests.get")
+    def test_get_cdi_geonode_bad_request(self, mock_get):
+        mock_get.return_value.status_code = 400
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data,
+            {"message": "Bad Request: Invalid parameters."}
+        )
+
+    def test_get_cdi_geonode_with_invalid_category(self):
+        response = self.client.get(
+            f"{self.url}?category=invalid"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data,
+            {"message": "Invalid category parameter."}
+        )

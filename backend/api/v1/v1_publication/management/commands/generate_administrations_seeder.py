@@ -38,4 +38,4 @@ class Command(BaseCommand):
         if not test:
             self.stdout.write(self.style.SUCCESS(
                 f"Created {len(administrations)} Administrations successfully."
-            ))
+            ))  # pragma: no cover
