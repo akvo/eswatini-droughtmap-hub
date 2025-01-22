@@ -11,8 +11,12 @@ from utils.custom_serializer_fields import (
     CustomCharField,
     CustomURLField,
     CustomDateTimeField,
+    CustomListField,
+    CustomPrimaryKeyRelatedField,
 )
 from .constants import CDIGeonodeCategory, PublicationStatus
+from api.v1.v1_users.serializers import UserReviewerSerializer
+from api.v1.v1_users.models import SystemUser, UserRoleTypes
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -49,6 +53,13 @@ class PublicationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+    def __init__(self, *args, **kwargs):
+        super(PublicationSerializer, self).__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and request.method == 'PUT':
+            for field in self.fields:
+                self.fields[field].required = False
 
 
 class PublicationInfoSerializer(serializers.ModelSerializer):
@@ -183,3 +194,58 @@ class CDIGeonodeListSerializer(serializers.Serializer):
             "publication_id",
             "status",
         ]
+
+
+class UserReviewSerializer(serializers.ModelSerializer):
+    user = UserReviewerSerializer()
+
+    class Meta:
+        model = Review
+        fields = [
+            "id",
+            "user",
+            "suggestion_values",
+        ]
+
+
+class PublicationReviewsSerializer(serializers.ModelSerializer):
+    reviews = UserReviewSerializer(many=True)
+
+    class Meta:
+        model = Publication
+        fields = [
+            "id",
+            "reviews",
+        ]
+        read_only_fields = ["id"]
+
+
+class CreatePublicationSerializer(serializers.ModelSerializer):
+    initial_values = serializers.JSONField()
+    reviewers = CustomListField(
+        child=CustomPrimaryKeyRelatedField(
+            queryset=SystemUser.objects.none()
+        ),
+        required=False,
+    )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fields.get("reviewers").child.queryset = SystemUser.objects \
+            .filter(
+                role=UserRoleTypes.reviewer
+            ).all()
+
+    def to_representation(self, instance):
+        return PublicationSerializer(instance).data
+
+    class Meta:
+        model = Publication
+        fields = [
+            "cdi_geonode_id",
+            "year_month",
+            "initial_values",
+            "due_date",
+            "reviewers",
+        ]
+        read_only_fields = ["created_at", "updated_at"]

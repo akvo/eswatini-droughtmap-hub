@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
@@ -21,6 +22,10 @@ from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     CDIGeonodeListSerializer,
     CDIGeonodeCategorySerializer,
+    PublicationSerializer,
+    PublicationInfoSerializer,
+    CreatePublicationSerializer,
+    PublicationReviewsSerializer,
 )
 from api.v1.v1_publication.models import (
     Administration,
@@ -270,4 +275,70 @@ class CDIGeonodeAPI(APIView):
         return Response(
             {"message": "Server Error: Unable to fetch data."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@extend_schema(
+    responses={200: PublicationSerializer},
+    tags=["Admin"],
+    description="Manage publication process",
+)
+class PublicationViewSet(viewsets.ModelViewSet):
+    serializer_class = PublicationSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+    pagination_class = Pagination
+
+    def get_queryset(self):
+        return Publication.objects.all().order_by("-due_date")
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return PublicationInfoSerializer
+        if self.action == 'create':
+            return CreatePublicationSerializer
+        return PublicationSerializer
+
+    def perform_create(self, serializer):
+        # Exclude reviewers from the data
+        reviewers = serializer.validated_data.pop("reviewers", [])
+        publication = serializer.save()
+        for reviewer in reviewers:
+            Review.objects.create(
+                publication=publication,
+                user=reviewer
+            )
+        return PublicationSerializer(
+            instance=publication
+        ).data
+
+
+class PublicationReviewsAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Fetch publication reviews",
+        description="Fetch reviews for a specific publication",
+        tags=["Admin"],
+        responses={
+            200: PublicationReviewsSerializer,
+            400: DefaultResponseSerializer,
+            500: DefaultResponseSerializer,
+        },
+    )
+    def get(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        reviews = Review.objects.filter(
+            publication=publication,
+            completed_at__isnull=False,
+            is_completed=True
+        )
+        return Response(
+            {
+                "id": pk,
+                "reviews": ReviewListSerializer(
+                    instance=reviews,
+                    many=True
+                ).data
+            },
+            status=status.HTTP_200_OK
         )
