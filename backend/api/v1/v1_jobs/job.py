@@ -47,6 +47,30 @@ def notify_forgot_password(user: SystemUser):
         )
 
 
+def notify_review_completed(
+    reviewer_name: str,
+    year_month: str,
+    publication_id: int,
+    review_id: int
+):
+    if not settings.TEST_ENV:
+        admins = SystemUser.objects.filter(
+            is_superuser=True
+        ).values_list(
+            "email", flat=True
+        )
+        send_email(
+            type=EmailTypes.review_completed,
+            context={
+                "send_to": admins,
+                "reviewer_name": reviewer_name,
+                "year_month": year_month,
+                "id": publication_id,
+                "review_id": review_id,
+            },
+        )
+
+
 def email_notification_results(task):
     job = Jobs.objects.get(task_id=task.id)
     job.attempt = job.attempt + 1
