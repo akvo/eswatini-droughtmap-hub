@@ -13,6 +13,7 @@ from utils.custom_serializer_fields import (
     CustomDateTimeField,
     CustomListField,
     CustomPrimaryKeyRelatedField,
+    CustomChoiceField,
 )
 from .constants import CDIGeonodeCategory, PublicationStatus
 from api.v1.v1_users.serializers import UserReviewerSerializer
@@ -141,28 +142,24 @@ class ReviewListSerializer(serializers.ModelSerializer):
         ]
 
 
-class CDIGeonodeCategorySerializer(serializers.Serializer):
-    category = serializers.ChoiceField(
-        choices=[
-            (key, value)
-            for key, value in CDIGeonodeCategory.FieldStr.items()
-        ],
+class CDIGeonodeFilterSerializer(serializers.Serializer):
+    category = CustomChoiceField(
+        choices=list(CDIGeonodeCategory.FieldStr.keys()),
         required=False,
         allow_null=True,
-        help_text="Category to filter resources by (e.g., 'CDI Raster Map')."
     )
-    status = serializers.ChoiceField(
-        choices=[
-            (key, value)
-            for key, value in PublicationStatus.FieldStr.items()
-        ],
+    status = CustomChoiceField(
+        choices=list(PublicationStatus.FieldStr.keys()),
+        required=False,
+        allow_null=False,
+    )
+    id = CustomIntegerField(
         required=False,
         allow_null=True,
-        help_text="Status of publication process"
     )
 
     class Meta:
-        fields = ["category", "status"]
+        fields = ["category", "status", "id"]
 
 
 class CDIGeonodeListSerializer(serializers.Serializer):

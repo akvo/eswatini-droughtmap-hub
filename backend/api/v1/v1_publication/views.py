@@ -21,7 +21,7 @@ from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
     ReviewSerializer,
     CDIGeonodeListSerializer,
-    CDIGeonodeCategorySerializer,
+    CDIGeonodeFilterSerializer,
     PublicationSerializer,
     PublicationInfoSerializer,
     CreatePublicationSerializer,
@@ -32,7 +32,10 @@ from api.v1.v1_publication.models import (
     Review,
     Publication,
 )
-from api.v1.v1_publication.constants import CDIGeonodeCategory
+from api.v1.v1_publication.constants import (
+    CDIGeonodeCategory,
+    PublicationStatus,
+)
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 from utils.default_serializers import DefaultResponseSerializer
@@ -151,7 +154,7 @@ class CDIGeonodeAPI(APIView):
             OpenApiParameter(
                 name="page",
                 default=1,
-                required=True,
+                required=False,
                 type=OpenApiTypes.NUMBER,
                 location=OpenApiParameter.QUERY,
             ),
@@ -159,11 +162,25 @@ class CDIGeonodeAPI(APIView):
                 name="category",
                 default=CDIGeonodeCategory.cdi,
                 required=False,
-                type=OpenApiTypes.STR,
+                enum=CDIGeonodeCategory.FieldStr.keys(),
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="status",
+                required=False,
+                enum=PublicationStatus.FieldStr.keys(),
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="id",
+                required=False,
+                type=OpenApiTypes.NUMBER,
                 location=OpenApiParameter.QUERY,
             ),
         ],
-        request=CDIGeonodeCategorySerializer,
+        request=CDIGeonodeFilterSerializer,
         responses={
             200: CDIGeonodeListSerializer(many=True),
             (200, "application/json"): inline_serializer(
@@ -180,11 +197,42 @@ class CDIGeonodeAPI(APIView):
         },
     )
     def get(self, request, *args, **kwargs):
-        serializer = CDIGeonodeCategorySerializer(data=request.query_params)
+        serializer = CDIGeonodeFilterSerializer(data=request.query_params)
         if not serializer.is_valid():
             raise ValidationError({
                 "message": "Invalid category parameter."
             })
+        if serializer.validated_data.get(
+            "id"
+        ):
+            cdi_id = serializer.validated_data["id"]
+            response = requests.get(
+                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}"
+            )
+            data = response.json().get("resource", None)
+            if response.status_code == 200 and data:
+                publication = Publication.objects.filter(
+                    cdi_geonode_id=cdi_id
+                ).first()
+                return Response(
+                    CDIGeonodeListSerializer(
+                        instance={
+                            **data,
+                            "year_month": data.get("date"),
+                            "publication_id": (
+                                publication.pk if publication else None
+                            ),
+                            "status": (
+                                publication.status if publication else None
+                            ),
+                        }
+                    ).data,
+                    status=status.HTTP_200_OK
+                )
+            return Response(
+                {"message": "Server Error: Unable to fetch data."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         category = serializer.validated_data.get(
             "category",
             CDIGeonodeCategory.cdi
