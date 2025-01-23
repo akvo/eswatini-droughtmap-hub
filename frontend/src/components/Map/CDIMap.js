@@ -72,7 +72,9 @@ const CDIMap = ({ data = [] }) => {
       const findAdm = data?.find(
         (d) => d?.administration_id === feature?.properties?.administration_id
       );
-      const category = findAdm?.[valueType];
+      const category = findAdm?.reviewed
+        ? findAdm?.[valueType]
+        : findAdm?.[valueType] || findAdm?.initial_category;
       const fillColor =
         DROUGHT_CATEGORY?.[category]?.color || DROUGHT_CATEGORY[0].color;
       const shape = new L.PatternCircle({
