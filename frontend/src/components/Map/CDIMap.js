@@ -68,35 +68,33 @@ const CDIMap = ({ data = [] }) => {
   };
 
   const onEachFeature = (feature, layer, currentMap) => {
-    if (feature.geometry.type === "Polygon") {
-      const findAdm = data?.find(
-        (d) => d?.administration_id === feature?.properties?.administration_id
-      );
-      const category = findAdm?.[valueType];
-      const fillColor =
-        DROUGHT_CATEGORY?.[category]?.color || DROUGHT_CATEGORY[0].color;
-      const shape = new L.PatternCircle({
-        ...dotShapeOptions,
-        fillColor,
-      });
-      const pattern = new L.Pattern(patternOptions);
-      pattern.addShape(shape);
-      pattern.addTo(currentMap);
-      layer.setStyle({
-        ...styleOptions,
-        fillPattern: pattern,
-        weight: findAdm?.reviewed ? 4 : styleOptions?.weight,
-        color: findAdm?.reviewed ? "green" : styleOptions?.color,
-      });
-      layer.on({
-        click: () => {
-          appDispatch({
-            type: "SET_ACTIVE_ADM",
-            payload: { ...findAdm, name: feature?.properties?.name },
-          });
-        },
-      });
-    }
+    const findAdm = data?.find(
+      (d) => d?.administration_id === feature?.properties?.administration_id
+    );
+    const category = findAdm?.[valueType];
+    const fillColor =
+      DROUGHT_CATEGORY?.[category]?.color || DROUGHT_CATEGORY[0].color;
+    const shape = new L.PatternCircle({
+      ...dotShapeOptions,
+      fillColor,
+    });
+    const pattern = new L.Pattern(patternOptions);
+    pattern.addShape(shape);
+    pattern.addTo(currentMap);
+    layer.setStyle({
+      ...styleOptions,
+      fillPattern: pattern,
+      weight: findAdm?.reviewed ? 4 : styleOptions?.weight,
+      color: findAdm?.reviewed ? "green" : styleOptions?.color,
+    });
+    layer.on({
+      click: () => {
+        appDispatch({
+          type: "SET_ACTIVE_ADM",
+          payload: { ...findAdm, name: feature?.properties?.name },
+        });
+      },
+    });
   };
 
   const onSelectValueType = (value) => {
