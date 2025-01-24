@@ -149,6 +149,8 @@ class UserReviewerSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_technical_working_group(self, obj):
+        if not obj.technical_working_group:
+            return None
         return TechnicalWorkingGroup.FieldStr[obj.technical_working_group]
 
     class Meta:

@@ -18,6 +18,7 @@ from django_q.tasks import async_task
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 from api.v1.v1_users.serializers import (
     LoginSerializer,
     UserSerializer,
@@ -27,12 +28,15 @@ from api.v1.v1_users.serializers import (
     ForgotPasswordSerializer,
     VerifyPasswordTokenSerializer,
     ResetPasswordSerializer,
+    UserReviewerSerializer,
 )
-from api.v1.v1_users.models import SystemUser
+from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from utils.custom_serializer_fields import validate_serializers_message
 from utils.default_serializers import DefaultResponseSerializer
 from uuid import uuid4
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
+from utils.custom_permissions import IsAdmin
+from utils.custom_pagination import Pagination
 
 
 @extend_schema(
@@ -345,3 +349,23 @@ def reset_password(request, version):
         {"message": "Password reset successfully"},
         status=status.HTTP_200_OK,
     )
+
+
+class ReviewerListAPI(GenericAPIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+    serializer_class = UserReviewerSerializer
+    pagination_class = Pagination
+    queryset = SystemUser.objects.filter(
+        role=UserRoleTypes.reviewer,
+        # email_verified=True
+    ).order_by("name").all()
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
