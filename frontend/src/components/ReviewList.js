@@ -2,16 +2,42 @@
 
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 import { api } from "@/lib";
-import { Checkbox, Flex, Form, Tag, Input, Button, Modal, Space } from "antd";
+import { DROUGHT_CATEGORY } from "@/static/config";
+import {
+  Checkbox,
+  Flex,
+  Form,
+  Tag,
+  Input,
+  Button,
+  Modal,
+  Space,
+  List,
+  Typography,
+} from "antd";
 import classNames from "classnames";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const { Search } = Input;
 const { useForm } = Form;
+const { Text, Title } = Typography;
+
+const mergeData = (administrations, dataSource) => {
+  return administrations?.map((a) => {
+    const findData =
+      dataSource.find((d) => d?.administration_id === a?.administration_id) ||
+      {};
+    return {
+      ...a,
+      ...findData,
+      checked: false,
+    };
+  });
+};
 
 const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
-  const { administrations, activeAdm } = useAppContext();
+  const { administrations, refreshMap } = useAppContext();
   const [form] = useForm();
   const [marking, setMarking] = useState(false);
   const [search, setSearch] = useState(null);
@@ -27,13 +53,16 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
 
   const onCheckAll = (e) => {
     const isChecked = e.target.checked;
-    appDispatch({
-      type: "SET_IS_BULK_ACTION",
-      payload: isChecked,
-    });
     const admValues = form
       .getFieldValue("administrations")
-      .map((a) => ({ ...a, checked: isChecked }));
+      .map((a) => (!a?.reviewed ? { ...a, checked: isChecked } : a));
+
+    appDispatch({
+      type: "SET_SELECTED_ADM",
+      payload: admValues
+        .filter((a) => a?.checked)
+        .map((a) => a?.administration_id),
+    });
     form.setFieldValue("administrations", admValues);
   };
 
@@ -69,13 +98,49 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
           type: "REFRESH_MAP_FALSE",
         });
       }, 500);
-      form.setFieldValue("administrations", admValues);
       setMarking(false);
       router.refresh(`/reviews/${id}`);
     } catch (err) {
       setMarking(false);
       console.error(err);
     }
+  };
+
+  const confirmMarkAll = () => {
+    Modal.confirm({
+      title: "Mark all selected as reviewed?",
+      content: (
+        <List
+          dataSource={form
+            .getFieldValue("administrations")
+            .filter((a) => a?.checked)}
+          header={<Title level={3}>CDI Value Overview</Title>}
+          renderItem={(item) => (
+            <List.Item>
+              <Space size="middle">
+                <Text strong>{item?.name}</Text>
+                <Text
+                  className={classNames("py-1 px-2 rounded text-white", {
+                    "border border-neutral-200": item?.initial_category === 0,
+                  })}
+                  style={{
+                    backgroundColor: `${
+                      DROUGHT_CATEGORY?.[item.initial_category]?.color
+                    }`,
+                  }}
+                >
+                  {DROUGHT_CATEGORY?.[item.initial_category]?.label}
+                </Text>
+              </Space>
+            </List.Item>
+          )}
+        />
+      ),
+      onOk: onMarkAll,
+      width: 480,
+      okText: "Yes",
+      closable: true,
+    });
   };
 
   const resetState = useCallback(() => {
@@ -85,7 +150,13 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
     appDispatch({
       type: "RESET_SELECTED_ADM",
     });
-  }, [appDispatch]);
+    if (refreshMap) {
+      form.setFieldValue(
+        "administrations",
+        mergeData(administrations, dataSource)
+      );
+    }
+  }, [appDispatch, refreshMap, form, administrations, dataSource]);
 
   useEffect(() => {
     resetState();
@@ -100,17 +171,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
       <Form
         form={form}
         initialValues={{
-          administrations: administrations?.map((a) => {
-            const findData =
-              dataSource.find(
-                (d) => d?.administration_id === a?.administration_id
-              ) || {};
-            return {
-              ...a,
-              ...findData,
-              checked: false,
-            };
-          }),
+          administrations: mergeData(administrations, dataSource),
         }}
       >
         {(_, formInstance) => {
@@ -134,7 +195,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                       <Button
                         size="small"
                         disabled={numberChecked === 0}
-                        onClick={onMarkAll}
+                        onClick={confirmMarkAll}
                         loading={marking}
                       >{`Mark as Reviewed ${
                         numberChecked ? `(${numberChecked})` : ""

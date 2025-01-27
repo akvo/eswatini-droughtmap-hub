@@ -15,6 +15,7 @@ from drf_spectacular.utils import (
 from django.core.management import call_command
 from django.http import HttpResponse
 from django.conf import settings
+from django_q.tasks import async_task
 from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
@@ -27,7 +28,11 @@ from api.v1.v1_publication.models import (
     Review,
     Publication,
 )
-from api.v1.v1_publication.constants import CDIGeonodeCategory
+from api.v1.v1_publication.constants import (
+    CDIGeonodeCategory,
+    PublicationStatus,
+)
+from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 from utils.default_serializers import DefaultResponseSerializer
@@ -107,6 +112,36 @@ class ReviewViewSet(viewsets.ModelViewSet):
         kwargs["context"] = self.get_serializer_context()
         kwargs["context"]["total"] = Administration.objects.count()
         return super().get_serializer(*args, **kwargs)
+
+    def perform_update(self, serializer):
+        review_id = self.kwargs.get('pk')
+        is_completed = Review.objects.get(id=review_id).is_completed
+
+        instance = serializer.save()
+        publication = instance.publication
+        if not is_completed and instance.is_completed:
+            job = Jobs.objects.create(
+                type=JobTypes.review_completed,
+                status=JobStatus.on_progress,
+                result=ReviewSerializer(instance).data,
+            )
+            task_id = async_task(
+                "api.v1.v1_jobs.job.notify_review_completed",
+                instance.user.name,
+                publication.year_month.strftime("%Y-%m"),
+                publication.id,
+                instance.id,
+                hook="api.v1.v1_jobs.job.email_notification_results",
+            )
+            job.task_id = task_id
+            job.save()
+        # If all reviews are completed, update the publication status
+        if (
+            publication.reviews.filter(is_completed=False).count() == 0 and
+            publication.status == PublicationStatus.in_review
+        ):
+            publication.status = PublicationStatus.in_validation
+            publication.save()
 
     def perform_create(self, serializer):
         if not self.request.data.get("publication_id"):

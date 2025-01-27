@@ -10,10 +10,12 @@ from eswatini.settings import EMAIL_FROM, WEBDOMAIN
 class EmailTypes:
     verification_email = "verification_email"
     forgot_password = "forgot_password"
+    review_completed = "review_completed"
 
     FieldStr = {
         verification_email: "verification_email",
         forgot_password: "forgot_password",
+        review_completed: "review_completed",
     }
 
 
@@ -51,6 +53,36 @@ def email_context(context: dict, type: str):
                 "cta_text": "Reset My Password",
                 "cta_url": "{0}/reset-password?code={1}".format(
                     WEBDOMAIN, context["reset_password_code"]
+                ),
+            }
+        )
+    if type == EmailTypes.review_completed:
+        context.update(
+            {
+                "subject": (
+                    "Review completed by "
+                    "{0} for month {1}".format(
+                        context["reviewer_name"],
+                        context["year_month"],
+                    )
+                ),
+                "body": (
+                    """
+                    Dear Admin,
+                    {0} has completed the review of
+                     the CDI Map for month <b>{1}</b>.
+                    """.format(
+                        context["reviewer_name"],
+                        context["year_month"],
+                    )
+                ),
+                "cta_text": "See the review",
+                "cta_url": (
+                    "{0}/publications/{1}/reviews/{2}".format(
+                        WEBDOMAIN,
+                        context["id"],
+                        context["review_id"],
+                    )
                 ),
             }
         )

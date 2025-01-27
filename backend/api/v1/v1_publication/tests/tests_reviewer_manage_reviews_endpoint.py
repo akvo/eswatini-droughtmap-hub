@@ -7,6 +7,7 @@ from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.models import (
     Publication,
     Review,
+    PublicationStatus,
 )
 from api.v1.v1_publication.serializers import ReviewSerializer
 
@@ -128,6 +129,39 @@ class ReviewViewSetTestCase(APITestCase):
         self.assertTrue(updated_review.is_completed)
         self.assertTrue(
             updated_review.suggestion_values[0]["reviewed"]
+        )
+
+    def test_publication_in_validation_when_all_reviews_are_completed(self):
+        other_reviews = self.publication.reviews.exclude(
+            id=self.review.id
+        ).all()
+        for other_review in other_reviews:
+            other_review.is_completed = True
+            other_review.save()
+
+        payload = {
+            "is_completed": True,
+            "suggestion_values": [
+                {
+                    "value": 35,
+                    "administration_id": 1253002,
+                    "reviewed": True
+                },
+                {
+                    "value": 12,
+                    "administration_id": 1253053,
+                    "reviewed": True
+                }
+            ],
+        }
+        response = self.client.put(
+            self.detail_url(self.review.id), data=payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        updated_publication = Publication.objects.get(id=self.publication.id)
+        self.assertEqual(
+            updated_publication.status,
+            PublicationStatus.in_validation
         )
 
     def test_list_reviews_pagination(self):
