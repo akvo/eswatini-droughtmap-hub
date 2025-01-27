@@ -61,7 +61,7 @@ class ReviewViewSetTestCase(APITestCase):
         serializer = ReviewSerializer(
             instance=self.review,
             context={
-                "total": 53
+                "total": 59
             }
         ).data
         self.assertEqual(

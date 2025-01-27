@@ -6,9 +6,8 @@ from api.v1.v1_publication.constants import PublicationStatus
 
 
 class Administration(models.Model):
-    admin_level = models.IntegerField(null=False)
-    name = models.CharField(max_length=255, null=False)
-    wikidata = models.CharField(max_length=25, null=True, blank=True)
+    name = models.CharField(max_length=100, null=False)
+    region = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 
