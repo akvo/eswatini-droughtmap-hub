@@ -20,9 +20,8 @@ class AdministrationSerializer(serializers.ModelSerializer):
         model = Administration
         fields = [
             "id",
-            "admin_level",
             "name",
-            "wikidata",
+            "region",
             "created_at",
             "updated_at",
         ]
