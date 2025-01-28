@@ -9,6 +9,7 @@ from api.v1.v1_publication.models import (
     PublicationStatus,
 )
 from api.v1.v1_users.constants import UserRoleTypes
+from api.v1.v1_jobs.models import Jobs
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
@@ -39,6 +40,13 @@ class PublicationViewSetTestCase(APITestCase):
             ],
             "due_date": "2025-02-28",
             "reviewers": [r.id for r in self.reviewers],
+            "subject": "CDI Map review requested for month 2025-01",
+            "message": (
+                "Dear {{reviewer_name}},"
+                "<br/>The CDI Map for the month of "
+                "{{year_month}} is available for review."
+                "Please submit your review by {{due_date}}."
+            ),
         }
         response = self.client.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -73,6 +81,16 @@ class PublicationViewSetTestCase(APITestCase):
                 {"value": 3.5, "administration_id": 1253002, "category": "d3"},
                 {"value": 32, "administration_id": 1253053, "category": "d0"},
             ],
+        )
+        publication = Publication.objects.get(pk=data["id"])
+        self.assertEqual(
+            publication.reviews.count(),
+            2
+        )
+        # 2 send email jobs to reviewers
+        self.assertEqual(
+            Jobs.objects.count(),
+            2
         )
 
     def test_publication_list(self):
