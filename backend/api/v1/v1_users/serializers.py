@@ -159,5 +159,6 @@ class UserReviewerSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "email",
+            "email_verified",
             "technical_working_group",
         ]
