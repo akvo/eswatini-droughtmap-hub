@@ -73,9 +73,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         download_url: geonode?.download_url,
       });
       if (res?.id) {
-        message.success(
-          "New publication successfully created"
-        );
+        message.success("New publication successfully created");
         router.push("/publications");
       } else {
         setLoading(false);
@@ -211,39 +209,50 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                   })}
                   renderItem={(field) => (
                     <List.Item>
-                      <Space>
+                      <Space align="baseline">
                         <Form.Item
                           valuePropName="checked"
                           name={[field.name, "checked"]}
                         >
                           <Checkbox />
                         </Form.Item>
-                        <Text>
-                          {formInstance.getFieldValue([
-                            "reviewers",
-                            field.name,
-                            "name",
-                          ])}
-                        </Text>
-                        <Flex gap={2}>
-                          {`(`}
-                          {formInstance.getFieldValue([
-                            "reviewers",
-                            field.name,
-                            "email",
-                          ])}
-                          {formInstance.getFieldValue([
-                            "reviewers",
-                            field.name,
-                            "email_verified",
-                          ]) && (
-                            <Tooltip title="Email has been verified">
-                              <span className="text-primary">
-                                <VerifiedIcon />
-                              </span>
-                            </Tooltip>
-                          )}
-                          {`)`}
+                        <Flex gap={0} vertical>
+                          <Space>
+                            <Text>
+                              {formInstance.getFieldValue([
+                                "reviewers",
+                                field.name,
+                                "name",
+                              ])}
+                            </Text>
+                            <Flex gap={2}>
+                              {`(`}
+                              {formInstance.getFieldValue([
+                                "reviewers",
+                                field.name,
+                                "email",
+                              ])}
+                              {formInstance.getFieldValue([
+                                "reviewers",
+                                field.name,
+                                "email_verified",
+                              ]) && (
+                                <Tooltip title="Email has been verified">
+                                  <span className="text-primary">
+                                    <VerifiedIcon />
+                                  </span>
+                                </Tooltip>
+                              )}
+                              {`)`}
+                            </Flex>
+                          </Space>
+                          <Text type="secondary">
+                            {formInstance.getFieldValue([
+                              "reviewers",
+                              field.name,
+                              "technical_working_group",
+                            ])}
+                          </Text>
                         </Flex>
                       </Space>
                     </List.Item>
