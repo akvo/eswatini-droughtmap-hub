@@ -9,7 +9,6 @@ from api.v1.v1_publication.models import (
     PublicationStatus,
 )
 from api.v1.v1_users.constants import UserRoleTypes
-from api.v1.v1_jobs.models import Jobs
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
