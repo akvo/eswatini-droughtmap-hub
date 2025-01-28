@@ -76,7 +76,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Review.objects.filter(
             user_id=user.id
-        ).order_by("-publication__due_date")
+        ).order_by("-created_at")
 
     def list(self, request, *args, **kwargs):
         """
@@ -277,7 +277,9 @@ class CDIGeonodeAPI(APIView):
         )
         page = int(request.GET.get("page", "1"))
         url = (
-            "{0}/api/v2/resources?filter{{category.identifier}}={1}&page={2}"
+            "{0}/api/v2/resources"
+            "?filter{{category.identifier}}={1}"
+            "&filter{{subtype}}=raster&page={2}"
             .format(
                 settings.GEONODE_BASE_URL,
                 category,
