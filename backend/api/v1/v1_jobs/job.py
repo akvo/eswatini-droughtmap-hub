@@ -220,14 +220,14 @@ def generate_initial_cdi_values(
     gdf["value"] = gdf["raster_values"].apply(
         lambda x: x.get("median", None)
     )
-    # Add a new column 'initial_category' using the get_category function
-    gdf["initial_category"] = gdf["value"].apply(get_category)
+    # Add a new column 'category' using the get_category function
+    gdf["category"] = gdf["value"].apply(get_category)
 
     # Remove the original 'raster_values' column if not needed
     gdf = gdf.drop(columns=["raster_values"])
 
     # Now you have columns like 'value' in your GeoDataFrame
-    result = gdf[["administration_id", "value", "initial_category"]]
+    result = gdf[["administration_id", "value", "category"]]
 
     publication.initial_values = result.to_dict(orient="records")
     publication.save()
