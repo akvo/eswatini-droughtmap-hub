@@ -237,3 +237,11 @@ class CDIGeonodeAPITestCase(APITestCase):
                 "status",
             ]
         )
+
+    @patch("requests.get")
+    def test_get_cdi_geonode_details_with_invalid_id(self, mock_get):
+        mock_get.return_value.status_code = 500
+        response = self.client.get(
+            f"{self.url}?id=9999"
+        )
+        self.assertEqual(response.status_code, 500)
