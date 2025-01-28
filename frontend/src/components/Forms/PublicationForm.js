@@ -12,6 +12,7 @@ import {
   List,
   message,
   Space,
+  Tooltip,
   Typography,
 } from "antd";
 import { SubmitButton } from "../Buttons";
@@ -20,6 +21,7 @@ import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
 import { CREATE_PUBLICATION_MAIL } from "@/static/config";
+import { VerifiedIcon } from "../Icons";
 
 const { Text, Title } = Typography;
 const { useForm } = Form;
@@ -68,10 +70,11 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         reviewers: values?.reviewers
           ?.filter((r) => r?.checked)
           ?.map((r) => r?.id),
+        download_url: geonode?.download_url,
       });
       if (res?.id) {
         message.success(
-          "New publication successfully created and sent to all reviewers."
+          "New publication successfully created"
         );
         router.push("/publications");
       } else {
@@ -222,6 +225,26 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                             "name",
                           ])}
                         </Text>
+                        <Flex gap={2}>
+                          {`(`}
+                          {formInstance.getFieldValue([
+                            "reviewers",
+                            field.name,
+                            "email",
+                          ])}
+                          {formInstance.getFieldValue([
+                            "reviewers",
+                            field.name,
+                            "email_verified",
+                          ]) && (
+                            <Tooltip title="Email has been verified">
+                              <span className="text-primary">
+                                <VerifiedIcon />
+                              </span>
+                            </Tooltip>
+                          )}
+                          {`)`}
+                        </Flex>
                       </Space>
                     </List.Item>
                   )}
