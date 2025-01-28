@@ -71,6 +71,24 @@ def notify_review_completed(
         )
 
 
+def notify_review_request(
+    email: str,
+    review_id: int,
+    subject: str,
+    body: str
+):
+    if not settings.TEST_ENV:
+        send_email(
+            type=EmailTypes.review_request,
+            context={
+                "send_to": [email],
+                "id": review_id,
+                "subject": subject,
+                "body": body,
+            }
+        )
+
+
 def email_notification_results(task):
     job = Jobs.objects.get(task_id=task.id)
     job.attempt = job.attempt + 1
