@@ -1,3 +1,4 @@
+import time
 import requests
 from pathlib import Path
 from rest_framework.decorators import api_view
@@ -196,7 +197,7 @@ class CDIGeonodeAPI(APIView):
                 default=CDIGeonodeCategory.cdi,
                 required=False,
                 enum=CDIGeonodeCategory.FieldStr.keys(),
-                type=OpenApiTypes.NUMBER,
+                type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
             ),
             OpenApiParameter(
@@ -387,50 +388,42 @@ class PublicationViewSet(viewsets.ModelViewSet):
                 reviewers = serializer.validated_data.pop("reviewers", [])
                 subject = serializer.validated_data.pop("subject")
                 message = serializer.validated_data.pop("message")
+                download_url = serializer.validated_data.pop("download_url")
 
                 # Save the publication
                 publication = serializer.save()
 
-                # Create reviews and jobs for each reviewer
-                for reviewer in reviewers:
-                    # Create a review
-                    review = Review.objects.create(
-                        publication=publication,
-                        user=reviewer
-                    )
-                    # Create a job
-                    job = Jobs.objects.create(
-                        type=JobTypes.review_request,
-                        status=JobStatus.on_progress,
-                        result={
-                            "id": review.id,
-                            "email": reviewer.email,
-                        },
-                    )
-                    # Replace placeholders in the message
-                    personalized_message = message \
-                        .replace("{{reviewer_name}}", reviewer.name) \
-                        .replace(
-                            "{{year_month}}",
-                            publication.year_month.strftime("%Y-%m")
-                        ) \
-                        .replace(
-                            "{{due_date}}",
-                            publication.due_date.strftime("%Y-%m-%d")
-                        )
+                publication.reviews.set([
+                    Review(publication=publication, user=reviewer)
+                    for reviewer in reviewers
+                ], bulk=False)
 
-                    # Dispatch the send email job for each reviewer
-                    task_id = async_task(
-                        "api.v1.v1_jobs.job.notify_review_request",
-                        reviewer.email,
-                        review.id,
-                        subject,
-                        personalized_message,
-                        hook="api.v1.v1_jobs.job.email_notification_results",
-                    )
-                    # Update the job with the task ID
-                    job.task_id = task_id
-                    job.save()
+                timestamp = int(time.time())
+                filename = "raster_{0}_{1}.tif".format(
+                    publication.cdi_geonode_id,
+                    timestamp
+                )
+                # Create a job
+                job = Jobs.objects.create(
+                    type=JobTypes.download_geonode_dataset,
+                    status=JobStatus.on_progress,
+                    info={
+                        "publication_id": publication.id,
+                        "filename": filename,
+                        "subject": subject,
+                        "message": message,
+                    },
+                )
+                hook = "download_geonode_dataset_results"
+                task_id = async_task(
+                    "api.v1.v1_jobs.job.download_geonode_dataset",
+                    download_url,
+                    filename,
+                    hook=f"api.v1.v1_jobs.job.{hook}",
+                )
+                # Update the job with the task ID
+                job.task_id = task_id
+                job.save()
 
                 # Return the serialized publication data
                 return PublicationSerializer(publication).data

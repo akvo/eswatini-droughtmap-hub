@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 import rasterio
 import geopandas as gpd
 import requests
