@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
@@ -15,6 +16,7 @@ from utils.custom_serializer_fields import (
     CustomPrimaryKeyRelatedField,
     CustomChoiceField,
     CustomJSONField,
+    CustomDateField,
 )
 from .constants import CDIGeonodeCategory, PublicationStatus
 from api.v1.v1_users.serializers import UserReviewerSerializer
@@ -219,14 +221,16 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
 
 class CreatePublicationSerializer(serializers.ModelSerializer):
     initial_values = CustomJSONField()
+    due_date = CustomDateField()
     reviewers = CustomListField(
         child=CustomPrimaryKeyRelatedField(
             queryset=SystemUser.objects.none()
         ),
-        required=False,
+        required=True,
     )
     subject = CustomCharField()
     message = CustomCharField()
+    download_url = CustomCharField()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -234,6 +238,21 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
             .filter(
                 role=UserRoleTypes.reviewer
             ).all()
+
+    def validate_due_date(self, value):
+        today = timezone.now().date()
+        if value < today:
+            raise serializers.ValidationError(
+                "The date must be today or later."
+            )
+        return value
+
+    def validate_reviewers(self, value):
+        if len(value) == 0:
+            raise serializers.ValidationError(
+                "Please select at least one reviewer."
+            )
+        return value
 
     def to_representation(self, instance):
         return PublicationSerializer(instance).data
@@ -248,5 +267,6 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
             "reviewers",
             "subject",
             "message",
+            "download_url",
         ]
         read_only_fields = ["created_at", "updated_at"]
