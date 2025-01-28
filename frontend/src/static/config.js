@@ -76,5 +76,5 @@ export const FILTER_VALUE_TYPES = [
 
 export const CREATE_PUBLICATION_MAIL = {
   subject: "CDI Map review requested for month",
-  message: `Dear {{reviewer_name}},<br/>The CDI Map for the month of {{year_month}} is available for review <a href="{{url}}" target="blank" rel="noopener noreferrer">here</a>. Please submit your review by {{due_date}}.`,
+  message: `Dear {{reviewer_name}},<br/>The CDI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.`,
 };
