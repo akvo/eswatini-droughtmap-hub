@@ -5,6 +5,7 @@ class JobTypes:
     review_completed = 4
     review_request = 5
     initial_cdi_values = 6
+    download_geonode_dataset = 7
 
     FieldStr = {
         test: "test",
@@ -13,6 +14,7 @@ class JobTypes:
         review_completed: "review_completed",
         review_request: "review_request",
         initial_cdi_values: "initial_cdi_values",
+        download_geonode_dataset: "download_geonode_dataset",
     }
 
 
