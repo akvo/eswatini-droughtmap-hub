@@ -91,7 +91,9 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
       initialValues={{
         ...geonode,
         reviewers: reviewerList,
-        subject: CREATE_PUBLICATION_MAIL?.subject,
+        subject: `${CREATE_PUBLICATION_MAIL?.subject} ${dayjs(
+          geonode?.year_month
+        ).format("YYYY-MM")}`,
         message: CREATE_PUBLICATION_MAIL?.message,
       }}
       onFinish={onFinish}
@@ -159,9 +161,11 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
               rules={[
                 {
                   validator: async (_, values) => {
-                    const selectedItems = values?.filter((v) => v?.checked)
+                    const selectedItems = values?.filter((v) => v?.checked);
                     if (!selectedItems?.length) {
-                      return Promise.reject(new Error("Please select at least one reviewer."));
+                      return Promise.reject(
+                        new Error("Please select at least one reviewer.")
+                      );
                     }
                   },
                 },
