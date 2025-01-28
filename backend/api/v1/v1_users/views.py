@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from drf_spectacular.utils import (
     extend_schema,
+    inline_serializer,
     OpenApiParameter,
 )
 from drf_spectacular.types import OpenApiTypes
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.decorators import (
     api_view,
     permission_classes,
@@ -192,7 +193,7 @@ class ProfileView(APIView):
     @extend_schema(
         request=UpdateUserSerializer,
         responses={200: UserSerializer, 400: DefaultResponseSerializer},
-        tags=["Profile"],
+        tags=["Users"],
         summary="Update user profile",
     )
     def put(self, request, version):
@@ -360,6 +361,27 @@ class ReviewerListAPI(GenericAPIView):
         # email_verified=True
     ).order_by("name").all()
 
+    @extend_schema(
+        summary="Get all reviewers",
+        description=(
+            "Fetch all reviewers to start new publication"
+        ),
+        tags=["Admin"],
+        responses={
+            200: UserReviewerSerializer(many=True),
+            (200, "application/json"): inline_serializer(
+                "CDIGeonodeListResponse",
+                fields={
+                    "current": serializers.IntegerField(),
+                    "total": serializers.IntegerField(),
+                    "total_page": serializers.IntegerField(),
+                    "data": UserReviewerSerializer(many=True),
+                },
+            ),
+            400: DefaultResponseSerializer,
+            500: DefaultResponseSerializer,
+        },
+    )
     def get(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
