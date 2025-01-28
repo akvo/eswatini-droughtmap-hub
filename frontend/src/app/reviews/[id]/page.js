@@ -12,7 +12,7 @@ const CDIMap = dynamic(() => import("../../../components/Map/CDIMap"), {
 const ReviewDetailsPage = async ({ params }) => {
   const review = await api("GET", `/reviewer/review/${params.id}`);
   if (!review?.id) {
-    redirect(`/${params?.locale}/not-found`);
+    redirect("/not-found");
   }
   const [reviewed, total] = review.progress_review?.split("/");
   const remaining = total - reviewed;
