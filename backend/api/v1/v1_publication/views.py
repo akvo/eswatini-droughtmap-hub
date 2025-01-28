@@ -17,6 +17,7 @@ from django.core.management import call_command
 from django.http import HttpResponse
 from django.conf import settings
 from django_q.tasks import async_task
+from django.db import IntegrityError, transaction
 from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
@@ -379,17 +380,63 @@ class PublicationViewSet(viewsets.ModelViewSet):
         return PublicationSerializer
 
     def perform_create(self, serializer):
-        # Exclude reviewers from the data
-        reviewers = serializer.validated_data.pop("reviewers", [])
-        publication = serializer.save()
-        for reviewer in reviewers:
-            Review.objects.create(
-                publication=publication,
-                user=reviewer
-            )
-        return PublicationSerializer(
-            instance=publication
-        ).data
+        # Start a database transaction
+        try:
+            with transaction.atomic():
+                # Exclude some fields from the data
+                reviewers = serializer.validated_data.pop("reviewers", [])
+                subject = serializer.validated_data.pop("subject")
+                message = serializer.validated_data.pop("message")
+
+                # Save the publication
+                publication = serializer.save()
+
+                # Create reviews and jobs for each reviewer
+                for reviewer in reviewers:
+                    # Create a review
+                    review = Review.objects.create(
+                        publication=publication,
+                        user=reviewer
+                    )
+                    # Create a job
+                    job = Jobs.objects.create(
+                        type=JobTypes.review_request,
+                        status=JobStatus.on_progress,
+                        result={
+                            "id": review.id,
+                            "email": reviewer.email,
+                        },
+                    )
+                    # Replace placeholders in the message
+                    personalized_message = message \
+                        .replace("{{reviewer_name}}", reviewer.name) \
+                        .replace(
+                            "{{year_month}}",
+                            publication.year_month.strftime("%Y-%m")
+                        ) \
+                        .replace(
+                            "{{due_date}}",
+                            publication.due_date.strftime("%Y-%m-%d")
+                        )
+
+                    # Dispatch the send email job for each reviewer
+                    task_id = async_task(
+                        "api.v1.v1_jobs.job.notify_review_request",
+                        reviewer.email,
+                        review.id,
+                        subject,
+                        personalized_message,
+                        hook="api.v1.v1_jobs.job.email_notification_results",
+                    )
+                    # Update the job with the task ID
+                    job.task_id = task_id
+                    job.save()
+
+                # Return the serialized publication data
+                return PublicationSerializer(publication).data
+        except IntegrityError as e:
+            # Raise an appropriate exception if needed
+            raise serializers.ValidationError({"messsage": f"{e}"})
 
 
 class PublicationReviewsAPI(APIView):

@@ -14,6 +14,7 @@ from utils.custom_serializer_fields import (
     CustomListField,
     CustomPrimaryKeyRelatedField,
     CustomChoiceField,
+    CustomJSONField,
 )
 from .constants import CDIGeonodeCategory, PublicationStatus
 from api.v1.v1_users.serializers import UserReviewerSerializer
@@ -217,13 +218,15 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
 
 
 class CreatePublicationSerializer(serializers.ModelSerializer):
-    initial_values = serializers.JSONField()
+    initial_values = CustomJSONField()
     reviewers = CustomListField(
         child=CustomPrimaryKeyRelatedField(
             queryset=SystemUser.objects.none()
         ),
         required=False,
     )
+    subject = CustomCharField()
+    message = CustomCharField()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -243,5 +246,7 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
             "initial_values",
             "due_date",
             "reviewers",
+            "subject",
+            "message",
         ]
         read_only_fields = ["created_at", "updated_at"]
