@@ -16,17 +16,31 @@ const ReviewDetailsPage = async ({ params }) => {
   }
   const [reviewed, total] = review.progress_review?.split("/");
   const remaining = total - reviewed;
-  const dataSource = review?.publication?.initial_values?.map((v) => {
-    const suggestion =
-      review?.suggestion_values?.find(
-        (s) => s?.administration_id === v?.administration_id
-      ) || {};
-    return {
-      ...v,
-      initial_category: v?.category,
-      ...suggestion,
-    };
-  });
+  const dataSource = review?.publication?.initial_values?.map(
+    ({ category, ...v }) => {
+      if (review?.suggestion_values?.length) {
+        const suggestion =
+          review?.suggestion_values?.find(
+            (s) => s?.administration_id === v?.administration_id
+          ) || {};
+        return {
+          ...v,
+          ...suggestion,
+          category: {
+            reviewed: suggestion?.category,
+            raw: category,
+          },
+        };
+      }
+      return {
+        ...v,
+        category: {
+          reviewed: null,
+          raw: category,
+        },
+      };
+    }
+  );
   return (
     <div className="w-full h-screen">
       <Flex align="center" justify="space-between" gap={4}>
@@ -45,7 +59,8 @@ const ReviewDetailsPage = async ({ params }) => {
         )}
         {review?.is_completed && (
           <div className="leading-2 p-4 text-center">
-            <strong>Review Completed</strong><br/>
+            <strong>Review Completed</strong>
+            <br />
             <small>{` at ${dayjs(review?.completed_at).format(
               "DD/MM/YYYY h:mm A"
             )}`}</small>

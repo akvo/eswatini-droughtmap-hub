@@ -5,7 +5,7 @@ import "leaflet.pattern";
 import {
   DEFAULT_CENTER,
   DROUGHT_CATEGORY,
-  FILTER_VALUE_TYPES,
+  REVIEWER_MAP_FILTER,
 } from "@/static/config";
 import Map from "./Map";
 import { useMap, GeoJSON } from "react-leaflet";
@@ -43,7 +43,7 @@ const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
 };
 
 const CDIMap = ({ data = [] }) => {
-  const [valueType, setValueType] = useState(FILTER_VALUE_TYPES[0]?.value);
+  const [valueType, setValueType] = useState(REVIEWER_MAP_FILTER[0]?.value);
   const appContext = useAppContext();
   const geoData = appContext?.geoData || null;
   const { selectedAdms = [], isBulkAction = false, activeAdm } = appContext;
@@ -71,7 +71,9 @@ const CDIMap = ({ data = [] }) => {
     const findAdm = data?.find(
       (d) => d?.administration_id === feature?.properties?.administration_id
     );
-    const category = findAdm?.[valueType];
+    const category = findAdm?.reviewed
+      ? findAdm?.category?.[valueType]
+      : findAdm?.category?.raw;
     const fillColor =
       DROUGHT_CATEGORY?.[category]?.color || DROUGHT_CATEGORY[0].color;
     const shape = new L.PatternCircle({
@@ -115,7 +117,7 @@ const CDIMap = ({ data = [] }) => {
         <Select
           className="w-full"
           placeholder="Select value type"
-          options={FILTER_VALUE_TYPES}
+          options={REVIEWER_MAP_FILTER}
           value={valueType}
           onChange={onSelectValueType}
         />

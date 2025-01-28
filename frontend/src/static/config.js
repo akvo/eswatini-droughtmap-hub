@@ -63,13 +63,13 @@ export const PUBLICATION_STATUS = [
   },
 ];
 
-export const FILTER_VALUE_TYPES = [
+export const REVIEWER_MAP_FILTER = [
   {
-    value: "category",
+    value: "reviewed",
     label: "Reviewed Values",
   },
   {
-    value: "initial_category",
+    value: "raw",
     label: "Raw Values",
   },
 ];
