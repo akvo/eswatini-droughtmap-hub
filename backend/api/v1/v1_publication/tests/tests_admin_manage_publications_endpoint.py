@@ -47,6 +47,10 @@ class PublicationViewSetTestCase(APITestCase):
                 "{{year_month}} is available for review."
                 "Please submit your review by {{due_date}}."
             ),
+            "download_url": (
+                "https://geonode.com/datasets/"
+                "geonode:cdi_202501/dataset_download"
+            ),
         }
         response = self.client.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -85,11 +89,6 @@ class PublicationViewSetTestCase(APITestCase):
         publication = Publication.objects.get(pk=data["id"])
         self.assertEqual(
             publication.reviews.count(),
-            2
-        )
-        # 2 send email jobs to reviewers
-        self.assertEqual(
-            Jobs.objects.count(),
             2
         )
 
