@@ -1,5 +1,6 @@
 import { api } from "@/lib";
 import dynamic from "next/dynamic";
+import { redirect } from "next/navigation";
 
 const PublicationForm = dynamic(
   () => import("@/components/Forms/PublicationForm"),
@@ -17,6 +18,9 @@ const CreatePublicationPage = async ({ searchParams }) => {
     "GET",
     "/admin/reviewers?page=1"
   );
+  if (!geonode?.pk) {
+    redirect("/publications");
+  }
 
   return (
     <div className="w-full lg:w-2/3 xl:w-1/2 h-full pt-4 pb-8">
