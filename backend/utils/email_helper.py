@@ -11,11 +11,13 @@ class EmailTypes:
     verification_email = "verification_email"
     forgot_password = "forgot_password"
     review_completed = "review_completed"
+    review_overdue = "review_overdue"
 
     FieldStr = {
         verification_email: "verification_email",
         forgot_password: "forgot_password",
         review_completed: "review_completed",
+        review_overdue: "review_overdue",
     }
 
 
@@ -82,6 +84,36 @@ def email_context(context: dict, type: str):
                         WEBDOMAIN,
                         context["id"],
                         context["review_id"],
+                    )
+                ),
+            }
+        )
+    if type == EmailTypes.review_overdue:
+        context.update(
+            {
+                "subject": (
+                    "We are awaiting for "
+                    "you review of the CDI Map for month {0}".format(
+                        context["year_month"],
+                    )
+                ),
+                "body": (
+                    """
+                    Dear {0},
+                    The {1} deadline for
+                    the CDI Map review for month {2} has passed.
+                    Please attend to the submit link below as soon as possible.
+                    """.format(
+                        context["name"],
+                        context["due_date"],
+                        context["year_month"],
+                    )
+                ),
+                "cta_text": "Submit review",
+                "cta_url": (
+                    "{0}/reviews/{1}".format(
+                        WEBDOMAIN,
+                        context["id"],
                     )
                 ),
             }
