@@ -5,9 +5,12 @@ import dayjs from "dayjs";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
-const CDIMap = dynamic(() => import("../../../components/Map/CDIMap"), {
-  ssr: false,
-});
+const ReviewerMap = dynamic(
+  () => import("../../../components/Map/ReviewerMap"),
+  {
+    ssr: false,
+  }
+);
 
 const ReviewDetailsPage = async ({ params }) => {
   const review = await api("GET", `/reviewer/review/${params.id}`);
@@ -79,7 +82,7 @@ const ReviewDetailsPage = async ({ params }) => {
           />
         </div>
         <div className="w-full lg:w-8/12 2xl:w-9/12 border border-neutral-200">
-          <CDIMap data={dataSource} />
+          <ReviewerMap data={dataSource} />
         </div>
       </div>
       <ReviewAdmModal review={review} />
