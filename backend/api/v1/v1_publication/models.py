@@ -91,6 +91,7 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    is_overdue_notified = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Review: {self.publication.year_month} by {self.user.email}"
