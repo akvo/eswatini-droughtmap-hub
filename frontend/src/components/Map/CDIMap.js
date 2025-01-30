@@ -38,7 +38,7 @@ const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
 
 const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
   const appContext = useAppContext();
-  const geoData = appContext?.geoData || null;
+  const geoData = appContext?.geoData || window?.topojson;
 
   const onEachFeature = (feature, layer, currentMap) => {
     const { fillColor, weight, color } =
@@ -60,6 +60,10 @@ const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
       click: () => (typeof onClick === "function" ? onClick(feature) : null),
     });
   };
+
+  if (!geoData) {
+    return null;
+  }
 
   return (
     <div className="relative bg-neutral-100">
