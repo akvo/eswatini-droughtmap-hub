@@ -6,7 +6,6 @@ import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 import { Card, Descriptions, Modal, Select, Space } from "antd";
 import { useState } from "react";
 import classNames from "classnames";
-import { feature } from "topojson-client";
 import CDIMap from "./CDIMap";
 
 const openRawModal = (feature) => {
