@@ -37,14 +37,14 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
   const router = useRouter();
 
   const loadMoreReviewers =
-    reviewer?.total_page > 1 && revPage <= reviewer?.total_page;
+    reviewer?.total_page > 1 && revPage < reviewer?.total_page;
 
-  const onLoadReviewers = async () => {
+  const onLoadReviewers = async (page) => {
     setLoadMore(true);
     try {
       const { data: newReviewerList, current: currPage } = await api(
         "GET",
-        `/admin/reviewers?page=${revPage}`
+        `/admin/reviewers?page=${page}`
       );
       setRevPage(currPage);
       form.setFieldValue("reviewers", [
