@@ -71,8 +71,9 @@ const ReviewerMap = ({ data = [] }) => {
     );
     return {
       opacity: isHighighted ? 1 : styleOptions?.opacity,
-      weight: isHighighted ? 4 : findAdm?.reviewed ? 3 : styleOptions?.weight,
-      color: isHighighted || !findAdm?.reviewed ? styleOptions?.color : "green",
+      weight: isHighighted ? 5 : findAdm?.reviewed ? 3 : styleOptions?.weight,
+      color:
+        isHighighted || !findAdm?.reviewed ? styleOptions?.color : "#032e15",
     };
   };
 
@@ -83,10 +84,11 @@ const ReviewerMap = ({ data = [] }) => {
     const category = findAdm?.reviewed
       ? findAdm?.category?.[valueType]
       : findAdm?.category?.raw;
-
+    const fillColor = DROUGHT_CATEGORY?.find(
+      (c) => c?.value === category
+    )?.color;
     return {
-      fillColor:
-        DROUGHT_CATEGORY?.[category]?.color || DROUGHT_CATEGORY[0].color,
+      fillColor: fillColor || DROUGHT_CATEGORY[0].color,
       weight: findAdm?.reviewed ? 4 : null,
       color: findAdm?.reviewed ? "green" : null,
     };
@@ -134,7 +136,8 @@ const ReviewerMap = ({ data = [] }) => {
               <li key={category.value}>
                 <span
                   className={classNames("inline-block w-4 h-4 mr-2", {
-                    "border border-gray-400": index == 0,
+                    "border border-gray-400":
+                      index === DROUGHT_CATEGORY.length - 1 || index === 0,
                   })}
                   style={{ backgroundColor: category.color }}
                 ></span>
