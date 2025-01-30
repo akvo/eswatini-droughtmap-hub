@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from drf_spectacular.utils import (
     extend_schema,
+    inline_serializer,
     OpenApiParameter,
 )
 from drf_spectacular.types import OpenApiTypes
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.decorators import (
     api_view,
     permission_classes,
@@ -18,6 +19,7 @@ from django_q.tasks import async_task
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 from api.v1.v1_users.serializers import (
     LoginSerializer,
     UserSerializer,
@@ -27,12 +29,15 @@ from api.v1.v1_users.serializers import (
     ForgotPasswordSerializer,
     VerifyPasswordTokenSerializer,
     ResetPasswordSerializer,
+    UserReviewerSerializer,
 )
-from api.v1.v1_users.models import SystemUser
+from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from utils.custom_serializer_fields import validate_serializers_message
 from utils.default_serializers import DefaultResponseSerializer
 from uuid import uuid4
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
+from utils.custom_permissions import IsAdmin
+from utils.custom_pagination import Pagination
 
 
 @extend_schema(
@@ -188,7 +193,7 @@ class ProfileView(APIView):
     @extend_schema(
         request=UpdateUserSerializer,
         responses={200: UserSerializer, 400: DefaultResponseSerializer},
-        tags=["Profile"],
+        tags=["Users"],
         summary="Update user profile",
     )
     def put(self, request, version):
@@ -345,3 +350,44 @@ def reset_password(request, version):
         {"message": "Password reset successfully"},
         status=status.HTTP_200_OK,
     )
+
+
+class ReviewerListAPI(GenericAPIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+    serializer_class = UserReviewerSerializer
+    pagination_class = Pagination
+    queryset = SystemUser.objects.filter(
+        role=UserRoleTypes.reviewer,
+        # email_verified=True
+    ).order_by("name").all()
+
+    @extend_schema(
+        summary="Get all reviewers",
+        description=(
+            "Fetch all reviewers to start new publication"
+        ),
+        tags=["Admin"],
+        responses={
+            200: UserReviewerSerializer(many=True),
+            (200, "application/json"): inline_serializer(
+                "CDIGeonodeListResponse",
+                fields={
+                    "current": serializers.IntegerField(),
+                    "total": serializers.IntegerField(),
+                    "total_page": serializers.IntegerField(),
+                    "data": UserReviewerSerializer(many=True),
+                },
+            ),
+            400: DefaultResponseSerializer,
+            500: DefaultResponseSerializer,
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

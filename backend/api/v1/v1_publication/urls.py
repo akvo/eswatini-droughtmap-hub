@@ -3,6 +3,8 @@ from .views import (
     get_config_file,
     ReviewViewSet,
     CDIGeonodeAPI,
+    PublicationViewSet,
+    PublicationReviewsAPI,
 )
 
 urlpatterns = [
@@ -28,5 +30,27 @@ urlpatterns = [
         r"^(?P<version>(v1))/admin/cdi-geonode",
         CDIGeonodeAPI.as_view(),
         name="cdi-geonode"
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/publications",
+        PublicationViewSet.as_view({"get": "list", "post": "create"}),
+        name="publication-list",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/publication/(?P<pk>[0-9]+)",
+        PublicationViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
+        name="publication-details",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/publication-reviews/(?P<pk>[0-9]+)",
+        PublicationReviewsAPI.as_view(),
+        name="publication-reviews",
     ),
 ]

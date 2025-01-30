@@ -170,3 +170,78 @@ class CDIGeonodeAPITestCase(APITestCase):
             response.data["total"],
             0
         )
+
+    @patch("requests.get")
+    def test_get_cdi_geonode_bad_request(self, mock_get):
+        mock_get.return_value.status_code = 400
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data,
+            {"message": "Bad Request: Invalid parameters."}
+        )
+
+    @patch("requests.get")
+    def test_get_cdi_geonode_with_invalid_category(self, _):
+        response = self.client.get(
+            f"{self.url}?category=invalid"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data,
+            {"message": "Invalid category parameter."}
+        )
+
+    @patch("requests.get")
+    def test_get_cdi_geonode_details(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "resource": {
+                "pk": "7",
+                "title": "cdi_202501",
+                "date": "2025-01-17T02:31:00Z",
+                "is_approved": True,
+                "detail_url": "https://geonode.com/catalogue/#/dataset/7",
+                "embed_url": (
+                    "https://geonode.com/datasets/"
+                    "geonode:cdi_202501/embed"
+                ),
+                "thumbnail_url": (
+                    "https://geonode.com/uploaded/thumbs/dataset-3d6e57f3.jpg"
+                ),
+                "created": "2025-01-17T02:31:05.539148Z",
+                "download_url": (
+                    "https://geonode.com/datasets/"
+                    "geonode:cdi_202501/dataset_download"
+                ),
+            }
+        }
+        response = self.client.get(
+            f"{self.url}?id=7"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.data),
+            [
+                "pk",
+                "title",
+                "detail_url",
+                "embed_url",
+                "thumbnail_url",
+                "download_url",
+                "created",
+                "year_month",
+                "publication_id",
+                "status",
+            ]
+        )
+
+    @patch("requests.get")
+    def test_get_cdi_geonode_details_with_invalid_id(self, mock_get):
+        mock_get.return_value.status_code = 500
+        response = self.client.get(
+            f"{self.url}?id=9999"
+        )
+        self.assertEqual(response.status_code, 500)

@@ -12,12 +12,14 @@ class EmailTypes:
     forgot_password = "forgot_password"
     review_completed = "review_completed"
     review_overdue = "review_overdue"
+    review_request = "review_request"
 
     FieldStr = {
         verification_email: "verification_email",
         forgot_password: "forgot_password",
         review_completed: "review_completed",
         review_overdue: "review_overdue",
+        review_request: "review_request",
     }
 
 
@@ -118,6 +120,14 @@ def email_context(context: dict, type: str):
                 ),
             }
         )
+    if type == EmailTypes.review_request:
+        context.update({
+            "cta_text": "Submit Review",
+            "cta_url": "{0}/reviews/{1}".format(
+                WEBDOMAIN,
+                context["id"],
+            ),
+        })
     return context
 
 
