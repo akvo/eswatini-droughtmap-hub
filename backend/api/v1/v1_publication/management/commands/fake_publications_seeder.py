@@ -96,8 +96,11 @@ class Command(BaseCommand):
                     PublicationStatus.published
                 ])
             initial_values = []
-            for a_id in administration_ids:
+            no_data_indices = set(random.sample(range(59), 3))
+            for index, a_id in enumerate(administration_ids):
                 init_value = random.uniform(0, 100)
+                if index in no_data_indices:
+                    init_value = -9999
                 initial_values.append({
                     "administration_id": a_id,
                     "value": init_value,
