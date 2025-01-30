@@ -10,9 +10,8 @@ const openRawModal = (feature) => {
     {
       key: 1,
       label: "CDI Value",
-      children: DROUGHT_CATEGORY.find(
-        (c) => c?.value === feature?.category?.raw
-      )?.label,
+      children: DROUGHT_CATEGORY.find((c) => c?.value === feature?.category)
+        ?.label,
     },
     {
       key: 2,
@@ -54,8 +53,10 @@ const PublicationMap = ({ data = [] }) => {
       (d) => d?.administration_id === feature?.properties?.administration_id
     );
 
-    const fillColor =
-      DROUGHT_CATEGORY?.[findAdm?.category]?.color || DROUGHT_CATEGORY[0].color;
+    const category = DROUGHT_CATEGORY.find(
+      (c) => c?.value === findAdm?.category
+    );
+    const fillColor = category?.color || DROUGHT_CATEGORY[0].color;
     return {
       fillColor,
     };
