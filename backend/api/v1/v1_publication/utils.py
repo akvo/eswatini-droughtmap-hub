@@ -3,6 +3,8 @@ from .constants import DroughtCategory
 
 def get_category(value: float):
     value = round(value, 3)
+    if (value < 0):
+        return DroughtCategory.none
     if (value >= 0 and value <= 2):
         return DroughtCategory.d4
     if (value > 2 and value <= 5):
@@ -13,4 +15,4 @@ def get_category(value: float):
         return DroughtCategory.d1
     if (value > 20 and value <= 30):
         return DroughtCategory.d0
-    return DroughtCategory.none
+    return DroughtCategory.normal
