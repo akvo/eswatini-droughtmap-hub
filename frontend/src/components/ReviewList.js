@@ -80,10 +80,16 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
       const admValues = form
         .getFieldValue("administrations")
         .map(({ checked, category, ...a }) => {
+          if (checked) {
+            return {
+              ...a,
+              category: category?.raw,
+              reviewed: true,
+            };
+          }
           return {
             ...a,
-            category: checked ? category?.raw : category?.reviewed,
-            reviewed: true,
+            category: category?.reviewed,
           };
         });
       await api("PUT", `/reviewer/review/${id}`, {
