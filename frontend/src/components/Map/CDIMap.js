@@ -1,13 +1,13 @@
 "use client";
 
-import L from "leaflet";
-import "leaflet.pattern";
+// import L from "leaflet";
+// import "leaflet.pattern";
 import { DEFAULT_CENTER } from "@/static/config";
 import Map from "./Map";
 import { useMap, GeoJSON } from "react-leaflet";
 import {
   dotShapeOptions,
-  patternOptions,
+  // patternOptions,
   styleOptions,
 } from "@/static/poly-styles";
 import { useAppContext } from "@/context/AppContextProvider";
@@ -43,16 +43,17 @@ const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
   const onEachFeature = (feature, layer, currentMap) => {
     const { fillColor, weight, color } =
       typeof onFeature === "function" ? onFeature(feature) : {};
-    const shape = new L.PatternCircle({
-      ...dotShapeOptions,
-      fillColor: fillColor || dotShapeOptions?.fillColor,
-    });
-    const pattern = new L.Pattern(patternOptions);
-    pattern.addShape(shape);
-    pattern.addTo(currentMap);
+    // const shape = new L.PatternCircle({
+    //   ...dotShapeOptions,
+    //   fillColor: fillColor || dotShapeOptions?.fillColor,
+    // });
+    // const pattern = new L.Pattern(patternOptions);
+    // pattern.addShape(shape);
+    // pattern.addTo(currentMap);
     layer.setStyle({
       ...styleOptions,
-      fillPattern: pattern,
+      // fillPattern: pattern,
+      fillColor: fillColor || dotShapeOptions?.fillColor,
       weight: weight || styleOptions?.weight,
       color: color || styleOptions?.color,
     });
