@@ -80,3 +80,19 @@ Eswatini Droughtmap Hub
      - Double-check the environment variable values in the Droughtmap Hub.
      - Verify that GeoNode is accessible and the dataset category is correctly assigned.
    - Open a new issue in the relevant repository if the problem persists.
+
+# **Running `check_overdue_reviews` Command**
+The `check_overdue_reviews` command is used to **check all CDI Map reviews** in the system. If a review’s **due date has passed**, the system will **automatically send email notifications** to all related reviewers.
+
+This ensures that no review is missed and all pending actions are **properly tracked**.
+
+---
+
+## **🔹 Example: Run Every Day at Midnight**
+```bash
+0 0 * * * /usr/bin/python3 /backend/manage.py check_overdue_reviews >> /home/user/logs/check_overdue_reviews.log 2>&1
+```
+**Explanation:**
+- Checks for overdue CDI Map reviews at **midnight** every day.
+- Sends email notifications to **all reviewers whose reviews are overdue**.
+- Logs the output to `/home/user/logs/check_overdue_reviews.log`.
