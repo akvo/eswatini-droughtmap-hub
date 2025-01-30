@@ -28,11 +28,13 @@ const ReviewAdmModal = ({ review }) => {
   const appDispatch = useAppDispatch();
   const [form] = useForm();
   const router = useRouter();
-  const findCategory = DROUGHT_CATEGORY.find(
-    (c) =>
-      (c?.value === activeAdm?.initial_category && !activeAdm?.reviewed) ||
-      (c?.value === activeAdm?.category && activeAdm?.reviewed)
-  );
+
+  const findCategory = DROUGHT_CATEGORY.find((c) => {
+    if (activeAdm?.reviewed) {
+      return c.value === activeAdm?.category?.reviewed;
+    }
+    return c.value === activeAdm?.category?.raw;
+  });
 
   const isModalOpen = useMemo(() => {
     return activeAdm?.administration_id ? true : false;
@@ -40,19 +42,21 @@ const ReviewAdmModal = ({ review }) => {
 
   const onFinish = async (values) => {
     try {
-      const suggestion_values = review?.suggestion_values?.map((s) => {
-        if (activeAdm?.administration_id === s?.administration_id) {
+      const map_values =
+        review?.suggestion_values || review?.publication?.initial_values;
+      const suggestion_values = map_values?.map((m) => {
+        if (activeAdm?.administration_id === m?.administration_id) {
           return {
-            ...s,
+            ...m,
             ...values,
             category:
-              !values?.category && values?.category !== 0
-                ? activeAdm?.initial_category
-                : values?.category,
+              typeof values?.category === "number"
+                ? values.category
+                : values.category.raw,
             reviewed: true,
           };
         }
-        return s;
+        return m;
       });
       await api("PUT", `/reviewer/review/${review?.id}`, {
         suggestion_values,
@@ -66,7 +70,7 @@ const ReviewAdmModal = ({ review }) => {
           type: "REFRESH_MAP_FALSE",
         });
       }, 500);
-      router.refresh(`/reviews/${review?.id}`);
+      router.refresh();
     } catch (err) {
       message.error("An error occurred, please report this issue!");
       console.error(err);
@@ -168,12 +172,16 @@ const ReviewAdmModal = ({ review }) => {
                 <Text strong>{findCategory?.label}</Text>
               </Form.Item>
             ) : (
-              <Flex align="center" justify="space-between">
-                <Form.Item label="Initial CDI Value" name="initial_category">
+              <Flex align="center" justify="space-between" className="w-full">
+                <Form.Item label="Initial CDI Value" name="category">
                   <Text strong>{findCategory?.label}</Text>
                 </Form.Item>
                 {showSuggestion && (
-                  <Form.Item label="Suggested CDI Value" name="category">
+                  <Form.Item
+                    label="Suggested CDI Value"
+                    name="category"
+                    className="w-1/2"
+                  >
                     <Select
                       options={DROUGHT_CATEGORY}
                       placeholder="Select Drought category"

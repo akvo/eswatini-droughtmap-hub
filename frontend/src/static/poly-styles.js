@@ -22,6 +22,7 @@ const dotShapeOptions = {
   fill: true,
   stroke: false,
   fillOpacity: 0.75,
+  fillColor: "#eee",
 };
 
 export { styleOptions, patternOptions, dotShapeOptions };

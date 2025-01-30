@@ -28,3 +28,6 @@ Faker==33.3.0
 django-json-widget==2.0.1
 jsmin==3.0.1
 tblib==3.0.0
+geopandas==1.0.1
+rasterio==1.4.3
+rasterstats==0.20.0

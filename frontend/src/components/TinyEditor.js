@@ -2,16 +2,16 @@
 import { Editor } from "@tinymce/tinymce-react";
 import React, { useRef } from "react";
 
-const TinyEditor = ({ value, setValue }) => {
+const TinyEditor = ({ value, setValue, height = 500 }) => {
   const editorRef = useRef(null);
 
   return (
     <Editor
       tinymceScriptSrc={"/assets/libs/tinymce/tinymce.min.js"}
-      onInit={(evt, editor) => (editorRef.current = editor)}
+      onInit={(_, editor) => (editorRef.current = editor)}
       value={value}
       init={{
-        height: 500,
+        height,
         menubar: true,
         plugins: [
           "advlist",

@@ -77,16 +77,15 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
   const onMarkAll = async () => {
     setMarking(true);
     try {
-      const admValues = form.getFieldValue("administrations").map((a) => {
-        if (a?.checked) {
+      const admValues = form
+        .getFieldValue("administrations")
+        .map(({ checked, category, ...a }) => {
           return {
             ...a,
-            category: a?.category || a?.initial_category,
+            category: checked ? category?.raw : category?.reviewed,
             reviewed: true,
           };
-        }
-        return a;
-      });
+        });
       await api("PUT", `/reviewer/review/${id}`, {
         suggestion_values: admValues.map(({ name: _, ...a }) => a),
       });
@@ -121,15 +120,15 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                 <Text strong>{item?.name}</Text>
                 <Text
                   className={classNames("py-1 px-2 rounded text-white", {
-                    "border border-neutral-200": item?.initial_category === 0,
+                    "border border-neutral-200": item?.category?.raw === 0,
                   })}
                   style={{
                     backgroundColor: `${
-                      DROUGHT_CATEGORY?.[item.initial_category]?.color
+                      DROUGHT_CATEGORY?.[item?.category?.raw]?.color
                     }`,
                   }}
                 >
-                  {DROUGHT_CATEGORY?.[item.initial_category]?.label}
+                  {DROUGHT_CATEGORY?.[item?.category?.raw]?.label}
                 </Text>
               </Space>
             </List.Item>

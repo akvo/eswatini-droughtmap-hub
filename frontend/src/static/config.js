@@ -63,13 +63,18 @@ export const PUBLICATION_STATUS = [
   },
 ];
 
-export const FILTER_VALUE_TYPES = [
+export const REVIEWER_MAP_FILTER = [
   {
-    value: "category",
+    value: "reviewed",
     label: "Reviewed Values",
   },
   {
-    value: "initial_category",
+    value: "raw",
     label: "Raw Values",
   },
 ];
+
+export const CREATE_PUBLICATION_MAIL = {
+  subject: "CDI Map review requested for month",
+  message: `Dear {{reviewer_name}},<br/>The CDI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.`,
+};
