@@ -15,33 +15,38 @@ export const PAGE_SIZE = 10;
 export const DROUGHT_CATEGORY = [
   {
     value: 0,
-    label: "Normal or wet conditions",
-    color: "#ffffff",
+    label: "Wet/normal conditions",
+    color: "#b9f8cf",
   },
   {
     value: 1,
-    label: "Abnormally Dry",
+    label: "D0 Abnormally Dry",
     color: "#ffff00",
   },
   {
     value: 2,
-    label: "Moderate Drought",
+    label: "D1 Moderate Drought",
     color: "#fcd37f",
   },
   {
     value: 3,
-    label: "Severe Drought",
+    label: "D2 Severe Drought",
     color: "#ffaa00",
   },
   {
     value: 4,
-    label: "Extreme Drought",
+    label: "D3 Extreme Drought",
     color: "#e60000",
   },
   {
     value: 5,
-    label: "Exceptional Drought",
+    label: "D4 Exceptional Drought",
     color: "#730000",
+  },
+  {
+    value: -9999,
+    label: "No Data",
+    color: "#ffffff",
   },
 ];
 

@@ -11,20 +11,22 @@ class PublicationStatus:
 
 
 class DroughtCategory:
-    none = 0
+    normal = 0
     d0 = 1
     d1 = 2
     d2 = 3
     d3 = 4
     d4 = 5
+    none = -9999
 
     FieldStr = {
-        none: "Normal or wet conditions",
-        d0: "Abnormally Dry",
-        d1: "Moderate Drought",
-        d2: "Severe Drought",
-        d3: "Extreme Drought",
-        d4: "Exceptional Drought",
+        normal: "Wet/normal conditions",
+        d0: "D0 Abnormally Dry",
+        d1: "D1 Moderate Drought",
+        d2: "D2 Severe Drought",
+        d3: "D3 Extreme Drought",
+        d4: "D4 Exceptional Drought",
+        none: "No Data",
     }
 
 
