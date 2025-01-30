@@ -50,19 +50,25 @@ export const DROUGHT_CATEGORY = [
   },
 ];
 
-export const PUBLICATION_STATUS = [
+export const PUBLICATION_STATUS = {
+  in_review: 1,
+  in_validation: 2,
+  published: 3,
+};
+
+export const PUBLICATION_STATUS_OPTIONS = [
   {
-    value: 1,
+    value: PUBLICATION_STATUS.in_review,
     label: "In Review",
     color: "orange",
   },
   {
-    value: 2,
+    value: PUBLICATION_STATUS.in_validation,
     label: "In Validation",
     color: "blue",
   },
   {
-    value: 3,
+    value: PUBLICATION_STATUS.published,
     label: "Published",
     color: "green",
   },

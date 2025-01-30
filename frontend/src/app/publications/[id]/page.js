@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { Badge, Button, Descriptions, Flex } from "antd";
 import dayjs from "dayjs";
 import { api } from "@/lib";
-import { PUBLICATION_STATUS } from "@/static/config";
+import {
+  PUBLICATION_STATUS_OPTIONS,
+  PUBLICATION_STATUS,
+} from "@/static/config";
 
 const PublicationMap = dynamic(
   () => import("@/components/Map/PublicationMap"),
@@ -19,7 +22,7 @@ const PublicationDetailsPage = async ({ params }) => {
     redirect("/publications");
   }
 
-  const status = PUBLICATION_STATUS?.find(
+  const status = PUBLICATION_STATUS_OPTIONS?.find(
     (s) => s?.value === publication?.status
   );
 
@@ -56,7 +59,7 @@ const PublicationDetailsPage = async ({ params }) => {
           },
           {
             key: 4,
-            label: "Progress Review",
+            label: "Progress Reviews",
             children: (
               <Flex
                 align="center"
@@ -64,8 +67,10 @@ const PublicationDetailsPage = async ({ params }) => {
                 gap={8}
                 className="w-full"
               >
-                <span>3/4</span>
-                <Button type="primary">Start Validation</Button>
+                <span>{publication?.progress_reviews}</span>
+                {status?.value === PUBLICATION_STATUS.in_review && (
+                  <Button type="primary">Start Validation</Button>
+                )}
               </Flex>
             ),
           },

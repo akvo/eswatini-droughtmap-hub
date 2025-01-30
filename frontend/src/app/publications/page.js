@@ -14,7 +14,7 @@ import {
   Typography,
 } from "antd";
 import { Can } from "@/components";
-import { PAGE_SIZE, PUBLICATION_STATUS } from "@/static/config";
+import { PAGE_SIZE, PUBLICATION_STATUS_OPTIONS } from "@/static/config";
 import { api } from "@/lib";
 import dayjs from "dayjs";
 
@@ -65,7 +65,7 @@ const PublicationsPage = () => {
       dataIndex: "status",
       key: "status",
       render: (_, { status }) => {
-        const findStatus = PUBLICATION_STATUS.find((s) => s?.value === status);
+        const findStatus = PUBLICATION_STATUS_OPTIONS.find((s) => s?.value === status);
         return (
           <Tag color={findStatus?.color}>
             {findStatus?.label || "Not yet started"}
@@ -139,7 +139,7 @@ const PublicationsPage = () => {
         <div className="w-1/3 flex justify-end">
           <Select
             onChange={onChangeStatus}
-            options={PUBLICATION_STATUS}
+            options={PUBLICATION_STATUS_OPTIONS}
             className="w-full max-w-48"
             placeholder="Filter by Status"
             allowClear
