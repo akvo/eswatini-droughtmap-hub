@@ -43,6 +43,11 @@ const appReducer = (state, action) => {
         ...state,
         activeAdm: action.payload,
       };
+    case "SET_SELECTED_ADM":
+      return {
+        ...state,
+        selectedAdms: action.payload,
+      };
     case "RESET_SELECTED_ADM":
       return {
         ...state,

@@ -14,8 +14,8 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_publication.constants import (
     PublicationStatus,
-    DroughtCategory,
 )
+from api.v1.v1_publication.utils import get_category
 
 fake = Faker()
 
@@ -39,20 +39,6 @@ def generate_dummy_narrative():
     </narrative>
     """
     return html_narrative
-
-
-def get_category(value: float):
-    if (value <= 0 and value <= 2):
-        return DroughtCategory.d4
-    if (value > 2 and value <= 5):
-        return DroughtCategory.d3
-    if (value > 5 and value <= 10):
-        return DroughtCategory.d2
-    if (value > 10 and value <= 20):
-        return DroughtCategory.d1
-    if (value > 20 and value <= 30):
-        return DroughtCategory.d0
-    return DroughtCategory.none
 
 
 class Command(BaseCommand):

@@ -90,7 +90,7 @@ const PublicationsPage = () => {
                 if (publication_id) {
                   router.push(`/publications/${publication_id}`);
                 } else {
-                  router.push(`/publications/${pk}/create`);
+                  router.push(`/publications/create?cdi_geonode_id=${pk}`);
                 }
               }}
             >
@@ -113,9 +113,13 @@ const PublicationsPage = () => {
         ? `/admin/cdi-geonode?status=${status}`
         : "/admin/cdi-geonode";
       const { data, total } = await api("GET", apiURL);
-      setTotalData(total);
-      const _publications = data.map((d) => ({ key: d?.id, ...d }));
-      setPublications(_publications);
+      if (total) {
+        setTotalData(total);
+      }
+      if (data) {
+        const _publications = data.map((d) => ({ key: d?.id, ...d }));
+        setPublications(_publications);
+      }
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -159,6 +163,7 @@ const PublicationsPage = () => {
                   position: ["bottomCenter"],
                 }
           }
+          rowKey="pk"
         />
       </Can>
       <Modal

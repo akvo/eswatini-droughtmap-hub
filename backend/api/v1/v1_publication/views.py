@@ -1,3 +1,4 @@
+import time
 import requests
 from pathlib import Path
 from rest_framework.decorators import api_view
@@ -6,6 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
@@ -15,19 +17,29 @@ from drf_spectacular.utils import (
 from django.core.management import call_command
 from django.http import HttpResponse
 from django.conf import settings
+from django_q.tasks import async_task
+from django.db import IntegrityError, transaction
 from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
     ReviewSerializer,
     CDIGeonodeListSerializer,
-    CDIGeonodeCategorySerializer,
+    CDIGeonodeFilterSerializer,
+    PublicationSerializer,
+    PublicationInfoSerializer,
+    CreatePublicationSerializer,
+    PublicationReviewsSerializer,
 )
 from api.v1.v1_publication.models import (
     Administration,
     Review,
     Publication,
 )
-from api.v1.v1_publication.constants import CDIGeonodeCategory
+from api.v1.v1_publication.constants import (
+    CDIGeonodeCategory,
+    PublicationStatus,
+)
+from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 from utils.default_serializers import DefaultResponseSerializer
@@ -64,7 +76,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Review.objects.filter(
             user_id=user.id
-        ).order_by("-publication__due_date")
+        ).order_by("-created_at")
 
     def list(self, request, *args, **kwargs):
         """
@@ -108,6 +120,36 @@ class ReviewViewSet(viewsets.ModelViewSet):
         kwargs["context"]["total"] = Administration.objects.count()
         return super().get_serializer(*args, **kwargs)
 
+    def perform_update(self, serializer):
+        review_id = self.kwargs.get('pk')
+        is_completed = Review.objects.get(id=review_id).is_completed
+
+        instance = serializer.save()
+        publication = instance.publication
+        if not is_completed and instance.is_completed:
+            job = Jobs.objects.create(
+                type=JobTypes.review_completed,
+                status=JobStatus.on_progress,
+                result=ReviewSerializer(instance).data,
+            )
+            task_id = async_task(
+                "api.v1.v1_jobs.job.notify_review_completed",
+                instance.user.name,
+                publication.year_month.strftime("%Y-%m"),
+                publication.id,
+                instance.id,
+                hook="api.v1.v1_jobs.job.email_notification_results",
+            )
+            job.task_id = task_id
+            job.save()
+        # If all reviews are completed, update the publication status
+        if (
+            publication.reviews.filter(is_completed=False).count() == 0 and
+            publication.status == PublicationStatus.in_review
+        ):
+            publication.status = PublicationStatus.in_validation
+            publication.save()
+
     def perform_create(self, serializer):
         if not self.request.data.get("publication_id"):
             raise ValidationError({
@@ -146,7 +188,7 @@ class CDIGeonodeAPI(APIView):
             OpenApiParameter(
                 name="page",
                 default=1,
-                required=True,
+                required=False,
                 type=OpenApiTypes.NUMBER,
                 location=OpenApiParameter.QUERY,
             ),
@@ -154,11 +196,25 @@ class CDIGeonodeAPI(APIView):
                 name="category",
                 default=CDIGeonodeCategory.cdi,
                 required=False,
+                enum=CDIGeonodeCategory.FieldStr.keys(),
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
             ),
+            OpenApiParameter(
+                name="status",
+                required=False,
+                enum=PublicationStatus.FieldStr.keys(),
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="id",
+                required=False,
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
         ],
-        request=CDIGeonodeCategorySerializer,
+        request=CDIGeonodeFilterSerializer,
         responses={
             200: CDIGeonodeListSerializer(many=True),
             (200, "application/json"): inline_serializer(
@@ -175,11 +231,42 @@ class CDIGeonodeAPI(APIView):
         },
     )
     def get(self, request, *args, **kwargs):
-        serializer = CDIGeonodeCategorySerializer(data=request.query_params)
+        serializer = CDIGeonodeFilterSerializer(data=request.query_params)
         if not serializer.is_valid():
             raise ValidationError({
                 "message": "Invalid category parameter."
             })
+        if serializer.validated_data.get(
+            "id"
+        ):
+            cdi_id = serializer.validated_data["id"]
+            response = requests.get(
+                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}"
+            )
+            data = response.json().get("resource", None)
+            if response.status_code == 200 and data:
+                publication = Publication.objects.filter(
+                    cdi_geonode_id=cdi_id
+                ).first()
+                return Response(
+                    CDIGeonodeListSerializer(
+                        instance={
+                            **data,
+                            "year_month": data.get("date"),
+                            "publication_id": (
+                                publication.pk if publication else None
+                            ),
+                            "status": (
+                                publication.status if publication else None
+                            ),
+                        }
+                    ).data,
+                    status=status.HTTP_200_OK
+                )
+            return Response(
+                {"message": "Server Error: Unable to fetch data."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         category = serializer.validated_data.get(
             "category",
             CDIGeonodeCategory.cdi
@@ -190,7 +277,9 @@ class CDIGeonodeAPI(APIView):
         )
         page = int(request.GET.get("page", "1"))
         url = (
-            "{0}/api/v2/resources?filter{{category.identifier}}={1}&page={2}"
+            "{0}/api/v2/resources"
+            "?filter{{category.identifier}}={1}"
+            "&filter{{subtype}}=raster&page={2}"
             .format(
                 settings.GEONODE_BASE_URL,
                 category,
@@ -270,4 +359,108 @@ class CDIGeonodeAPI(APIView):
         return Response(
             {"message": "Server Error: Unable to fetch data."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@extend_schema(
+    responses={200: PublicationSerializer},
+    tags=["Admin"],
+    description="Manage publication process",
+)
+class PublicationViewSet(viewsets.ModelViewSet):
+    serializer_class = PublicationSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+    pagination_class = Pagination
+
+    def get_queryset(self):
+        return Publication.objects.all().order_by("-due_date")
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return PublicationInfoSerializer
+        if self.action == 'create':
+            return CreatePublicationSerializer
+        return PublicationSerializer
+
+    def perform_create(self, serializer):
+        # Start a database transaction
+        try:
+            with transaction.atomic():
+                # Exclude some fields from the data
+                reviewers = serializer.validated_data.pop("reviewers", [])
+                subject = serializer.validated_data.pop("subject")
+                message = serializer.validated_data.pop("message")
+                download_url = serializer.validated_data.pop("download_url")
+
+                # Save the publication
+                publication = serializer.save()
+
+                publication.reviews.set([
+                    Review(publication=publication, user=reviewer)
+                    for reviewer in reviewers
+                ], bulk=False)
+
+                timestamp = int(time.time())
+                filename = "raster_{0}_{1}.tif".format(
+                    publication.cdi_geonode_id,
+                    timestamp
+                )
+                # Create a job
+                job = Jobs.objects.create(
+                    type=JobTypes.download_geonode_dataset,
+                    status=JobStatus.on_progress,
+                    info={
+                        "publication_id": publication.id,
+                        "filename": filename,
+                        "subject": subject,
+                        "message": message,
+                    },
+                )
+                hook = "download_geonode_dataset_results"
+                task_id = async_task(
+                    "api.v1.v1_jobs.job.download_geonode_dataset",
+                    download_url,
+                    filename,
+                    hook=f"api.v1.v1_jobs.job.{hook}",
+                )
+                # Update the job with the task ID
+                job.task_id = task_id
+                job.save()
+
+                # Return the serialized publication data
+                return PublicationSerializer(publication).data
+        except IntegrityError as e:
+            # Raise an appropriate exception if needed
+            raise serializers.ValidationError({"messsage": f"{e}"})
+
+
+class PublicationReviewsAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Fetch publication reviews",
+        description="Fetch reviews for a specific publication",
+        tags=["Admin"],
+        responses={
+            200: PublicationReviewsSerializer,
+            400: DefaultResponseSerializer,
+            500: DefaultResponseSerializer,
+        },
+    )
+    def get(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        reviews = Review.objects.filter(
+            publication=publication,
+            completed_at__isnull=False,
+            is_completed=True
+        )
+        return Response(
+            {
+                "id": pk,
+                "reviews": ReviewListSerializer(
+                    instance=reviews,
+                    many=True
+                ).data
+            },
+            status=status.HTTP_200_OK
         )

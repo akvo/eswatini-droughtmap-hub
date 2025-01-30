@@ -10,10 +10,16 @@ from eswatini.settings import EMAIL_FROM, WEBDOMAIN
 class EmailTypes:
     verification_email = "verification_email"
     forgot_password = "forgot_password"
+    review_completed = "review_completed"
+    review_overdue = "review_overdue"
+    review_request = "review_request"
 
     FieldStr = {
         verification_email: "verification_email",
         forgot_password: "forgot_password",
+        review_completed: "review_completed",
+        review_overdue: "review_overdue",
+        review_request: "review_request",
     }
 
 
@@ -54,6 +60,74 @@ def email_context(context: dict, type: str):
                 ),
             }
         )
+    if type == EmailTypes.review_completed:
+        context.update(
+            {
+                "subject": (
+                    "Review completed by "
+                    "{0} for month {1}".format(
+                        context["reviewer_name"],
+                        context["year_month"],
+                    )
+                ),
+                "body": (
+                    """
+                    Dear Admin,
+                    {0} has completed the review of
+                     the CDI Map for month <b>{1}</b>.
+                    """.format(
+                        context["reviewer_name"],
+                        context["year_month"],
+                    )
+                ),
+                "cta_text": "See the review",
+                "cta_url": (
+                    "{0}/publications/{1}/reviews/{2}".format(
+                        WEBDOMAIN,
+                        context["id"],
+                        context["review_id"],
+                    )
+                ),
+            }
+        )
+    if type == EmailTypes.review_overdue:
+        context.update(
+            {
+                "subject": (
+                    "We are awaiting for "
+                    "you review of the CDI Map for month {0}".format(
+                        context["year_month"],
+                    )
+                ),
+                "body": (
+                    """
+                    Dear {0},
+                    The {1} deadline for
+                    the CDI Map review for month {2} has passed.
+                    Please attend to the submit link below as soon as possible.
+                    """.format(
+                        context["name"],
+                        context["due_date"],
+                        context["year_month"],
+                    )
+                ),
+                "cta_text": "Submit review",
+                "cta_url": (
+                    "{0}/reviews/{1}".format(
+                        WEBDOMAIN,
+                        context["id"],
+                    )
+                ),
+            }
+        )
+    if type == EmailTypes.review_request:
+        context.update({
+            "cta_text": "Submit Review",
+            "cta_url": "{0}/reviews/{1}".format(
+                WEBDOMAIN,
+                context["id"],
+            ),
+        })
     return context
 
 

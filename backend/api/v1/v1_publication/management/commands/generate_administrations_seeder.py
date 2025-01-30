@@ -31,11 +31,10 @@ class Command(BaseCommand):
             if not adm_exits:
                 Administration.objects.create(
                     pk=adm["administration_id"],
-                    admin_level=adm["admin_level"],
                     name=adm["name"],
-                    wikidata=adm["wikidata"]
+                    region=adm["region"]
                 )
         if not test:
             self.stdout.write(self.style.SUCCESS(
                 f"Created {len(administrations)} Administrations successfully."
-            ))
+            ))  # pragma: no cover

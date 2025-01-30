@@ -8,6 +8,7 @@ from api.v1.v1_users.views import (
     verify_password_code,
     reset_password,
     ProfileView,
+    ReviewerListAPI,
 )
 
 urlpatterns = [
@@ -23,4 +24,9 @@ urlpatterns = [
         r"^(?P<version>(v1))/auth/verify-password-code", verify_password_code
     ),
     re_path(r"^(?P<version>(v1))/auth/reset-password", reset_password),
+    re_path(
+        r"^(?P<version>(v1))/admin/reviewers",
+        ReviewerListAPI.as_view(),
+        name="reviewer-list"
+    ),
 ]
