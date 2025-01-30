@@ -70,6 +70,7 @@ class PublicationViewSetTestCase(APITestCase):
                     "bulletin_url",
                     "created_at",
                     "updated_at",
+                    "progress_reviews",
                 ]
             ),
         )
