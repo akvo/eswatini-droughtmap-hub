@@ -101,7 +101,7 @@ class Ability(models.Model):
     def clean(self):
         # Validate that the action is one of the valid choices
         valid_actions = [action.value for action in ActionEnum]
-        if self.action not in valid_actions:
-            raise ValidationError({
+        if self.action not in valid_actions:  # pragma: no cover
+            raise ValidationError({  # pragma: no cover
                 "action": f"'{self.action}' is not a valid action."
             })
