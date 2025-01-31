@@ -101,61 +101,8 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
       layout="vertical"
     >
       {(_, formInstance) => (
-        <div className="w-full">
-          <div>
-            <p>Year month</p>
-            <Title level={3}>
-              {dayjs(formInstance.getFieldValue("year_month")).format(
-                "YYYY-MM"
-              )}
-            </Title>
-          </div>
-          <Form.Item
-            label="Due date review"
-            name="due_date"
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-            help={errors?.due_date?.join(", ")}
-            validateStatus={errors?.due_date ? "error" : null}
-          >
-            <DatePicker
-              format={{
-                format: "YYYY-MM-DD",
-                type: "mask",
-              }}
-            />
-          </Form.Item>
-          <Form.Item
-            label="Subject"
-            name="subject"
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            label="Message"
-            name="message"
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-          >
-            <TinyEditor
-              value={formInstance.getFieldValue("message")}
-              setValue={(v) => formInstance.setFieldValue("message", v)}
-              height={300}
-            />
-          </Form.Item>
-          <Divider orientation="left">Select Reviewers</Divider>
-          <div className="w-full mb-4">
+        <div className="w-full flex flex-row items-start gap-8">
+          <div className="w-1/4 mb-4">
             <Form.List
               name="reviewers"
               className="mb-6"
@@ -175,7 +122,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
               {(fields) => (
                 <List
                   header={
-                    <div className="w-1/2 text-right">
+                    <div className="w-full text-right">
                       <Search
                         onSearch={setSearch}
                         onClear={() => setSearch(null)}
@@ -261,12 +208,66 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
               )}
             </Form.List>
           </div>
-
-          <Flex align="center" justify="end" className="pt-6">
-            <SubmitButton form={form} loading={loading}>
-              Create
-            </SubmitButton>
-          </Flex>
+          <div>
+            <div>
+              <p>Year month</p>
+              <Title level={3}>
+                {dayjs(formInstance.getFieldValue("year_month")).format(
+                  "YYYY-MM"
+                )}
+              </Title>
+            </div>
+            <Form.Item
+              label="Due date review"
+              name="due_date"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+              help={errors?.due_date?.join(", ")}
+              validateStatus={errors?.due_date ? "error" : null}
+            >
+              <DatePicker
+                format={{
+                  format: "YYYY-MM-DD",
+                  type: "mask",
+                }}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Subject"
+              name="subject"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              label="Message"
+              name="message"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+            >
+              <TinyEditor
+                value={formInstance.getFieldValue("message")}
+                setValue={(v) => formInstance.setFieldValue("message", v)}
+                height={300}
+              />
+            </Form.Item>
+            <Flex align="center" justify="end" className="pt-6">
+              <SubmitButton form={form} loading={loading} size="large">
+                Create
+              </SubmitButton>
+            </Flex>
+          </div>
+          {/* <Divider orientation="left">Select Reviewers</Divider> */}
         </div>
       )}
     </Form>
