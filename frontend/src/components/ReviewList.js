@@ -1,8 +1,7 @@
 "use client";
 
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
-import { api } from "@/lib";
-import { DROUGHT_CATEGORY } from "@/static/config";
+import { api, findCategory } from "@/lib";
 import {
   Checkbox,
   Flex,
@@ -112,6 +111,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
   };
 
   const confirmMarkAll = () => {
+    const category = findCategory(item?.category?.raw);
     Modal.confirm({
       title: "Mark all selected as reviewed?",
       content: (
@@ -129,12 +129,10 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                     "border border-neutral-200": item?.category?.raw === 0,
                   })}
                   style={{
-                    backgroundColor: `${
-                      DROUGHT_CATEGORY?.[item?.category?.raw]?.color
-                    }`,
+                    backgroundColor: `${category?.color}`,
                   }}
                 >
-                  {DROUGHT_CATEGORY?.[item?.category?.raw]?.label}
+                  {category?.label}
                 </Text>
               </Space>
             </List.Item>
