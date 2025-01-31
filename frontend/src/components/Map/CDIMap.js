@@ -12,6 +12,7 @@ import {
 } from "@/static/poly-styles";
 import { useAppContext } from "@/context/AppContextProvider";
 import { Flex, Spin } from "antd";
+import CDIMapLegend from "./CDIMapLegend";
 
 const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
   const map = useMap();
@@ -75,5 +76,7 @@ const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
     </div>
   );
 };
+
+CDIMap.Legend = CDIMapLegend;
 
 export default CDIMap;
