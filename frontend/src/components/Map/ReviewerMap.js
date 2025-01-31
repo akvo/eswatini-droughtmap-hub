@@ -1,25 +1,23 @@
 "use client";
 
-import { DROUGHT_CATEGORY, REVIEWER_MAP_FILTER } from "@/static/config";
+import { REVIEWER_MAP_FILTER } from "@/static/config";
 import { styleOptions } from "@/static/poly-styles";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
-import { Card, Descriptions, Modal, Select, Space } from "antd";
+import { Descriptions, Modal, Select, Space } from "antd";
 import { useState } from "react";
-import classNames from "classnames";
 import CDIMap from "./CDIMap";
+import { findCategory } from "@/lib";
 
 const openRawModal = (feature) => {
   const items = [
     {
       key: 1,
       label: "CDI Value",
-      children: DROUGHT_CATEGORY.find(
-        (c) => c?.value === feature?.category?.raw
-      )?.label,
+      children: findCategory(feature?.category?.raw)?.label,
     },
     {
       key: 2,
-      label: "Decimal Value",
+      label: "Computed Value",
       children: feature?.value,
     },
     {
@@ -31,11 +29,7 @@ const openRawModal = (feature) => {
             <Space>
               <span>Reviewed as:</span>
               <strong>
-                {
-                  DROUGHT_CATEGORY.find(
-                    (c) => c?.value === feature?.category?.reviewed
-                  )?.label
-                }
+                {findCategory(feature?.category?.reviewed)?.label}
               </strong>
             </Space>
           ) : (
@@ -83,11 +77,9 @@ const ReviewerMap = ({ data = [] }) => {
     const category = findAdm?.reviewed
       ? findAdm?.category?.[valueType]
       : findAdm?.category?.raw;
-    const fillColor = DROUGHT_CATEGORY?.find(
-      (c) => c?.value === category
-    )?.color;
+    const fillColor = findCategory(category)?.color;
     return {
-      fillColor: fillColor || DROUGHT_CATEGORY[0].color,
+      fillColor,
       weight: findAdm?.reviewed ? 4 : null,
       color: findAdm?.reviewed ? "green" : null,
     };
@@ -129,22 +121,7 @@ const ReviewerMap = ({ data = [] }) => {
           value={valueType}
           onChange={onSelectValueType}
         />
-        <Card title="LEGEND">
-          <ul>
-            {DROUGHT_CATEGORY.map((category, index) => (
-              <li key={category.value}>
-                <span
-                  className={classNames("inline-block w-4 h-4 mr-2", {
-                    "border border-gray-400":
-                      index === DROUGHT_CATEGORY.length - 1 || index === 0,
-                  })}
-                  style={{ backgroundColor: category.color }}
-                ></span>
-                {category.label}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <CDIMap.Legend />
       </div>
     </CDIMap>
   );

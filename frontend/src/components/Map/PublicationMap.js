@@ -1,8 +1,7 @@
 "use client";
 
-import { DROUGHT_CATEGORY } from "@/static/config";
-import { Card, Descriptions, Modal, Space } from "antd";
-import classNames from "classnames";
+import { Descriptions, Modal } from "antd";
+import { findCategory } from "@/lib";
 import CDIMap from "./CDIMap";
 
 const openRawModal = (feature) => {
@@ -10,35 +9,12 @@ const openRawModal = (feature) => {
     {
       key: 1,
       label: "CDI Value",
-      children: DROUGHT_CATEGORY.find((c) => c?.value === feature?.category)
-        ?.label,
+      children: findCategory(feature?.category)?.label,
     },
     {
       key: 2,
-      label: "Decimal Value",
+      label: "Computed Value",
       children: feature?.value,
-    },
-    {
-      key: 3,
-      label: "Status",
-      children: (
-        <>
-          {feature?.reviewed ? (
-            <Space>
-              <span>Reviewed as:</span>
-              <strong>
-                {
-                  DROUGHT_CATEGORY.find(
-                    (c) => c?.value === feature?.category?.reviewed
-                  )?.label
-                }
-              </strong>
-            </Space>
-          ) : (
-            "Pending"
-          )}
-        </>
-      ),
     },
   ];
   return Modal.info({
@@ -53,12 +29,9 @@ const PublicationMap = ({ data = [] }) => {
       (d) => d?.administration_id === feature?.properties?.administration_id
     );
 
-    const category = DROUGHT_CATEGORY.find(
-      (c) => c?.value === findAdm?.category
-    );
-    const fillColor = category?.color || DROUGHT_CATEGORY[0].color;
+    const category = findCategory(findAdm?.category);
     return {
-      fillColor,
+      fillColor: category?.color,
     };
   };
 
@@ -72,21 +45,7 @@ const PublicationMap = ({ data = [] }) => {
   return (
     <CDIMap {...{ onFeature, onClick }}>
       <div className="w-1/2 xl:w-1/3 absolute top-0 right-0 z-10 p-2 space-y-4">
-        <Card title="LEGEND">
-          <ul>
-            {DROUGHT_CATEGORY.map((category, index) => (
-              <li key={category.value}>
-                <span
-                  className={classNames("inline-block w-4 h-4 mr-2", {
-                    "border border-gray-400": index == 0,
-                  })}
-                  style={{ backgroundColor: category.color }}
-                ></span>
-                {category.label}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <CDIMap.Legend />
       </div>
     </CDIMap>
   );
