@@ -183,7 +183,10 @@ const ReviewAdmModal = ({ review }) => {
                     className="w-1/2"
                   >
                     <Select
-                      options={DROUGHT_CATEGORY}
+                      options={DROUGHT_CATEGORY.slice(
+                        0,
+                        DROUGHT_CATEGORY.length - 1
+                      )}
                       placeholder="Select Drought category"
                       disabled={activeAdm?.reviewed}
                       allowClear
