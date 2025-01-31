@@ -200,6 +200,19 @@ class ReviewViewSetTestCase(APITestCase):
         response = self.client.post(self.list_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_delete_review_by_non_owner(self):
+        non_owner = SystemUser.objects.exclude(
+            pk=self.user.id
+        ).first()
+        self.client.force_authenticate(user=non_owner)
+        req = self.client.delete(
+            self.detail_url(self.review.id)
+        )
+        self.assertEqual(
+            req.status_code,
+            status.HTTP_404_NOT_FOUND
+        )
+
     def test_delete_review(self):
         response = self.client.delete(
             self.detail_url(self.review.id)

@@ -87,25 +87,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
         # Paginate the queryset
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(
-                page,
-                many=True,
-                context={
-                    "request": request, "total": total
-                }
-            )
-            return self.get_paginated_response(serializer.data)
-
-        # For non-paginated response (fallback)
         serializer = self.get_serializer(
-            queryset,
+            page,
             many=True,
             context={
                 "request": request, "total": total
             }
         )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return self.get_paginated_response(serializer.data)
 
     def get_serializer_class(self):
         """
@@ -159,19 +148,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
             user_id=self.request.user.id,
             publication_id=self.request.data["publication_id"],
         )
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.user != request.user:
-            return Response(
-                {
-                    "message": (
-                        "You do not have permission to delete this review."
-                    )
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().destroy(request, *args, **kwargs)
 
 
 class CDIGeonodeAPI(APIView):
@@ -432,6 +408,9 @@ class PublicationViewSet(viewsets.ModelViewSet):
         except IntegrityError as e:
             # Raise an appropriate exception if needed
             raise serializers.ValidationError({"messsage": f"{e}"})
+
+    def perform_destroy(self, instance):
+        instance.delete(hard=True)
 
 
 class PublicationReviewsAPI(APIView):

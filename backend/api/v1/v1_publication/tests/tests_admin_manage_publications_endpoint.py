@@ -1,3 +1,5 @@
+from unittest.mock import patch
+from django.utils import timezone
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
@@ -169,7 +171,7 @@ class PublicationViewSetTestCase(APITestCase):
             ],
         )
 
-    def test_soft_delete_publication(self):
+    def test_delete_publication(self):
         publication = Publication.objects.create(
             cdi_geonode_id=1,
             year_month="2025-01-01",
@@ -185,7 +187,67 @@ class PublicationViewSetTestCase(APITestCase):
         )
         response = self.client.delete(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        publication.refresh_from_db()
-        self.assertIsNotNone(publication.deleted_at)
         self.assertEqual(Publication.objects.count(), 0)
-        self.assertEqual(Publication.objects_deleted.count(), 1)
+        self.assertEqual(Publication.objects_deleted.count(), 0)
+
+    def test_create_publication_with_empty_reviewers(self):
+        url = reverse("publication-list", kwargs={"version": "v1"})
+        data = {
+            "cdi_geonode_id": 1,
+            "year_month": "2025-01-01",
+            "initial_values": [
+                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
+                {"value": 32, "administration_id": 1253053, "category": "d0"},
+            ],
+            "due_date": "2025-02-28",
+            "reviewers": [],
+            "subject": "CDI Map review requested for month 2025-01",
+            "message": (
+                "Dear {{reviewer_name}},"
+                "<br/>The CDI Map for the month of "
+                "{{year_month}} is available for review."
+                "Please submit your review by {{due_date}}."
+            ),
+            "download_url": (
+                "https://geonode.com/datasets/"
+                "geonode:cdi_202501/dataset_download"
+            ),
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json(),
+            {"reviewers": ["Please select at least one reviewer."]}
+        )
+
+    @patch("django.utils.timezone.now")
+    def test_create_publication_with_invalid_duedate(self, mock_timezone_now):
+        mock_timezone_now.return_value = timezone.datetime(2025, 1, 31)
+        url = reverse("publication-list", kwargs={"version": "v1"})
+        data = {
+            "cdi_geonode_id": 1,
+            "year_month": "2025-01-01",
+            "initial_values": [
+                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
+                {"value": 32, "administration_id": 1253053, "category": "d0"},
+            ],
+            "due_date": "2025-01-28",
+            "reviewers": [r.id for r in self.reviewers],
+            "subject": "CDI Map review requested for month 2025-01",
+            "message": (
+                "Dear {{reviewer_name}},"
+                "<br/>The CDI Map for the month of "
+                "{{year_month}} is available for review."
+                "Please submit your review by {{due_date}}."
+            ),
+            "download_url": (
+                "https://geonode.com/datasets/"
+                "geonode:cdi_202501/dataset_download"
+            ),
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json(),
+            {"due_date": ["The date must be today or later."]}
+        )

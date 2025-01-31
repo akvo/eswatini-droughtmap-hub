@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from django.utils import timezone
 from django.test import TestCase
 from django.core.management import call_command
@@ -31,9 +32,11 @@ class OverdueReviewsCommandTestCase(TestCase):
         ).count()
         self.assertEqual(number_of_notified, 0)
 
-    def test_all_incomplete_overdue(self):
+    @patch("django.utils.timezone.now")
+    def test_all_incomplete_overdue(self, mock_timezone_now):
+        mock_timezone_now.return_value = timezone.datetime(2025, 1, 29)
         """Ensure overdue notifications are triggered"""
-        call_command("check_overdue_reviews", mock_now="2025-01-29")
+        call_command("check_overdue_reviews")
 
         number_of_notified = self.publication.reviews.filter(
             is_completed=False,
