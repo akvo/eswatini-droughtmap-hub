@@ -66,7 +66,7 @@ Eswatini Droughtmap Hub
 1. **Upload a Dataset to GeoNode**
 
    - Log in to GeoNode as an admin.
-   - Upload a **TIFF** or **GeoJSON** dataset.
+   - Upload a raster (*.tif, *.tiff) dataset.
    - Set its category to `cdi-raster-map`.
 
 2. **Verify in Eswatini Droughtmap Hub**
