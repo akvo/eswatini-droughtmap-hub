@@ -16,6 +16,10 @@
   .leaflet-bottom {
     z-index: 0;
   }
+  .ant-descriptions.ant-descriptions-bordered >.ant-descriptions-view .ant-descriptions-row >.ant-descriptions-item-label,
+  .ant-descriptions.ant-descriptions-bordered >.ant-descriptions-view .ant-descriptions-row >.ant-descriptions-item-content {
+    padding: 8px 16px;
+  }
 }
 
 body {

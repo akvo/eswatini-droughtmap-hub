@@ -60,6 +60,10 @@ export default function RootLayout({ children }) {
                     cellPaddingInline: 8,
                     cellPaddingBlock: 4,
                   },
+                  Descriptions: {
+                    labelBg: "#f1f5f9",
+                    titleColor: "#020618",
+                  },
                 },
               }}
             >

@@ -102,7 +102,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
     >
       {(_, formInstance) => (
         <div className="w-full flex flex-row items-start gap-8">
-          <div className="w-1/4 mb-4">
+          <div className="w-full lg:w-1/3 xl:w-1/4 mb-4">
             <Form.List
               name="reviewers"
               className="mb-6"
@@ -208,7 +208,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
               )}
             </Form.List>
           </div>
-          <div>
+          <div className="w-full lg:w-2/3 xl:w-3/4">
             <div>
               <p>Year month</p>
               <Title level={3}>
