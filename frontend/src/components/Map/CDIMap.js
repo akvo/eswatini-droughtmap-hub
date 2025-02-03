@@ -70,7 +70,13 @@ const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
   return (
     <div className="relative bg-neutral-100">
       {children}
-      <Map center={DEFAULT_CENTER} height={160} zoom={9} minZoom={9}>
+      <Map
+        center={DEFAULT_CENTER}
+        height={160}
+        zoom={9}
+        minZoom={9}
+        scrollWheelZoom={false}
+      >
         {() => <CDIGeoJSON {...{ geoData, onEachFeature }} style={style} />}
       </Map>
     </div>

@@ -1,7 +1,11 @@
 "use client";
 
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
-import { api, findCategory } from "@/lib";
+import { api } from "@/lib";
+import {
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_LABEL,
+} from "@/static/config";
 import {
   Checkbox,
   Flex,
@@ -119,26 +123,25 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
             .getFieldValue("administrations")
             .filter((a) => a?.checked)}
           header={<Title level={3}>CDI Value Overview</Title>}
-          renderItem={(item) => {
-            const category = findCategory(item?.category?.raw);
-            return (
-              <List.Item>
-                <Space size="middle">
-                  <Text strong>{item?.name}</Text>
-                  <Text
-                    className={classNames("py-1 px-2 rounded text-white", {
-                      "border border-neutral-200": item?.category?.raw === 0,
-                    })}
-                    style={{
-                      backgroundColor: `${category?.color}`,
-                    }}
-                  >
-                    {category?.label}
-                  </Text>
-                </Space>
-              </List.Item>
-            );
-          }}
+          renderItem={(item) => (
+            <List.Item>
+              <Space size="middle">
+                <Text strong>{item?.name}</Text>
+                <Text
+                  className={classNames("py-1 px-2 rounded text-white", {
+                    "border border-neutral-200": item?.category?.raw === 0,
+                  })}
+                  style={{
+                    backgroundColor: `${
+                      DROUGHT_CATEGORY_COLOR?.[item.category?.raw]
+                    }`,
+                  }}
+                >
+                  {DROUGHT_CATEGORY_LABEL?.[item.category?.raw]}
+                </Text>
+              </Space>
+            </List.Item>
+          )}
         />
       ),
       onOk: onMarkAll,

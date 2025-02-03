@@ -13,7 +13,7 @@ import {
   Button,
 } from "antd";
 
-import { DROUGHT_CATEGORY } from "@/static/config";
+import { DROUGHT_CATEGORY, DROUGHT_CATEGORY_LABEL } from "@/static/config";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
@@ -28,13 +28,6 @@ const ReviewAdmModal = ({ review }) => {
   const appDispatch = useAppDispatch();
   const [form] = useForm();
   const router = useRouter();
-
-  const findCategory = DROUGHT_CATEGORY.find((c) => {
-    if (activeAdm?.reviewed) {
-      return c.value === activeAdm?.category?.reviewed;
-    }
-    return c.value === activeAdm?.category?.raw;
-  });
 
   const isModalOpen = useMemo(() => {
     return activeAdm?.administration_id ? true : false;
@@ -169,12 +162,16 @@ const ReviewAdmModal = ({ review }) => {
           <Form initialValues={activeAdm} form={form} onFinish={onFinish}>
             {activeAdm?.reviewed ? (
               <Form.Item label="Current CDI Value" name="category">
-                <Text strong>{findCategory?.label}</Text>
+                <Text strong>
+                  {DROUGHT_CATEGORY_LABEL?.[activeAdm.category?.reviewed]}
+                </Text>
               </Form.Item>
             ) : (
               <Flex align="center" justify="space-between" className="w-full">
                 <Form.Item label="Initial CDI Value" name="category">
-                  <Text strong>{findCategory?.label}</Text>
+                  <Text strong>
+                    {DROUGHT_CATEGORY_LABEL?.[activeAdm?.category?.raw]}
+                  </Text>
                 </Form.Item>
                 {showSuggestion && (
                   <Form.Item

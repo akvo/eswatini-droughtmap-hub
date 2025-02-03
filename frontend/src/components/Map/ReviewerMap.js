@@ -1,19 +1,22 @@
 "use client";
 
-import { REVIEWER_MAP_FILTER } from "@/static/config";
+import {
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_LABEL,
+  REVIEWER_MAP_FILTER,
+} from "@/static/config";
 import { styleOptions } from "@/static/poly-styles";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 import { Descriptions, Modal, Select, Space } from "antd";
 import { useState } from "react";
 import CDIMap from "./CDIMap";
-import { findCategory } from "@/lib";
 
 const openRawModal = (feature) => {
   const items = [
     {
       key: 1,
       label: "CDI Value",
-      children: findCategory(feature?.category?.raw)?.label,
+      children: DROUGHT_CATEGORY_LABEL?.[feature?.category?.raw],
     },
     {
       key: 2,
@@ -29,7 +32,7 @@ const openRawModal = (feature) => {
             <Space>
               <span>Reviewed as:</span>
               <strong>
-                {findCategory(feature?.category?.reviewed)?.label}
+                {DROUGHT_CATEGORY_LABEL?.[feature?.category?.reviewed]}
               </strong>
             </Space>
           ) : (
@@ -77,9 +80,8 @@ const ReviewerMap = ({ data = [] }) => {
     const category = findAdm?.reviewed
       ? findAdm?.category?.[valueType]
       : findAdm?.category?.raw;
-    const fillColor = findCategory(category)?.color;
     return {
-      fillColor,
+      fillColor: DROUGHT_CATEGORY_COLOR?.[category],
       weight: findAdm?.reviewed ? 4 : null,
       color: findAdm?.reviewed ? "green" : null,
     };

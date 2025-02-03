@@ -12,43 +12,43 @@ export const HOME_PAGE = {
 
 export const PAGE_SIZE = 10;
 
-export const DROUGHT_CATEGORY = [
-  {
-    value: 0,
-    label: "Wet/normal conditions",
-    color: "#b9f8cf",
-  },
-  {
-    value: 1,
-    label: "D0 Abnormally Dry",
-    color: "#ffff00",
-  },
-  {
-    value: 2,
-    label: "D1 Moderate Drought",
-    color: "#fcd37f",
-  },
-  {
-    value: 3,
-    label: "D2 Severe Drought",
-    color: "#ffaa00",
-  },
-  {
-    value: 4,
-    label: "D3 Extreme Drought",
-    color: "#e60000",
-  },
-  {
-    value: 5,
-    label: "D4 Exceptional Drought",
-    color: "#730000",
-  },
-  {
-    value: -9999,
-    label: "No Data",
-    color: "#ffffff",
-  },
-];
+export const DROUGHT_CATEGORY_VALUE = {
+  normal: 0,
+  d0: 1,
+  d1: 2,
+  d2: 3,
+  d3: 4,
+  d4: 5,
+  none: -9999,
+};
+
+export const DROUGHT_CATEGORY_COLOR = {
+  [DROUGHT_CATEGORY_VALUE.normal]: "#b9f8cf",
+  [DROUGHT_CATEGORY_VALUE.d0]: "#ffff00",
+  [DROUGHT_CATEGORY_VALUE.d1]: "#fcd37f",
+  [DROUGHT_CATEGORY_VALUE.d2]: "#ffaa00",
+  [DROUGHT_CATEGORY_VALUE.d3]: "#e60000",
+  [DROUGHT_CATEGORY_VALUE.d4]: "#730000",
+  [DROUGHT_CATEGORY_VALUE.none]: "#ffffff",
+};
+
+export const DROUGHT_CATEGORY_LABEL = {
+  [DROUGHT_CATEGORY_VALUE.normal]: "Wet/normal conditions",
+  [DROUGHT_CATEGORY_VALUE.d0]: "D0 Abnormally Dry",
+  [DROUGHT_CATEGORY_VALUE.d1]: "D1 Moderate Drought",
+  [DROUGHT_CATEGORY_VALUE.d2]: "D2 Severe Drought",
+  [DROUGHT_CATEGORY_VALUE.d3]: "D3 Extreme Drought",
+  [DROUGHT_CATEGORY_VALUE.d4]: "D4 Exceptional Drought",
+  [DROUGHT_CATEGORY_VALUE.none]: "No Data",
+};
+
+export const DROUGHT_CATEGORY = Object.values(DROUGHT_CATEGORY_VALUE).map(
+  (v) => ({
+    value: v,
+    label: DROUGHT_CATEGORY_LABEL[v],
+    color: DROUGHT_CATEGORY_COLOR[v],
+  })
+);
 
 export const PUBLICATION_STATUS = {
   in_review: 1,
