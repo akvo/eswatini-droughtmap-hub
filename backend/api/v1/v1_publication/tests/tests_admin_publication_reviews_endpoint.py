@@ -51,7 +51,12 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             response.json(),
-            {"id": f"{publication.id}", "reviews": []},
+            {
+                "id": publication.id,
+                "validated_values": publication.validated_values,
+                "reviews": [],
+                "users": [],
+            },
         )
 
     def test_get_completed_publication_reviews(self):
@@ -69,6 +74,10 @@ class PublicationViewSetTestCase(APITestCase):
             for reviewer in self.reviewers
         ], bulk=False)
         for reviewer in publication.reviews.all():
+            reviewer.suggestion_values = [
+                {"administration_id": 1253002, "category": "d1"},
+                {"administration_id": 1253053, "category": "d2"},
+            ]
             reviewer.is_completed = True
             reviewer.completed_at = "2025-01-01T00:00:00Z"
             reviewer.save()
@@ -83,11 +92,11 @@ class PublicationViewSetTestCase(APITestCase):
         data = response.json()
         self.assertEqual(
             data["id"],
-            f"{publication.id}",
+            publication.id,
         )
         self.assertEqual(
             len(data["reviews"]),
-            2,
+            4,
         )
 
     def test_get_publication_reviews_not_found(self):

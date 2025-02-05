@@ -420,6 +420,22 @@ class PublicationReviewsAPI(APIView):
         summary="Fetch publication reviews",
         description="Fetch reviews for a specific publication",
         tags=["Admin"],
+        parameters=[
+            OpenApiParameter(
+                name="non_disputed",
+                required=False,
+                default=False,
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="non_validated",
+                required=False,
+                default=False,
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
         responses={
             200: PublicationReviewsSerializer,
             400: DefaultResponseSerializer,
@@ -428,18 +444,17 @@ class PublicationReviewsAPI(APIView):
     )
     def get(self, request, version, pk):
         publication = get_object_or_404(Publication, pk=pk)
-        reviews = Review.objects.filter(
-            publication=publication,
-            completed_at__isnull=False,
-            is_completed=True
-        )
+
+        non_disputed = request.GET.get("non_disputed") in ["true", "1"]
+        non_validated = request.GET.get("non_validated") in ["true", "1"]
+
         return Response(
-            {
-                "id": pk,
-                "reviews": ReviewListSerializer(
-                    instance=reviews,
-                    many=True
-                ).data
-            },
+            PublicationReviewsSerializer(
+                instance=publication,
+                context={
+                    "non_disputed": non_disputed,
+                    "non_validated": non_validated
+                }
+            ).data,
             status=status.HTTP_200_OK
         )
