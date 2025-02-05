@@ -1,14 +1,14 @@
 "use client";
 
 import { ValidationModal, ValidationTable } from "@/components";
-import { useAppContext } from "@/context/AppContextProvider";
+import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 import { api, transformReviews } from "@/lib";
 import { DROUGHT_CATEGORY_LABEL } from "@/static/config";
 import { Button, Skeleton, Tabs, Typography } from "antd";
 import dayjs from "dayjs";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const ValidationMap = dynamic(() => import("@/components/Map/ValidationMap"), {
   ssr: false,
@@ -29,11 +29,18 @@ const ValidationPage = ({ params }) => {
   });
   const [activeModal, setActiveModal] = useState(null);
 
-  const { administrations } = useAppContext();
+  const { administrations, refreshMap } = useAppContext();
+  const appDispatch = useAppDispatch();
 
   const yearMonth = publication?.year_month
     ? dayjs(publication?.year_month, "YYYY-MM").format("MMMM YYYY")
     : "...";
+
+  const totalValidated = useMemo(() => {
+    return publication?.validated_values?.filter(
+      (v) => v?.category || v?.category === 0
+    )?.length;
+  }, [publication?.validated_values]);
 
   const onFilter = async (nonDisputed, nonValidated) => {
     try {
@@ -41,6 +48,10 @@ const ValidationPage = ({ params }) => {
         "GET",
         `/admin/publication-reviews/${params.id}?non_disputed=${nonDisputed}&non_validated=${nonValidated}`
       );
+      setPublication({
+        ...publication,
+        validated_values,
+      });
       setDataSource(
         transformReviews(administrations, reviews, users, {
           ...publication,
@@ -52,22 +63,34 @@ const ValidationPage = ({ params }) => {
     }
   };
 
+  const onRefreshMap = useCallback(() => {
+    appDispatch({
+      type: "REFRESH_MAP_TRUE",
+    });
+    setTimeout(() => {
+      appDispatch({
+        type: "REFRESH_MAP_FALSE",
+      });
+    }, 500);
+  }, [appDispatch]);
+
   const onSelectValue = useCallback(
-    async (val, administration_id) => {
+    async (val, admID) => {
       try {
         const payload = {
-          validated_values: administrations?.map((a) => {
-            const findCategory = dataSource?.find(
-              (d) => d?.administration_id === a?.administration_id
+          validated_values: administrations?.map(({ administration_id }) => {
+            const findData = dataSource?.find(
+              (d) => d?.administration_id === administration_id
             );
+            const category =
+              administration_id === admID
+                ? val
+                : findData?.category === undefined
+                ? null
+                : findData?.category;
             return {
-              category:
-                a?.administration_id === administration_id
-                  ? val
-                  : findCategory?.category === undefined
-                  ? null
-                  : findCategory?.category,
-              administration_id: a?.administration_id,
+              category,
+              administration_id,
             };
           }),
         };
@@ -76,12 +99,15 @@ const ValidationPage = ({ params }) => {
           `/admin/publication/${params?.id}`,
           payload
         );
+        if (activeTab === "map") {
+          onRefreshMap();
+        }
+
         if (apiData?.validated_values) {
           const ds = dataSource?.map((d) => {
             return {
               ...d,
-              category:
-                d?.administration_id === administration_id ? val : d?.category,
+              category: d?.administration_id === admID ? val : d?.category,
             };
           });
           setDataSource(ds);
@@ -90,7 +116,7 @@ const ValidationPage = ({ params }) => {
         console.error(err);
       }
     },
-    [dataSource, administrations, params?.id]
+    [dataSource, administrations, activeTab, onRefreshMap, params?.id]
   );
 
   const onNonDisputed = async (isChecked = false) => {
@@ -111,6 +137,58 @@ const ValidationPage = ({ params }) => {
 
   const onDetails = (record) => {
     setActiveModal(record);
+  };
+
+  const onBulkValidation = async (ids = []) => {
+    try {
+      const payload = {
+        validated_values: administrations?.map(({ administration_id }) => {
+          const findData = dataSource?.find(
+            (d) => d?.administration_id === administration_id
+          );
+          const category =
+            findData?.category === undefined ? null : findData?.category;
+          const data = {
+            category,
+            administration_id,
+          };
+          if (ids?.includes(administration_id)) {
+            return {
+              ...data,
+              category: findData?.[extraColumns?.[0]?.dataIndex],
+            };
+          }
+          return data;
+        }),
+      };
+
+      const apiData = await api(
+        "PUT",
+        `/admin/publication/${params?.id}`,
+        payload
+      );
+      if (apiData?.validated_values) {
+        setPublication({
+          ...publication,
+          validated_values: apiData.validated_values,
+        });
+        const ds = dataSource?.map((d) => {
+          const fd = apiData.validated_values.find(
+            (v) => v?.administration_id === d?.administration_id
+          );
+          const category =
+            fd?.category === undefined ? d?.category : fd?.category;
+          return {
+            ...d,
+            category,
+          };
+        });
+
+        setDataSource(ds);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchData = useCallback(async () => {
@@ -156,47 +234,65 @@ const ValidationPage = ({ params }) => {
           <Title level={2}>{`Inkundla CDI Validation for: ${yearMonth}`}</Title>
         </div>
         <div>
-          <Button type="primary" size="large" disabled>
-            Ready to Publish
-          </Button>
+          {administrations?.length &&
+          administrations.length === totalValidated ? (
+            <Button type="primary" size="large" disabled>
+              Ready to Publish
+            </Button>
+          ) : (
+            <div className="leading-2 text-center">
+              <strong>REMAINING Tinkhundla</strong>
+              <h2 className="text-2xl">
+                {administrations.length && !isNaN(totalValidated)
+                  ? administrations.length - totalValidated
+                  : "..."}
+              </h2>
+            </div>
+          )}
         </div>
       </div>
       <Tabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={(key) => {
+          if (key === "map") {
+            onRefreshMap();
+          }
+          setActiveTab(key);
+        }}
         items={[
           {
             key: "table",
             label: "Table View",
             children: (
-              <>
-                <Skeleton loading={loading} title paragraph>
-                  <ValidationTable
-                    data={dataSource}
-                    {...{
-                      extraColumns,
-                      onDetails,
-                      onSelectValue,
-                      onNonDisputed,
-                      onNonValidated,
-                    }}
-                  />
-                </Skeleton>
-                <ValidationModal
-                  data={activeModal}
-                  isOpen={activeModal?.administration_id}
-                  onClose={() => setActiveModal(null)}
-                  onSelectValue={onSelectValue}
+              <Skeleton loading={loading} title paragraph>
+                <ValidationTable
+                  data={dataSource}
+                  {...{
+                    extraColumns,
+                    onDetails,
+                    onSelectValue,
+                    onNonDisputed,
+                    onNonValidated,
+                    onBulkValidation,
+                  }}
                 />
-              </>
+              </Skeleton>
             ),
           },
           {
             key: "map",
             label: "Map View",
-            children: <ValidationMap />,
+            children: (
+              <ValidationMap {...{ refreshMap, dataSource, onDetails }} />
+            ),
           },
         ]}
+      />
+      <ValidationModal
+        data={activeModal}
+        isOpen={activeModal?.administration_id}
+        onClose={() => setActiveModal(null)}
+        onSelectValue={onSelectValue}
       />
     </div>
   );
