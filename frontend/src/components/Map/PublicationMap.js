@@ -11,6 +11,7 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
 } from "@/static/config";
+import { useRouter } from "next/navigation";
 
 const { Title } = Typography;
 
@@ -42,6 +43,7 @@ const PublicationMap = ({
   const status = PUBLICATION_STATUS_OPTIONS.find(
     (s) => s?.value === publication?.status
   );
+  const router = useRouter();
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
@@ -59,6 +61,10 @@ const PublicationMap = ({
     openRawModal({ ...findAdm, name: feature?.properties?.name });
   };
 
+  const goToValidation = () => {
+    router.push(`/publications/${publication?.id}/validation`);
+  };
+
   return (
     <div className="w-full">
       <Flex align="center" justify="space-between">
@@ -73,7 +79,9 @@ const PublicationMap = ({
         <div className="w-2/12 py-2 text-right">
           {publication?.status === PUBLICATION_STATUS.in_review &&
             number_reviews >= 1 && (
-              <Button type="primary">Start Validation</Button>
+              <Button type="primary" onClick={goToValidation}>
+                Start Validation
+              </Button>
             )}
         </div>
       </Flex>
