@@ -32,10 +32,10 @@ def validate_json_values(json_values: list = []):
             raise ValidationError(
                 "Each item must contain an 'administration_id' key."
             )
-        if "value" not in item:
-            raise ValidationError(
-                "Each item must contain a 'value' key."
-            )
+        # if "value" not in item:
+        #     raise ValidationError(
+        #         "Each item must contain a 'value' key."
+        #     )
 
 
 class Publication(SoftDeletes):
@@ -66,6 +66,13 @@ class Publication(SoftDeletes):
         return (
             f"Publication: {self.cdi_geonode_id} - "
             f"{self.year_month.strftime('%Y-%m')}"
+        )
+
+    @property
+    def completed_reviews(self):
+        return self.reviews.filter(
+            is_completed=True,
+            completed_at__isnull=False,
         )
 
     class Meta:
