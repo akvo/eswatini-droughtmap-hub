@@ -6,11 +6,22 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
 } from "@/static/config";
-import { Button, Checkbox, Flex, Input, Select, Space, Table } from "antd";
+import {
+  Button,
+  Checkbox,
+  Flex,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Typography,
+} from "antd";
 import classNames from "classnames";
 import { useMemo, useState } from "react";
 
 const { Search } = Input;
+const { Text } = Typography;
 
 const ValidationTable = ({
   data = [],
@@ -19,6 +30,7 @@ const ValidationTable = ({
   onSelectValue,
   onNonDisputed,
   onNonValidated,
+  onBulkValidation,
 }) => {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [updating, setUpdating] = useState(false);
@@ -91,7 +103,9 @@ const ValidationTable = ({
     await onNonDisputed(isChecked);
     setUpdating(false);
     if (isChecked) {
-      const _selected = data.map(({ key }) => key);
+      const _selected = data
+        .filter((d) => d?.category === null || d?.category === undefined)
+        .map(({ key }) => key);
       setSelectedRowKeys(_selected);
     } else {
       setSelectedRowKeys([]);
@@ -101,6 +115,29 @@ const ValidationTable = ({
   const handleNonValidated = async (e) => {
     const isChecked = e.target.checked;
     await onNonValidated(isChecked);
+  };
+
+  const runBulkValidation = async () => {
+    setUpdating(true);
+    await onBulkValidation(selectedRowKeys);
+    setUpdating(false);
+    setSelectedRowKeys([]);
+  };
+
+  const handleBulkValidation = () => {
+    Modal.confirm({
+      title: "Confirm Bulk Validation",
+      content: (
+        <div>
+          <Text>
+            <strong>{selectedRowKeys.length} Tinkhundla</strong> will copy
+            non-disputed values.
+          </Text>
+          <Text>Are you sure?</Text>
+        </div>
+      ),
+      onOk: runBulkValidation,
+    });
   };
 
   return (
@@ -117,7 +154,12 @@ const ValidationTable = ({
           <Checkbox onClick={handleNonValidated}>Non-validated only</Checkbox>
         </Space>
         <div>
-          <Button type="primary" disabled={selectedRowKeys?.length === 0}>
+          <Button
+            type="primary"
+            onClick={handleBulkValidation}
+            disabled={selectedRowKeys?.length === 0}
+            loading={updating && selectedRowKeys?.length}
+          >
             Validate all values
           </Button>
         </div>
@@ -134,7 +176,11 @@ const ValidationTable = ({
             const reviewValues = Object.keys(record)
               .filter((key) => !isNaN(key))
               .map((key) => record[key]);
-            const disabled = new Set(reviewValues).size > 1;
+
+            const disabled =
+              new Set(reviewValues).size > 1 ||
+              record?.category ||
+              record?.category === 0;
             return {
               disabled: disabled,
             };
