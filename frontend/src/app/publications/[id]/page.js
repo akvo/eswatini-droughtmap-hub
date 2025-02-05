@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { api } from "@/lib";
+import { PUBLICATION_STATUS } from "@/static/config";
 
 const PublicationMap = dynamic(
   () => import("@/components/Map/PublicationMap"),
@@ -10,7 +11,10 @@ const PublicationMap = dynamic(
 const PublicationDetailsPage = async ({ params }) => {
   const geonodeBaseURL = process.env.GEONODE_BASE_URL;
   const publication = await api("GET", `/admin/publication/${params.id}`);
-  const dataMap = publication?.validated_values || publication?.initial_values;
+  const dataMap =
+    publication?.status === PUBLICATION_STATUS.published
+      ? publication?.validated_values
+      : publication?.initial_values;
 
   if (!publication?.id) {
     redirect("/publications");
