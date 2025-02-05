@@ -12,6 +12,8 @@ import {
   DROUGHT_CATEGORY_LABEL,
 } from "@/static/config";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib";
+import { useState } from "react";
 
 const { Title } = Typography;
 
@@ -39,6 +41,7 @@ const PublicationMap = ({
   publication = {},
   geonodeBaseURL = "",
 }) => {
+  const [loading, setLoading] = useState(false);
   const [number_reviews] = publication?.progress_reviews?.split("/");
   const status = PUBLICATION_STATUS_OPTIONS.find(
     (s) => s?.value === publication?.status
@@ -61,8 +64,20 @@ const PublicationMap = ({
     openRawModal({ ...findAdm, name: feature?.properties?.name });
   };
 
-  const goToValidation = () => {
-    router.push(`/publications/${publication?.id}/validation`);
+  const goToValidation = async () => {
+    setLoading(true);
+    try {
+      if (publication?.status === PUBLICATION_STATUS.in_review) {
+        await api("PUT", `/admin/publication/${publication?.id}`, {
+          status: PUBLICATION_STATUS.in_validation,
+        });
+      }
+      setLoading(false);
+      router.push(`/publications/${publication?.id}/validation`);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,10 +92,12 @@ const PublicationMap = ({
           </Title>
         </div>
         <div className="w-2/12 py-2 text-right">
-          {publication?.status === PUBLICATION_STATUS.in_review &&
+          {publication?.status !== PUBLICATION_STATUS.published &&
             number_reviews >= 1 && (
-              <Button type="primary" onClick={goToValidation}>
-                Start Validation
+              <Button type="primary" onClick={goToValidation} loading={loading}>
+                {publication?.status === PUBLICATION_STATUS.in_review
+                  ? "Start Validation"
+                  : "Go to Validation"}
               </Button>
             )}
         </div>
