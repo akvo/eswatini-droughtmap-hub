@@ -168,7 +168,7 @@ const ReviewAdmModal = ({ review }) => {
               </Form.Item>
             ) : (
               <Flex align="center" justify="space-between" className="w-full">
-                <Form.Item label="Initial CDI Value" name="category">
+                <Form.Item label="Computed CDI Value" name="category">
                   <Text strong>
                     {DROUGHT_CATEGORY_LABEL?.[activeAdm?.category?.raw]}
                   </Text>
