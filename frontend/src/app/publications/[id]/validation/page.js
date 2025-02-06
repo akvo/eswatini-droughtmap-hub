@@ -7,7 +7,7 @@ import { DROUGHT_CATEGORY_LABEL } from "@/static/config";
 import { Button, Skeleton, Tabs, Typography } from "antd";
 import dayjs from "dayjs";
 import dynamic from "next/dynamic";
-import { redirect } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const ValidationMap = dynamic(() => import("@/components/Map/ValidationMap"), {
@@ -31,6 +31,7 @@ const ValidationPage = ({ params }) => {
 
   const { administrations, refreshMap } = useAppContext();
   const appDispatch = useAppDispatch();
+  const router = useRouter();
 
   const yearMonth = publication?.year_month
     ? dayjs(publication?.year_month, "YYYY-MM").format("MMMM YYYY")
@@ -256,7 +257,13 @@ const ValidationPage = ({ params }) => {
         <div>
           {administrations?.length &&
           administrations.length === totalValidated ? (
-            <Button type="primary" size="large">
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => {
+                router.push(`/publications/${params?.id}/publish`);
+              }}
+            >
               Ready to Publish
             </Button>
           ) : (
