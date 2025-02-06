@@ -265,7 +265,7 @@ const ValidationPage = ({ params }) => {
               <h2 className="text-2xl">
                 {administrations.length && !isNaN(totalValidated)
                   ? administrations.length - totalValidated
-                  : "..."}
+                  : administrations.length || "..."}
               </h2>
             </div>
           )}
