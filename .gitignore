@@ -6,3 +6,6 @@ __pycache__
 .coverage
 .coverage.*
 db.dbml
+**/app.env
+**/rundeck.env
+**/realm.properties

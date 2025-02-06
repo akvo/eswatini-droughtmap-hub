@@ -54,6 +54,21 @@ http:
       middlewares:
        - config-rewrite
 
+    rundeck-service-router-80:
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/rundeck\`)"
+      service: rundeck-service
+      entrypoints: web
+      middlewares:
+        - redirect-to-https
+
+    rundeck-service-router-443:
+      entrypoints:
+        - websecure
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/rundeck\`)"
+      service: rundeck-service
+      tls:
+        certResolver: myresolver
+
   middlewares:
     redirect-to-https:
       redirectScheme:
@@ -74,5 +89,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://localhost:8000"
+
+    rundeck-service:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:4440"
 
 EOF
