@@ -11,6 +11,9 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
 } from "@/static/config";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib";
+import { useState } from "react";
 
 const { Title } = Typography;
 
@@ -38,10 +41,12 @@ const PublicationMap = ({
   publication = {},
   geonodeBaseURL = "",
 }) => {
+  const [loading, setLoading] = useState(false);
   const [number_reviews] = publication?.progress_reviews?.split("/");
   const status = PUBLICATION_STATUS_OPTIONS.find(
     (s) => s?.value === publication?.status
   );
+  const router = useRouter();
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
@@ -59,6 +64,24 @@ const PublicationMap = ({
     openRawModal({ ...findAdm, name: feature?.properties?.name });
   };
 
+  const goToValidation = async () => {
+    setLoading(true);
+    try {
+      if (publication?.status === PUBLICATION_STATUS.in_review) {
+        await api("PUT", `/admin/publication/${publication?.id}`, {
+          status: PUBLICATION_STATUS.in_validation,
+        });
+        router.replace(`/publications/${publication?.id}/validation`);
+      } else {
+        router.push(`/publications/${publication?.id}/validation`);
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="w-full">
       <Flex align="center" justify="space-between">
@@ -71,9 +94,13 @@ const PublicationMap = ({
           </Title>
         </div>
         <div className="w-2/12 py-2 text-right">
-          {publication?.status === PUBLICATION_STATUS.in_review &&
+          {publication?.status !== PUBLICATION_STATUS.published &&
             number_reviews >= 1 && (
-              <Button type="primary">Start Validation</Button>
+              <Button type="primary" onClick={goToValidation} loading={loading}>
+                {publication?.status === PUBLICATION_STATUS.in_review
+                  ? "Start Validation"
+                  : "Go to Validation"}
+              </Button>
             )}
         </div>
       </Flex>

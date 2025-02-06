@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
+from collections import defaultdict
 from .models import (
     Administration,
     Publication,
@@ -203,28 +204,66 @@ class CDIGeonodeListSerializer(serializers.Serializer):
         ]
 
 
-class UserReviewSerializer(serializers.ModelSerializer):
-    user = UserReviewerSerializer()
+class PublicationReviewsSerializer(serializers.ModelSerializer):
+    reviews = serializers.SerializerMethodField()
+    users = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Review
-        fields = [
-            "id",
-            "user",
-            "suggestion_values",
+    def get_reviews(self, obj):
+        non_disputed = self.context.get("non_disputed", False)
+        non_validated = self.context.get("non_validated", False)
+        validated_values = obj.validated_values or []
+        non_validated_ids = [
+            v["administration_id"]
+            for v in list(
+                filter(lambda x: x["category"] is None, validated_values)
+            )
         ]
 
+        reviews = [
+            {
+                **s,
+                "user_id": review.user.id,
+            }
+            for review in obj.completed_reviews
+            for s in review.suggestion_values
+        ]
 
-class PublicationReviewsSerializer(serializers.ModelSerializer):
-    reviews = UserReviewSerializer(many=True)
+        if non_disputed:
+            filtered_reviews = []
+            grouped_reviews = defaultdict(list)
+            for review in reviews:
+                grouped_reviews[review["administration_id"]].append(review)
+            for _, admin_reviews in grouped_reviews.items():
+                categories = {r["category"] for r in admin_reviews}
+                if len(categories) == 1:
+                    filtered_reviews.extend(admin_reviews)
+            reviews = filtered_reviews
+
+        if non_validated:
+            reviews = [
+                r for r in reviews
+                if r["administration_id"] in non_validated_ids
+            ]
+
+        return reviews
+
+    def get_users(self, obj):
+        return UserReviewerSerializer(
+            instance=[
+                r.user
+                for r in obj.completed_reviews
+            ],
+            many=True
+        ).data
 
     class Meta:
         model = Publication
         fields = [
             "id",
+            "validated_values",
             "reviews",
+            "users",
         ]
-        read_only_fields = ["id"]
 
 
 class CreatePublicationSerializer(serializers.ModelSerializer):

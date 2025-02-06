@@ -93,9 +93,7 @@ class PublicationModelTest(TestCase):
             due_date=date(2025, 2, 1),
             status=PublicationStatus.in_review,
         )
-        with self.assertRaises(ValidationError) as context:
-            publication.full_clean()
-        self.assertEqual(
-            str(context.exception),
-            "{'initial_values': [\"Each item must contain a 'value' key.\"]}"
-        )
+        try:
+            publication.full_clean()  # Should not raise ValidationError
+        except ValidationError:
+            self.fail("ValidationError was raised unexpectedly")

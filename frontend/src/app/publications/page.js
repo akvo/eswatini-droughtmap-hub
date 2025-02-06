@@ -14,7 +14,11 @@ import {
   Typography,
 } from "antd";
 import { Can } from "@/components";
-import { PAGE_SIZE, PUBLICATION_STATUS_OPTIONS } from "@/static/config";
+import {
+  PAGE_SIZE,
+  PUBLICATION_STATUS,
+  PUBLICATION_STATUS_OPTIONS,
+} from "@/static/config";
 import { api } from "@/lib";
 import dayjs from "dayjs";
 
@@ -65,7 +69,9 @@ const PublicationsPage = () => {
       dataIndex: "status",
       key: "status",
       render: (_, { status }) => {
-        const findStatus = PUBLICATION_STATUS_OPTIONS.find((s) => s?.value === status);
+        const findStatus = PUBLICATION_STATUS_OPTIONS.find(
+          (s) => s?.value === status
+        );
         return (
           <Tag color={findStatus?.color}>
             {findStatus?.label || "Not yet started"}
@@ -77,7 +83,12 @@ const PublicationsPage = () => {
       title: "ACTION",
       dataIndex: "publication_id",
       key: "id",
-      render: (_, { pk, publication_id, detail_url }) => {
+      render: (_, { pk, publication_id, detail_url, status }) => {
+        const routeURL = publication_id
+          ? status === PUBLICATION_STATUS.in_validation
+            ? `/publications/${publication_id}/validation`
+            : `/publications/${publication_id}`
+          : `/publications/create?cdi_geonode_id=${pk}`;
         return (
           <Space>
             <Button type="link" href={detail_url} target="_blank">
@@ -87,11 +98,7 @@ const PublicationsPage = () => {
             <Button
               type="primary"
               onClick={() => {
-                if (publication_id) {
-                  router.push(`/publications/${publication_id}`);
-                } else {
-                  router.push(`/publications/create?cdi_geonode_id=${pk}`);
-                }
+                router.push(routeURL);
               }}
             >
               {publication_id ? "View" : "Start new Publication"}
