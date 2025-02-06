@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { SubmitButton } from "@/components";
-import { Checkbox, Form, Input, Modal, Space, Typography } from "antd";
+import { Checkbox, Form, Input, message, Modal, Space, Typography } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CDIMap from "@/components/Map/CDIMap";
 import dayjs from "dayjs";
@@ -40,11 +40,18 @@ const PublishPage = ({ params }) => {
   const onFinish = async (payload) => {
     setLoading(true);
     try {
-      await api("PUT", `/admin/publication/${params.id}`, {
-        ...payload,
+      const apiData = await api("PUT", `/admin/publication/${params.id}`, {
+        bulletin_url: payload?.bulletin_url,
+        narrative: payload?.narrative,
         status: PUBLICATION_STATUS.published,
       });
-      router.push(`/publications/${params.id}`);
+      if (apiData?.status === PUBLICATION_STATUS.published) {
+        router.push(`/publications/${params.id}`);
+      } else {
+        message.error(
+          "[ADM-P-3] Please report this issue along with the code."
+        );
+      }
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -60,23 +67,19 @@ const PublishPage = ({ params }) => {
     });
   };
 
-  const fetchData = useCallback(
-    async () => {
-      try {
-        const apiData = await api("GET", `/admin/publication/${params?.id}`);
-        if (!apiData?.id) {
-          redirect("/publications");
-        }
-        form.setFieldValue("year_month", apiData.year_month);
-        form.setFieldValue("bulletin_url", apiData.bulletin_url);
-        setPublication(apiData);
-      } catch (err) {
-        console.error(err);
+  const fetchData = useCallback(async () => {
+    try {
+      const apiData = await api("GET", `/admin/publication/${params?.id}`);
+      if (!apiData?.id) {
+        redirect("/publications");
       }
-    },
-    [params?.id],
-    form
-  );
+      form.setFieldValue("year_month", apiData.year_month);
+      form.setFieldValue("bulletin_url", apiData.bulletin_url);
+      setPublication(apiData);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [params?.id, form]);
 
   useEffect(() => {
     fetchData();
