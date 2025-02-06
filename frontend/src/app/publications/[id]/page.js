@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { api } from "@/lib";
 import { PUBLICATION_STATUS } from "@/static/config";
+import { Divider } from "antd";
 
 const PublicationMap = dynamic(
   () => import("@/components/Map/PublicationMap"),
@@ -27,6 +28,10 @@ const PublicationDetailsPage = async ({ params }) => {
   return (
     <div className="w-full h-full space-y-3">
       <PublicationMap data={dataMap} {...{ publication, geonodeBaseURL }} />
+      <Divider orientation="center">Narrative</Divider>
+      {publication?.narrative && (
+        <div dangerouslySetInnerHTML={{ __html: publication?.narrative }} />
+      )}
     </div>
   );
 };
