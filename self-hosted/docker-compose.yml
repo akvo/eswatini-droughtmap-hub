@@ -9,6 +9,24 @@ services:
       - 80:80 # traefik port http
       - 443:443 # traefik port https
       - 81:81 # frontend port
+      - 4440:4440 # rundeck port
+  rundeck:
+    image: rundeck/rundeck:5.8.0
+    container_name: rundeck
+    env_file: "./rundeck.env"
+    environment:
+      RUNDECK_SERVER_CONTEXTPATH: /rundeck
+      RUNDECK_CONFIG: "app.framework.security.accessControl.enabled=true"
+      RUNDECK_SERVER_FORWARDED: true
+      RUNDECK_TOKENS_FILE: /home/rundeck/server/config/realm.properties
+
+    network_mode: service:mainnetwork
+
+    volumes:
+      - rundeck_data:/home/rundeck/server/data
+      - rundeck_etl:/home/rundeck/server/logs
+      - ./rundeck/realm.properties:/home/rundeck/server/config/realm.properties
+
   traefik:
     image: traefik:v3.0
     container_name: traefik
@@ -62,6 +80,19 @@ services:
         condition: service_healthy
     network_mode: service:mainnetwork
 
+  worker:
+    container_name: worker
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.worker.prod
+    env_file: "./app.env"
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    network_mode: service:mainnetwork
+
   frontend:
     container_name: frontend
     build:
@@ -77,3 +108,5 @@ services:
 volumes:
   traefik-certificates:
   pg-data:
+  rundeck_data:
+  rundeck_etl:
