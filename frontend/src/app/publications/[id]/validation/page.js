@@ -48,10 +48,6 @@ const ValidationPage = ({ params }) => {
         "GET",
         `/admin/publication-reviews/${params.id}?non_disputed=${nonDisputed}&non_validated=${nonValidated}`
       );
-      setPublication({
-        ...publication,
-        validated_values,
-      });
       setDataSource(
         transformReviews(administrations, reviews, users, {
           ...publication,
@@ -77,24 +73,28 @@ const ValidationPage = ({ params }) => {
   const onSelectValue = useCallback(
     async (val, admID) => {
       try {
+        const currentValues =
+          publication?.validated_values?.length === administrations?.length
+            ? publication.validated_values
+            : dataSource;
         const payload = {
           validated_values: administrations?.map(({ administration_id }) => {
-            const findData = dataSource?.find(
-              (d) => d?.administration_id === administration_id
+            const fd = currentValues?.find(
+              (v) => v?.administration_id === administration_id
             );
             const category =
               administration_id === admID
                 ? val
-                : findData?.category === undefined
+                : fd?.category === undefined
                 ? null
-                : findData?.category;
+                : fd?.category;
             return {
               category,
               administration_id,
             };
           }),
         };
-        const apiData = await api(
+        const { validated_values } = await api(
           "PUT",
           `/admin/publication/${params?.id}`,
           payload
@@ -103,11 +103,24 @@ const ValidationPage = ({ params }) => {
           onRefreshMap();
         }
 
-        if (apiData?.validated_values) {
+        if (validated_values) {
+          setPublication({
+            ...publication,
+            validated_values,
+          });
           const ds = dataSource?.map((d) => {
+            const fd = validated_values?.find(
+              (v) => v?.administration_id === d?.administration_id
+            );
+            const category =
+              d?.administration_id === admID
+                ? val
+                : fd?.category === undefined
+                ? d?.category
+                : fd?.category;
             return {
               ...d,
-              category: d?.administration_id === admID ? val : d?.category,
+              category,
             };
           });
           setDataSource(ds);
@@ -116,7 +129,14 @@ const ValidationPage = ({ params }) => {
         console.error(err);
       }
     },
-    [dataSource, administrations, activeTab, onRefreshMap, params?.id]
+    [
+      dataSource,
+      administrations,
+      activeTab,
+      publication,
+      onRefreshMap,
+      params?.id,
+    ]
   );
 
   const onNonDisputed = async (isChecked = false) => {
@@ -162,18 +182,18 @@ const ValidationPage = ({ params }) => {
         }),
       };
 
-      const apiData = await api(
+      const { validated_values } = await api(
         "PUT",
         `/admin/publication/${params?.id}`,
         payload
       );
-      if (apiData?.validated_values) {
+      if (validated_values) {
         setPublication({
           ...publication,
-          validated_values: apiData.validated_values,
+          validated_values,
         });
         const ds = dataSource?.map((d) => {
-          const fd = apiData.validated_values.find(
+          const fd = validated_values.find(
             (v) => v?.administration_id === d?.administration_id
           );
           const category =
@@ -236,7 +256,7 @@ const ValidationPage = ({ params }) => {
         <div>
           {administrations?.length &&
           administrations.length === totalValidated ? (
-            <Button type="primary" size="large" disabled>
+            <Button type="primary" size="large">
               Ready to Publish
             </Button>
           ) : (
