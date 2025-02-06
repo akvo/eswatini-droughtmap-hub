@@ -71,9 +71,11 @@ const PublicationMap = ({
         await api("PUT", `/admin/publication/${publication?.id}`, {
           status: PUBLICATION_STATUS.in_validation,
         });
+        router.replace(`/publications/${publication?.id}/validation`);
+      } else {
+        router.push(`/publications/${publication?.id}/validation`);
       }
       setLoading(false);
-      router.push(`/publications/${publication?.id}/validation`);
     } catch (err) {
       console.error(err);
       setLoading(false);
