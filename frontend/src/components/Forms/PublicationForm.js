@@ -5,7 +5,6 @@ import {
   Button,
   Checkbox,
   DatePicker,
-  Divider,
   Flex,
   Form,
   Input,
@@ -126,7 +125,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                       <Search
                         onSearch={setSearch}
                         onClear={() => setSearch(null)}
-                        placeholder="Search reviewer name"
+                        placeholder="Search Reviewer"
                         className="w-full"
                         allowClear
                       />
@@ -210,15 +209,15 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
           </div>
           <div className="w-full lg:w-2/3 xl:w-3/4">
             <div>
-              <p>Year month</p>
+              <p>Publication Date</p>
               <Title level={3}>
                 {dayjs(formInstance.getFieldValue("year_month")).format(
-                  "YYYY-MM"
+                  "MMMM YYYY"
                 )}
               </Title>
             </div>
             <Form.Item
-              label="Due date review"
+              label="Review Deadline"
               name="due_date"
               rules={[
                 {

@@ -87,5 +87,5 @@ export const REVIEWER_MAP_FILTER = [
 
 export const CREATE_PUBLICATION_MAIL = {
   subject: "CDI Map review requested for month",
-  message: `Dear {{reviewer_name}},<br/>The CDI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.`,
+  message: `<p>Dear {{reviewer_name}}, The CDI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.</p>`,
 };
