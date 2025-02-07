@@ -13,7 +13,7 @@ const PublicationLayout = async ({ children }) => {
           <div className="w-full container flex flex-row justify-between items-center">
             <div>
               <Link href={"/publications"} className="text-white">
-                Home
+                Dashboard
               </Link>
             </div>
             <div>
@@ -23,7 +23,7 @@ const PublicationLayout = async ({ children }) => {
             </div>
           </div>
         </div>
-        <div className="w-full container">{children}</div>
+        <main className="w-full container">{children}</main>
       </div>
     </UserContextProvider>
   );
