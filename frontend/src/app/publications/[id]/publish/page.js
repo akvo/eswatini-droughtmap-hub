@@ -61,7 +61,7 @@ const PublishPage = ({ params }) => {
 
   const onConfirm = (payload) => {
     Modal.confirm({
-      title: `Publish CDI Map for: ${yearMonth}`,
+      title: `Publish SPI Map for: ${yearMonth}`,
       content: "Are you sure?",
       onOk: () => onFinish(payload),
     });
@@ -91,7 +91,7 @@ const PublishPage = ({ params }) => {
         <div>
           <Title
             level={2}
-          >{`Inkundla CDI Publication for: ${yearMonth}`}</Title>
+          >{`Inkundla SPI Publication for: ${yearMonth}`}</Title>
         </div>
         <div className="w-fit">
           <Space>

@@ -52,7 +52,7 @@ const PublicationMap = ({
     const items = [
       {
         key: 1,
-        label: "CDI Year month",
+        label: "Publication Date",
         children: dayjs(publication?.year_month).format("YYYY-MM"),
       },
       {
@@ -151,7 +151,7 @@ const PublicationMap = ({
       <Flex align="center" justify="space-between">
         <div className="w-10/12 py-2">
           <Title level={2}>
-            {`Inkundla CDI Publication for: ${dayjs(
+            {`Inkundla SPI Publication for: ${dayjs(
               publication?.year_month,
               "YYYY-MM"
             ).format("MMMM YYYY")}`}

@@ -9,7 +9,7 @@ import classNames from "classnames";
 export const metadata = {
   title: "eSwatini - DroughtMap Hub",
   description:
-    "The purpose of the DroughtMap Hub is to provide a user-friendly interface to validate, publish and browse CDI products.",
+    "The purpose of the DroughtMap Hub is to provide a user-friendly interface to validate, publish and browse SPI products.",
 };
 
 const DynamicScript = dynamic(() => import("@/components/DynamicScript"), {

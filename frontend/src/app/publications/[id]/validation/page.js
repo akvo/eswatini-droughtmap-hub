@@ -252,7 +252,7 @@ const ValidationPage = ({ params }) => {
     <div className="w-full">
       <div className="w-full py-3 flex flex-row align-center justify-between">
         <div>
-          <Title level={2}>{`Inkundla CDI Validation for: ${yearMonth}`}</Title>
+          <Title level={2}>{`Inkundla SPI Validation for: ${yearMonth}`}</Title>
         </div>
         <div>
           {administrations?.length &&

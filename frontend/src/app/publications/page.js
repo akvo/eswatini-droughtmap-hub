@@ -144,7 +144,7 @@ const PublicationsPage = () => {
     <div className="w-full h-auto space-y-4 pt-6">
       <Flex align="center" justify="space-between">
         <div className="w-2/3">
-          <Title level={2}>CDI Publication</Title>
+          <Title level={2}>SPI Publication</Title>
         </div>
         <div className="w-1/3 flex justify-end">
           <Select
