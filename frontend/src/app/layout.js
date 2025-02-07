@@ -1,20 +1,10 @@
-import localFont from "next/font/local";
 import "./globals.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider } from "antd";
 import dynamic from "next/dynamic";
 import { AppContextProvider } from "@/context";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import { inter, roboto, robotoMono } from "./fonts";
+import classNames from "classnames";
 
 export const metadata = {
   title: "eSwatini - DroughtMap Hub",
@@ -30,7 +20,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={classNames(
+          "antialiased",
+          inter.variable,
+          roboto.variable,
+          robotoMono.variable
+        )}
       >
         <AppContextProvider>
           <AntdRegistry>
@@ -39,6 +34,7 @@ export default function RootLayout({ children }) {
                 token: {
                   borderRadius: 0,
                   fontFamily: "inherit",
+                  fontFamilyCode: "--font-geist-sans",
                   colorPrimary: "#3E5EB9",
                   colorLink: "#3E5EB9",
                 },
