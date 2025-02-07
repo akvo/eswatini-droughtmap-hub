@@ -6,6 +6,10 @@ import { Table, Tag, Typography } from "antd";
 import { Can } from "@/components";
 import { api } from "@/lib";
 import { PAGE_SIZE } from "@/static/config";
+import dayjs from "dayjs";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+
+dayjs.extend(advancedFormat);
 
 const { Title } = Typography;
 
@@ -22,11 +26,13 @@ const ReviewsPage = () => {
       key: "due_date",
       defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.due_date) - new Date(b.due_date),
+      render: (value) => dayjs(value, "YYYY-MM-DD").format("MMMM Do, YYYY"),
     },
     {
       title: "MONTH",
       dataIndex: "year_month",
       key: "year_month",
+      render: (value) => dayjs(value, "YYYY-MM").format("MMMM YYYY"),
     },
     {
       title: "TINKHUNDLA",
