@@ -24,6 +24,7 @@ const { Title, Text } = Typography;
 
 const ReviewAdmModal = ({ review }) => {
   const [showSuggestion, setShowSuggestion] = useState(false);
+  const [comment, setComment] = useState("");
   const { activeAdm } = useAppContext();
   const appDispatch = useAppDispatch();
   const [form] = useForm();
@@ -83,7 +84,8 @@ const ReviewAdmModal = ({ review }) => {
       activeAdm?.administration_id &&
       activeAdm?.comment !== form.getFieldValue("comment")
     ) {
-      form.setFieldValue("comment", activeAdm?.comment);
+      form.setFieldValue("category", activeAdm.category);
+      form.setFieldValue("comment", activeAdm.comment);
     }
   }, [activeAdm, form]);
 
@@ -91,8 +93,14 @@ const ReviewAdmModal = ({ review }) => {
     updateForm();
   }, [updateForm]);
 
+  useEffect(() => {
+    if (form) {
+      form.validateFields(["comment"]);
+    }
+  }, [showSuggestion, form]);
+
   return (
-    <>
+    <Form form={form} onFinish={onFinish}>
       <Modal
         title={"INKHUNDLA STATUS"}
         open={isModalOpen}
@@ -141,6 +149,7 @@ const ReviewAdmModal = ({ review }) => {
                   onClose();
                 }
               }}
+              disabled={showSuggestion && comment?.trim()?.length === 0}
             >
               {activeAdm?.reviewed
                 ? "OK"
@@ -163,49 +172,56 @@ const ReviewAdmModal = ({ review }) => {
             </Tag>
           </Flex>
 
-          <Form initialValues={activeAdm} form={form} onFinish={onFinish}>
-            {activeAdm?.reviewed ? (
+          {activeAdm?.reviewed ? (
+            <Form.Item label="Computed Value" name="category">
+              <Text strong>
+                {DROUGHT_CATEGORY_LABEL?.[activeAdm.category?.reviewed]}
+              </Text>
+            </Form.Item>
+          ) : (
+            <Flex align="center" justify="space-between" className="w-full">
               <Form.Item label="Computed Value" name="category">
                 <Text strong>
-                  {DROUGHT_CATEGORY_LABEL?.[activeAdm.category?.reviewed]}
+                  {DROUGHT_CATEGORY_LABEL?.[activeAdm?.category?.raw]}
                 </Text>
               </Form.Item>
-            ) : (
-              <Flex align="center" justify="space-between" className="w-full">
-                <Form.Item label="Computed Value" name="category">
-                  <Text strong>
-                    {DROUGHT_CATEGORY_LABEL?.[activeAdm?.category?.raw]}
-                  </Text>
+              {showSuggestion && (
+                <Form.Item
+                  label="Suggested Value"
+                  name="category"
+                  className="w-1/2"
+                >
+                  <Select
+                    options={DROUGHT_CATEGORY.slice(
+                      0,
+                      DROUGHT_CATEGORY.length - 1
+                    )}
+                    placeholder="Select Drought category"
+                    disabled={activeAdm?.reviewed}
+                    allowClear
+                  />
                 </Form.Item>
-                {showSuggestion && (
-                  <Form.Item
-                    label="Suggested Value"
-                    name="category"
-                    className="w-1/2"
-                  >
-                    <Select
-                      options={DROUGHT_CATEGORY.slice(
-                        0,
-                        DROUGHT_CATEGORY.length - 1
-                      )}
-                      placeholder="Select Drought category"
-                      disabled={activeAdm?.reviewed}
-                      allowClear
-                    />
-                  </Form.Item>
-                )}
-              </Flex>
-            )}
-            <Form.Item name="comment">
-              <TextArea
-                placeholder={activeAdm?.reviewed ? "" : "Add a comment"}
-                disabled={review?.is_completed || activeAdm?.reviewed}
-              />
-            </Form.Item>
-          </Form>
+              )}
+            </Flex>
+          )}
+          <Form.Item
+            name="comment"
+            rules={[
+              {
+                required: showSuggestion,
+              },
+            ]}
+          >
+            <TextArea
+              placeholder={activeAdm?.reviewed ? "" : "Add a comment"}
+              disabled={review?.is_completed || activeAdm?.reviewed}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+          </Form.Item>
         </div>
       </Modal>
-    </>
+    </Form>
   );
 };
 
