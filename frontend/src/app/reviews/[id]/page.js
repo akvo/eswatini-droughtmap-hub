@@ -47,7 +47,7 @@ const ReviewDetailsPage = async ({ params }) => {
   return (
     <div className="w-full h-screen">
       <Flex align="center" justify="space-between" gap={4}>
-        <div className="leading-4 p-4">
+        <div className="leading-4 py-4">
           <h1 className="text-3xl font-bold">{`Inkundla CDI Review for: ${dayjs(review?.publication?.year_month, "YYYY-MM").format("MMMM YYYY")}`}</h1>
           <h2 className="text-xl">{`Review Deadline: ${review?.publication?.due_date}`}</h2>
         </div>
@@ -56,7 +56,7 @@ const ReviewDetailsPage = async ({ params }) => {
         )}
         {!review?.is_completed && remaining > 0 && (
           <div className="leading-2 p-4 text-center">
-            <strong>REMAINING Tinkhundla</strong>
+            <strong>REMAINING TINKHUNDLA</strong>
             <h2 className="text-2xl">{remaining}</h2>
           </div>
         )}

@@ -268,7 +268,7 @@ const ValidationPage = ({ params }) => {
             </Button>
           ) : (
             <div className="leading-2 text-center">
-              <strong>REMAINING Tinkhundla</strong>
+              <strong>REMAINING TINKHUNDLA</strong>
               <h2 className="text-2xl">
                 {administrations.length && !isNaN(totalValidated)
                   ? administrations.length - totalValidated
