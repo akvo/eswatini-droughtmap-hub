@@ -140,3 +140,11 @@ h5 {
 .edh-row.ant-table-row-selected > .bg-\[\#ffffff\] {
   background-color: #ffffff !important;
 }
+.ant-btn.dropdown-item {
+  min-width: 128px;
+  padding: 0;
+  justify-content: flex-start;
+}
+.ant-dropdown.dropdown-profile {
+  top: 48px !important;
+}
