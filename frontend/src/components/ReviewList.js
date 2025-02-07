@@ -5,6 +5,7 @@ import { api } from "@/lib";
 import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 import {
   Checkbox,
@@ -122,14 +123,14 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
           dataSource={form
             .getFieldValue("administrations")
             .filter((a) => a?.checked)}
-          header={<Title level={3}>CDI Value Overview</Title>}
+          header={<Title level={3}>Computed value Overview</Title>}
           renderItem={(item) => (
             <List.Item>
               <Space size="middle">
                 <Text strong>{item?.name}</Text>
-                <Text
+                <span
                   className={classNames("py-1 px-2 rounded text-white", {
-                    "border border-neutral-200": item?.category?.raw === 0,
+                    "border border-neutral-200 text-black": item?.category?.raw === DROUGHT_CATEGORY_VALUE.none
                   })}
                   style={{
                     backgroundColor: `${
@@ -138,7 +139,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                   }}
                 >
                   {DROUGHT_CATEGORY_LABEL?.[item.category?.raw]}
-                </Text>
+                </span>
               </Space>
             </List.Item>
           )}
