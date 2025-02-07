@@ -15,13 +15,13 @@ const openRawModal = (feature) => {
   const items = [
     {
       key: 1,
-      label: "CDI Value",
+      label: "SPI Value",
       children: DROUGHT_CATEGORY_LABEL?.[feature?.category?.raw],
     },
     {
       key: 2,
       label: "Computed Value",
-      children: feature?.value,
+      children: parseFloat(feature?.value, 10).toFixed(2),
     },
     {
       key: 3,
