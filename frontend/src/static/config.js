@@ -77,11 +77,11 @@ export const PUBLICATION_STATUS_OPTIONS = [
 export const REVIEWER_MAP_FILTER = [
   {
     value: "reviewed",
-    label: "Reviewed Values",
+    label: "Suggested/Approved Values",
   },
   {
     value: "raw",
-    label: "Raw Values",
+    label: "Computed Values",
   },
 ];
 
