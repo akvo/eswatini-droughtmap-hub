@@ -24,7 +24,7 @@ const CreatePublicationPage = async ({ searchParams }) => {
 
   return (
     <div className="w-full h-full pt-6 pb-4">
-      <h1 className="font-bold text-2xl xl:text-3xl py-2">Creat A New Publication</h1>
+      <h1 className="font-bold text-2xl xl:text-3xl py-2">Create A New Publication</h1>
       <PublicationForm
         {...{
           geonode,

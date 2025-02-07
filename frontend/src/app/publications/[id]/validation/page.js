@@ -252,7 +252,7 @@ const ValidationPage = ({ params }) => {
     <div className="w-full">
       <div className="w-full py-3 flex flex-row align-center justify-between">
         <div>
-          <Title level={2}>{`Inkundla CDI Validation for: ${yearMonth}`}</Title>
+          <Title level={2}>{`Inkundla SPI Validation for: ${yearMonth}`}</Title>
         </div>
         <div>
           {administrations?.length &&
@@ -268,7 +268,7 @@ const ValidationPage = ({ params }) => {
             </Button>
           ) : (
             <div className="leading-2 text-center">
-              <strong>REMAINING Tinkhundla</strong>
+              <strong>REMAINING TINKHUNDLA</strong>
               <h2 className="text-2xl">
                 {administrations.length && !isNaN(totalValidated)
                   ? administrations.length - totalValidated

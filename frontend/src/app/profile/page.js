@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SubmitButton } from "@/components";
-import { Alert, Button, Form, Input, message, Modal, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  message,
+  Modal,
+  Skeleton,
+  Typography,
+} from "antd";
 import { useUserContext, useUserDispatch } from "@/context/UserContextProvider";
 import { api, storage } from "@/lib";
 import dayjs from "dayjs";
@@ -60,22 +69,29 @@ const UnverifiedAlert = ({ email }) => {
 
 const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
+  const [preload, setPreload] = useState(true);
 
   const [form] = useForm();
   const userContext = useUserContext();
   const userDispatch = useUserDispatch();
 
   const fetchProfile = useCallback(async () => {
-    if (!userContext?.id) {
-      const payload = await api("GET", "/users/me");
-      form.setFieldValue("name", payload?.name);
-      form.setFieldValue("email", payload?.email);
-      userDispatch({
-        type: "UPDATE",
-        payload,
-      });
+    try {
+      if (preload) {
+        setPreload(false);
+        const payload = await api("GET", "/users/me");
+        if (payload?.id) {
+          userDispatch({
+            type: "UPDATE",
+            payload,
+          });
+        }
+      }
+    } catch (err) {
+      setPreload(false);
+      console.error(err);
     }
-  }, [userContext, userDispatch, form]);
+  }, [userDispatch, preload]);
 
   useEffect(() => {
     fetchProfile();
@@ -112,45 +128,52 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="w-full md:w-1/2 h-full space-y-4">
+    <div className="w-full md:w-1/2 h-full space-y-4 py-6">
       <Title level={2}>Your profile</Title>
       {userContext?.id && !userContext?.email_verified && (
         <UnverifiedAlert email={userContext?.email} />
       )}
-      <Form layout="vertical" form={form} onFinish={onFinish}>
-        <Form.Item
-          label="Email"
-          name="email"
-          rules={[
-            {
-              required: true,
-              type: "email",
-            },
-          ]}
+      <Skeleton loading={!userContext?.id} title paragraph>
+        <Form
+          layout="vertical"
+          initialValues={userContext}
+          form={form}
+          onFinish={onFinish}
         >
-          <Input
-            type="email"
-            placeholder="Your Email"
-            addonAfter={
-              <>{userContext?.email_verified ? "Verified" : "Unverified"}</>
-            }
-          />
-        </Form.Item>
-        <Form.Item
-          label="Full Name"
-          name="name"
-          rules={[
-            {
-              required: true,
-            },
-          ]}
-        >
-          <Input placeholder="Your name" />
-        </Form.Item>
-        <SubmitButton form={form} loading={loading}>
-          Save
-        </SubmitButton>
-      </Form>
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              {
+                required: true,
+                type: "email",
+              },
+            ]}
+          >
+            <Input
+              type="email"
+              placeholder="Your Email"
+              addonAfter={
+                <>{userContext?.email_verified ? "Verified" : "Unverified"}</>
+              }
+            />
+          </Form.Item>
+          <Form.Item
+            label="Full Name"
+            name="name"
+            rules={[
+              {
+                required: true,
+              },
+            ]}
+          >
+            <Input placeholder="Your name" />
+          </Form.Item>
+          <SubmitButton form={form} loading={loading}>
+            Save
+          </SubmitButton>
+        </Form>
+      </Skeleton>
     </div>
   );
 };

@@ -81,17 +81,17 @@ const ValidationModal = ({
         <strong>Validation Form</strong>
       </Divider>
       <Form>
-        <Form.Item label="Computed CDI Value">
+        <Form.Item label="Computed Value">
           <Select
             options={DROUGHT_CATEGORY}
-            placeholder="Computed CDI Value"
+            placeholder="Computed Value"
             className="w-full"
             defaultValue={data?.initial_category}
             allowClear
             disabled
           />
         </Form.Item>
-        <Form.Item label="Validated CDI Value">
+        <Form.Item label="Validated SPI Value">
           <Select
             options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
             placeholder="Select Drought category"

@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "antd";
 import { auth } from "@/lib";
+import classNames from "classnames";
 
-const LogoutButton = () => {
+const LogoutButton = ({ className = null }) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -15,7 +16,12 @@ const LogoutButton = () => {
     router.push("/");
   };
   return (
-    <Button htmlType="button" onClick={onLogout} loading={loading} ghost>
+    <Button
+      type="link"
+      onClick={onLogout}
+      loading={loading}
+      className={classNames(className)}
+    >
       Logout
     </Button>
   );

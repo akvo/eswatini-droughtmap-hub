@@ -21,6 +21,9 @@ import {
 } from "@/static/config";
 import { api } from "@/lib";
 import dayjs from "dayjs";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+
+dayjs.extend(advancedFormat);
 
 const { Title } = Typography;
 
@@ -38,7 +41,7 @@ const PublicationsPage = () => {
       key: "created",
       defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.created) - new Date(b.created),
-      render: (_, { created }) => dayjs(created).format("DD/MM/YYYY h:mm A"),
+      render: (_, { created }) => dayjs(created).format("MMMM Do, YYYY - h:mm A"),
     },
     {
       title: "PREVIEW",
@@ -59,10 +62,10 @@ const PublicationsPage = () => {
       },
     },
     {
-      title: "MONTH",
+      title: "PUBLICATION DATE",
       dataIndex: "year_month",
       key: "year_month",
-      render: (_, { year_month }) => dayjs(year_month).format("YYYY-MM"),
+      render: (_, { year_month }) => dayjs(year_month).format("MMMM YYYY"),
     },
     {
       title: "STATUS",
@@ -141,7 +144,7 @@ const PublicationsPage = () => {
     <div className="w-full h-auto space-y-4 pt-6">
       <Flex align="center" justify="space-between">
         <div className="w-2/3">
-          <Title level={2}>CDI Publication</Title>
+          <Title level={2}>SPI Publication</Title>
         </div>
         <div className="w-1/3 flex justify-end">
           <Select
