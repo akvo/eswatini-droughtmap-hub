@@ -81,10 +81,10 @@ const ValidationModal = ({
         <strong>Validation Form</strong>
       </Divider>
       <Form>
-        <Form.Item label="Computed CDI Value">
+        <Form.Item label="Computed Value">
           <Select
             options={DROUGHT_CATEGORY}
-            placeholder="Computed CDI Value"
+            placeholder="Computed Value"
             className="w-full"
             defaultValue={data?.initial_category}
             allowClear

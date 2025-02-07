@@ -142,7 +142,11 @@ const ReviewAdmModal = ({ review }) => {
                 }
               }}
             >
-              {activeAdm?.reviewed ? "OK" : "Approve"}
+              {activeAdm?.reviewed
+                ? "OK"
+                : showSuggestion
+                ? "Suggest New Value"
+                : "Approve Computed Value"}
             </Button>
           </Flex>
         }
@@ -161,21 +165,21 @@ const ReviewAdmModal = ({ review }) => {
 
           <Form initialValues={activeAdm} form={form} onFinish={onFinish}>
             {activeAdm?.reviewed ? (
-              <Form.Item label="Current CDI Value" name="category">
+              <Form.Item label="Computed Value" name="category">
                 <Text strong>
                   {DROUGHT_CATEGORY_LABEL?.[activeAdm.category?.reviewed]}
                 </Text>
               </Form.Item>
             ) : (
               <Flex align="center" justify="space-between" className="w-full">
-                <Form.Item label="Computed CDI Value" name="category">
+                <Form.Item label="Computed Value" name="category">
                   <Text strong>
                     {DROUGHT_CATEGORY_LABEL?.[activeAdm?.category?.raw]}
                   </Text>
                 </Form.Item>
                 {showSuggestion && (
                   <Form.Item
-                    label="Suggested CDI Value"
+                    label="Suggested Value"
                     name="category"
                     className="w-1/2"
                   >
