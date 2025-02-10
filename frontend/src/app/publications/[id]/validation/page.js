@@ -3,7 +3,10 @@
 import { ValidationModal, ValidationTable } from "@/components";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 import { api, transformReviews } from "@/lib";
-import { DROUGHT_CATEGORY_LABEL } from "@/static/config";
+import {
+  DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
 import { Button, Skeleton, Tabs, Typography } from "antd";
 import dayjs from "dayjs";
 import dynamic from "next/dynamic";
@@ -37,11 +40,19 @@ const ValidationPage = ({ params }) => {
     ? dayjs(publication?.year_month, "YYYY-MM").format("MMMM YYYY")
     : "...";
 
-  const totalValidated = useMemo(() => {
-    return publication?.validated_values?.filter(
-      (v) => v?.category || v?.category === 0
+  const [totalValidated, totalData] = useMemo(() => {
+    if (!publication?.id) {
+      return [0, 0];
+    }
+    const total = publication?.initial_values?.filter(
+      (v) => v?.category !== DROUGHT_CATEGORY_VALUE.none
     )?.length;
-  }, [publication?.validated_values]);
+    const validated =
+      publication?.validated_values?.filter(
+        (v) => v?.category || v?.category === 0
+      )?.length || 0;
+    return [validated, total];
+  }, [publication]);
 
   const onFilter = async (nonDisputed, nonValidated) => {
     try {
@@ -49,14 +60,15 @@ const ValidationPage = ({ params }) => {
         "GET",
         `/admin/publication-reviews/${params.id}?non_disputed=${nonDisputed}&non_validated=${nonValidated}`
       );
-      setDataSource(
-        transformReviews(administrations, reviews, users, {
-          ...publication,
-          validated_values,
-        })
-      );
+      const _dataSource = transformReviews(administrations, reviews, users, {
+        ...publication,
+        validated_values,
+      });
+      setDataSource(_dataSource);
+      return _dataSource;
     } catch (err) {
       console.error(err);
+      return [];
     }
   };
 
@@ -140,12 +152,19 @@ const ValidationPage = ({ params }) => {
     ]
   );
 
-  const onNonDisputed = async (isChecked = false) => {
+  const onNonDisputed = (isChecked = false) => {
     setFilter({
       ...filter,
       nonDisputed: isChecked,
     });
-    await onFilter(isChecked, filter.nonValidated);
+    return new Promise(async (resolve, reject) => {
+      try {
+        const res = await onFilter(isChecked, filter.nonValidated);
+        resolve(res?.map((r) => r?.administration_id));
+      } catch {
+        reject([]);
+      }
+    });
   };
 
   const onNonValidated = async (isChecked = false) => {
@@ -255,8 +274,7 @@ const ValidationPage = ({ params }) => {
           <Title level={2}>{`Inkundla SPI Validation for: ${yearMonth}`}</Title>
         </div>
         <div>
-          {administrations?.length &&
-          administrations.length === totalValidated ? (
+          {totalData && totalData === totalValidated ? (
             <Button
               type="primary"
               size="large"
@@ -270,9 +288,7 @@ const ValidationPage = ({ params }) => {
             <div className="leading-2 text-center">
               <strong>REMAINING TINKHUNDLA</strong>
               <h2 className="text-2xl">
-                {administrations.length && !isNaN(totalValidated)
-                  ? administrations.length - totalValidated
-                  : administrations.length || "..."}
+                {totalData ? totalData - totalValidated : "..."}
               </h2>
             </div>
           )}

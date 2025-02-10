@@ -3,6 +3,7 @@
 import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
   REVIEWER_MAP_FILTER,
 } from "@/static/config";
 import { styleOptions } from "@/static/poly-styles";
@@ -91,6 +92,9 @@ const ReviewerMap = ({ data = [] }) => {
     const findAdm = data?.find(
       (d) => d?.administration_id === feature?.properties?.administration_id
     );
+    if (findAdm?.category?.raw === DROUGHT_CATEGORY_VALUE.none) {
+      return;
+    }
     if (valueType === REVIEWER_MAP_FILTER[1].value) {
       openRawModal({ ...findAdm, name: feature?.properties?.name });
     } else {
