@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { SubmitButton } from "@/components";
 import { Checkbox, Form, Input, message, Modal, Space, Typography } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import CDIMap from "@/components/Map/CDIMap";
 import dayjs from "dayjs";
 import { api } from "@/lib";
 import { useRouter } from "next/navigation";
@@ -12,6 +11,10 @@ import { PUBLICATION_STATUS } from "@/static/config";
 import classNames from "classnames";
 
 const TinyEditor = dynamic(() => import("@/components/TinyEditor"), {
+  ssr: false,
+});
+
+const ValidationMap = dynamic(() => import("@/components/Map/ValidationMap"), {
   ssr: false,
 });
 
@@ -75,7 +78,16 @@ const PublishPage = ({ params }) => {
       }
       form.setFieldValue("year_month", apiData.year_month);
       form.setFieldValue("bulletin_url", apiData.bulletin_url);
-      setPublication(apiData);
+      const validatedValues = apiData?.validated_values?.map((v) => {
+        const findInit = apiData?.initial_values?.find(
+          (i) => i?.administration_id === v?.administration_id
+        );
+        return {
+          ...v,
+          initial_category: findInit?.category,
+        };
+      });
+      setPublication({ ...apiData, validated_values: validatedValues });
     } catch (err) {
       console.error(err);
     }
@@ -103,6 +115,7 @@ const PublishPage = ({ params }) => {
                 });
               }}
               checked={settings.map}
+              disabled={!settings.editor && settings.map}
             >
               Show Map
             </Checkbox>
@@ -114,6 +127,7 @@ const PublishPage = ({ params }) => {
                 });
               }}
               checked={settings.editor}
+              disabled={settings.editor && !settings.map}
             >
               Show Editor
             </Checkbox>
@@ -128,20 +142,11 @@ const PublishPage = ({ params }) => {
             "w-full": !settings.editor && settings.map,
           })}
         >
-          {settings.map && (
-            <CDIMap>
-              <div
-                className={classNames(
-                  "absolute top-0 right-0 z-10 p-2 space-y-4",
-                  {
-                    "w-1/3": !settings.editor && settings.map,
-                    "w-1/2": settings.editor && settings.map,
-                  }
-                )}
-              >
-                <CDIMap.Legend />
-              </div>
-            </CDIMap>
+          {settings.map && publication?.validated_values && (
+            <ValidationMap
+              dataSource={publication?.validated_values}
+              readOnly
+            />
           )}
         </div>
         <div
