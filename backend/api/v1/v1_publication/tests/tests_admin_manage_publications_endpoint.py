@@ -36,8 +36,8 @@ class PublicationViewSetTestCase(APITestCase):
             "cdi_geonode_id": 1,
             "year_month": "2025-01-01",
             "initial_values": [
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             "due_date": "2025-02-28",
             "reviewers": [r.id for r in self.reviewers],
@@ -84,8 +84,8 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(
             data["initial_values"],
             [
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
         )
         publication = Publication.objects.get(pk=data["id"])
@@ -120,8 +120,8 @@ class PublicationViewSetTestCase(APITestCase):
             cdi_geonode_id=1,
             year_month="2025-01-01",
             initial_values=[
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             due_date="2025-02-28",
         )
@@ -141,8 +141,8 @@ class PublicationViewSetTestCase(APITestCase):
             cdi_geonode_id=1,
             year_month="2025-01-01",
             initial_values=[
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             due_date="2025-02-28",
         )
@@ -153,7 +153,7 @@ class PublicationViewSetTestCase(APITestCase):
         data = {
             "validated_values": [
                 {"value": 1, "administration_id": 1253002, "category": "d4"},
-                {"value": 14, "administration_id": 1253053, "category": "d3"},
+                {"value": 14, "administration_id": 1253053, "category": 4},
             ],
             "status": PublicationStatus.published,
             "narrative": "<p>This is a narrative</p>",
@@ -167,7 +167,7 @@ class PublicationViewSetTestCase(APITestCase):
             publication.validated_values,
             [
                 {"value": 1, "administration_id": 1253002, "category": "d4"},
-                {"value": 14, "administration_id": 1253053, "category": "d3"},
+                {"value": 14, "administration_id": 1253053, "category": 4},
             ],
         )
 
@@ -176,8 +176,8 @@ class PublicationViewSetTestCase(APITestCase):
             cdi_geonode_id=1,
             year_month="2025-01-01",
             initial_values=[
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             due_date="2025-02-28",
         )
@@ -196,8 +196,8 @@ class PublicationViewSetTestCase(APITestCase):
             "cdi_geonode_id": 1,
             "year_month": "2025-01-01",
             "initial_values": [
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             "due_date": "2025-02-28",
             "reviewers": [],
@@ -228,8 +228,8 @@ class PublicationViewSetTestCase(APITestCase):
             "cdi_geonode_id": 1,
             "year_month": "2025-01-01",
             "initial_values": [
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             "due_date": "2025-01-28",
             "reviewers": [r.id for r in self.reviewers],
