@@ -34,8 +34,8 @@ class PublicationViewSetTestCase(APITestCase):
             cdi_geonode_id=1,
             year_month="2025-01-01",
             initial_values=[
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             due_date="2025-02-28",
         )
@@ -64,8 +64,8 @@ class PublicationViewSetTestCase(APITestCase):
             cdi_geonode_id=1,
             year_month="2025-01-01",
             initial_values=[
-                {"value": 3.5, "administration_id": 1253002, "category": "d3"},
-                {"value": 32, "administration_id": 1253053, "category": "d0"},
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
             ],
             due_date="2025-02-28",
         )
@@ -109,4 +109,93 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(
             response.json(),
             {"detail": "No Publication matches the given query."},
+        )
+
+    def test_get_non_disputed_publication_reviews(self):
+        publication = Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2025-01-01",
+            initial_values=[
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
+                {
+                    "value": -9999,
+                    "administration_id": 4588078,
+                    "category": -9999
+                },
+            ],
+            due_date="2025-02-28",
+        )
+        publication.reviews.set([
+            Review(publication=publication, user=reviewer)
+            for reviewer in self.reviewers
+        ], bulk=False)
+        for reviewer in publication.reviews.all():
+            reviewer.suggestion_values = [
+                {"administration_id": 1253002, "category": "d1"},
+                {"administration_id": 1253053, "category": "d2"},
+            ]
+            reviewer.is_completed = True
+            reviewer.completed_at = "2025-01-01T00:00:00Z"
+            reviewer.save()
+        publication.status = PublicationStatus.in_validation
+        publication.save()
+        url = reverse(
+            "publication-reviews",
+            kwargs={
+                "version": "v1",
+                "pk": publication.id,
+            }
+        )
+        url = f"{url}?non_disputed=1"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            len(response.data["reviews"]),
+            4
+        )
+
+    def test_get_non_validated_publication_reviews(self):
+        publication = Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2025-01-01",
+            initial_values=[
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+                {"value": 32, "administration_id": 1253053, "category": 1},
+                {"value": 2, "administration_id": 4588078, "category": 5},
+            ],
+            due_date="2025-02-28",
+        )
+        publication.reviews.set([
+            Review(publication=publication, user=reviewer)
+            for reviewer in self.reviewers
+        ], bulk=False)
+        for reviewer in publication.reviews.all():
+            reviewer.suggestion_values = [
+                {"administration_id": 1253002, "category": "d1"},
+                {"administration_id": 1253053, "category": "d2"},
+            ]
+            reviewer.is_completed = True
+            reviewer.completed_at = "2025-01-01T00:00:00Z"
+            reviewer.save()
+        publication.status = PublicationStatus.in_validation
+        publication.validated_values = [
+            {"administration_id": 1253002, "category": 4},
+            {"administration_id": 1253053, "category": None},
+            {"administration_id": 4588078, "category": None},
+        ]
+        publication.save()
+        url = reverse(
+            "publication-reviews",
+            kwargs={
+                "version": "v1",
+                "pk": publication.id,
+            }
+        )
+        url = f"{url}?non_validated=1"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            len(response.data["reviews"]),
+            2
         )

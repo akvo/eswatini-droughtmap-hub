@@ -5,6 +5,7 @@ import {
   DROUGHT_CATEGORY,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 import {
   Button,
@@ -63,16 +64,19 @@ const ValidationTable = ({
       {
         title: "Validated Value",
         dataIndex: "category",
-        render: (value, { administration_id }) => (
-          <Select
-            onChange={(val) => onSelectValue(val, administration_id)}
-            options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
-            placeholder="Select Drought category"
-            className="w-full"
-            defaultValue={value}
-            allowClear
-          />
-        ),
+        render: (value, { administration_id, initial_category }) =>
+          initial_category === DROUGHT_CATEGORY_VALUE.none ? (
+            `${DROUGHT_CATEGORY_LABEL[DROUGHT_CATEGORY_VALUE.none]}`
+          ) : (
+            <Select
+              onChange={(val) => onSelectValue(val, administration_id)}
+              options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
+              placeholder="Select Drought category"
+              className="w-full"
+              defaultValue={value}
+              allowClear
+            />
+          ),
         fixed: "left",
         width: 192,
       },
@@ -81,6 +85,9 @@ const ValidationTable = ({
         title: "",
         dataIndex: "administration_id",
         render: (_, record) => {
+          if (record?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
+            return null;
+          }
           return (
             <Button type="text" onClick={() => onDetails(record)}>
               {record?.category !== undefined && record?.category !== null ? (
@@ -100,12 +107,9 @@ const ValidationTable = ({
   const handleNonDisputed = async (e) => {
     setUpdating(true);
     const isChecked = e.target.checked;
-    await onNonDisputed(isChecked);
+    const _selected = await onNonDisputed(isChecked);
     setUpdating(false);
     if (isChecked) {
-      const _selected = data
-        .filter((d) => d?.category === null || d?.category === undefined)
-        .map(({ key }) => key);
       setSelectedRowKeys(_selected);
     } else {
       setSelectedRowKeys([]);

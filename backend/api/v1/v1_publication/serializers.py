@@ -22,6 +22,7 @@ from utils.custom_serializer_fields import (
 from .constants import CDIGeonodeCategory, PublicationStatus
 from api.v1.v1_users.serializers import UserReviewerSerializer
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
+from api.v1.v1_publication.constants import DroughtCategory
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -98,7 +99,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         reviewed_count = sum(
             1 for item in suggestion_values if item.get("reviewed") is True
         )
-        total = self.context.get("total", len(suggestion_values))
+        total = len(list(filter(
+            lambda x: x["category"] != DroughtCategory.none,
+            obj.publication.initial_values
+        )))
         return f"{reviewed_count}/{total}"
 
     class Meta:
@@ -137,7 +141,10 @@ class ReviewListSerializer(serializers.ModelSerializer):
         reviewed_count = sum(
             1 for item in suggestion_values if item.get('reviewed') is True
         )
-        total = self.context.get("total", 0)
+        total = len(list(filter(
+            lambda x: x["category"] != DroughtCategory.none,
+            obj.publication.initial_values
+        )))
         return f"{reviewed_count}/{total}"
 
     class Meta:
@@ -212,11 +219,22 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
         non_disputed = self.context.get("non_disputed", False)
         non_validated = self.context.get("non_validated", False)
         validated_values = obj.validated_values or []
+        no_data_ids = [
+            v["administration_id"]
+            for v in list(filter(
+                lambda x: x["category"] == DroughtCategory.none,
+                obj.initial_values
+            ))
+        ]
         non_validated_ids = [
             v["administration_id"]
-            for v in list(
-                filter(lambda x: x["category"] is None, validated_values)
-            )
+            for v in list(filter(
+                lambda x: (
+                    x.get("category") is None
+                    and x["administration_id"] not in no_data_ids
+                ),
+                validated_values
+            ))
         ]
 
         reviews = [
@@ -232,14 +250,18 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
             filtered_reviews = []
             grouped_reviews = defaultdict(list)
             for review in reviews:
-                grouped_reviews[review["administration_id"]].append(review)
+                if review["category"] != DroughtCategory.none:
+                    grouped_reviews[review["administration_id"]].append(review)
             for _, admin_reviews in grouped_reviews.items():
                 categories = {r["category"] for r in admin_reviews}
                 if len(categories) == 1:
                     filtered_reviews.extend(admin_reviews)
             reviews = filtered_reviews
 
-        if non_validated:
+        if non_validated and (
+            len(non_validated_ids) or
+            len(non_validated_ids) == 0 and len(obj.validated_values)
+        ):
             reviews = [
                 r for r in reviews
                 if r["administration_id"] in non_validated_ids

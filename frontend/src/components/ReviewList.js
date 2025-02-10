@@ -28,16 +28,20 @@ const { useForm } = Form;
 const { Text, Title } = Typography;
 
 const mergeData = (administrations, dataSource) => {
-  return administrations?.map((a) => {
-    const findData =
-      dataSource.find((d) => d?.administration_id === a?.administration_id) ||
-      {};
-    return {
-      ...a,
-      ...findData,
-      checked: false,
-    };
-  });
+  return administrations
+    ?.map((a) => {
+      const findData =
+        dataSource.find((d) => d?.administration_id === a?.administration_id) ||
+        {};
+      return {
+        ...a,
+        ...findData,
+        checked: false,
+      };
+    })
+    ?.sort((a, b) =>
+      a?.name?.toLowerCase()?.localeCompare(b?.name?.toLowerCase())
+    );
 };
 
 const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
@@ -57,9 +61,13 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
 
   const onCheckAll = (e) => {
     const isChecked = e.target.checked;
-    const admValues = form
-      .getFieldValue("administrations")
-      .map((a) => (!a?.reviewed ? { ...a, checked: isChecked } : a));
+    const admValues = form.getFieldValue("administrations").map((a) => {
+      const checked =
+        isChecked && a?.category?.raw === DROUGHT_CATEGORY_VALUE.none
+          ? false
+          : isChecked;
+      return !a?.reviewed ? { ...a, checked } : a;
+    });
 
     appDispatch({
       type: "SET_SELECTED_ADM",
@@ -130,7 +138,8 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                 <Text strong>{item?.name}</Text>
                 <span
                   className={classNames("py-1 px-2 rounded text-white", {
-                    "border border-neutral-200 text-black": item?.category?.raw === DROUGHT_CATEGORY_VALUE.none
+                    "border border-neutral-200 text-black":
+                      item?.category?.raw === DROUGHT_CATEGORY_VALUE.none,
                   })}
                   style={{
                     backgroundColor: `${
@@ -259,6 +268,13 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                                         ])
                                       )
                                     }
+                                    disabled={
+                                      formInstance.getFieldValue([
+                                        "administrations",
+                                        field.name,
+                                        "category",
+                                      ])?.raw === DROUGHT_CATEGORY_VALUE.none
+                                    }
                                   />
                                 </Form.Item>
                               )}
@@ -272,6 +288,13 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                                   )
                                 }
                                 type="link"
+                                disabled={
+                                  formInstance.getFieldValue([
+                                    "administrations",
+                                    field.name,
+                                    "category",
+                                  ])?.raw === DROUGHT_CATEGORY_VALUE.none
+                                }
                               >
                                 {formInstance.getFieldValue([
                                   "administrations",
@@ -280,11 +303,17 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                                 ])}
                               </Button>
                             </Space>
-                            <div>
-                              <Tag color={isReviewed ? "success" : null}>
-                                {isReviewed ? "Reviewed" : "Pending"}
-                              </Tag>
-                            </div>
+                            {formInstance.getFieldValue([
+                              "administrations",
+                              field.name,
+                              "category",
+                            ])?.raw !== DROUGHT_CATEGORY_VALUE.none && (
+                              <div>
+                                <Tag color={isReviewed ? "success" : null}>
+                                  {isReviewed ? "Reviewed" : "Pending"}
+                                </Tag>
+                              </div>
+                            )}
                           </div>
                         );
                       })}

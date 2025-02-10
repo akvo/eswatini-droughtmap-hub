@@ -1,12 +1,40 @@
 "use client";
 
-import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import {
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
 import { styleOptions } from "@/static/poly-styles";
 import { useCallback } from "react";
-import { Spin } from "antd";
+import { Descriptions, Modal, Spin } from "antd";
 import CDIMap from "./CDIMap";
 
-const ValidationMap = ({ refreshMap, dataSource, onDetails }) => {
+const openFeature = (feature) => {
+  const items = [
+    {
+      key: 1,
+      label: "Validated Value",
+      children: DROUGHT_CATEGORY_LABEL?.[feature?.category],
+    },
+    {
+      key: 2,
+      label: "Computed Value",
+      children: DROUGHT_CATEGORY_LABEL?.[feature?.initial_category],
+    },
+  ];
+  return Modal.info({
+    title: feature?.name,
+    content: <Descriptions items={items} layout="horizontal" column={1} />,
+  });
+};
+
+const ValidationMap = ({
+  refreshMap,
+  dataSource,
+  onDetails,
+  readOnly = false,
+}) => {
   const getData = useCallback(
     (admID) => {
       const findData = dataSource?.find((d) => d?.administration_id === admID);
@@ -48,9 +76,16 @@ const ValidationMap = ({ refreshMap, dataSource, onDetails }) => {
   const onClick = useCallback(
     (feature) => {
       const data = getData(feature?.properties?.administration_id)?.[2];
-      onDetails({ ...data, name: feature?.properties?.name });
+      if (data?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
+        return;
+      }
+      if (readOnly) {
+        openFeature({ ...data, name: feature?.properties?.name });
+      } else {
+        onDetails({ ...data, name: feature?.properties?.name });
+      }
     },
-    [getData, onDetails]
+    [getData, onDetails, readOnly]
   );
 
   if (refreshMap) {
