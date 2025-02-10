@@ -13,7 +13,7 @@ from api.v1.v1_users.constants import UserRoleTypes
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
-class PublicationViewSetTestCase(APITestCase):
+class PublicationReviewsTestCase(APITestCase):
     def setUp(self):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
