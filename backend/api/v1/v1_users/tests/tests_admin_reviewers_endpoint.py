@@ -1,5 +1,6 @@
 from django.urls import reverse
 from django.core.management import call_command
+from django.db.models import Q
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
@@ -74,3 +75,24 @@ class ReviewerListAPITestCase(APITestCase):
 
         # Assert response status
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_search_reviewers_by_name(self):
+        # Force authentication as the admin user
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Send GET request
+        reviewer = SystemUser.objects.filter(
+            role=UserRoleTypes.reviewer
+        ).order_by("?").first()
+        search = reviewer.name[:3]
+        url = f"{self.url}?search={search}"
+        response = self.client.get(url)
+
+        # Assert response status
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        total = SystemUser.objects.filter(
+            Q(name__icontains=search) |
+            Q(email__icontains=search)
+        ).count()
+        self.assertEqual(response.data["total"], total)

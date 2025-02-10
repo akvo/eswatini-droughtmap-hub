@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.contrib.auth import authenticate
 from django.http import HttpResponseRedirect
 from django.conf import settings
+from django.db.models import Q
 from django_q.tasks import async_task
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -374,6 +375,12 @@ class ReviewerListAPI(GenericAPIView):
                 type=OpenApiTypes.NUMBER,
                 location=OpenApiParameter.QUERY,
             ),
+            OpenApiParameter(
+                name="search",
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
         ],
         tags=["Admin"],
         responses={
@@ -393,6 +400,12 @@ class ReviewerListAPI(GenericAPIView):
     )
     def get(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+        search = request.GET.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(email__icontains=search)
+            )
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
