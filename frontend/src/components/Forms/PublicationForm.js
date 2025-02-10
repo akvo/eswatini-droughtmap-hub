@@ -28,10 +28,12 @@ const { Search } = Input;
 
 const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
   const [search, setSearch] = useState(null);
+  const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadMore, setLoadMore] = useState(false);
   const [revPage, setRevPage] = useState(1);
   const [errors, setErrors] = useState([]);
+  const [checkItems, setCheckItems] = useState([]);
   const [form] = useForm();
   const router = useRouter();
 
@@ -41,15 +43,22 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
   const onLoadReviewers = async (page) => {
     setLoadMore(true);
     try {
+      const apiURL = search
+        ? `/admin/reviewers?page=${page}&search=${search}`
+        : `/admin/reviewers?page=${page}`;
       const { data: newReviewerList, current: currPage } = await api(
         "GET",
-        `/admin/reviewers?page=${page}`
+        apiURL
       );
-      setRevPage(currPage);
-      form.setFieldValue("reviewers", [
+      const _reviewers = [
         ...form.getFieldValue("reviewers"),
         ...newReviewerList,
-      ]);
+      ].map((r) => ({
+        ...r,
+        checked: checkItems.includes(r?.id),
+      }));
+      setRevPage(currPage);
+      form.setFieldValue("reviewers", _reviewers);
       setLoadMore(false);
     } catch (err) {
       console.error(err);
@@ -67,11 +76,12 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         year_month: dayjs(geonode?.year_month).format("YYYY-MM-DD"),
         initial_values: [],
         reviewers: values?.reviewers
-          ?.filter((r) => r?.checked)
+          ?.filter((r) => checkItems.includes(r.id))
           ?.map((r) => r?.id),
         download_url: geonode?.download_url,
       });
       if (res?.id) {
+        setCheckItems([]);
         message.success("New publication successfully created");
         router.push("/publications");
       } else {
@@ -82,6 +92,40 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
       console.error(err);
       message.error("[ADM-P-1] Please report this issue along with the code.");
       setLoading(false);
+    }
+  };
+
+  const onSearch = async (value) => {
+    setSearch(value);
+    setSearching(true);
+    try {
+      setTimeout(async () => {
+        const apiURL = value
+          ? `/admin/reviewers?page=1&search=${value}`
+          : "/admin/reviewers?page=1";
+        const { data: _reviewers } = await api("GET", apiURL);
+        form.setFieldValue(
+          "reviewers",
+          _reviewers.map((r) => ({
+            ...r,
+            checked: checkItems.includes(r?.id),
+          }))
+        );
+        setSearching(false);
+      }, 300);
+    } catch (err) {
+      console.error(err);
+      setSearching(false);
+    }
+  };
+
+  const onCheck = (isChecked, id) => {
+    if (isChecked && !checkItems.includes(id)) {
+      setCheckItems([...checkItems, id]);
+    }
+
+    if (!isChecked) {
+      setCheckItems(checkItems.filter((item) => item !== id));
     }
   };
 
@@ -123,8 +167,8 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                   header={
                     <div className="w-full text-right">
                       <Search
-                        onSearch={setSearch}
-                        onClear={() => setSearch(null)}
+                        onChange={(e) => onSearch(e.target.value)}
+                        onClear={() => onSearch(null)}
                         placeholder="Search Reviewer"
                         className="w-full"
                         allowClear
@@ -144,15 +188,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                       </Button>
                     ) : null
                   }
-                  dataSource={fields.filter((f) => {
-                    if (search) {
-                      return formInstance
-                        .getFieldValue(["reviewers", f.name, "name"])
-                        ?.toLowerCase()
-                        ?.includes(search?.toLowerCase());
-                    }
-                    return f;
-                  })}
+                  dataSource={fields}
                   renderItem={(field) => (
                     <List.Item>
                       <Space align="baseline">
@@ -160,7 +196,18 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                           valuePropName="checked"
                           name={[field.name, "checked"]}
                         >
-                          <Checkbox />
+                          <Checkbox
+                            onChange={(e) =>
+                              onCheck(
+                                e.target.checked,
+                                formInstance.getFieldValue([
+                                  "reviewers",
+                                  field.name,
+                                  "id",
+                                ])
+                              )
+                            }
+                          />
                         </Form.Item>
                         <Flex gap={0} vertical>
                           <Space>
@@ -203,6 +250,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                       </Space>
                     </List.Item>
                   )}
+                  loading={searching}
                 />
               )}
             </Form.List>
