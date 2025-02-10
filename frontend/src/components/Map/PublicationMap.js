@@ -95,7 +95,7 @@ const PublicationMap = ({
         ...items,
         {
           key: 5,
-          label: "Review Progress",
+          label: "Reviews Received",
           children: (
             <Flex
               align="center"
