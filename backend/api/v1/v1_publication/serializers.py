@@ -339,3 +339,20 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
             "download_url",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+
+class ReviewInfoSerializer(serializers.ModelSerializer):
+    publication = PublicationInfoSerializer(read_only=True)
+    user = UserReviewerSerializer(read_only=True)
+
+    class Meta:
+        model = Review
+        fields = [
+            "id",
+            "publication",
+            "user",
+            "suggestion_values",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]

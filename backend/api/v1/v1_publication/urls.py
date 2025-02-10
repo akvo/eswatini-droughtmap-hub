@@ -5,6 +5,7 @@ from .views import (
     CDIGeonodeAPI,
     PublicationViewSet,
     PublicationReviewsAPI,
+    ReviewDetailsAPI,
 )
 
 urlpatterns = [
@@ -52,5 +53,10 @@ urlpatterns = [
         r"^(?P<version>(v1))/admin/publication-reviews/(?P<pk>[0-9]+)",
         PublicationReviewsAPI.as_view(),
         name="publication-reviews",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/publication-review/(?P<pk>[0-9]+)",
+        ReviewDetailsAPI.as_view(),
+        name="publication-review",
     ),
 ]
