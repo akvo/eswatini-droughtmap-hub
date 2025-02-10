@@ -31,7 +31,6 @@ from api.v1.v1_publication.serializers import (
     PublicationReviewsSerializer,
 )
 from api.v1.v1_publication.models import (
-    Administration,
     Review,
     Publication,
 )
@@ -83,16 +82,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
         Override the list method to add extra context.
         """
         queryset = self.get_queryset()
-        total = Administration.objects.count()
 
         # Paginate the queryset
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(
             page,
             many=True,
-            context={
-                "request": request, "total": total
-            }
         )
         return self.get_paginated_response(serializer.data)
 
@@ -106,7 +101,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_serializer(self, *args, **kwargs):
         kwargs["context"] = self.get_serializer_context()
-        kwargs["context"]["total"] = Administration.objects.count()
         return super().get_serializer(*args, **kwargs)
 
     def perform_update(self, serializer):
