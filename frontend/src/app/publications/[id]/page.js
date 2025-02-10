@@ -28,9 +28,12 @@ const PublicationDetailsPage = async ({ params }) => {
   return (
     <div className="w-full h-full space-y-3">
       <PublicationMap data={dataMap} {...{ publication, geonodeBaseURL }} />
-      <Divider orientation="center">Narrative</Divider>
+
       {publication?.narrative && (
-        <div dangerouslySetInnerHTML={{ __html: publication?.narrative }} />
+        <>
+          <Divider orientation="center">Narrative</Divider>
+          <div dangerouslySetInnerHTML={{ __html: publication?.narrative }} />
+        </>
       )}
     </div>
   );
