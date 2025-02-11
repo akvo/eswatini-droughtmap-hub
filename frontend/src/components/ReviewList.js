@@ -307,13 +307,14 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                               "administrations",
                               field.name,
                               "category",
-                            ])?.raw !== DROUGHT_CATEGORY_VALUE.none && (
-                              <div>
-                                <Tag color={isReviewed ? "success" : null}>
-                                  {isReviewed ? "Reviewed" : "Pending"}
-                                </Tag>
-                              </div>
-                            )}
+                            ])?.raw !== DROUGHT_CATEGORY_VALUE.none &&
+                              !isCompleted && (
+                                <div>
+                                  <Tag color={isReviewed ? "success" : null}>
+                                    {isReviewed ? "Reviewed" : "Pending"}
+                                  </Tag>
+                                </div>
+                              )}
                           </div>
                         );
                       })}
