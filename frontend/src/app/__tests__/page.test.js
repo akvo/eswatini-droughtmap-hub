@@ -8,9 +8,9 @@ describe("HomePage", () => {
   });
 
   it("renders profile button when session exists", () => {
-    const { getByText } = render(<Navbar session={{ id: 1 }} />);
+    const { getByLabelText } = render(<Navbar session={{ id: 1 }} />);
 
-    expect(getByText("Profile")).toBeInTheDocument();
+    expect(getByLabelText("Profile")).toBeInTheDocument();
   });
 
   it("renders correctly & match with the snapshot", () => {

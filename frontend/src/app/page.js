@@ -50,7 +50,7 @@ export const Navbar = ({ session = null }) => (
             trigger={["click"]}
             overlayClassName="dropdown-profile"
           >
-            <a role="button" className="text-white">
+            <a role="button" className="text-white" aria-label="Profile">
               <UserCircle size={32} />
             </a>
           </Dropdown>
