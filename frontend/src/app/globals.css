@@ -29,6 +29,10 @@
   .ant-ribbon .ant-ribbon-text {
     color: inherit;
   }
+  .ant-descriptions .ant-descriptions-row > td,
+  .ant-descriptions .ant-descriptions-row > th {
+    padding-bottom: 8px;
+  }
   /* Heading tags */
   h1,
   h2,
@@ -147,4 +151,7 @@ h5 {
 }
 .ant-dropdown.dropdown-profile {
   top: 48px !important;
+}
+.ant-descriptions.reviewed-descriptions .ant-descriptions-item-content {
+  padding: 0 !important;
 }
