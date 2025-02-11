@@ -5,7 +5,13 @@ import Map from "./Map";
 
 const ExampleMap = () => {
   return (
-    <Map className="w-full h-screen" center={DEFAULT_CENTER} zoom={12}>
+    <Map
+      className="w-full h-screen"
+      center={DEFAULT_CENTER}
+      zoom={12}
+      minZoom={9}
+      scrollWheelZoom={false}
+    >
       {({ TileLayer, Marker, Popup }) => (
         <>
           <TileLayer

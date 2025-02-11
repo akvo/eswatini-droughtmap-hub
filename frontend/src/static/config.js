@@ -89,3 +89,7 @@ export const CREATE_PUBLICATION_MAIL = {
   subject: "SPI Map review requested for month",
   message: `<p>Dear {{reviewer_name}}, The SPI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.</p>`,
 };
+
+export const APP_SETTINGS = {
+  copy: "Eswatini National Drought Monitoring & Mitigation Center",
+};
