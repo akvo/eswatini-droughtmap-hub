@@ -73,6 +73,7 @@ class PublicationViewSetTestCase(APITestCase):
                     "created_at",
                     "updated_at",
                     "progress_reviews",
+                    "reviewers",
                 ]
             ),
         )

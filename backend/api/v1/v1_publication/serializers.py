@@ -41,12 +41,25 @@ class AdministrationSerializer(serializers.ModelSerializer):
 class PublicationSerializer(serializers.ModelSerializer):
     year_month = serializers.DateField(format="%Y-%m")
     progress_reviews = serializers.SerializerMethodField()
+    reviewers = serializers.SerializerMethodField()
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_reviews(self, obj):
         total_reviews = obj.reviews.count()
         total_completed = obj.reviews.filter(is_completed=True).count()
         return f"{total_completed}/{total_reviews}"
+
+    @extend_schema_field(OpenApiTypes.ANY)
+    def get_reviewers(self, obj):
+        reviewers = [
+            {
+                "review_id": review.id,
+                "is_completed": review.is_completed,
+                **UserReviewerSerializer(instance=review.user).data,
+            }
+            for review in obj.reviews.all()
+        ]
+        return reviewers
 
     class Meta:
         model = Publication
@@ -63,9 +76,15 @@ class PublicationSerializer(serializers.ModelSerializer):
             "bulletin_url",
             "created_at",
             "updated_at",
-            "progress_reviews"
+            "progress_reviews",
+            "reviewers",
         ]
-        read_only_fields = ["created_at", "updated_at", "progress_reviews"]
+        read_only_fields = [
+            "created_at",
+            "updated_at",
+            "progress_reviews",
+            "reviewers",
+        ]
 
     def __init__(self, *args, **kwargs):
         super(PublicationSerializer, self).__init__(*args, **kwargs)
@@ -339,3 +358,20 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
             "download_url",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+
+class ReviewInfoSerializer(serializers.ModelSerializer):
+    publication = PublicationInfoSerializer(read_only=True)
+    user = UserReviewerSerializer(read_only=True)
+
+    class Meta:
+        model = Review
+        fields = [
+            "id",
+            "publication",
+            "user",
+            "suggestion_values",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]

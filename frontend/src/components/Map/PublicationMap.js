@@ -1,6 +1,15 @@
 "use client";
 
-import { Modal, Badge, Button, Descriptions, Flex, Typography } from "antd";
+import {
+  Modal,
+  Badge,
+  Button,
+  Descriptions,
+  Flex,
+  Typography,
+  List,
+  Tooltip,
+} from "antd";
 import dayjs from "dayjs";
 import {
   PUBLICATION_STATUS,
@@ -13,7 +22,9 @@ import {
 } from "@/static/config";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { ClockIcon, VerifiedIcon } from "../Icons";
+import classNames from "classnames";
 
 const { Title } = Typography;
 
@@ -44,6 +55,63 @@ const PublicationMap = ({
   const [loading, setLoading] = useState(false);
   const [number_reviews] = publication?.progress_reviews?.split("/");
   const router = useRouter();
+  const [modal, contextHolder] = Modal.useModal();
+
+  const openReviewProgress = useCallback(() => {
+    const instance = modal.info({
+      title: "Reviews Received",
+      content: (
+        <List
+          dataSource={publication?.reviewers?.sort((_, b) => b?.is_completed)}
+          renderItem={(item) => (
+            <List.Item
+              className={classNames("px-8", {
+                "text-grey-600 bg-neutral-100": !item?.is_completed,
+                "cursor-pointer text-green-600 bg-green-200":
+                  item?.is_completed,
+              })}
+              onClick={() => {
+                if (!item?.is_completed) {
+                  return;
+                }
+                instance.destroy();
+                router.replace(
+                  `/publications/${publication?.id}/reviews/${item?.review_id}`
+                );
+              }}
+            >
+              <List.Item.Meta
+                title={`${item?.name} (${item?.email})`}
+                description={item?.technical_working_group}
+                avatar={
+                  <Tooltip
+                    title={
+                      item?.is_completed
+                        ? "✅ Review Submitted"
+                        : "⏳ Review In Progress/Pending"
+                    }
+                  >
+                    <span>
+                      {item?.is_completed ? (
+                        <VerifiedIcon size={28} />
+                      ) : (
+                        <ClockIcon size={22} />
+                      )}
+                    </span>
+                  </Tooltip>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      ),
+      cancelButtonProps: {
+        style: {
+          display: "none",
+        },
+      },
+    });
+  }, [publication, modal, router]);
 
   const descriptionItems = useMemo(() => {
     const status = PUBLICATION_STATUS_OPTIONS.find(
@@ -95,7 +163,7 @@ const PublicationMap = ({
         ...items,
         {
           key: 5,
-          label: "Review Progress",
+          label: "Reviews Received",
           children: (
             <Flex
               align="center"
@@ -104,13 +172,21 @@ const PublicationMap = ({
               className="w-full"
             >
               <span>{publication?.progress_reviews}</span>
+
+              <Button
+                type="link"
+                iconPosition="end"
+                onClick={openReviewProgress}
+              >
+                Details
+              </Button>
             </Flex>
           ),
         },
       ];
     }
     return items;
-  }, [publication, geonodeBaseURL]);
+  }, [publication, geonodeBaseURL, openReviewProgress]);
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
@@ -168,6 +244,7 @@ const PublicationMap = ({
             )}
         </div>
       </Flex>
+      {contextHolder}
       <CDIMap {...{ onFeature, onClick }}>
         <div className="w-1/2 xl:w-1/3 absolute top-0 right-0 z-10 p-2 space-y-4">
           <Descriptions

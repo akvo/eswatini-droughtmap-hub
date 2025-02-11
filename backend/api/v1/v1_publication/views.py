@@ -29,6 +29,7 @@ from api.v1.v1_publication.serializers import (
     PublicationInfoSerializer,
     CreatePublicationSerializer,
     PublicationReviewsSerializer,
+    ReviewInfoSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
@@ -449,6 +450,26 @@ class PublicationReviewsAPI(APIView):
                     "non_disputed": non_disputed,
                     "non_validated": non_validated
                 }
+            ).data,
+            status=status.HTTP_200_OK
+        )
+
+
+class ReviewDetailsAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Fetch review details as an Admin",
+        description="Fetch data for a specific review",
+        tags=["Admin"],
+        responses=ReviewInfoSerializer,
+    )
+    def get(self, request, version, pk):
+        review = get_object_or_404(Review, pk=pk)
+
+        return Response(
+            ReviewInfoSerializer(
+                instance=review,
             ).data,
             status=status.HTTP_200_OK
         )
