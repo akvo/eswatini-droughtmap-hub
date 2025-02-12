@@ -17,10 +17,11 @@ class SettingsSerializer(serializers.ModelSerializer):
         model = Settings
         fields = [
             "ts_emails",
+            "secret_key",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["secret_key", "created_at", "updated_at"]
 
 
 class ContactsSerializer(serializers.Serializer):
