@@ -50,6 +50,12 @@ class SecretKeyView(APIView):
         },
     )
     def post(self, request, version):
+        exists = Settings.objects.first()
+        if exists:
+            return Response(
+                SecretKeySerializer(instance=exists).data,
+                status=status.HTTP_200_OK
+            )
         secret_key = generate_secret_key()
         settings = Settings.objects.create(secret_key=secret_key)
         serializer = SecretKeySerializer(settings)
@@ -88,11 +94,23 @@ class SecretKeyView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UpdateSettingsView(APIView):
+class SettingsView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
 
     @extend_schema(
-        summary="Update settings",
+        summary="Get the app settings",
+        tags=["Settings"],
+        responses=SettingsSerializer,
+    )
+    def get(self, request, version):
+        instance = Settings.objects.first()
+        return Response(
+            SettingsSerializer(instance=instance).data,
+            status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        summary="Update the app settings",
         tags=["Settings"],
         request=SettingsSerializer,
         responses={
@@ -102,7 +120,7 @@ class UpdateSettingsView(APIView):
             500: DefaultErrorResponseSerializer,
         },
     )
-    def put(self, request):
+    def put(self, request, version):
         try:
             settings = Settings.objects.latest('created_at')
         except Settings.DoesNotExist:

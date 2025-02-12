@@ -4,6 +4,7 @@ from api.v1.v1_init.views import (
     SecretKeyView,
     TSContactView,
     AdminContactView,
+    SettingsView,
 )
 
 urlpatterns = [
@@ -16,6 +17,11 @@ urlpatterns = [
         r"^(?P<version>(v1))/settings/secret-key",
         SecretKeyView.as_view(),
         name="secret_key",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/settings",
+        SettingsView.as_view(),
+        name="settings",
     ),
     re_path(
         r"^(?P<version>(v1))/contacts/ts",
