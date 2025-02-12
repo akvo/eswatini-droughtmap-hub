@@ -30,6 +30,12 @@ class SecretKeyAPITest(APITestCase):
             ).exists()
         )
 
+        # Subsequent requests will be ignored and return the existing one
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        exists = Settings.objects.first()
+        self.assertEqual(response.data["secret_key"], exists.secret_key)
+
     def test_update_secret_key(self):
         """Test updating the secret key"""
         settings = Settings.objects.create(secret_key="old_secret_key")
