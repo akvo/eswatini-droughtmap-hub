@@ -46,7 +46,7 @@ const ReviewAdmModal = ({ review }) => {
             category:
               typeof values?.category === "number"
                 ? values.category
-                : values.category.raw,
+                : values?.category?.raw || activeAdm?.category?.raw,
             reviewed: true,
           };
         }

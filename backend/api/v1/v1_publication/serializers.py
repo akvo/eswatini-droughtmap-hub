@@ -268,6 +268,7 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
         if non_disputed:
             filtered_reviews = []
             grouped_reviews = defaultdict(list)
+            reviews = reviews + obj.initial_values
             for review in reviews:
                 if review["category"] != DroughtCategory.none:
                     grouped_reviews[review["administration_id"]].append(review)

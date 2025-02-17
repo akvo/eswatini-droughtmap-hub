@@ -45,7 +45,7 @@ const ReviewDetailsPage = async ({ params }) => {
     }
   );
   return (
-    <div className="w-full h-screen">
+    <div className="w-full min-h-screen">
       <Flex align="center" justify="space-between" gap={4}>
         <div className="leading-4 py-4">
           <h1 className="text-3xl font-bold">{`Inkundla SPI Review for: ${dayjs(review?.publication?.year_month, "YYYY-MM").format("MMMM YYYY")}`}</h1>

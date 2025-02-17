@@ -6,7 +6,7 @@ import Map from "./Map";
 const ExampleMap = () => {
   return (
     <Map
-      className="w-full h-screen"
+      className="w-full min-h-screen"
       center={DEFAULT_CENTER}
       zoom={12}
       minZoom={9}

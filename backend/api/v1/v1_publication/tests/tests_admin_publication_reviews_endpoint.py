@@ -132,8 +132,8 @@ class PublicationReviewsTestCase(APITestCase):
         ], bulk=False)
         for reviewer in publication.reviews.all():
             reviewer.suggestion_values = [
-                {"administration_id": 1253002, "category": "d1"},
-                {"administration_id": 1253053, "category": "d2"},
+                {"administration_id": 1253002, "category": 3},
+                {"administration_id": 1253053, "category": 1},
             ]
             reviewer.is_completed = True
             reviewer.completed_at = "2025-01-01T00:00:00Z"
@@ -152,7 +152,7 @@ class PublicationReviewsTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             len(response.data["reviews"]),
-            4
+            3
         )
 
     def test_get_non_validated_publication_reviews(self):
