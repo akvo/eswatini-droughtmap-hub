@@ -1,5 +1,9 @@
 from django.urls import re_path
-from api.v1.v1_rundeck.views import SettingsViewSet
+from api.v1.v1_rundeck.views import (
+    SettingsViewSet,
+    RundeckProjectsAPI,
+    RundeckJobsAPI,
+)
 
 urlpatterns = [
     re_path(
@@ -18,5 +22,15 @@ urlpatterns = [
             }
         ),
         name="settings-details",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/rundeck/projects",
+        RundeckProjectsAPI.as_view(),
+        name="rundeck-projects"
+    ),
+    re_path(
+        r"^(?P<version>(v1))/rundeck/project/(?P<project>[0-9a-zA-Z_-]+)/jobs",
+        RundeckJobsAPI.as_view(),
+        name="rundeck-jobs"
     ),
 ]
