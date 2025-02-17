@@ -21,6 +21,7 @@ class SettingsViewSetTests(APITestCase):
             job_id="12345",
             on_success_emails=["success@example.com"],
             on_failure_emails=["failure@example.com"],
+            on_exceeded_emails=["exceeded@example.com"],
         )
 
         self.settings_url = reverse(
@@ -87,11 +88,21 @@ class SettingsViewSetTests(APITestCase):
             "job_id": "99999",
             "on_success_emails": ["updated_success@example.com"],
             "on_failure_emails": ["updated_failure@example.com"],
+            "on_exceeded_emails": ["updated_exceeded@example.com"],
         }
         response = self.client.put(self.detail_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.settings.refresh_from_db()
         self.assertEqual(self.settings.project_name, "Updated Project")
+        self.assertEqual(
+            self.settings.on_success_emails, ["updated_success@example.com"]
+        )
+        self.assertEqual(
+            self.settings.on_failure_emails, ["updated_failure@example.com"]
+        )
+        self.assertEqual(
+            self.settings.on_exceeded_emails, ["updated_exceeded@example.com"]
+        )
 
     def test_non_admin_cannot_update_settings(self):
         """Non-admin users should not be able to update settings."""
@@ -101,6 +112,7 @@ class SettingsViewSetTests(APITestCase):
             "job_id": "99999",
             "on_success_emails": ["updated_success@example.com"],
             "on_failure_emails": ["updated_failure@example.com"],
+            "on_exceeded_emails": ["updated_exceeded@example.com"],
         }
         response = self.client.put(self.detail_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

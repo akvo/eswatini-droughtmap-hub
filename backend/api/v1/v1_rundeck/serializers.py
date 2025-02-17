@@ -6,6 +6,7 @@ from utils.custom_serializer_fields import CustomJSONField
 class SettingsSerializer(serializers.ModelSerializer):
     on_failure_emails = CustomJSONField()
     on_success_emails = CustomJSONField()
+    on_exceeded_emails = CustomJSONField()
 
     class Meta:
         model = Settings
@@ -14,6 +15,7 @@ class SettingsSerializer(serializers.ModelSerializer):
             "job_id",
             "on_success_emails",
             "on_failure_emails",
+            "on_exceeded_emails",
             "created_at",
             "updated_at",
         ]
