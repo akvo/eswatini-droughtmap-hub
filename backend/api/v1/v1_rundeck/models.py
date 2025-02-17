@@ -6,10 +6,7 @@ class Settings(models.Model):
         max_length=255,
         unique=True,
     )
-    job_id = models.CharField(
-        max_length=255,
-        unique=True,
-    )
+    job_id = models.UUIDField()
     on_success_emails = models.JSONField(
         null=True,
         blank=True
