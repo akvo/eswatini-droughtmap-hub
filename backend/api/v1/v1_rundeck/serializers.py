@@ -7,13 +7,10 @@ from utils.custom_serializer_fields import (
 
 
 class SettingsSerializer(serializers.ModelSerializer):
-    on_failure_emails = CustomJSONField()
-    on_success_emails = CustomJSONField()
-    on_exceeded_emails = CustomJSONField()
-
     class Meta:
         model = Settings
         fields = [
+            "id",
             "project_name",
             "job_id",
             "on_success_emails",
@@ -23,6 +20,29 @@ class SettingsSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+
+class UpdateSettingsSerializer(serializers.ModelSerializer):
+    on_failure_emails = CustomJSONField(
+        required=False,
+        allow_null=True,
+    )
+    on_success_emails = CustomJSONField(
+        required=False,
+        allow_null=True,
+    )
+    on_exceeded_emails = CustomJSONField(
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = Settings
+        fields = [
+            "on_success_emails",
+            "on_failure_emails",
+            "on_exceeded_emails",
+        ]
 
 
 class RundeckProjectSerializer(serializers.Serializer):
@@ -40,3 +60,10 @@ class RundeckJobSerializer(serializers.Serializer):
 
     class Meta:
         fields = ["id", "name", "permalink"]
+
+
+class ContactsSerializer(serializers.Serializer):
+    contacts = CustomJSONField()
+
+    class Meta:
+        fields = ["contacts"]

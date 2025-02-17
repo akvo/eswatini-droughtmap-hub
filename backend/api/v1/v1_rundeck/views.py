@@ -11,9 +11,12 @@ from utils.custom_permissions import IsAdmin
 from api.v1.v1_rundeck.models import Settings
 from api.v1.v1_rundeck.serializers import (
     SettingsSerializer,
+    UpdateSettingsSerializer,
     RundeckProjectSerializer,
     RundeckJobSerializer,
+    ContactsSerializer,
 )
+from api.v1.v1_users.models import SystemUser, UserRoleTypes
 
 
 @extend_schema(
@@ -29,6 +32,11 @@ class SettingsViewSet(viewsets.ModelViewSet):
     queryset = Settings.objects.all()
     serializer_class = SettingsSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_serializer_class(self):
+        if self.action == "update":
+            return UpdateSettingsSerializer
+        return SettingsSerializer
 
 
 class RundeckProjectsAPI(APIView):
@@ -103,3 +111,27 @@ class RundeckJobsAPI(APIView):
                 {"message": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class AdminContactView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Get a list of Admin contacts",
+        tags=["Admin"],
+        responses=ContactsSerializer,
+    )
+    def get(self, request, version):
+        users = SystemUser.objects.filter(
+            role=UserRoleTypes.admin
+        ).all()
+        contacts = [
+            u.email
+            for u in users
+        ]
+        return Response(
+            {
+                "contacts": contacts
+            },
+            status=status.HTTP_200_OK
+        )
