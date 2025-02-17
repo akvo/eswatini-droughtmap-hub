@@ -21,7 +21,7 @@ const PublicationReviewPage = async ({ params }) => {
     "MMMM YYYY"
   );
   return (
-    <div className="w-full h-screen">
+    <div className="w-full min-h-screen">
       <Flex align="center" justify="space-between" gap={4}>
         <div className="py-4">
           <Link href={`/publications/${review?.publication?.id}`}>

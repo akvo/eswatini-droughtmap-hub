@@ -67,7 +67,7 @@ export const Navbar = ({ session = null }) => (
 const Home = async () => {
   const session = await auth.getSession();
   return (
-    <div className="w-full h-screen">
+    <div className="w-full min-h-screen">
       <Navbar session={session} />
       <div className="w-full h-full">
         <ExampleMap />

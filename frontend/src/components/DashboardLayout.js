@@ -8,7 +8,7 @@ import { USER_ROLES } from "@/static/config";
 
 const DashboardLayout = ({ user, children }) => {
   return (
-    <div className="w-full h-screen">
+    <div className="w-full min-h-screen">
       <div className="w-full py-2 bg-primary sticky top-0 z-50">
         <div className="w-full container flex flex-row justify-between items-center">
           <div>

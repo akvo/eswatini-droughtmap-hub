@@ -4,7 +4,7 @@ const { Button } = require("antd");
 
 const UnauthorizedPage = () => {
   return (
-    <div className="w-full h-screen flex flex-col items-center justify-center gap-1">
+    <div className="w-full min-h-screen flex flex-col items-center justify-center gap-1">
       <h1 className="text-2xl xl:text-3xl font-bold">You’re Not Authorized</h1>
       <p>You need proper authorization to view this page. </p>
       <Link href="/">
