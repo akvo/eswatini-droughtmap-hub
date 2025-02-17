@@ -48,6 +48,7 @@ API_APPS = [
     "api.v1.v1_jobs",
     "api.v1.v1_users",
     "api.v1.v1_publication",
+    "api.v1.v1_rundeck",
 ]
 
 # Add third party apps below
@@ -155,7 +156,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "api.v1.v1_init.authentication.SecretKeyAuthentication",
     ),
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
     "DATE_FORMAT": "%d-%m-%Y",
