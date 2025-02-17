@@ -155,12 +155,7 @@ const ValidationTable = ({
             allowClear
           />
 
-          <Checkbox
-            onClick={handleNonDisputed}
-            disabled={extraColumns.length === 1}
-          >
-            Non-disputed only
-          </Checkbox>
+          <Checkbox onClick={handleNonDisputed}>Non-disputed only</Checkbox>
 
           <Checkbox onClick={handleNonValidated}>Non-validated only</Checkbox>
         </Space>
@@ -191,8 +186,7 @@ const ValidationTable = ({
             const disabled =
               new Set(reviewValues).size > 1 ||
               record?.category ||
-              record?.category === 0 ||
-              extraColumns?.length === 1;
+              record?.category === 0;
             return {
               disabled: disabled,
             };
