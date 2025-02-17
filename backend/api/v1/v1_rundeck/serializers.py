@@ -1,0 +1,20 @@
+from rest_framework import serializers
+from api.v1.v1_rundeck.models import Settings
+from utils.custom_serializer_fields import CustomJSONField
+
+
+class SettingsSerializer(serializers.ModelSerializer):
+    on_failure_emails = CustomJSONField()
+    on_success_emails = CustomJSONField()
+
+    class Meta:
+        model = Settings
+        fields = [
+            "project_name",
+            "job_id",
+            "on_success_emails",
+            "on_failure_emails",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
