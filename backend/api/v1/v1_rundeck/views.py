@@ -1,0 +1,137 @@
+import requests
+from rest_framework import viewsets, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from drf_spectacular.utils import (
+    extend_schema,
+)
+from django.conf import settings
+from utils.custom_permissions import IsAdmin
+from api.v1.v1_rundeck.models import Settings
+from api.v1.v1_rundeck.serializers import (
+    SettingsSerializer,
+    UpdateSettingsSerializer,
+    RundeckProjectSerializer,
+    RundeckJobSerializer,
+    ContactsSerializer,
+)
+from api.v1.v1_users.models import SystemUser, UserRoleTypes
+
+
+@extend_schema(
+    responses={200: SettingsSerializer},
+    tags=["Admin"],
+    description="Manage Rundeck settings",
+)
+class SettingsViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Settings.
+    Only authenticated admin users have access.
+    """
+    queryset = Settings.objects.all()
+    serializer_class = SettingsSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_serializer_class(self):
+        if self.action == "update":
+            return UpdateSettingsSerializer
+        return SettingsSerializer
+
+
+class RundeckProjectsAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Fetch Rundeck Projects",
+        tags=["Rundeck"],
+        responses=RundeckProjectSerializer,
+    )
+    def get(self, request, *args, **kwargs):
+        try:
+            response = requests.get(
+                f"{settings.RUNDECK_API_URL}/projects",
+                headers={
+                    "X-Rundeck-Auth-Token": settings.RUNDECK_API_TOKEN
+                }
+            )
+            data = response.json()
+            if response.status_code == 200 and data:
+                return Response(
+                    RundeckProjectSerializer(
+                        instance=data,
+                        many=True
+                    ).data,
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    response.json(),
+                    status=response.status_code,
+                )
+        except Exception as e:
+            return Response(
+                {"message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class RundeckJobsAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Fetch Rundeck Projects",
+        tags=["Rundeck"],
+        responses=RundeckJobSerializer,
+    )
+    def get(self, request, version, project):
+        try:
+            response = requests.get(
+                f"{settings.RUNDECK_API_URL}/project/{project}/jobs",
+                headers={
+                    "X-Rundeck-Auth-Token": settings.RUNDECK_API_TOKEN
+                }
+            )
+            data = response.json()
+            if response.status_code == 200 and data:
+                return Response(
+                    RundeckJobSerializer(
+                        instance=data,
+                        many=True
+                    ).data,
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    response.json(),
+                    status=response.status_code,
+                )
+        except Exception as e:
+            return Response(
+                {"message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AdminContactView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Get a list of Admin contacts",
+        tags=["Admin"],
+        responses=ContactsSerializer,
+    )
+    def get(self, request, version):
+        users = SystemUser.objects.filter(
+            role=UserRoleTypes.admin
+        ).all()
+        contacts = [
+            u.email
+            for u in users
+        ]
+        return Response(
+            {
+                "contacts": contacts
+            },
+            status=status.HTTP_200_OK
+        )

@@ -39,7 +39,9 @@ export default async function middleware(request) {
 
     if (
       (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
-      (role !== USER_ROLES.admin && pathName.startsWith("/publications"))
+      (role !== USER_ROLES.admin &&
+        (pathName.startsWith("/publications") ||
+          pathName.startsWith("/settings")))
     ) {
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }

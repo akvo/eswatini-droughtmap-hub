@@ -48,6 +48,7 @@ API_APPS = [
     "api.v1.v1_jobs",
     "api.v1.v1_users",
     "api.v1.v1_publication",
+    "api.v1.v1_rundeck",
 ]
 
 # Add third party apps below
@@ -201,6 +202,8 @@ Q_CLUSTER = {
 GEONODE_BASE_URL = environ.get("GEONODE_BASE_URL")
 GEONODE_ADMIN_USERNAME = environ.get("GEONODE_ADMIN_USERNAME")
 GEONODE_ADMIN_PASSWORD = environ.get("GEONODE_ADMIN_PASSWORD")
+RUNDECK_API_URL = environ.get("RUNDECK_API_URL")
+RUNDECK_API_TOKEN = environ.get("RUNDECK_API_TOKEN")
 # Override the default user model
 AUTH_USER_MODEL = "v1_users.SystemUser"
 # MAIL SETUP

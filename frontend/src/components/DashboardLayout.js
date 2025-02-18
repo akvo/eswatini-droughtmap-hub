@@ -7,6 +7,43 @@ import { LogoutButton } from "./Buttons";
 import { USER_ROLES } from "@/static/config";
 
 const DashboardLayout = ({ user, children }) => {
+  const menuByRoles =
+    user?.role === USER_ROLES.admin
+      ? [
+          {
+            key: 1,
+            label: "Profile",
+            url: "/profile",
+          },
+          {
+            key: 2,
+            label: "Settings",
+            url: "/settings",
+          },
+        ]
+      : [
+          {
+            key: 1,
+            label: "Profile",
+            url: "/profile",
+          },
+        ];
+  const menuItems = [
+    ...menuByRoles.map(({ key, label, url }) => ({
+      key,
+      label: (
+        <Link href={url}>
+          <Button type="link" className="dropdown-item">
+            {label}
+          </Button>
+        </Link>
+      ),
+    })),
+    {
+      key: 99,
+      label: <LogoutButton className="dropdown-item" />,
+    },
+  ];
   return (
     <div className="w-full min-h-screen">
       <div className="w-full py-2 bg-primary sticky top-0 z-50">
@@ -25,22 +62,7 @@ const DashboardLayout = ({ user, children }) => {
             <Dropdown
               placement="bottomRight"
               menu={{
-                items: [
-                  {
-                    key: 1,
-                    label: (
-                      <Link href={"/profile"}>
-                        <Button type="link" className="dropdown-item">
-                          Profile
-                        </Button>
-                      </Link>
-                    ),
-                  },
-                  {
-                    key: 2,
-                    label: <LogoutButton className="dropdown-item" />,
-                  },
-                ],
+                items: menuItems,
               }}
               trigger={["click"]}
               overlayClassName="dropdown-profile"
