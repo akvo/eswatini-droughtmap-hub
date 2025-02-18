@@ -6,13 +6,11 @@ import { api } from "@/lib";
 import {
   Badge,
   Button,
-  Card,
-  Descriptions,
+  DatePicker,
   Divider,
   Flex,
   Form,
   Input,
-  Progress,
   Select,
   Skeleton,
   Space,
@@ -23,8 +21,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
+import advancedUTC from "dayjs/plugin/utc";
+import { RUNDECK_JOB_STATUS_COLOR } from "@/static/config";
 
 dayjs.extend(advancedFormat);
+dayjs.extend(advancedUTC);
 
 const { Title, Text } = Typography;
 const { useForm } = Form;
@@ -108,6 +109,7 @@ const SettingsPage = () => {
   const [admins, setAdmins] = useState([]);
   const [projects, setProjects] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [execList, setExecList] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [preload, setPreload] = useState(true);
   const [newSetup, setNewSetup] = useState(false);
@@ -158,6 +160,19 @@ const SettingsPage = () => {
     }
   };
 
+  const onRunJob = async ({ year_month }) => {
+    try {
+      await api("POST", `/rundeck/job/${settings?.job_id}/execs`, {
+        year_month: dayjs(year_month).format("YYYY-MM"),
+      });
+
+      setPreload(true);
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchData = useCallback(async () => {
     try {
       if (preload) {
@@ -176,6 +191,11 @@ const SettingsPage = () => {
           setNewSetup(true);
         }
         setSettings(_settings[0]);
+        const { data: _execList } = await api(
+          "GET",
+          `/rundeck/job/${_settings[0]?.job_id}/execs`
+        );
+        setExecList(_execList);
         setFetching(false);
       }
     } catch (err) {
@@ -273,48 +293,46 @@ const SettingsPage = () => {
               <Title level={3}>CDI Automation Jobs</Title>
               <Flex align="center" justify="space-between" className="w-full">
                 <div>
-                  <Text type="secondary">
-                    Last executed: January 27th, 2025 - 6:24 PM
-                  </Text>
+                  {execList?.[0]?.date_started && (
+                    <Text type="secondary">
+                      Last executed:{" "}
+                      {dayjs
+                        .utc(execList[0].date_started)
+                        .local()
+                        .format("MMMM Do, YYYY - h:mm A")}
+                    </Text>
+                  )}
                 </div>
                 <div>
-                  <Button size="large" type="primary">
-                    Run Job Now
-                  </Button>
+                  <Form onFinish={onRunJob} layout="inline">
+                    <Form.Item
+                      name="year_month"
+                      label="Publication Date"
+                      rules={[
+                        {
+                          required: true,
+                        },
+                      ]}
+                    >
+                      <DatePicker
+                        format={{
+                          format: "YYYY-MM",
+                          type: "mask",
+                        }}
+                      />
+                    </Form.Item>
+                    <Button htmlType="submit" type="primary">
+                      Run Job Now
+                    </Button>
+                  </Form>
                 </div>
               </Flex>
-              <div className="w-full border border-neutral-200 space-y-4 shadow-md relative">
-                <div className="w-full p-4">
-                  <Descriptions column={2}>
-                    <Descriptions.Item label="Publication Date">
-                      2025-02
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Created At">
-                      {dayjs().format("MMMM Do, YYYY - h:mm A")}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Status">
-                      <Badge color="green" text="Running" />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="ETA">
-                      20 seconds
-                    </Descriptions.Item>
-                  </Descriptions>
-                </div>
-                <Progress
-                  percent={35}
-                  percentPosition={{
-                    align: "right",
-                    type: "inner",
-                  }}
-                  size={["100%", 20]}
-                  strokeLinecap="square"
-                  rootClassName="w-full absolute bottom-[-2px] left-0"
-                />
-              </div>
               <Divider />
               <div className="w-full space-y-2 pt-4">
                 <Title level={4}>Manual Executions History</Title>
                 <Table
+                  dataSource={execList}
+                  rowKey="id"
                   columns={[
                     {
                       key: "id",
@@ -327,19 +345,33 @@ const SettingsPage = () => {
                       title: "PUBLICATION DATE",
                     },
                     {
-                      key: "created_at",
-                      dataIndex: "created_at",
+                      key: "date_started",
+                      dataIndex: "date_started",
                       title: "CREATED AT",
+                      render: (value) =>
+                        dayjs.utc(value).local().format("DD/MM/YYYY h:mm A"),
                     },
                     {
-                      key: "finished_at",
-                      dataIndex: "finished_at",
+                      key: "date_ended",
+                      dataIndex: "date_ended",
                       title: "FINISHED AT",
+                      render: (value) =>
+                        value
+                          ? dayjs.utc(value).local().format("DD/MM/YYYY h:mm A")
+                          : "-",
                     },
                     {
                       key: "status",
                       dataIndex: "status",
                       title: "STATUS",
+                      render: (status, { permalink }) => (
+                        <a target="_blank" href={permalink}>
+                          <Badge
+                            color={RUNDECK_JOB_STATUS_COLOR?.[status]}
+                            text={status}
+                          />
+                        </a>
+                      ),
                     },
                   ]}
                 />

@@ -93,3 +93,10 @@ export const CREATE_PUBLICATION_MAIL = {
 export const APP_SETTINGS = {
   copy: "Eswatini National Drought Monitoring & Mitigation Center",
 };
+
+export const RUNDECK_JOB_STATUS_COLOR = {
+  succeeded: "green",
+  failed: "red",
+  aborted: "orange",
+  running: "blue",
+};
