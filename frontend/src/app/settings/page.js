@@ -329,7 +329,19 @@ const SettingsPage = () => {
               </Flex>
               <Divider />
               <div className="w-full space-y-2 pt-4">
-                <Title level={4}>Manual Executions History</Title>
+                <Flex align="center" justify="space-between">
+                  <div>
+                    <Title level={4}>Manual Executions History</Title>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setPreload(true);
+                      router.refresh();
+                    }}
+                  >
+                    Refresh
+                  </Button>
+                </Flex>
                 <Table
                   dataSource={execList}
                   rowKey="id"
