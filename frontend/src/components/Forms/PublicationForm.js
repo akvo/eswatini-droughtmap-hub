@@ -69,17 +69,18 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const res = await api("POST", "/admin/publications", {
+      const payload = {
         ...values,
         cdi_geonode_id: geonode?.pk,
         due_date: dayjs(values?.due_date).format("YYYY-MM-DD"),
-        year_month: dayjs(geonode?.year_month).format("YYYY-MM-DD"),
+        year_month: dayjs(values?.year_month).format("YYYY-MM-DD"),
         initial_values: [],
         reviewers: values?.reviewers
           ?.filter((r) => checkItems.includes(r.id))
           ?.map((r) => r?.id),
         download_url: geonode?.download_url,
-      });
+      };
+      const res = await api("POST", "/admin/publications", payload);
       if (res?.id) {
         setCheckItems([]);
         message.success("New publication successfully created");
@@ -138,6 +139,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         subject: `${CREATE_PUBLICATION_MAIL?.subject} ${dayjs(
           geonode?.year_month
         ).format("YYYY-MM")}`,
+        year_month: dayjs(geonode?.year_month),
         message: CREATE_PUBLICATION_MAIL?.message,
       }}
       onFinish={onFinish}
@@ -210,35 +212,33 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                           />
                         </Form.Item>
                         <Flex gap={0} vertical>
-                          <Space>
-                            <Text>
-                              {formInstance.getFieldValue([
-                                "reviewers",
-                                field.name,
-                                "name",
-                              ])}
-                            </Text>
-                            <Flex gap={2}>
-                              {`(`}
-                              {formInstance.getFieldValue([
-                                "reviewers",
-                                field.name,
-                                "email",
-                              ])}
-                              {formInstance.getFieldValue([
-                                "reviewers",
-                                field.name,
-                                "email_verified",
-                              ]) && (
-                                <Tooltip title="Email has been verified">
-                                  <span className="text-primary">
-                                    <VerifiedIcon />
-                                  </span>
-                                </Tooltip>
-                              )}
-                              {`)`}
-                            </Flex>
-                          </Space>
+                          <Text>
+                            {formInstance.getFieldValue([
+                              "reviewers",
+                              field.name,
+                              "name",
+                            ])}
+                          </Text>
+                          <Flex gap={2}>
+                            {`(`}
+                            {formInstance.getFieldValue([
+                              "reviewers",
+                              field.name,
+                              "email",
+                            ])}
+                            {formInstance.getFieldValue([
+                              "reviewers",
+                              field.name,
+                              "email_verified",
+                            ]) && (
+                              <Tooltip title="Email has been verified">
+                                <span className="text-primary">
+                                  <VerifiedIcon />
+                                </span>
+                              </Tooltip>
+                            )}
+                            {`)`}
+                          </Flex>
                           <Text type="secondary">
                             {formInstance.getFieldValue([
                               "reviewers",
@@ -256,14 +256,22 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
             </Form.List>
           </div>
           <div className="w-full lg:w-2/3 xl:w-3/4">
-            <div>
-              <p>Publication Date</p>
-              <Title level={3}>
-                {dayjs(formInstance.getFieldValue("year_month")).format(
-                  "MMMM YYYY"
-                )}
-              </Title>
-            </div>
+            <Form.Item
+              label="Publication Date"
+              name="year_month"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+            >
+              <DatePicker
+                format={{
+                  format: "YYYY-MM",
+                  type: "mask",
+                }}
+              />
+            </Form.Item>
             <Form.Item
               label="Review Deadline"
               name="due_date"
