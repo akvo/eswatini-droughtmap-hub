@@ -64,19 +64,16 @@ const ValidationTable = ({
       {
         title: "Validated Value",
         dataIndex: "category",
-        render: (value, { administration_id, initial_category }) =>
-          initial_category === DROUGHT_CATEGORY_VALUE.none ? (
-            `${DROUGHT_CATEGORY_LABEL[DROUGHT_CATEGORY_VALUE.none]}`
-          ) : (
-            <Select
-              onChange={(val) => onSelectValue(val, administration_id)}
-              options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
-              placeholder="Select Drought category"
-              className="w-full"
-              defaultValue={value}
-              allowClear
-            />
-          ),
+        render: (value, { administration_id }) => (
+          <Select
+            onChange={(val) => onSelectValue(val, administration_id)}
+            options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
+            placeholder="Select Drought category"
+            className="w-full"
+            defaultValue={value}
+            allowClear
+          />
+        ),
         fixed: "left",
         width: 192,
       },
