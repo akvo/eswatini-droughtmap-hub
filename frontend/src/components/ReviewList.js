@@ -44,10 +44,16 @@ const mergeData = (administrations, dataSource) => {
     );
 };
 
-const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
+const ReviewList = ({
+  id,
+  dataSource = [],
+  isCompleted = false,
+  remaining = 0,
+}) => {
   const { administrations, refreshMap } = useAppContext();
   const [form] = useForm();
   const [marking, setMarking] = useState(false);
+  const [checkAll, setCheckAll] = useState(false);
   const [search, setSearch] = useState(null);
   const router = useRouter();
   const appDispatch = useAppDispatch();
@@ -61,6 +67,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
 
   const onCheckAll = (e) => {
     const isChecked = e.target.checked;
+    setCheckAll(isChecked);
     const admValues = form.getFieldValue("administrations").map((a) => {
       const checked =
         isChecked && a?.category?.raw === DROUGHT_CATEGORY_VALUE.none
@@ -115,9 +122,11 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
           type: "REFRESH_MAP_FALSE",
         });
       }, 500);
+      setCheckAll(false);
       setMarking(false);
-      router.refresh(`/reviews/${id}`);
+      router.refresh();
     } catch (err) {
+      setCheckAll(false);
       setMarking(false);
       console.error(err);
     }
@@ -199,7 +208,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
 
           return (
             <>
-              <div className="p-4 sticky top-0 left-0 border-b border-neutral-200 bg-neutral-100 space-y-4 z-50">
+              <div className="p-4 sticky top-0 left-0 border-b border-neutral-200 bg-neutral-100 space-y-4 z-10">
                 <Search
                   placeholder="Search Inkhundla"
                   onSearch={setSearch}
@@ -208,7 +217,11 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                 />
                 {!isCompleted && (
                   <Flex align="center" justify="space-between">
-                    <Checkbox onChange={onCheckAll} />
+                    <Checkbox
+                      onChange={onCheckAll}
+                      disabled={remaining === 0}
+                      checked={checkAll}
+                    />
                     <div>
                       <Button
                         size="small"
@@ -241,6 +254,12 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                           field.name,
                           "reviewed",
                         ]);
+                        const isDisabled =
+                          formInstance.getFieldValue([
+                            "administrations",
+                            field.name,
+                            "category",
+                          ])?.raw === DROUGHT_CATEGORY_VALUE.none || isReviewed;
                         return (
                           <div
                             className={classNames(
@@ -268,13 +287,7 @@ const ReviewList = ({ id, dataSource = [], isCompleted = false }) => {
                                         ])
                                       )
                                     }
-                                    disabled={
-                                      formInstance.getFieldValue([
-                                        "administrations",
-                                        field.name,
-                                        "category",
-                                      ])?.raw === DROUGHT_CATEGORY_VALUE.none
-                                    }
+                                    disabled={isDisabled}
                                   />
                                 </Form.Item>
                               )}
