@@ -17,6 +17,7 @@ class SettingsSerializer(serializers.ModelSerializer):
             "id",
             "project_name",
             "job_id",
+            "job_config",
             "on_success_emails",
             "on_failure_emails",
             "on_exceeded_emails",
@@ -39,6 +40,10 @@ class UpdateSettingsSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    job_config = CustomJSONField(
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Settings
@@ -46,6 +51,7 @@ class UpdateSettingsSerializer(serializers.ModelSerializer):
             "on_success_emails",
             "on_failure_emails",
             "on_exceeded_emails",
+            "job_config",
         ]
 
 

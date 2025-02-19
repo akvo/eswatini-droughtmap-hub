@@ -98,8 +98,11 @@ class SettingsViewSet(viewsets.ModelViewSet):
                     lambda x: x["id"] == f"{instance.job_id}",
                     configs
                 ))
-                config = configs[0] if len(configs) > 0 else None
+                config = configs[0] \
+                    if len(configs) > 0 else instance.job_config
                 if config:
+                    instance.job_config = config
+                    instance.save()
                     config = rundeck_set_notification(
                         config=config,
                         on_success_emails=instance.on_success_emails,
