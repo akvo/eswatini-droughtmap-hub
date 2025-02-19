@@ -15,7 +15,7 @@ const ReviewerMap = dynamic(
 const ReviewDetailsPage = async ({ params }) => {
   const review = await api("GET", `/reviewer/review/${params.id}`);
   if (!review?.id) {
-    redirect("/not-found");
+    redirect("/reviews");
   }
   const [reviewed, total] = review.progress_review?.split("/");
   const remaining = total - reviewed;
@@ -79,6 +79,7 @@ const ReviewDetailsPage = async ({ params }) => {
             dataSource={dataSource}
             id={review?.id}
             isCompleted={review?.is_completed}
+            remaining={remaining}
           />
         </div>
         <div className="w-full lg:w-8/12 2xl:w-9/12 border border-neutral-200">
