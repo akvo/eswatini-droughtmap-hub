@@ -93,6 +93,7 @@ class Ability(models.Model):
     conditions = models.JSONField(blank=True, null=True)  # Optional conditions
 
     class Meta:
+        db_table = "ability"
         unique_together = ('role', 'action', 'subject')
 
     def __str__(self):
