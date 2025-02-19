@@ -190,6 +190,11 @@ const ReviewAdmModal = ({ review }) => {
                   label="Suggested Value"
                   name="category"
                   className="w-1/2"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
                 >
                   <Select
                     options={DROUGHT_CATEGORY.slice(

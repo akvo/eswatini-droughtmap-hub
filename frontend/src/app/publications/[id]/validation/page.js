@@ -10,6 +10,7 @@ import {
 import { Button, Skeleton, Tabs, Typography } from "antd";
 import dayjs from "dayjs";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { redirect, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -44,9 +45,10 @@ const ValidationPage = ({ params }) => {
     if (!publication?.id) {
       return [0, 0];
     }
-    const total = publication?.initial_values?.filter(
-      (v) => v?.category !== DROUGHT_CATEGORY_VALUE.none
-    )?.length;
+    // const total = publication?.initial_values?.filter(
+    //   (v) => v?.category !== DROUGHT_CATEGORY_VALUE.none
+    // )?.length;
+    const total = publication?.initial_values?.length || 0;
     const validated =
       publication?.validated_values?.filter(
         (v) => v?.category || v?.category === 0
@@ -271,7 +273,11 @@ const ValidationPage = ({ params }) => {
     <div className="w-full">
       <div className="w-full py-3 flex flex-row align-center justify-between">
         <div>
-          <Title level={2}>{`Inkundla CDI Validation for: ${yearMonth}`}</Title>
+          <Link href={`/publications/${params?.id}`}>
+            <Title
+              level={2}
+            >{`Inkundla CDI Validation for: ${yearMonth}`}</Title>
+          </Link>
         </div>
         <div>
           {totalData && totalData === totalValidated ? (

@@ -158,34 +158,30 @@ const PublicationMap = ({
         ),
       },
     ];
-    if (publication?.status === PUBLICATION_STATUS.in_review) {
-      return [
-        ...items,
-        {
-          key: 5,
-          label: "Reviews Received",
-          children: (
-            <Flex
-              align="center"
-              justify="space-between"
-              gap={8}
-              className="w-full"
-            >
-              <span>{publication?.progress_reviews}</span>
+    // if (publication?.status === PUBLICATION_STATUS.in_review) {
+    return [
+      ...items,
+      {
+        key: 5,
+        label: "Reviews Received",
+        children: (
+          <Flex
+            align="center"
+            justify="space-between"
+            gap={8}
+            className="w-full"
+          >
+            <span>{publication?.progress_reviews}</span>
 
-              <Button
-                type="link"
-                iconPosition="end"
-                onClick={openReviewProgress}
-              >
-                Details
-              </Button>
-            </Flex>
-          ),
-        },
-      ];
-    }
-    return items;
+            <Button type="link" iconPosition="end" onClick={openReviewProgress}>
+              Details
+            </Button>
+          </Flex>
+        ),
+      },
+    ];
+    // }
+    // return items;
   }, [publication, geonodeBaseURL, openReviewProgress]);
 
   const onFeature = (feature) => {

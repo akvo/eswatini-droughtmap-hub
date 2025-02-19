@@ -219,11 +219,13 @@ class CDIGeonodeAPI(APIView):
                 publication = Publication.objects.filter(
                     cdi_geonode_id=cdi_id
                 ).first()
+                year_month = publication.year_month \
+                    if publication else data.get("date")
                 return Response(
                     CDIGeonodeListSerializer(
                         instance={
                             **data,
-                            "year_month": data.get("date"),
+                            "year_month": year_month,
                             "publication_id": (
                                 publication.pk if publication else None
                             ),
@@ -294,7 +296,8 @@ class CDIGeonodeAPI(APIView):
             publications_dict = {
                 publication.cdi_geonode_id: {
                     "id": publication.pk,
-                    "status": publication.status
+                    "status": publication.status,
+                    "year_month": publication.year_month
                 }
                 for publication in publications_query
             }
@@ -304,6 +307,7 @@ class CDIGeonodeAPI(APIView):
                     int(item["pk"])
                 )
                 if publication:
+                    item["year_month"] = publication["year_month"]
                     item["publication_id"] = publication["id"]
                     item["status"] = publication["status"]
             if publication_status:

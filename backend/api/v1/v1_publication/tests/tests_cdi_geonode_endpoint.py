@@ -137,8 +137,8 @@ class CDIGeonodeAPITestCase(APITestCase):
             publication.pk
         )
         self.assertEqual(
-            response.data["data"][0]["year_month"],
-            "2024-12-31T12:00:00Z"
+            response.data["data"][0]["year_month"].strftime("%Y-%m-%d"),
+            "2024-12-01"
         )
         self.assertEqual(
             response.data["data"][0]["status"],

@@ -240,17 +240,18 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
         validated_values = obj.validated_values or []
         no_data_ids = [
             v["administration_id"]
-            for v in list(filter(
-                lambda x: x["category"] == DroughtCategory.none,
-                obj.initial_values
-            ))
+            # for v in list(filter(
+            #     lambda x: x["category"] == DroughtCategory.none,
+            #     obj.initial_values
+            # ))
+            for v in obj.initial_values
         ]
         non_validated_ids = [
             v["administration_id"]
             for v in list(filter(
                 lambda x: (
                     x.get("category") is None
-                    and x["administration_id"] not in no_data_ids
+                    or x["administration_id"] not in no_data_ids
                 ),
                 validated_values
             ))
@@ -310,6 +311,7 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
 
 class CreatePublicationSerializer(serializers.ModelSerializer):
     initial_values = CustomJSONField()
+    year_month = CustomDateField()
     due_date = CustomDateField()
     reviewers = CustomListField(
         child=CustomPrimaryKeyRelatedField(
