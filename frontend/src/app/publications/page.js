@@ -15,6 +15,7 @@ import {
 } from "antd";
 import { Can } from "@/components";
 import {
+  MAP_CATEGORY_OPTIONS,
   PAGE_SIZE,
   PUBLICATION_STATUS,
   PUBLICATION_STATUS_OPTIONS,
@@ -30,8 +31,11 @@ const { Title } = Typography;
 const PublicationsPage = () => {
   const [publications, setPublications] = useState([]);
   const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
+  const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
+  const [status, setStatus] = useState(null);
   const router = useRouter();
 
   const columns = [
@@ -41,7 +45,8 @@ const PublicationsPage = () => {
       key: "created",
       defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.created) - new Date(b.created),
-      render: (_, { created }) => dayjs(created).format("MMMM Do, YYYY - h:mm A"),
+      render: (_, { created }) =>
+        dayjs(created).format("MMMM Do, YYYY - h:mm A"),
     },
     {
       title: "PREVIEW",
@@ -113,29 +118,33 @@ const PublicationsPage = () => {
   ];
 
   const onChangeStatus = (value) => {
-    setLoading(true);
-    fetchData(value);
+    setStatus(value);
+    setPreload(true);
   };
 
-  const fetchData = useCallback(async (status = null) => {
+  const fetchData = useCallback(async () => {
     try {
-      const apiURL = status
-        ? `/admin/cdi-geonode?status=${status}`
-        : "/admin/cdi-geonode";
-      const { data, total } = await api("GET", apiURL);
-      if (total) {
-        setTotalData(total);
+      if (preload) {
+        setPreload(false);
+        setLoading(true);
+        const apiURL = status
+          ? `/admin/cdi-geonode?category=${category}&status=${status}`
+          : `/admin/cdi-geonode?category=${category}`;
+        const { data, total } = await api("GET", apiURL);
+        if (total) {
+          setTotalData(total);
+        }
+        if (data) {
+          const _publications = data.map((d) => ({ key: d?.id, ...d }));
+          setPublications(_publications);
+        }
+        setLoading(false);
       }
-      if (data) {
-        const _publications = data.map((d) => ({ key: d?.id, ...d }));
-        setPublications(_publications);
-      }
-      setLoading(false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setPreload(false);
     }
-  }, []);
+  }, [preload, status, category]);
 
   useEffect(() => {
     fetchData();
@@ -144,17 +153,32 @@ const PublicationsPage = () => {
     <div className="w-full h-auto space-y-4 pt-6">
       <Flex align="center" justify="space-between">
         <div className="w-2/3">
-          <Title level={2}>SPI Publication</Title>
+          <Title level={2}>CDI Publication</Title>
         </div>
-        <div className="w-1/3 flex justify-end">
+        <Space className="w-1/3 flex justify-end">
+          <Select
+            options={MAP_CATEGORY_OPTIONS}
+            className="w-48"
+            placeholder="Filter by Category"
+            onChange={(value) => {
+              if (value) {
+                setCategory(value);
+              } else {
+                setCategory(MAP_CATEGORY_OPTIONS[0].value);
+              }
+              setPreload(true);
+            }}
+            value={category}
+            allowClear
+          />
           <Select
             onChange={onChangeStatus}
             options={PUBLICATION_STATUS_OPTIONS}
-            className="w-full max-w-48"
+            className="w-48"
             placeholder="Filter by Status"
             allowClear
           />
-        </div>
+        </Space>
       </Flex>
       <Can I="read" a="Publication">
         <Table

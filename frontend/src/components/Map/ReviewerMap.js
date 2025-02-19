@@ -16,7 +16,7 @@ const openRawModal = (feature) => {
   const items = [
     {
       key: 1,
-      label: "SPI Value",
+      label: "CDI Value",
       children: DROUGHT_CATEGORY_LABEL?.[feature?.category?.raw],
     },
     {

@@ -7,6 +7,10 @@ class Settings(models.Model):
         unique=True,
     )
     job_id = models.UUIDField()
+    job_config = models.JSONField(
+        null=True,
+        blank=True
+    )
     on_success_emails = models.JSONField(
         null=True,
         blank=True

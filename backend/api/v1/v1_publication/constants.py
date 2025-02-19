@@ -32,7 +32,13 @@ class DroughtCategory:
 
 class CDIGeonodeCategory:
     cdi = "cdi-raster-map"
+    spi = "spi-raster-map"
+    ndvi = "ndvi-raster-map"
+    lst = "lst-raster-map"
 
     FieldStr = {
-        cdi: "CDI Raster Map"
+        cdi: "CDI Raster Map",
+        spi: "SPI Raster Map",
+        ndvi: "NDVI Raster Map",
+        lst: "LST Raster Map",
     }

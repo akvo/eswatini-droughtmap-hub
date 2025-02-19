@@ -32,7 +32,7 @@ const openRawModal = (feature) => {
   const items = [
     {
       key: 1,
-      label: "SPI Value",
+      label: "CDI Value",
       children: DROUGHT_CATEGORY_LABEL?.[feature.category],
     },
     {
@@ -227,7 +227,7 @@ const PublicationMap = ({
       <Flex align="center" justify="space-between">
         <div className="w-10/12 py-2">
           <Title level={2}>
-            {`Inkundla SPI Publication for: ${dayjs(
+            {`Inkundla CDI Publication for: ${dayjs(
               publication?.year_month,
               "YYYY-MM"
             ).format("MMMM YYYY")}`}

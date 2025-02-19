@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.core.exceptions import ValidationError
 from api.v1.v1_rundeck.models import Settings
 
 
@@ -20,12 +21,13 @@ class SettingsModelTest(TestCase):
         self.assertIsNone(settings.updated_at)
         self.assertEqual(len(settings.on_failure_emails), 2)
 
-    def test_job_id_uniqueness(self):
-        """Test that secret keys must be unique"""
-        Settings.objects.create(
+    def test_job_id_is_valid_uuid(self):
+        """Test that job_id must be a valid UUID"""
+        settings = Settings(
             project_name="eswatini",
-            job_id="unique_key"
+            job_id="not-uuid"
         )
 
-        with self.assertRaises(Exception):  # IntegrityError expected
-            Settings.objects.create(job_id="unique_key")
+        with self.assertRaises(ValidationError):
+            settings.full_clean()
+            settings.save()

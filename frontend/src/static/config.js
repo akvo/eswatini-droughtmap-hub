@@ -86,10 +86,36 @@ export const REVIEWER_MAP_FILTER = [
 ];
 
 export const CREATE_PUBLICATION_MAIL = {
-  subject: "SPI Map review requested for month",
-  message: `<p>Dear {{reviewer_name}}, The SPI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.</p>`,
+  subject: "CDI Map review requested for month",
+  message: `<p>Dear {{reviewer_name}}, The CDI Map for the month of {{year_month}} is available for review. Please submit your review by {{due_date}}.</p>`,
 };
 
 export const APP_SETTINGS = {
   copy: "Eswatini National Drought Monitoring & Mitigation Center",
 };
+
+export const RUNDECK_JOB_STATUS_COLOR = {
+  succeeded: "green",
+  failed: "red",
+  aborted: "orange",
+  running: "blue",
+};
+
+export const MAP_CATEGORY_OPTIONS = [
+  {
+    value: "cdi-raster-map",
+    label: "CDI Raster Map",
+  },
+  {
+    value: "spi-raster-map",
+    label: "SPI Raster Map",
+  },
+  {
+    value: "ndvi-raster-map",
+    label: "NDVI Raster Map",
+  },
+  {
+    value: "lst-raster-map",
+    label: "LST Raster Map",
+  }
+]
