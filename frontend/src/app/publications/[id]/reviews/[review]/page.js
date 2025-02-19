@@ -26,7 +26,7 @@ const PublicationReviewPage = async ({ params }) => {
         <div className="py-4">
           <Link href={`/publications/${review?.publication?.id}`}>
             <h1 className="text-3xl font-bold">
-              {`Inkundla SPI Review for: ${yearMonth}`}
+              {`Inkundla CDI Review for: ${yearMonth}`}
             </h1>
           </Link>
           <h2>

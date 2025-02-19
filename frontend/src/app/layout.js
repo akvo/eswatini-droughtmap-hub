@@ -12,7 +12,7 @@ import { APP_SETTINGS } from "@/static/config";
 export const metadata = {
   title: "eSwatini - DroughtMap Hub",
   description:
-    "The purpose of the DroughtMap Hub is to provide a user-friendly interface to validate, publish and browse SPI products.",
+    "The purpose of the DroughtMap Hub is to provide a user-friendly interface to validate, publish and browse CDI products.",
 };
 
 const DynamicScript = dynamic(() => import("@/components/DynamicScript"), {

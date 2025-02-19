@@ -91,7 +91,7 @@ const ValidationModal = ({
             disabled
           />
         </Form.Item>
-        <Form.Item label="Validated SPI Value">
+        <Form.Item label="Validated CDI Value">
           <Select
             options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
             placeholder="Select Drought category"
