@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "./lib";
 import { USER_ROLES } from "./static/config";
 
-const protectedRoutes = ["/profile", "/publications", "/reviews"];
+const protectedRoutes = ["/profile", "/publications", "/reviews", "/settings"];
 const authRoutes = ["/login"];
 
 export default async function middleware(request) {
