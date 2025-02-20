@@ -211,7 +211,7 @@ const SettingsPage = () => {
 
   return (
     <div className="w-full h-auto space-y-4 pt-6">
-      <Title level={2}>Settings</Title>
+      <Title level={2}>Automation Settings</Title>
       <Skeleton loading={fetching} title paragraph>
         {newSetup ? (
           <div className="w-1/2 space-y-6">
@@ -290,7 +290,7 @@ const SettingsPage = () => {
               </Form>
             </div>
             <div className="w-full lg:w-8/12 border-l border-l-grey-100 px-6 space-y-6">
-              <Title level={3}>CDI Automation Jobs</Title>
+              <Title level={3}>Manual Executions</Title>
               <Flex align="center" justify="space-between" className="w-full">
                 <div>
                   {execList?.[0]?.date_started && (
@@ -331,7 +331,7 @@ const SettingsPage = () => {
               <div className="w-full space-y-2 pt-4">
                 <Flex align="center" justify="space-between">
                   <div>
-                    <Title level={4}>Manual Executions History</Title>
+                    <Title level={4}>Recent Executions</Title>
                   </div>
                   <Button
                     onClick={() => {
