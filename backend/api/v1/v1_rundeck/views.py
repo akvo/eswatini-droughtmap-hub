@@ -325,8 +325,10 @@ class RundeckExecutionsAPI(APIView):
                 )
             response = requests.post(
                 f"{settings.RUNDECK_API_URL}/job/{job_id}/run",
-                {
-                    "year_month": serializer.validated_data["year_month"]
+                json={
+                    "options": {
+                        "year_month": serializer.validated_data["year_month"]
+                    }
                 },
                 headers={
                     "X-Rundeck-Auth-Token": settings.RUNDECK_API_TOKEN
