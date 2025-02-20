@@ -270,6 +270,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                   format: "YYYY-MM",
                   type: "mask",
                 }}
+                picker="month"
               />
             </Form.Item>
             <Form.Item
