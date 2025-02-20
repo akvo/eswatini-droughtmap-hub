@@ -118,10 +118,11 @@ class ReviewSerializer(serializers.ModelSerializer):
         reviewed_count = sum(
             1 for item in suggestion_values if item.get("reviewed") is True
         )
-        total = len(list(filter(
-            lambda x: x["category"] != DroughtCategory.none,
-            obj.publication.initial_values
-        )))
+        # total = len(list(filter(
+        #     lambda x: x["category"] != DroughtCategory.none,
+        #     obj.publication.initial_values
+        # )))
+        total = len(obj.publication.initial_values)
         return f"{reviewed_count}/{total}"
 
     class Meta:
@@ -160,10 +161,11 @@ class ReviewListSerializer(serializers.ModelSerializer):
         reviewed_count = sum(
             1 for item in suggestion_values if item.get('reviewed') is True
         )
-        total = len(list(filter(
-            lambda x: x["category"] != DroughtCategory.none,
-            obj.publication.initial_values
-        )))
+        # total = len(list(filter(
+        #     lambda x: x["category"] != DroughtCategory.none,
+        #     obj.publication.initial_values
+        # )))
+        total = len(obj.publication.initial_values)
         return f"{reviewed_count}/{total}"
 
     class Meta:
