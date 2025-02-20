@@ -11,6 +11,7 @@ import {
   Flex,
   Form,
   Input,
+  message,
   Select,
   Skeleton,
   Space,
@@ -18,7 +19,7 @@ import {
   Typography,
 } from "antd";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import advancedUTC from "dayjs/plugin/utc";
@@ -113,10 +114,25 @@ const SettingsPage = () => {
   const [fetching, setFetching] = useState(true);
   const [preload, setPreload] = useState(true);
   const [newSetup, setNewSetup] = useState(false);
+  const [jobChecking, setJobChecking] = useState(false);
+  const [jobFetching, setJobFetching] = useState(false);
+  const [jobExecuting, setJobExecuting] = useState(false);
   const [form] = useForm();
   const router = useRouter();
 
+  const tableProps = useMemo(() => {
+    if (execList.length <= 20) {
+      return { loading: jobFetching, pagination: false };
+    }
+    return { loading: jobFetching };
+  }, [execList, jobFetching]);
+
   const onFinish = async (payload) => {
+    if (!settings.id) {
+      message.error("Something went wrong. Please try again.");
+      setPreload(true);
+      return;
+    }
     setLoading(true);
     try {
       const apiData = await api(
@@ -161,6 +177,7 @@ const SettingsPage = () => {
   };
 
   const onRunJob = async ({ year_month }) => {
+    setJobExecuting(true);
     try {
       await api("POST", `/rundeck/job/${settings?.job_id}/execs`, {
         year_month: dayjs(year_month).format("YYYY-MM"),
@@ -168,7 +185,9 @@ const SettingsPage = () => {
 
       setPreload(true);
       router.refresh();
+      setJobExecuting(false);
     } catch (err) {
+      setJobExecuting(false);
       console.error(err);
     }
   };
@@ -204,6 +223,40 @@ const SettingsPage = () => {
       setFetching(false);
     }
   }, [preload]);
+
+  const fetchExecutions = useCallback(async () => {
+    try {
+      if (jobChecking) {
+        setJobFetching(true);
+        setJobChecking(false);
+        const { data: _execList } = await api(
+          "GET",
+          `/rundeck/job/${settings?.job_id}/execs`
+        );
+        setExecList(_execList);
+        setJobFetching(false);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [settings, jobChecking]);
+
+  const handleRunningJob = useCallback(() => {
+    const runningJob = execList.find((e) => e.status === "running");
+    if (!preload && runningJob) {
+      setTimeout(() => {
+        setJobChecking(true);
+      }, 10000); // 10 seconds
+    }
+  }, [execList, preload]);
+
+  useEffect(() => {
+    handleRunningJob();
+  }, [handleRunningJob]);
+
+  useEffect(() => {
+    fetchExecutions();
+  }, [fetchExecutions]);
 
   useEffect(() => {
     fetchData();
@@ -319,9 +372,19 @@ const SettingsPage = () => {
                           format: "YYYY-MM",
                           type: "mask",
                         }}
+                        picker="month"
                       />
                     </Form.Item>
-                    <Button htmlType="submit" type="primary">
+                    <Button
+                      htmlType="submit"
+                      type="primary"
+                      loading={jobExecuting}
+                      disabled={
+                        execList.find((e) => e.status === "running")?.id
+                          ? true
+                          : false
+                      }
+                    >
                       Run Job Now
                     </Button>
                   </Form>
@@ -335,8 +398,7 @@ const SettingsPage = () => {
                   </div>
                   <Button
                     onClick={() => {
-                      setPreload(true);
-                      router.refresh();
+                      setJobChecking(true);
                     }}
                   >
                     Refresh
@@ -386,6 +448,7 @@ const SettingsPage = () => {
                       ),
                     },
                   ]}
+                  {...tableProps}
                 />
               </div>
             </div>
