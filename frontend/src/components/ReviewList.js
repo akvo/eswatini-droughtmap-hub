@@ -301,13 +301,13 @@ const ReviewList = ({
                                   )
                                 }
                                 type="link"
-                                disabled={
-                                  formInstance.getFieldValue([
-                                    "administrations",
-                                    field.name,
-                                    "category",
-                                  ])?.raw === DROUGHT_CATEGORY_VALUE.none
-                                }
+                                // disabled={
+                                //   formInstance.getFieldValue([
+                                //     "administrations",
+                                //     field.name,
+                                //     "category",
+                                //   ])?.raw === DROUGHT_CATEGORY_VALUE.none
+                                // }
                               >
                                 {formInstance.getFieldValue([
                                   "administrations",
@@ -316,18 +316,18 @@ const ReviewList = ({
                                 ])}
                               </Button>
                             </Space>
-                            {formInstance.getFieldValue([
+                            {/* {formInstance.getFieldValue([
                               "administrations",
                               field.name,
                               "category",
                             ])?.raw !== DROUGHT_CATEGORY_VALUE.none &&
-                              !isCompleted && (
-                                <div>
-                                  <Tag color={isReviewed ? "success" : null}>
-                                    {isReviewed ? "Reviewed" : "Pending"}
-                                  </Tag>
-                                </div>
-                              )}
+                              !isCompleted && ( */}
+                            <div>
+                              <Tag color={isReviewed ? "success" : null}>
+                                {isReviewed ? "Reviewed" : "Pending"}
+                              </Tag>
+                            </div>
+                            {/* )} */}
                           </div>
                         );
                       })}

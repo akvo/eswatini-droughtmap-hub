@@ -76,9 +76,9 @@ const ValidationMap = ({
   const onClick = useCallback(
     (feature) => {
       const data = getData(feature?.properties?.administration_id)?.[2];
-      if (data?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
-        return;
-      }
+      // if (data?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
+      //   return;
+      // }
       if (readOnly) {
         openFeature({ ...data, name: feature?.properties?.name });
       } else {

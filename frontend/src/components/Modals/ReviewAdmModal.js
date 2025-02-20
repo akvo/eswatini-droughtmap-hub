@@ -13,7 +13,11 @@ import {
   Button,
 } from "antd";
 
-import { DROUGHT_CATEGORY, DROUGHT_CATEGORY_LABEL } from "@/static/config";
+import {
+  DROUGHT_CATEGORY,
+  DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
@@ -149,7 +153,11 @@ const ReviewAdmModal = ({ review }) => {
                   onClose();
                 }
               }}
-              disabled={showSuggestion && comment?.trim()?.length === 0}
+              disabled={
+                (showSuggestion && comment?.trim()?.length === 0) ||
+                (activeAdm?.category?.raw === DROUGHT_CATEGORY_VALUE.none &&
+                  !showSuggestion)
+              }
             >
               {activeAdm?.reviewed
                 ? "OK"

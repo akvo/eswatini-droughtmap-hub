@@ -92,9 +92,9 @@ const ReviewerMap = ({ data = [] }) => {
     const findAdm = data?.find(
       (d) => d?.administration_id === feature?.properties?.administration_id
     );
-    if (findAdm?.category?.raw === DROUGHT_CATEGORY_VALUE.none) {
-      return;
-    }
+    // if (findAdm?.category?.raw === DROUGHT_CATEGORY_VALUE.none) {
+    //   return;
+    // }
     if (valueType === REVIEWER_MAP_FILTER[1].value) {
       openRawModal({ ...findAdm, name: feature?.properties?.name });
     } else {

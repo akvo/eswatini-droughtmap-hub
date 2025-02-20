@@ -82,9 +82,9 @@ const ValidationTable = ({
         title: "",
         dataIndex: "administration_id",
         render: (_, record) => {
-          if (record?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
-            return null;
-          }
+          // if (record?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
+          //   return null;
+          // }
           return (
             <Button type="text" onClick={() => onDetails(record)}>
               {record?.category !== undefined && record?.category !== null ? (

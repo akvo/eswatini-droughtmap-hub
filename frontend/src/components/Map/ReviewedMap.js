@@ -37,9 +37,9 @@ const ReviewedMap = ({ data = [], review = {} }) => {
     const findAdm = data?.find(
       (d) => d?.administration_id === feature?.properties?.administration_id
     );
-    if (findAdm?.category === DROUGHT_CATEGORY_VALUE.none) {
-      return;
-    }
+    // if (findAdm?.category === DROUGHT_CATEGORY_VALUE.none) {
+    //   return;
+    // }
     appDispatch({
       type: "SET_ACTIVE_ADM",
       payload: { ...findAdm, name: feature?.properties?.name },
