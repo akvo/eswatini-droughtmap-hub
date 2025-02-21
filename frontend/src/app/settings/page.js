@@ -1,6 +1,5 @@
 "use client";
 
-import { SubmitButton } from "@/components";
 import { MinusCircleIcon, PlusCircleIcon } from "@/components/Icons";
 import { api } from "@/lib";
 import {
@@ -117,6 +116,7 @@ const SettingsPage = () => {
   const [jobChecking, setJobChecking] = useState(false);
   const [jobFetching, setJobFetching] = useState(false);
   const [jobExecuting, setJobExecuting] = useState(false);
+  const [submittable, setSubmittable] = useState(false);
   const [form] = useForm();
   const router = useRouter();
 
@@ -126,6 +126,22 @@ const SettingsPage = () => {
     }
     return { loading: jobFetching };
   }, [execList, jobFetching]);
+
+  const runJobNowIsDisabled = useMemo(() => {
+    const totalSuccessEmails = settings?.on_success_emails?.length || 0;
+    const totalFailureEmails = settings?.on_failure_emails?.length || 0;
+    const totalExceededEmails = settings?.on_exceeded_emails?.length || 0;
+    const totalEmails =
+      totalSuccessEmails + totalFailureEmails + totalExceededEmails;
+    const anyJobRunning = execList.some((e) => e.status === "running");
+
+    return totalEmails < 3 ||
+      !submittable ||
+      anyJobRunning ||
+      (submittable && totalEmails < 3)
+      ? true
+      : false;
+  }, [execList, settings, submittable]);
 
   const onFinish = async (payload) => {
     if (!settings.id) {
@@ -262,6 +278,16 @@ const SettingsPage = () => {
     fetchData();
   }, [fetchData]);
 
+  const settingsValues = Form.useWatch([], form);
+  useEffect(() => {
+    form
+      .validateFields({
+        validateOnly: true,
+      })
+      .then(() => setSubmittable(true))
+      .catch(() => setSubmittable(false));
+  }, [form, settingsValues]);
+
   return (
     <div className="w-full h-auto space-y-4 pt-6">
       <Title level={2}>Automation Settings</Title>
@@ -296,9 +322,13 @@ const SettingsPage = () => {
               >
                 <Select placeholder="Select Job" options={jobs} />
               </Form.Item>
-              <SubmitButton form={form} loading={loading}>
+              <Button
+                htmlType="submit"
+                disabled={!submittable}
+                loading={loading}
+              >
                 Submit
-              </SubmitButton>
+              </Button>
             </Form>
           </div>
         ) : (
@@ -336,9 +366,14 @@ const SettingsPage = () => {
                 />
 
                 <div className="w-full text-right">
-                  <SubmitButton size="large" form={form} loading={loading}>
+                  <Button
+                    htmlType="submit"
+                    size="large"
+                    disabled={!submittable}
+                    loading={loading}
+                  >
                     Save
-                  </SubmitButton>
+                  </Button>
                 </div>
               </Form>
             </div>
@@ -379,11 +414,7 @@ const SettingsPage = () => {
                       htmlType="submit"
                       type="primary"
                       loading={jobExecuting}
-                      disabled={
-                        execList.find((e) => e.status === "running")?.id
-                          ? true
-                          : false
-                      }
+                      disabled={runJobNowIsDisabled}
                     >
                       Run Job Now
                     </Button>
