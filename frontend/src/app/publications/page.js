@@ -34,6 +34,7 @@ const PublicationsPage = () => {
   const [loading, setLoading] = useState(false);
   const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
+  const [page, setPage] = useState(1);
   const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
   const [status, setStatus] = useState(null);
   const router = useRouter();
@@ -118,6 +119,7 @@ const PublicationsPage = () => {
   ];
 
   const onChangeStatus = (value) => {
+    setPage(1);
     setStatus(value);
     setPreload(true);
   };
@@ -128,8 +130,8 @@ const PublicationsPage = () => {
         setPreload(false);
         setLoading(true);
         const apiURL = status
-          ? `/admin/cdi-geonode?category=${category}&status=${status}`
-          : `/admin/cdi-geonode?category=${category}`;
+          ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}`
+          : `/admin/cdi-geonode?page=${page}&category=${category}`;
         const { data, total } = await api("GET", apiURL);
         if (total) {
           setTotalData(total);
@@ -144,7 +146,7 @@ const PublicationsPage = () => {
       console.error(err);
       setPreload(false);
     }
-  }, [preload, status, category]);
+  }, [preload, page, status, category]);
 
   useEffect(() => {
     fetchData();
@@ -161,6 +163,7 @@ const PublicationsPage = () => {
             className="w-48"
             placeholder="Filter by Category"
             onChange={(value) => {
+              setPage(1);
               if (value) {
                 setCategory(value);
               } else {
@@ -190,11 +193,16 @@ const PublicationsPage = () => {
             totalData < PAGE_SIZE
               ? false
               : {
+                  current: page,
                   pageSize: PAGE_SIZE,
                   total: totalData,
                   responsive: true,
                   align: "center",
                   position: ["bottomCenter"],
+                  onChange: (_page) => {
+                    setPage(_page);
+                    setPreload(true);
+                  },
                 }
           }
           rowKey="pk"
