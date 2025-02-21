@@ -84,6 +84,7 @@ class Command(BaseCommand):
                 "{0}/api/v2/resources"
                 "?filter{{category.identifier}}={1}"
                 "&filter{{subtype}}=raster&page={2}"
+                # "&page=1"
                 .format(
                     settings.GEONODE_BASE_URL,
                     category,
@@ -100,10 +101,10 @@ class Command(BaseCommand):
                 data = response.json()
                 max_total = data.get("total", 0)
                 data = data.get("resources", [])
-                cdi_geonode_ids = [
-                    d.get("pk")
-                    for d in data
-                ]
+                cdi_geonode_ids = sorted(
+                    [d.get("pk") for d in data],
+                    reverse=True
+                )
 
         total = repeat * 2
         # Limit the number of publications to generate
@@ -210,40 +211,40 @@ class Command(BaseCommand):
                     publication.status != PublicationStatus.in_review
                 )
 
-                suggestion_values = []
-                for v in initial_values:
-                    s_value = v["value"]
-                    comment = None
-                    reviewed = random.choice([
-                        None,
-                        True
-                    ])
-                    if is_completed:
-                        reviewed = True
-
-                    is_diff = fake.boolean()
-                    if is_diff:
-                        comment = fake.sentence(nb_words=8)
-                        s_value = random.uniform(0, 100)
-
-                    suggestion_values.append({
-                        "administration_id": v["administration_id"],
-                        "value": s_value,
-                        "comment": comment,
-                        "reviewed": reviewed,
-                        "category": get_category(s_value),
-                    })
-
                 review.is_completed = is_completed
-                review.suggestion_values = suggestion_values
 
+                suggestion_values = None
                 if is_completed:
+                    suggestion_values = []
+                    for v in initial_values:
+                        s_value = v["value"]
+                        comment = None
+                        reviewed = random.choice([
+                            None,
+                            True
+                        ])
+                        if is_completed:
+                            reviewed = True
+
+                        is_diff = fake.boolean()
+                        if is_diff:
+                            comment = fake.sentence(nb_words=8)
+                            s_value = random.uniform(0, 100)
+
+                        suggestion_values.append({
+                            "administration_id": v["administration_id"],
+                            "value": s_value,
+                            "comment": comment,
+                            "reviewed": reviewed,
+                            "category": get_category(s_value),
+                        })
                     completed_at = start_date + timedelta(
                         days=random.randint(0, (due_date - start_date).days)
                     )
                     review.is_completed = True
                     review.completed_at = timezone.make_aware(completed_at)
 
+                review.suggestion_values = suggestion_values
                 review.save()
 
         if not settings.TEST_ENV:
