@@ -15,8 +15,10 @@ const { Title } = Typography;
 
 const ReviewsPage = () => {
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [totalData, setTotalData] = useState(0);
+  const [page, setPage] = useState(1);
+  const [preload, setPreload] = useState(true);
   const router = useRouter();
 
   const columns = [
@@ -52,12 +54,24 @@ const ReviewsPage = () => {
   ];
 
   const fetchData = useCallback(async () => {
-    const { data, total } = await api("GET", "/reviewer/reviews");
-    setTotalData(total);
-    const _reviews = data.map((d) => ({ key: d?.id, ...d }));
-    setReviews(_reviews);
-    setLoading(false);
-  }, []);
+    try {
+      if (preload) {
+        setPreload(false);
+        setLoading(true);
+        const { data, total } = await api(
+          "GET",
+          `/reviewer/reviews?page=${page}`
+        );
+        setTotalData(total);
+        const _reviews = data.map((d) => ({ key: d?.id, ...d }));
+        setReviews(_reviews);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setPreload(false);
+    }
+  }, [preload, page]);
 
   useEffect(() => {
     fetchData();
@@ -83,11 +97,16 @@ const ReviewsPage = () => {
             totalData < PAGE_SIZE
               ? false
               : {
+                  current: page,
                   pageSize: PAGE_SIZE,
                   total: totalData,
                   responsive: true,
                   align: "center",
                   position: ["bottomCenter"],
+                  onChange: (_page) => {
+                    setPage(_page);
+                    setPreload(true);
+                  },
                 }
           }
         />
