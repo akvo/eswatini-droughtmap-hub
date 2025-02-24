@@ -29,18 +29,26 @@ import classNames from "classnames";
 const { Title } = Typography;
 
 const openRawModal = (feature) => {
-  const items = [
-    {
-      key: 1,
-      label: "CDI Value",
-      children: DROUGHT_CATEGORY_LABEL?.[feature.category],
-    },
-    {
-      key: 2,
-      label: "Computed Value",
-      children: parseFloat(feature?.value, 10).toFixed(2),
-    },
-  ];
+  const items = feature?.value
+    ? [
+        {
+          key: 1,
+          label: "CDI Value",
+          children: DROUGHT_CATEGORY_LABEL?.[feature.category],
+        },
+        {
+          key: 2,
+          label: "Computed Value",
+          children: parseFloat(feature?.value, 10).toFixed(2),
+        },
+      ]
+    : [
+        {
+          key: 1,
+          label: "CDI Value",
+          children: DROUGHT_CATEGORY_LABEL?.[feature.category],
+        },
+      ];
   return Modal.info({
     title: feature?.name,
     content: <Descriptions items={items} layout="horizontal" column={1} />,
