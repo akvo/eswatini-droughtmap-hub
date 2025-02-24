@@ -1,5 +1,12 @@
 import time
 import requests
+import geopandas as gpd
+import topojson as tp
+import matplotlib.pyplot as plt
+import os
+import json
+from io import BytesIO
+from zipfile import ZipFile
 from pathlib import Path
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
@@ -30,6 +37,7 @@ from api.v1.v1_publication.serializers import (
     CreatePublicationSerializer,
     PublicationReviewsSerializer,
     ReviewInfoSerializer,
+    ExportMapSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
@@ -38,6 +46,8 @@ from api.v1.v1_publication.models import (
 from api.v1.v1_publication.constants import (
     CDIGeonodeCategory,
     PublicationStatus,
+    DroughtCategory,
+    ExportMapTypes,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
@@ -477,3 +487,174 @@ class ReviewDetailsAPI(APIView):
             ).data,
             status=status.HTTP_200_OK
         )
+
+
+class ExportMapAPI(APIView):
+
+    @extend_schema(
+        summary="Export Public Map",
+        description=(
+            "Export published map as GeoJSON, Shapefile & Image (PNG)"
+        ),
+        tags=["Map"],
+        parameters=[
+            OpenApiParameter(
+                name="export_type",
+                default=ExportMapTypes.geojson,
+                required=False,
+                enum=ExportMapTypes.FieldStr.keys(),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses={
+            200: OpenApiTypes.BINARY,  # Binary response for file downloads
+        },
+    )
+    def get(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        if publication.status != PublicationStatus.published:
+            raise ValidationError({
+                "message": "Map not yet published"
+            })
+
+        # Validate the requested format
+        serializer = ExportMapSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            raise ValidationError({
+                "message": "Invalid format parameter."
+            })
+
+        try:
+            # Get the requested format from query parameters
+            type = serializer.validated_data["export_type"]
+
+            # Load your GeoDataFrame
+            gdf = self._load_geodataframe(publication.validated_values)
+
+            # Handle the export based on the requested format
+            year_month = publication.year_month.strftime('%Y-%m')
+            if type == ExportMapTypes.geojson:
+                return self._export_geojson(gdf, year_month)
+            elif type == ExportMapTypes.shapefile:
+                return self._export_shapefile(gdf, year_month)
+            elif type == ExportMapTypes.png:
+                return self._export_png(gdf, year_month)
+        except Exception as e:
+            return Response(
+                {
+                    "message": f"An error occurred during export: {e}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def _load_geodataframe(self, validated_values):
+        # Step 1: Load the TopoJSON file
+        with open("./source/eswatini.topojson", "r") as f:
+            topojson_data = json.load(f)
+        validated_dict = {
+            item["administration_id"]: DroughtCategory.FieldStr.get(
+                item["category"]
+            )
+            for item in validated_values
+        }
+        # Step 2: Convert TopoJSON to GeoJSON using the topojson library
+        # Create a Topology object from the loaded TopoJSON data
+        topology = tp.Topology(topojson_data, object_name="eswatini")
+        # Convert the TopoJSON to GeoJSON
+        geojson_data = topology.to_geojson()
+
+        # Step 3: Load the GeoJSON data into a GeoDataFrame
+        gdf = gpd.GeoDataFrame.from_features(json.loads(geojson_data))
+
+        # Step 4: Map the categories to the GeoDataFrame
+        gdf["drought_category"] = gdf["administration_id"].map(validated_dict)
+
+        # Step 5: Handle missing values (optional)
+        gdf["drought_category"] = gdf["drought_category"].fillna(
+            DroughtCategory.FieldStr.get(
+                DroughtCategory.none
+            )
+        )
+        # Ensure the GeoDataFrame has a CRS
+        if gdf.crs is None:
+            # Assign a default CRS (e.g., WGS84, EPSG:4326)
+            gdf.set_crs("EPSG:4326", inplace=True)
+        return gdf
+
+    def _export_geojson(self, gdf, year_month):
+        """
+        Export the GeoDataFrame as GeoJSON.
+        """
+        geojson_data = gdf.to_json()
+        response = HttpResponse(geojson_data, content_type="application/json")
+        cd = f'attachment; filename="cdi_map_{year_month}.geojson"'
+        response["Content-Disposition"] = cd
+        return response
+
+    def _export_shapefile(self, gdf, year_month):
+        """
+        Export the GeoDataFrame as a Shapefile (zipped).
+        """
+        # Create an in-memory buffer for the Shapefile
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, "w") as zip_file:
+            # Write the Shapefile components to the zip file
+            temp_dir = "./tmp"
+            os.makedirs(
+                temp_dir,
+                exist_ok=True
+            )
+            gdf.to_file(
+                os.path.join(temp_dir, f"cdi_map_{year_month}.shp"),
+                driver="ESRI Shapefile"
+            )
+            # Manually create the .prj file if it doesn't exist
+            prj_path = os.path.join(
+                temp_dir,
+                f"cdi_map_{year_month}.prj"
+            )
+            if not os.path.exists(prj_path):
+                with open(prj_path, "w") as prj_file:
+                    prj_file.write(gdf.crs.to_wkt())
+
+            for ext in ["shp", "shx", "dbf", "prj"]:
+                file_path = os.path.join(
+                    temp_dir,
+                    f"cdi_map_{year_month}.{ext}"
+                )
+                zip_file.write(
+                    file_path,
+                    arcname=f"cdi_map_{year_month}.{ext}"
+                )
+                os.remove(file_path)  # Clean up temporary files
+
+        # Prepare the HTTP response
+        zip_buffer.seek(0)
+        response = HttpResponse(zip_buffer, content_type="application/zip")
+        cd = f'attachment; filename="cdi_map_{year_month}.zip"'
+        response["Content-Disposition"] = cd
+        return response
+
+    def _export_png(self, gdf, year_month):
+        """
+        Export the GeoDataFrame as a PNG image.
+        """
+        # Create a plot
+        fig, ax = plt.subplots(figsize=(10, 10))
+        gdf.plot(ax=ax, column="drought_category", legend=True, cmap="viridis")
+        ax.set_title("Eswatini Map with Categories")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        # Save the plot to an in-memory buffer
+        img_buffer = BytesIO()
+        plt.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
+        plt.close(fig)  # Close the figure to free memory
+
+        # Prepare the HTTP response
+        img_buffer.seek(0)
+        response = HttpResponse(img_buffer, content_type="image/png")
+        cd = f'attachment; filename="cdi_map_{year_month}.png"'
+        response["Content-Disposition"] = cd
+        return response

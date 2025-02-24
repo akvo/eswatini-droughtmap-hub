@@ -6,6 +6,7 @@ from .views import (
     PublicationViewSet,
     PublicationReviewsAPI,
     ReviewDetailsAPI,
+    ExportMapAPI,
 )
 
 urlpatterns = [
@@ -58,5 +59,10 @@ urlpatterns = [
         r"^(?P<version>(v1))/admin/publication-review/(?P<pk>[0-9]+)",
         ReviewDetailsAPI.as_view(),
         name="publication-review",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/map/export/(?P<pk>[0-9]+)",
+        ExportMapAPI.as_view(),
+        name="map-export",
     ),
 ]
