@@ -31,3 +31,6 @@ tblib==3.0.0
 geopandas==1.0.1
 rasterio==1.4.3
 rasterstats==0.20.0
+pillow==11.1.0
+topojson==1.9
+matplotlib==3.9.4
