@@ -42,3 +42,33 @@ class CDIGeonodeCategory:
         ndvi: "NDVI Raster Map",
         lst: "LST Raster Map",
     }
+
+
+class DroughtCategoryColor:
+    normal = 0
+    d0 = 1
+    d1 = 2
+    d2 = 3
+    d3 = 4
+    d4 = 5
+
+    FieldStr = {
+        normal: "#b9f8cf",
+        d0: "#ffff00",
+        d1: "#fbd47f",
+        d2: "#ffaa00",
+        d3: "#e60000",
+        d4: "#730000",
+    }
+
+
+class ExportMapTypes:
+    geojson = "geojson"
+    shapefile = "shapefile"
+    png = "png"
+
+    FieldStr = {
+        geojson: "GeoJSON",
+        shapefile: "Shapefile",
+        png: "PNG",
+    }
