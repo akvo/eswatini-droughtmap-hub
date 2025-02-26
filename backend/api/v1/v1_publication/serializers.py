@@ -399,3 +399,31 @@ class ExportMapSerializer(serializers.Serializer):
         fields = [
             "export_type"
         ]
+
+
+class PublishedMapSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Publication
+        fields = [
+            "id",
+            "cdi_geonode_id",
+            "year_month",
+            "validated_values",
+            "published_at",
+            "narrative",
+            "bulletin_url",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class CompareMapSerializer(serializers.Serializer):
+    left_date = CustomDateField(required=False)
+    right_date = CustomDateField(required=False)
+
+    class Meta:
+        fields = [
+            "left_date",
+            "right_date"
+        ]
