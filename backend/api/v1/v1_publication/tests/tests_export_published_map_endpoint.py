@@ -1,12 +1,12 @@
 import geopandas as gpd
 from rest_framework.test import APITestCase
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
-from PIL import Image
+# from PIL import Image
 from zipfile import ZipFile
 from io import BytesIO
 from unittest.mock import patch
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Polygon
+# from shapely.geometry import Point
 from django.urls import reverse
 from django.utils import timezone
 from django.test.utils import override_settings
@@ -59,7 +59,9 @@ class ExportMapAPITest(APITestCase):
         """
         bounds = gdf.total_bounds
         print(f"Bounding box: {bounds}")
-        print(f"Width: {bounds[2] - bounds[0]}, Height: {bounds[3] - bounds[1]}")
+        print(
+            f"Width: {bounds[2] - bounds[0]}, Height: {bounds[3] - bounds[1]}"
+        )
 
     @patch("api.v1.v1_publication.views.ExportMapAPI._load_geodataframe")
     def test_export_geojson(self, mock_load_gdf):
