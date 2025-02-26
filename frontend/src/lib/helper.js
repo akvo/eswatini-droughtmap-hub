@@ -1,3 +1,7 @@
+import { USER_ROLES } from "@/static/config";
+import { Button } from "antd";
+import Link from "next/link";
+
 export const transformReviews = (
   administrations = [],
   reviews = [],
@@ -41,4 +45,44 @@ export const transformReviews = (
         .filter((a) => !isNaN(a))
         .filter((k) => a?.[k] !== undefined).length;
     });
+};
+
+export const getProfileDropdownItems = (user, isPublic = false) => {
+  const menuItems = [
+    {
+      key: 11,
+      label: isPublic ? "Dashboard" : "View Map",
+      url: isPublic
+        ? user?.role === USER_ROLES.admin
+          ? "/publications"
+          : "/reviews"
+        : "/",
+    },
+    {
+      key: 1,
+      label: "Profile",
+      url: "/profile",
+    },
+  ];
+  const menuByRoles =
+    user?.role === USER_ROLES.admin
+      ? [
+          ...menuItems,
+          {
+            key: 2,
+            label: "Settings",
+            url: "/settings",
+          },
+        ]
+      : menuItems;
+  return menuByRoles.map(({ key, label, url }) => ({
+    key,
+    label: (
+      <Link href={url}>
+        <Button type="link" className="dropdown-item">
+          {label}
+        </Button>
+      </Link>
+    ),
+  }));
 };
