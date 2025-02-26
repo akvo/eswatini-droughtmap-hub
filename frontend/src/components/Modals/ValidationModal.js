@@ -9,6 +9,7 @@ import { Badge, Divider, Form, List, Modal, Select } from "antd";
 import { useMemo, useState } from "react";
 
 const ValidationModal = ({
+  isEdit = false,
   isOpen = false,
   data = {},
   onClose,
@@ -50,36 +51,40 @@ const ValidationModal = ({
       destroyOnClose
       closable
     >
-      <Divider orientation="center">
-        <strong>All Comments</strong>
-      </Divider>
-      <List
-        dataSource={activeComments}
-        renderItem={(item) => (
-          <Badge.Ribbon
-            text={DROUGHT_CATEGORY_LABEL?.[item?.category]}
-            color={DROUGHT_CATEGORY_COLOR?.[item?.category]}
-            style={{
-              color: item?.category < 4 ? "#212121" : "#ffffff",
-            }}
-          >
-            <List.Item>
-              <List.Item.Meta
-                title={
-                  <div className="flex flex-col">
-                    <strong>{item?.twg}</strong>
-                    <small>{item?.user}</small>
-                  </div>
-                }
-                description={item?.comment || "No comment"}
-              />
-            </List.Item>
-          </Badge.Ribbon>
-        )}
-      />
-      <Divider orientation="center">
-        <strong>Validation Form</strong>
-      </Divider>
+      {!isEdit && (
+        <>
+          <Divider orientation="center">
+            <strong>All Comments</strong>
+          </Divider>
+          <List
+            dataSource={activeComments}
+            renderItem={(item) => (
+              <Badge.Ribbon
+                text={DROUGHT_CATEGORY_LABEL?.[item?.category]}
+                color={DROUGHT_CATEGORY_COLOR?.[item?.category]}
+                style={{
+                  color: item?.category < 4 ? "#212121" : "#ffffff",
+                }}
+              >
+                <List.Item>
+                  <List.Item.Meta
+                    title={
+                      <div className="flex flex-col">
+                        <strong>{item?.twg}</strong>
+                        <small>{item?.user}</small>
+                      </div>
+                    }
+                    description={item?.comment || "No comment"}
+                  />
+                </List.Item>
+              </Badge.Ribbon>
+            )}
+          />
+          <Divider orientation="center">
+            <strong>Validation Form</strong>
+          </Divider>
+        </>
+      )}
       <Form>
         <Form.Item label="Computed Value">
           <Select
