@@ -28,7 +28,15 @@ class MyProfileTestCase(TestCase, ProfileTestHelperMixin):
         res = req.json()
         self.assertEqual(
             list(res),
-            ["id", "name", "email", "role", "email_verified", "abilities"]
+            [
+                "id",
+                "name",
+                "email",
+                "role",
+                "email_verified",
+                "abilities",
+                "technical_working_group",
+            ]
         )
         self.assertFalse(res["email_verified"])
         self.assertEqual(res["email"], self.user.email)

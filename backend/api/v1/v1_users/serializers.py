@@ -43,6 +43,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "email_verified",
             "abilities",
+            "technical_working_group",
         ]
 
 

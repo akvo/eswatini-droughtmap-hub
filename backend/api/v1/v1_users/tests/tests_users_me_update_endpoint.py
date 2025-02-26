@@ -29,7 +29,15 @@ class UpdateProfileTestCase(TestCase, ProfileTestHelperMixin):
         res = req.json()
         self.assertEqual(
             list(res),
-            ["id", "name", "email", "role", "email_verified", "abilities"]
+            [
+                "id",
+                "name",
+                "email",
+                "role",
+                "email_verified",
+                "abilities",
+                "technical_working_group",
+            ]
         )
         updated_user = SystemUser.objects.get(pk=self.user.id)
         self.assertEqual(res["name"], updated_user.name)

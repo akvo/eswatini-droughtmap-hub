@@ -37,7 +37,15 @@ class LoginTestCase(TestCase):
         )
         self.assertEqual(
             list(res["user"]),
-            ["id", "name", "email", "role", "email_verified", "abilities"]
+            [
+                "id",
+                "name",
+                "email",
+                "role",
+                "email_verified",
+                "abilities",
+                "technical_working_group",
+            ]
         )
         self.assertEqual(len(res["user"]["abilities"]), 1)
 
