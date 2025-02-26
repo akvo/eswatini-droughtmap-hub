@@ -1,10 +1,10 @@
+import { Navbar } from "@/components";
 import { render } from "@testing-library/react";
-import { Navbar } from "../page";
 
 describe("HomePage", () => {
   it("renders login button when session empty", () => {
     const { getByText } = render(<Navbar />);
-    expect(getByText("Login")).toBeInTheDocument();
+    expect(getByText("LOGIN")).toBeInTheDocument();
   });
 
   it("renders profile button when session exists", () => {

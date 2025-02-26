@@ -386,7 +386,7 @@ class ReviewerListAPI(GenericAPIView):
         responses={
             200: UserReviewerSerializer(many=True),
             (200, "application/json"): inline_serializer(
-                "CDIGeonodeListResponse",
+                "ReviewerListResponse",
                 fields={
                     "current": serializers.IntegerField(),
                     "total": serializers.IntegerField(),

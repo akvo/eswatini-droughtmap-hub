@@ -1,10 +1,13 @@
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import ValidationError
-
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import (
+    extend_schema,
+    inline_serializer,
+    OpenApiParameter,
+)
 from drf_spectacular.types import OpenApiTypes
 from django_q.tasks import async_task
 from .models import Jobs
@@ -15,6 +18,7 @@ from .serializers import JobSerializer, CreateJobSerializer
 @extend_schema(
     description="To get the result of job",
     tags=["Jobs"],
+    responses=JobSerializer,
 )
 @api_view(["GET"])
 def view_job(request, job_id, version):
@@ -39,6 +43,14 @@ def view_job(request, job_id, version):
             location=OpenApiParameter.QUERY,
         ),
     ],
+    responses={
+        (200, "application/json"): inline_serializer(
+            "CreateJobResponse",
+            fields={
+                "job_id": serializers.IntegerField(),
+            },
+        ),
+    }
 )
 @api_view(["GET"])
 def create_job(request, version):

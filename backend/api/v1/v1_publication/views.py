@@ -1,5 +1,12 @@
 import time
 import requests
+import geopandas as gpd
+import topojson as tp
+import matplotlib.pyplot as plt
+import os
+import json
+from io import BytesIO
+from zipfile import ZipFile
 from pathlib import Path
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
@@ -19,6 +26,7 @@ from django.http import HttpResponse
 from django.conf import settings
 from django_q.tasks import async_task
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
@@ -30,6 +38,9 @@ from api.v1.v1_publication.serializers import (
     CreatePublicationSerializer,
     PublicationReviewsSerializer,
     ReviewInfoSerializer,
+    ExportMapSerializer,
+    PublishedMapSerializer,
+    CompareMapSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
@@ -38,11 +49,15 @@ from api.v1.v1_publication.models import (
 from api.v1.v1_publication.constants import (
     CDIGeonodeCategory,
     PublicationStatus,
+    DroughtCategory,
+    ExportMapTypes,
+    DroughtCategoryColor,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 from utils.default_serializers import DefaultResponseSerializer
+from utils.custom_serializer_fields import validate_serializers_message
 from math import ceil
 
 
@@ -411,6 +426,18 @@ class PublicationViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.delete(hard=True)
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        total_adms = len(instance.initial_values)
+        total_validated = len(list(filter(
+            lambda x: x["category"] is not None,
+            instance.validated_values
+        )))
+        instance.updated_at = timezone.now()
+        if instance.narrative and total_adms == total_validated:
+            instance.published_at = timezone.now()
+        instance.save()
+
 
 class PublicationReviewsAPI(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
@@ -477,3 +504,266 @@ class ReviewDetailsAPI(APIView):
             ).data,
             status=status.HTTP_200_OK
         )
+
+
+class ExportMapAPI(APIView):
+
+    @extend_schema(
+        summary="Export Public Map",
+        description=(
+            "Export published map as GeoJSON, Shapefile & Image (PNG)"
+        ),
+        tags=["Map"],
+        parameters=[
+            OpenApiParameter(
+                name="export_type",
+                default=ExportMapTypes.geojson,
+                required=False,
+                enum=ExportMapTypes.FieldStr.keys(),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses={
+            200: OpenApiTypes.BINARY,  # Binary response for file downloads
+        },
+    )
+    def get(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        if publication.status != PublicationStatus.published:
+            raise ValidationError({
+                "message": "Map not yet published"
+            })
+
+        # Validate the requested format
+        serializer = ExportMapSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            raise ValidationError({
+                "message": "Invalid format parameter."
+            })
+
+        try:
+            # Get the requested format from query parameters
+            type = serializer.validated_data.get(
+                "export_type",
+                ExportMapTypes.geojson
+            )
+
+            # Load your GeoDataFrame
+            gdf = self._load_geodataframe(publication.validated_values)
+
+            # Handle the export based on the requested format
+            year_month = publication.year_month.strftime('%Y-%m')
+            if type == ExportMapTypes.geojson:
+                return self._export_geojson(gdf, year_month)
+            elif type == ExportMapTypes.shapefile:
+                return self._export_shapefile(gdf, year_month)
+            elif type == ExportMapTypes.png:
+                return self._export_png(gdf, year_month)
+        except Exception as e:
+            return Response(
+                {
+                    "message": f"An error occurred during export: {e}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def _load_geodataframe(self, validated_values):
+        # Step 1: Load the TopoJSON file
+        with open("./source/eswatini.topojson", "r") as f:
+            topojson_data = json.load(f)
+        validated_dict = {
+            item["administration_id"]: item["category"]
+            for item in validated_values
+        }
+        # Step 2: Convert TopoJSON to GeoJSON using the topojson library
+        # Create a Topology object from the loaded TopoJSON data
+        topology = tp.Topology(topojson_data, object_name="eswatini")
+        # Convert the TopoJSON to GeoJSON
+        geojson_data = topology.to_geojson()
+
+        # Step 3: Load the GeoJSON data into a GeoDataFrame
+        gdf = gpd.GeoDataFrame.from_features(json.loads(geojson_data))
+
+        # Step 4: Map the categories to the GeoDataFrame
+        gdf["category"] = gdf["administration_id"].map(validated_dict)
+
+        # Step 5: Add the "drought_category" column
+        gdf["drought_category"] = gdf["category"].map(
+            DroughtCategory.FieldStr.get
+        )
+
+        # Step 6: Handle missing values (optional)
+        gdf["category"] = gdf["category"].fillna(DroughtCategory.none)
+        gdf["drought_category"] = gdf["drought_category"].fillna(
+            DroughtCategory.FieldStr[DroughtCategory.none]
+        )
+        # Ensure the GeoDataFrame has a CRS
+        if gdf.crs is None:
+            # Assign a default CRS (e.g., WGS84, EPSG:4326)
+            gdf.set_crs("EPSG:4326", inplace=True)
+        return gdf
+
+    def _export_geojson(self, gdf, year_month):
+        """
+        Export the GeoDataFrame as GeoJSON.
+        """
+        geojson_data = gdf.to_json()
+        response = HttpResponse(geojson_data, content_type="application/json")
+        cd = f'attachment; filename="cdi_map_{year_month}.geojson"'
+        response["Content-Disposition"] = cd
+        return response
+
+    def _export_shapefile(self, gdf, year_month):
+        """
+        Export the GeoDataFrame as a Shapefile (zipped).
+        """
+        # Create an in-memory buffer for the Shapefile
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, "w") as zip_file:
+            # Write the Shapefile components to the zip file
+            temp_dir = "./tmp"
+            os.makedirs(
+                temp_dir,
+                exist_ok=True
+            )
+            gdf.to_file(
+                os.path.join(temp_dir, f"cdi_map_{year_month}.shp"),
+                driver="ESRI Shapefile"
+            )
+            # Manually create the .prj file if it doesn't exist
+            prj_path = os.path.join(
+                temp_dir,
+                f"cdi_map_{year_month}.prj"
+            )
+            if not os.path.exists(prj_path):
+                with open(prj_path, "w") as prj_file:
+                    prj_file.write(gdf.crs.to_wkt())
+
+            for ext in ["shp", "shx", "dbf", "prj"]:
+                file_path = os.path.join(
+                    temp_dir,
+                    f"cdi_map_{year_month}.{ext}"
+                )
+                zip_file.write(
+                    file_path,
+                    arcname=f"cdi_map_{year_month}.{ext}"
+                )
+                os.remove(file_path)  # Clean up temporary files
+
+        # Prepare the HTTP response
+        zip_buffer.seek(0)
+        response = HttpResponse(zip_buffer, content_type="application/zip")
+        cd = f'attachment; filename="cdi_map_{year_month}.zip"'
+        response["Content-Disposition"] = cd
+        return response
+
+    def _export_png(self, gdf, year_month):
+        """
+        Export the GeoDataFrame as a PNG image with classified colors
+        based on the 'category' column.
+        """
+        # Define a custom color mapping for categories
+        color_mapping = dict(DroughtCategoryColor.FieldStr.items())
+
+        # Map the 'category' column to colors
+        gdf["color"] = gdf["category"].map(color_mapping.get)
+
+        # Create a plot
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        # Plot each category with its corresponding color
+        for category, color in color_mapping.items():
+            subset = gdf[gdf["category"] == category]
+            subset.plot(
+                ax=ax,
+                color=color,
+                edgecolor="black",  # Add borders to polygons
+                label=f"Category {category}"  # Optional: Add labels for legend
+            )
+
+        # Add a legend (optional)
+        # ax.legend(loc="upper right", title="Categories")
+
+        ax.set_title("Eswatini Map with Categories")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        # Save the plot to an in-memory buffer
+        img_buffer = BytesIO()
+        plt.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
+        plt.close(fig)  # Close the figure to free memory
+
+        # Prepare the HTTP response
+        img_buffer.seek(0)
+        response = HttpResponse(img_buffer, content_type="image/png")
+        cd = f'attachment; filename="cdi_map_{year_month}.png"'
+        response["Content-Disposition"] = cd
+        return response
+
+
+class PublishedMapViewSet(viewsets.ModelViewSet):
+    serializer_class = PublishedMapSerializer
+    pagination_class = Pagination
+
+    def get_queryset(self):
+        return Publication.objects.filter(
+            status=PublicationStatus.published,
+            published_at__isnull=False
+        ).order_by("-published_at")
+
+    @extend_schema(
+        responses={200: PublishedMapSerializer},
+        tags=["Map"],
+        description="Published maps list",
+        parameters=[
+            OpenApiParameter(
+                name="left_date",
+                required=False,
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="right_date",
+                required=False,
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        """
+        Override the list method to add extra context.
+        """
+        serializer = CompareMapSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return Response(
+                {"message": validate_serializers_message(serializer.errors)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Paginate the queryset
+        queryset = self.get_queryset()
+        left_date = serializer.validated_data.get("left_date")
+        right_date = serializer.validated_data.get("right_date")
+        if left_date and right_date:
+            queryset = queryset.filter(
+                year_month__in=[left_date, right_date]
+            )
+
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(
+            page,
+            many=True,
+        )
+        return self.get_paginated_response(serializer.data)
+
+    @extend_schema(
+        responses={200: PublishedMapSerializer},
+        tags=["Map"],
+        description="Published Map details",
+    )
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

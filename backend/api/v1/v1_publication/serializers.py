@@ -19,10 +19,14 @@ from utils.custom_serializer_fields import (
     CustomJSONField,
     CustomDateField,
 )
-from .constants import CDIGeonodeCategory, PublicationStatus
 from api.v1.v1_users.serializers import UserReviewerSerializer
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
-from api.v1.v1_publication.constants import DroughtCategory
+from api.v1.v1_publication.constants import (
+    DroughtCategory,
+    ExportMapTypes,
+    CDIGeonodeCategory,
+    PublicationStatus,
+)
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -236,6 +240,7 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
     reviews = serializers.SerializerMethodField()
     users = serializers.SerializerMethodField()
 
+    @extend_schema_field(OpenApiTypes.ANY)
     def get_reviews(self, obj):
         non_disputed = self.context.get("non_disputed", False)
         non_validated = self.context.get("non_validated", False)
@@ -292,6 +297,7 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
 
         return reviews
 
+    @extend_schema_field(OpenApiTypes.ANY)
     def get_users(self, obj):
         return UserReviewerSerializer(
             instance=[
@@ -379,4 +385,45 @@ class ReviewInfoSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "completed_at",
+        ]
+
+
+class ExportMapSerializer(serializers.Serializer):
+    export_type = CustomChoiceField(
+        choices=list(ExportMapTypes.FieldStr.keys()),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        fields = [
+            "export_type"
+        ]
+
+
+class PublishedMapSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Publication
+        fields = [
+            "id",
+            "cdi_geonode_id",
+            "year_month",
+            "validated_values",
+            "published_at",
+            "narrative",
+            "bulletin_url",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class CompareMapSerializer(serializers.Serializer):
+    left_date = CustomDateField(required=False)
+    right_date = CustomDateField(required=False)
+
+    class Meta:
+        fields = [
+            "left_date",
+            "right_date"
         ]
