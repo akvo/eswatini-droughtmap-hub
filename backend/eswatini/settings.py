@@ -215,3 +215,4 @@ EMAIL_FROM = environ.get("EMAIL_FROM") or "noreply@akvo.org"
 # APP CONFIG
 WEBDOMAIN = environ.get("WEBDOMAIN", "http://localhost:3000")
 TEST_ENV = environ.get("TEST_ENV") or False
+CSRF_TRUSTED_ORIGINS = environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")

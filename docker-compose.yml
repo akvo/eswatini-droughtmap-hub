@@ -35,6 +35,7 @@ services:
       - MAILJET_APIKEY=$MAILJET_APIKEY
       - MAILJET_SECRET=$MAILJET_SECRET
       - WEBDOMAIN=$WEBDOMAIN
+      - CSRF_TRUSTED_ORIGINS
     depends_on:
       - db
   frontend:
@@ -70,6 +71,7 @@ services:
       - MAILJET_APIKEY=$MAILJET_APIKEY
       - MAILJET_SECRET=$MAILJET_SECRET
       - WEBDOMAIN=$WEBDOMAIN
+      - CSRF_TRUSTED_ORIGINS
     depends_on:
       - backend
 volumes:
