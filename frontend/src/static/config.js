@@ -152,3 +152,26 @@ export const PUBLIC_MENU_ITEMS = [
     label: "Compare",
   },
 ];
+
+export const TWG_OPTIONS = [
+  {
+    value: 1,
+    label: "NDMA (National Disaster Management Agency)",
+  },
+  {
+    value: 2,
+    label: "MoAg (Ministry of Agriculture)",
+  },
+  {
+    value: 3,
+    label: "MET (Meteorological Office)",
+  },
+  {
+    value: 4,
+    label: "DWA (Department of Water Affairs)",
+  },
+  {
+    value: 5,
+    label: "UNESWA (University of Eswatini)",
+  },
+];
