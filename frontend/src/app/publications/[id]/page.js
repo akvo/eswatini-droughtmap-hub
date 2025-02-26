@@ -30,10 +30,10 @@ const PublicationDetailsPage = async ({ params }) => {
       <PublicationMap data={dataMap} {...{ publication, geonodeBaseURL }} />
 
       {publication?.narrative && (
-        <>
+        <div className="w-full overflow-x-auto pb-8" id="edh-narrative">
           <Divider orientation="center">Narrative</Divider>
           <div dangerouslySetInnerHTML={{ __html: publication?.narrative }} />
-        </>
+        </div>
       )}
     </div>
   );
