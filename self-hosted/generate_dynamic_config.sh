@@ -36,6 +36,35 @@ http:
       tls:
         certResolver: myresolver
 
+    admin-service-router-80:
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/admin\`)"
+      service: api-service
+      entrypoints: web
+      middlewares:
+        - redirect-to-https
+
+    admin-service-router-443:
+      entrypoints:
+        - websecure
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/admin\`)"
+      service: api-service
+      tls:
+        certResolver: myresolver
+
+    static-service-router-80:
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/static\`)"
+      service: api-service
+      entrypoints: web
+      middlewares:
+        - redirect-to-https
+
+    static-service-router-443:
+      entrypoints:
+        - websecure
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/static\`)"
+      service: api-service
+      tls:
+        certResolver: myresolver
 
     config-service-router-80:
       rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/config.js\`)"
