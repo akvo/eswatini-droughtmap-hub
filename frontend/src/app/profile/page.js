@@ -9,12 +9,14 @@ import {
   Input,
   message,
   Modal,
+  Select,
   Skeleton,
   Typography,
 } from "antd";
 import { useUserContext, useUserDispatch } from "@/context/UserContextProvider";
 import { api, storage } from "@/lib";
 import dayjs from "dayjs";
+import { TWG_OPTIONS, USER_ROLES } from "@/static/config";
 
 const { useForm } = Form;
 const { Title, Text } = Typography;
@@ -169,6 +171,20 @@ const ProfilePage = () => {
           >
             <Input placeholder="Your name" />
           </Form.Item>
+          {userContext?.role === USER_ROLES.reviewer && (
+            <Form.Item
+              name="technical_working_group"
+              label="Technical Working Group"
+              rules={[
+                {
+                  required: true,
+                  message: "Technical Working Group is required",
+                },
+              ]}
+            >
+              <Select options={TWG_OPTIONS} />
+            </Form.Item>
+          )}
           <SubmitButton form={form} loading={loading}>
             Save
           </SubmitButton>
