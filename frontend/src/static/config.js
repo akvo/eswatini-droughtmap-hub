@@ -92,6 +92,9 @@ export const CREATE_PUBLICATION_MAIL = {
 
 export const APP_SETTINGS = {
   copy: "Eswatini National Drought Monitoring & Mitigation Center",
+  title: "Eswatini Drought Monitor",
+  about:
+    "The Eswatini Drought Monitor is developed through a collaboration between the National Drought Management Center of Eswatini, the Ministry of Agriculture, and the Eswatini Meteorological Service.",
 };
 
 export const RUNDECK_JOB_STATUS_COLOR = {
@@ -117,5 +120,35 @@ export const MAP_CATEGORY_OPTIONS = [
   {
     value: "lst-raster-map",
     label: "LST Raster Map",
-  }
-]
+  },
+];
+
+export const EXPORT_FORMAT_OPTIONS = [
+  {
+    key: "geojson",
+    label: "GeoJSON",
+  },
+  {
+    key: "shapefile",
+    label: "Shapefile",
+  },
+  {
+    key: "png",
+    label: "Image (.PNG)",
+  },
+];
+
+export const PUBLIC_MENU_ITEMS = [
+  {
+    url: "/",
+    label: "Home",
+  },
+  {
+    url: "/browse",
+    label: "Browse",
+  },
+  {
+    url: "/compare",
+    label: "Compare",
+  },
+];
