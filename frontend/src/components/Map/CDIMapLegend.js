@@ -1,12 +1,23 @@
-import { Card } from "antd";
+import { Card, Space } from "antd";
 import classNames from "classnames";
 import { DROUGHT_CATEGORY } from "@/static/config";
+import { LegendIcon } from "../Icons";
 
-const CDIMapLegend = () => {
+const CDIMapLegend = ({ isPublic = false }) => {
+  const limit = isPublic
+    ? DROUGHT_CATEGORY.length - 1
+    : DROUGHT_CATEGORY.length;
   return (
-    <Card title="LEGEND">
+    <Card
+      title={
+        <Space>
+          <LegendIcon />
+          <span>LEGEND</span>
+        </Space>
+      }
+    >
       <ul>
-        {DROUGHT_CATEGORY.map((category, index) => (
+        {DROUGHT_CATEGORY.slice(0, limit).map((category, index) => (
           <li key={category.value}>
             <span
               className={classNames("inline-block w-4 h-4 mr-2", {
