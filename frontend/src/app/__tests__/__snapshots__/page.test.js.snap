@@ -3,20 +3,46 @@
 exports[`HomePage renders correctly & match with the snapshot 1`] = `
 <div>
   <div
-    class="w-full py-2 bg-primary"
+    class="w-full bg-primary"
   >
     <div
       class="w-full container flex flex-row justify-between items-center"
     >
-      <div>
-        <a
-          class="text-white"
-          href="/reviews"
-        >
-          Dashboard
-        </a>
-      </div>
       <nav
+        class="w-full text-base"
+      >
+        <a
+          class="text-neutral-50"
+          href="/"
+        >
+          <button
+            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+          >
+            Home
+          </button>
+        </a>
+        <a
+          class="text-neutral-50"
+          href="/browse"
+        >
+          <button
+            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+          >
+            Browse
+          </button>
+        </a>
+        <a
+          class="text-neutral-50"
+          href="/compare"
+        >
+          <button
+            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+          >
+            Compare
+          </button>
+        </a>
+      </nav>
+      <div
         class="w-fit px-4"
       >
         <a
@@ -37,7 +63,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
             />
           </svg>
         </a>
-      </nav>
+      </div>
     </div>
   </div>
 </div>
