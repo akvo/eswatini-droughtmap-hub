@@ -1,44 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Dropdown } from "antd";
+import { Dropdown } from "antd";
 import { UserCircle } from "./Icons";
 import { LogoutButton } from "./Buttons";
 import { USER_ROLES } from "@/static/config";
+import { getProfileDropdownItems } from "@/lib";
 
 const DashboardLayout = ({ user, children }) => {
-  const menuByRoles =
-    user?.role === USER_ROLES.admin
-      ? [
-          {
-            key: 1,
-            label: "Profile",
-            url: "/profile",
-          },
-          {
-            key: 2,
-            label: "Settings",
-            url: "/settings",
-          },
-        ]
-      : [
-          {
-            key: 1,
-            label: "Profile",
-            url: "/profile",
-          },
-        ];
+  const menuByRoles = getProfileDropdownItems(user);
   const menuItems = [
-    ...menuByRoles.map(({ key, label, url }) => ({
-      key,
-      label: (
-        <Link href={url}>
-          <Button type="link" className="dropdown-item">
-            {label}
-          </Button>
-        </Link>
-      ),
-    })),
+    ...menuByRoles,
     {
       key: 99,
       label: <LogoutButton className="dropdown-item" />,
