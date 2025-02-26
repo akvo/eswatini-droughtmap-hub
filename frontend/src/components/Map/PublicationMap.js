@@ -226,6 +226,10 @@ const PublicationMap = ({
     }
   };
 
+  const goToEdit = () => {
+    router.push(`/publications/${publication?.id}/publish`);
+  };
+
   return (
     <div className="w-full">
       <Flex align="center" justify="space-between">
@@ -246,6 +250,11 @@ const PublicationMap = ({
                   : "Go to Validation"}
               </Button>
             )}
+          {publication?.status === PUBLICATION_STATUS.published && (
+            <Button type="primary" onClick={goToEdit}>
+              Edit Publication
+            </Button>
+          )}
         </div>
       </Flex>
       {contextHolder}
@@ -259,7 +268,9 @@ const PublicationMap = ({
             }}
             bordered
           />
-          <CDIMap.Legend />
+          <CDIMap.Legend
+            isPublic={publication?.status === PUBLICATION_STATUS.published}
+          />
         </div>
       </CDIMap>
     </div>

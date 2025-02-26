@@ -229,6 +229,7 @@ const ValidationTable = ({
         )}
         loading={updating}
         rowClassName="edh-row"
+        rootClassName="edh-validation"
       />
     </div>
   );

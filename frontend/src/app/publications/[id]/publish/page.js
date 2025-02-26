@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { SubmitButton } from "@/components";
+import { SubmitButton, ValidationModal } from "@/components";
 import { Checkbox, Form, Input, message, Modal, Space, Typography } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
@@ -9,6 +9,8 @@ import { api } from "@/lib";
 import { useRouter } from "next/navigation";
 import { PUBLICATION_STATUS } from "@/static/config";
 import classNames from "classnames";
+import Link from "next/link";
+import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 
 const TinyEditor = dynamic(() => import("@/components/TinyEditor"), {
   ssr: false,
@@ -29,6 +31,9 @@ const PublishPage = ({ params }) => {
     map: true,
     editor: true,
   });
+  const [activeModal, setActiveModal] = useState(null);
+  const { refreshMap } = useAppContext();
+  const appDispatch = useAppDispatch();
 
   const [form] = useForm();
   const router = useRouter();
@@ -70,12 +75,53 @@ const PublishPage = ({ params }) => {
     });
   };
 
+  const onSelectValue = async (val, admID) => {
+    try {
+      const { validated_values } = await api(
+        "PUT",
+        `/admin/publication/${params?.id}`,
+        {
+          validated_values: publication?.validated_values?.map((v) =>
+            v?.administration_id === admID ? { ...v, category: val } : v
+          ),
+        }
+      );
+      if (validated_values) {
+        setPublication({
+          ...publication,
+          validated_values,
+        });
+      }
+      appDispatch({
+        type: "REFRESH_MAP_TRUE",
+      });
+      setTimeout(() => {
+        appDispatch({
+          type: "REFRESH_MAP_FALSE",
+        });
+        setActiveModal(null);
+      }, 500);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const onDetails = (record) => {
+    setActiveModal(record);
+  };
+
   const fetchData = useCallback(async () => {
     try {
       const apiData = await api("GET", `/admin/publication/${params?.id}`);
-      if (!apiData?.id) {
-        redirect("/publications");
+      if (
+        !apiData?.id ||
+        !apiData?.validated_values ||
+        apiData?.validated_values?.filter((v) => v?.category !== null)?.length <
+          apiData?.initial_values?.length
+      ) {
+        router.replace("/publications");
       }
+
       form.setFieldValue("year_month", apiData.year_month);
       form.setFieldValue("bulletin_url", apiData.bulletin_url);
       const validatedValues = apiData?.validated_values?.map((v) => {
@@ -87,11 +133,15 @@ const PublishPage = ({ params }) => {
           initial_category: findInit?.category,
         };
       });
+      if (apiData?.narrative) {
+        setNarrative(apiData.narrative);
+        form.setFieldValue("narrative", apiData.narrative);
+      }
       setPublication({ ...apiData, validated_values: validatedValues });
     } catch (err) {
       console.error(err);
     }
-  }, [params?.id, form]);
+  }, [params?.id, router, form]);
 
   useEffect(() => {
     fetchData();
@@ -101,9 +151,11 @@ const PublishPage = ({ params }) => {
     <div className="w-full pt-3">
       <div className="w-full flex flex-row align-center justify-between">
         <div>
-          <Title
-            level={2}
-          >{`Inkundla CDI Publication for: ${yearMonth}`}</Title>
+          <Link href={`/publications/${params?.id}`}>
+            <Title
+              level={2}
+            >{`Inkundla CDI Publication for: ${yearMonth}`}</Title>
+          </Link>
         </div>
         <div className="w-fit">
           <Space>
@@ -145,7 +197,7 @@ const PublishPage = ({ params }) => {
           {settings.map && publication?.validated_values && (
             <ValidationMap
               dataSource={publication?.validated_values}
-              readOnly
+              {...{ refreshMap, onDetails }}
             />
           )}
         </div>
@@ -196,6 +248,13 @@ const PublishPage = ({ params }) => {
           </Form>
         </div>
       </div>
+      <ValidationModal
+        data={activeModal}
+        isOpen={activeModal?.administration_id}
+        onClose={() => setActiveModal(null)}
+        onSelectValue={onSelectValue}
+        isEdit
+      />
     </div>
   );
 };

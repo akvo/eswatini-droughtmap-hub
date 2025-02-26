@@ -42,6 +42,7 @@ class SystemUserAdmin(UserAdmin):
                     "password1",
                     "password2",
                     "role",
+                    "technical_working_group",
                 ),
             },
         ),

@@ -85,7 +85,6 @@ const PublicMap = ({ id, validated_values: data = [] }) => {
 
   useEffect(() => {
     if (currentID !== id) {
-      console.log("map ID", id, currentID);
       setTimeout(() => {
         setCurrentID(id);
       }, 500);
