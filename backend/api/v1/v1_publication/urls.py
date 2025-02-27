@@ -8,6 +8,7 @@ from .views import (
     ReviewDetailsAPI,
     ExportMapAPI,
     PublishedMapViewSet,
+    PublicationDateAPI,
 )
 
 urlpatterns = [
@@ -75,5 +76,10 @@ urlpatterns = [
         r"^(?P<version>(v1))/maps",
         PublishedMapViewSet.as_view({"get": "list"}),
         name="maps",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/dates",
+        PublicationDateAPI.as_view(),
+        name="publication-dates",
     ),
 ]

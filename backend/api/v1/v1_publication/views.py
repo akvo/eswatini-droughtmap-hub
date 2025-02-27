@@ -41,6 +41,7 @@ from api.v1.v1_publication.serializers import (
     ExportMapSerializer,
     PublishedMapSerializer,
     CompareMapSerializer,
+    PublicationDateSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
@@ -767,3 +768,36 @@ class PublishedMapViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class PublicationDateAPI(APIView):
+
+    @extend_schema(
+        description="Fetch all publication date of published maps",
+        tags=["Map"],
+        parameters=[
+            OpenApiParameter(
+                name="exclude_id",
+                required=False,
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses=PublicationDateSerializer,
+    )
+    def get(self, request, version):
+        queryset = Publication.objects.filter(
+            status=PublicationStatus.published,
+            published_at__isnull=False
+        )
+        exclude_id = request.GET.get("exclude_id")
+        if exclude_id:
+            queryset = queryset.exclude(pk=int(exclude_id))
+        publications = queryset.all()
+        return Response(
+            PublicationDateSerializer(
+                instance=publications,
+                many=True,
+            ).data,
+            status=status.HTTP_200_OK
+        )
