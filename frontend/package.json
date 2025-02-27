@@ -21,6 +21,7 @@
     "dayjs": "^1.11.13",
     "jose": "^5.9.6",
     "leaflet": "^1.9.4",
+    "leaflet-side-by-side": "^2.2.0",
     "leaflet.pattern": "^0.1.0",
     "next": "14.2.18",
     "react": "^18",
