@@ -2,7 +2,7 @@
 
 import { ReactCompareSlider } from "react-compare-slider";
 
-const ComparisonSlider = ({ searchParams }) => {
+const ComparisonSlider = ({ baseURL, searchParams }) => {
   return (
     <div className="w-full">
       <ReactCompareSlider
@@ -10,14 +10,14 @@ const ComparisonSlider = ({ searchParams }) => {
           <iframe
             width={"100%"}
             height={720}
-            src={`/iframe/map?id=${searchParams?.left || 0}`}
+            src={`${baseURL}/iframe/map?id=${searchParams?.left || 0}`}
           />
         }
         itemTwo={
           <iframe
             width={"100%"}
             height={720}
-            src={`/iframe/map?id=${searchParams?.right || 1}`}
+            src={`${baseURL}/iframe/map?id=${searchParams?.right || 1}`}
           />
         }
         boundsPadding={0}

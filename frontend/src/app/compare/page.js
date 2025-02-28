@@ -14,6 +14,7 @@ const ComparisonSlider = dynamic(
 const ComparePage = async ({ searchParams }) => {
   const session = await auth.getSession();
   const dates = await api("GET", "/dates");
+  const baseURL = process.env.WEBDOMAIN;
   return (
     <div className="w-full min-h-screen">
       <Navbar session={session} />
@@ -26,7 +27,7 @@ const ComparePage = async ({ searchParams }) => {
           </div>
           <CompareMapForm dates={dates} searchParams={searchParams} />
         </div>
-        <ComparisonSlider searchParams={searchParams} />
+        <ComparisonSlider {...{ baseURL, searchParams }} />
       </div>
       <div
         className="w-full min-h-36 bg-image-login bg-no-repeat bg-center bg-cover"
