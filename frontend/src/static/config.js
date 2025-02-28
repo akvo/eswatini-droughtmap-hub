@@ -136,6 +136,10 @@ export const EXPORT_FORMAT_OPTIONS = [
     key: "png",
     label: "Image (.PNG)",
   },
+  {
+    key: "svg",
+    label: "Image (.SVG)",
+  },
 ];
 
 export const PUBLIC_MENU_ITEMS = [
