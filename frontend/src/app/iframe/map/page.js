@@ -1,10 +1,12 @@
 "use client";
 
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
-import CDIMap from "@/components/Map/CDIMap";
 import { api } from "@/lib";
 import { Skeleton } from "antd";
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+
+const CDIMap = dynamic(() => import("@/components/Map/CDIMap"), { ssr: false });
 
 const IframeMapPage = ({ searchParams }) => {
   const { id } = searchParams;
