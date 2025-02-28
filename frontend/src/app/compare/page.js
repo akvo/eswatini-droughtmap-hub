@@ -14,10 +14,6 @@ const ComparisonSlider = dynamic(
 const ComparePage = async ({ searchParams }) => {
   const session = await auth.getSession();
   const dates = await api("GET", "/dates");
-  const dateOptions = dates?.map((d) => ({
-    value: d?.id,
-    label: d?.year_month,
-  }));
   return (
     <div className="w-full min-h-screen">
       <Navbar session={session} />
@@ -28,7 +24,7 @@ const ComparePage = async ({ searchParams }) => {
               {APP_SETTINGS.title} - Compare Map
             </h1>
           </div>
-          <CompareMapForm dates={dateOptions} searchParams={searchParams} />
+          <CompareMapForm dates={dates} searchParams={searchParams} />
         </div>
         <ComparisonSlider searchParams={searchParams} />
       </div>
