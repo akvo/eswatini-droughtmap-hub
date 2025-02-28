@@ -66,9 +66,11 @@ class ExportMapTypes:
     geojson = "geojson"
     shapefile = "shapefile"
     png = "png"
+    svg = "svg"
 
     FieldStr = {
         geojson: "GeoJSON",
         shapefile: "Shapefile",
         png: "PNG",
+        svg: "SVG",
     }
