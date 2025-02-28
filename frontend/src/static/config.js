@@ -1,4 +1,4 @@
-export const DEFAULT_CENTER = [-26.641321416596856, 31.933264253997894];
+export const DEFAULT_CENTER = [-26.573789513879785, 31.626892089843754];
 
 export const USER_ROLES = {
   admin: 1,
@@ -175,3 +175,5 @@ export const TWG_OPTIONS = [
     label: "UNESWA (University of Eswatini)",
   },
 ];
+
+export const DEFAULT_MAP_HEIGHT = 48;

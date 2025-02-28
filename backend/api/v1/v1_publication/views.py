@@ -56,7 +56,7 @@ from api.v1.v1_publication.constants import (
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
-from utils.default_serializers import DefaultResponseSerializer
+from utils.default_serializers import DefaultResponseSerializer, CommonOptionSerializer
 from utils.custom_serializer_fields import validate_serializers_message
 from math import ceil
 
@@ -767,3 +767,43 @@ class PublishedMapViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class PublicationDateAPI(APIView):
+
+    @extend_schema(
+        description="Fetch all publication date of published maps",
+        tags=["Map"],
+        parameters=[
+            OpenApiParameter(
+                name="exclude_id",
+                required=False,
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses=CommonOptionSerializer,
+    )
+    def get(self, request, version):
+        queryset = Publication.objects.filter(
+            status=PublicationStatus.published,
+            published_at__isnull=False
+        ).order_by("-year_month")
+        exclude_id = request.GET.get("exclude_id")
+        if exclude_id:
+            queryset = queryset.exclude(pk=int(exclude_id))
+        publications = queryset.all()
+        options = [
+            {
+                "value": p.id,
+                "label": p.year_month
+            }
+            for p in publications
+        ]
+        return Response(
+            CommonOptionSerializer(
+                instance=options,
+                many=True,
+            ).data,
+            status=status.HTTP_200_OK
+        )

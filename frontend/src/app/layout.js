@@ -1,13 +1,11 @@
 import "./globals.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { ConfigProvider, Space } from "antd";
+import { ConfigProvider } from "antd";
 import dynamic from "next/dynamic";
 import { AppContextProvider } from "@/context";
 import { inter, roboto, robotoMono } from "./fonts";
 import classNames from "classnames";
-import Image from "next/image";
-import dayjs from "dayjs";
-import { APP_SETTINGS } from "@/static/config";
+import { Footer } from "@/components";
 
 export const metadata = {
   title: "eSwatini - DroughtMap Hub",
@@ -67,28 +65,7 @@ export default function RootLayout({ children }) {
               }}
             >
               {children}
-              <footer className="w-full px-0 py-6 bg-primary">
-                <div className="container w-full text-white text-base flex flex-row items-center justify-between">
-                  <div>
-                    <p>
-                      &copy; {dayjs().format("YYYY")} - {APP_SETTINGS.copy}
-                    </p>
-                  </div>
-                  <div>
-                    <a href="https://akvo.org/" target="_blank">
-                      <Space size="middle">
-                        <p>Powered by </p>
-                        <Image
-                          src="/images/logo-akvo.png"
-                          alt="Akvo Foundation Logo"
-                          width={64}
-                          height={24}
-                        />
-                      </Space>
-                    </a>
-                  </div>
-                </div>
-              </footer>
+              <Footer />
             </ConfigProvider>
           </AntdRegistry>
           <div suppressHydrationWarning>
