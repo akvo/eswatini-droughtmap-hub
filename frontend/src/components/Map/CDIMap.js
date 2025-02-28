@@ -13,6 +13,7 @@ import {
 import { useAppContext } from "@/context/AppContextProvider";
 import { Flex, Spin } from "antd";
 import CDIMapLegend from "./CDIMapLegend";
+import GetCoordinates from "./GetCoordinates";
 
 const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
   const map = useMap();
@@ -37,7 +38,13 @@ const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
   );
 };
 
-const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
+const CDIMap = ({
+  children,
+  onFeature,
+  onClick = () => {},
+  style = {},
+  ...props
+}) => {
   const appContext = useAppContext();
   const geoData = appContext?.geoData || window?.topojson;
 
@@ -76,6 +83,7 @@ const CDIMap = ({ children, onFeature, onClick = () => {}, style = {} }) => {
         zoom={9}
         minZoom={9}
         scrollWheelZoom={false}
+        {...props}
       >
         {() => <CDIGeoJSON {...{ geoData, onEachFeature }} style={style} />}
       </Map>
