@@ -22,7 +22,7 @@ const Home = async () => {
   return (
     <div className="w-full min-h-screen">
       <Navbar session={session} />
-      <div className="container w-full h-full relative space-y-8 pt-3 pb-9">
+      <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 pb-9">
         <div className="w-full space-y-2">
           <div className="w-full border-b border-b-neutral-200 pb-4">
             <h1 className="text-2xl xl:text-3xl font-bold">
