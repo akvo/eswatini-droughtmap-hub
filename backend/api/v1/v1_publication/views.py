@@ -8,6 +8,7 @@ import json
 from io import BytesIO
 from zipfile import ZipFile
 from pathlib import Path
+from matplotlib.patches import Patch
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
@@ -56,7 +57,10 @@ from api.v1.v1_publication.constants import (
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
-from utils.default_serializers import DefaultResponseSerializer, CommonOptionSerializer
+from utils.default_serializers import (
+    DefaultResponseSerializer,
+    CommonOptionSerializer,
+)
 from utils.custom_serializer_fields import validate_serializers_message
 from math import ceil
 
@@ -511,7 +515,7 @@ class ExportMapAPI(APIView):
     @extend_schema(
         summary="Export Public Map",
         description=(
-            "Export published map as GeoJSON, Shapefile & Image (PNG)"
+            "Export published map as GeoJSON, Shapefile, PNG, or SVG."
         ),
         tags=["Map"],
         parameters=[
@@ -559,7 +563,9 @@ class ExportMapAPI(APIView):
             elif type == ExportMapTypes.shapefile:
                 return self._export_shapefile(gdf, year_month)
             elif type == ExportMapTypes.png:
-                return self._export_png(gdf, year_month)
+                return self._export_image(gdf, year_month, "png")
+            elif type == ExportMapTypes.svg:
+                return self._export_image(gdf, year_month, "svg")
         except Exception as e:
             return Response(
                 {
@@ -588,14 +594,14 @@ class ExportMapAPI(APIView):
         # Step 4: Map the categories to the GeoDataFrame
         gdf["category"] = gdf["administration_id"].map(validated_dict)
 
-        # Step 5: Add the "drought_category" column
-        gdf["drought_category"] = gdf["category"].map(
+        # Step 5: Add the "cat_name" column
+        gdf["cat_name"] = gdf["category"].map(
             DroughtCategory.FieldStr.get
         )
 
         # Step 6: Handle missing values (optional)
         gdf["category"] = gdf["category"].fillna(DroughtCategory.none)
-        gdf["drought_category"] = gdf["drought_category"].fillna(
+        gdf["cat_name"] = gdf["cat_name"].fillna(
             DroughtCategory.FieldStr[DroughtCategory.none]
         )
         # Ensure the GeoDataFrame has a CRS
@@ -618,6 +624,9 @@ class ExportMapAPI(APIView):
         """
         Export the GeoDataFrame as a Shapefile (zipped).
         """
+        # Rename `administration_id` column to `adm_id` in gdf
+        gdf = gdf.rename(columns={"administration_id": "adm_id"})
+
         # Create an in-memory buffer for the Shapefile
         zip_buffer = BytesIO()
         with ZipFile(zip_buffer, "w") as zip_file:
@@ -658,46 +667,69 @@ class ExportMapAPI(APIView):
         response["Content-Disposition"] = cd
         return response
 
-    def _export_png(self, gdf, year_month):
+    def _export_image(self, gdf, year_month, format):
         """
-        Export the GeoDataFrame as a PNG image with classified colors
-        based on the 'category' column.
+        Export the GeoDataFrame as an image (SVG or PNG).
         """
+        if format not in ["svg", "png"]:
+            raise ValidationError({
+                "message": (
+                    "Invalid format parameter."
+                    "Only 'svg' and 'png' are supported."
+                )
+            })
+
         # Define a custom color mapping for categories
         color_mapping = dict(DroughtCategoryColor.FieldStr.items())
 
-        # Map the 'category' column to colors
-        gdf["color"] = gdf["category"].map(color_mapping.get)
+        # Ensure valid geometries
+        gdf = gdf[gdf.is_valid & ~gdf.geometry.is_empty]
 
-        # Create a plot
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        # Plot each category with its corresponding color
-        for category, color in color_mapping.items():
+        # Plot
+        valid_categories = set(gdf["category"].unique())
+        filtered_color_mapping = {
+            k: v for k, v in color_mapping.items() if k in valid_categories
+        }
+
+        legend_patches = []  # Store patches for the legend
+        for category, color in filtered_color_mapping.items():
             subset = gdf[gdf["category"] == category]
             subset.plot(
                 ax=ax,
                 color=color,
-                edgecolor="black",  # Add borders to polygons
-                label=f"Category {category}"  # Optional: Add labels for legend
+                edgecolor="black",
+                label=DroughtCategory.FieldStr.get(category)
             )
 
-        # Add a legend (optional)
-        # ax.legend(loc="upper right", title="Categories")
+            legend_patches.append(Patch(
+                facecolor=color,
+                edgecolor="black",
+                label=DroughtCategory.FieldStr.get(category)
+            ))
 
-        ax.set_title("Eswatini Map with Categories")
-        ax.set_xlabel("Longitude")
-        ax.set_ylabel("Latitude")
+        # Fix aspect ratio and limits
+        ax.set_xlim(gdf.total_bounds[0], gdf.total_bounds[2])
+        ax.set_ylim(gdf.total_bounds[1], gdf.total_bounds[3])
 
-        # Save the plot to an in-memory buffer
+        # Add legend to the plot
+        if legend_patches:
+            ax.legend(
+                handles=legend_patches,
+                loc="upper right",
+                title="Drought Categories"
+            )
+
+        # Save as image
         img_buffer = BytesIO()
-        plt.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
-        plt.close(fig)  # Close the figure to free memory
+        plt.savefig(img_buffer, format=format, bbox_inches="tight")
+        plt.close(fig)
 
-        # Prepare the HTTP response
         img_buffer.seek(0)
-        response = HttpResponse(img_buffer, content_type="image/png")
-        cd = f'attachment; filename="cdi_map_{year_month}.png"'
+        content_type = "image/svg+xml" if format == "svg" else "image/png"
+        response = HttpResponse(img_buffer, content_type=content_type)
+        cd = f'attachment; filename="cdi_map_{year_month}.{format}"'
         response["Content-Disposition"] = cd
         return response
 
