@@ -427,12 +427,3 @@ class CompareMapSerializer(serializers.Serializer):
             "left_date",
             "right_date"
         ]
-
-class PublicationDateSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Publication
-        fields = [
-            "id",
-            "year_month",
-        ]

@@ -41,7 +41,6 @@ from api.v1.v1_publication.serializers import (
     ExportMapSerializer,
     PublishedMapSerializer,
     CompareMapSerializer,
-    PublicationDateSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
@@ -57,7 +56,7 @@ from api.v1.v1_publication.constants import (
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
-from utils.default_serializers import DefaultResponseSerializer
+from utils.default_serializers import DefaultResponseSerializer, CommonOptionSerializer
 from utils.custom_serializer_fields import validate_serializers_message
 from math import ceil
 
@@ -783,20 +782,27 @@ class PublicationDateAPI(APIView):
                 location=OpenApiParameter.QUERY,
             ),
         ],
-        responses=PublicationDateSerializer,
+        responses=CommonOptionSerializer,
     )
     def get(self, request, version):
         queryset = Publication.objects.filter(
             status=PublicationStatus.published,
             published_at__isnull=False
-        )
+        ).order_by("-year_month")
         exclude_id = request.GET.get("exclude_id")
         if exclude_id:
             queryset = queryset.exclude(pk=int(exclude_id))
         publications = queryset.all()
+        options = [
+            {
+                "value": p.id,
+                "label": p.year_month
+            }
+            for p in publications
+        ]
         return Response(
-            PublicationDateSerializer(
-                instance=publications,
+            CommonOptionSerializer(
+                instance=options,
                 many=True,
             ).data,
             status=status.HTTP_200_OK

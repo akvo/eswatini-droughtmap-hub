@@ -23,12 +23,18 @@ class PublishedMapViewSetTestCase(APITestCase):
                 initial_values=[
                     {"administration_id": 11, "category": DroughtCategory.d2},
                     {"administration_id": 12, "category": DroughtCategory.d4},
-                    {"administration_id": 13, "category": DroughtCategory.normal},
+                    {
+                        "administration_id": 13,
+                        "category": DroughtCategory.normal
+                    },
                 ],
                 validated_values=[
                     {"administration_id": 11, "category": DroughtCategory.d2},
                     {"administration_id": 12, "category": DroughtCategory.d1},
-                    {"administration_id": 13, "category": DroughtCategory.normal},
+                    {
+                        "administration_id": 13,
+                        "category": DroughtCategory.normal
+                    },
                 ],
                 status=PublicationStatus.published,
                 narrative="Lorem ipsum dolor amet...",
@@ -36,35 +42,18 @@ class PublishedMapViewSetTestCase(APITestCase):
             )
             publications.append(p)
         self.publications = publications
-    
 
     def test_success_get_all_dates(self):
-        response = self.client.get(reverse(
-            "publication-dates",
-            kwargs={"version": "v1"}
-        ))
+        response = self.client.get(
+            reverse("publication-dates", kwargs={"version": "v1"})
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            list(response.data[0]),
-            [
-                "id",
-                "year_month"
-            ]
-        )
-        self.assertEqual(
-            len(response.data),
-            self.repeat
-        )
-    
+        self.assertEqual(list(response.data[0]), ["value", "label"])
+        self.assertEqual(len(response.data), self.repeat)
+
     def test_success_get_dates_by_excluding_id(self):
-        url = reverse(
-            "publication-dates",
-            kwargs={"version": "v1"}
-        )
+        url = reverse("publication-dates", kwargs={"version": "v1"})
         selected = Publication.objects.order_by("?").first()
         response = self.client.get(f"{url}?exclude_id={selected.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(selected.id not in [
-            r["id"]
-            for r in response.data
-        ])
+        self.assertTrue(selected.id not in [r["value"] for r in response.data])
