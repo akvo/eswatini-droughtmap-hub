@@ -7,9 +7,11 @@ import { Button } from "antd";
 import { CaretRight } from "@/components/Icons";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import { APP_SETTINGS } from "@/static/config";
 
 dayjs.extend(advancedFormat);
+dayjs.extend(customParseFormat);
 
 const PublicMap = dynamic(() => import("../components/Map/PublicMap"), {
   ssr: false,
@@ -34,7 +36,7 @@ const Home = async () => {
               <div>
                 <h1 className="text-xl xl:text-2xl font-bold">
                   Composite Drought Map -{" "}
-                  {dayjs(map.year_month).format("MMMM YYYY")}
+                  {dayjs(map.year_month, "DD-MM-YYYY").format("MMMM YYYY")}
                 </h1>
                 <p className="text-neutral-600">
                   Published at:{" "}
