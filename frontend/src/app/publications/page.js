@@ -44,8 +44,8 @@ const PublicationsPage = () => {
       title: "CREATED AT",
       dataIndex: "created",
       key: "created",
-      defaultSortOrder: "descend",
-      sorter: (a, b) => new Date(a.created) - new Date(b.created),
+      // defaultSortOrder: "descend",
+      // sorter: (a, b) => new Date(a.created) - new Date(b.created),
       render: (_, { created }) =>
         dayjs(created).format("MMMM Do, YYYY - h:mm A"),
     },
@@ -71,6 +71,8 @@ const PublicationsPage = () => {
       title: "PUBLICATION DATE",
       dataIndex: "year_month",
       key: "year_month",
+      defaultSortOrder: "descend",
+      sorter: (a, b) => new Date(a.year_month) - new Date(b.year_month),
       render: (_, { year_month }) => dayjs(year_month).format("MMMM YYYY"),
     },
     {
