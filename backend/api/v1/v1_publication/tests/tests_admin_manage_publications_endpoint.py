@@ -30,7 +30,9 @@ class PublicationViewSetTestCase(APITestCase):
             role=UserRoleTypes.reviewer
         ).order_by("?")[:2]
 
-    def test_create_publication(self):
+    @patch("django.utils.timezone.now")
+    def test_create_publication(self, mock_timezone_now):
+        mock_timezone_now.return_value = timezone.datetime(2025, 1, 31)
         url = reverse("publication-list", kwargs={"version": "v1"})
         data = {
             "cdi_geonode_id": 1,
@@ -191,7 +193,9 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(Publication.objects.count(), 0)
         self.assertEqual(Publication.objects_deleted.count(), 0)
 
-    def test_create_publication_with_empty_reviewers(self):
+    @patch("django.utils.timezone.now")
+    def test_create_publication_with_empty_reviewers(self, mock_timezone_now):
+        mock_timezone_now.return_value = timezone.datetime(2025, 1, 31)
         url = reverse("publication-list", kwargs={"version": "v1"})
         data = {
             "cdi_geonode_id": 1,
