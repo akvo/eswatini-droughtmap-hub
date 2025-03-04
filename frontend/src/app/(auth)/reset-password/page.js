@@ -10,7 +10,7 @@ const { Title, Text } = Typography;
 const { useForm } = Form;
 
 const ResetPasswordPage = ({ searchParams }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -67,7 +67,7 @@ const ResetPasswordPage = ({ searchParams }) => {
     }
   };
 
-  if (!code || !isVerified) {
+  if (!loading && (!code || !isVerified)) {
     return (
       <Card
         style={{ width: 400 }}
