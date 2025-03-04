@@ -13,6 +13,7 @@ class EmailTypes:
     review_completed = "review_completed"
     review_overdue = "review_overdue"
     review_request = "review_request"
+    new_user_password_setup = "new_user_password_setup"
 
     FieldStr = {
         verification_email: "verification_email",
@@ -20,6 +21,7 @@ class EmailTypes:
         review_completed: "review_completed",
         review_overdue: "review_overdue",
         review_request: "review_request",
+        new_user_password_setup: "new_user_password_setup",
     }
 
 
@@ -30,6 +32,21 @@ class ListEmailTypeRequestSerializer(serializers.Serializer):
 
 
 def email_context(context: dict, type: str):
+    if type == EmailTypes.new_user_password_setup:
+        context.update(
+            {
+                "subject": "Welcome to Eswatini Drought Monitor",
+                "body": """
+                Welcome to Eswatini Drought Monitor platform!
+                Before you can start exploring everything.
+                Please set up your password using the link below:
+                """,
+                "cta_text": "Set Up My Password",
+                "cta_url": "{0}/reset-password?code={1}".format(
+                    WEBDOMAIN, context["reset_password_code"]
+                ),
+            }
+        )
     if type == EmailTypes.verification_email:
         context.update(
             {
@@ -143,7 +160,7 @@ def send_email(
 
         email_html_message = render_to_string("email/main.html", context)
         msg = EmailMultiAlternatives(
-            "EDH - {0}".format(context.get("subject")),
+            "EDM - {0}".format(context.get("subject")),
             "Email plain text",
             EMAIL_FROM,
             context.get("send_to"),
