@@ -262,7 +262,7 @@ def forgot_password(request, version):
         result=serializer.validated_data["email"],
     )
     task_id = async_task(
-        "api.v1.v1_jobs.job.notify_forgot_password",
+        "api.v1.v1_jobs.job.notify_reset_password",
         user,
         hook="api.v1.v1_jobs.job.email_notification_results",
     )

@@ -1,8 +1,10 @@
 from django import forms
 from django.contrib.auth.admin import UserAdmin
 from django.contrib import admin
+from django_q.tasks import async_task
 from django_json_widget.widgets import JSONEditorWidget
 from .models import SystemUser, Ability
+from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 
 
 # Add manage users in admin django
@@ -52,6 +54,23 @@ class SystemUserAdmin(UserAdmin):
         "name",
     )
     ordering = ("email",)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change:
+            obj.generate_reset_password_code()
+            job = Jobs.objects.create(
+                type=JobTypes.new_user_password_setup,
+                status=JobStatus.on_progress,
+            )
+            task_id = async_task(
+                "api.v1.v1_jobs.job.notify_reset_password",
+                obj,
+                True,
+                hook="api.v1.v1_jobs.job.email_notification_results",
+            )
+            job.task_id = task_id
+            job.save()
 
 
 class AbilityForm(forms.ModelForm):

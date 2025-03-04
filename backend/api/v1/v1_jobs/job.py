@@ -52,10 +52,13 @@ def notify_verification_email(email: str, code: str):
         )
 
 
-def notify_forgot_password(user: SystemUser):
+def notify_reset_password(user: SystemUser, new_user: bool = False):
     if not settings.TEST_ENV:
+        email_type = EmailTypes.forgot_password
+        if new_user:
+            email_type = EmailTypes.new_user_password_setup
         send_email(
-            type=EmailTypes.forgot_password,
+            type=email_type,
             context={
                 "send_to": [user.email],
                 "name": user.name,
