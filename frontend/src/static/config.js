@@ -91,7 +91,7 @@ export const CREATE_PUBLICATION_MAIL = {
 };
 
 export const APP_SETTINGS = {
-  copy: "Eswatini National Drought Monitoring & Mitigation Center",
+  copy: "Eswatini National Disaster Management Agency",
   title: "Eswatini Drought Monitor",
   about:
     "The Eswatini Drought Monitor is developed through a collaboration between the National Drought Management Center of Eswatini, the Ministry of Agriculture, and the Eswatini Meteorological Service.",
