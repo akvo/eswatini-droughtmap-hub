@@ -1,17 +1,14 @@
 import dynamic from "next/dynamic";
 import { api, auth } from "@/lib";
 import Image from "next/image";
-import { Space } from "antd";
-import classNames from "classnames";
 import { Navbar } from "@/components";
-import { ArrowLeft, ArrowRight } from "@/components/Icons";
 
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { APP_SETTINGS } from "@/static/config";
+import BrowseMapForm from "@/components/Forms/BrowseMapForm";
 
 dayjs.extend(advancedFormat);
 dayjs.extend(customParseFormat);
@@ -23,19 +20,13 @@ const PublicMap = dynamic(() => import("../../components/Map/PublicMap"), {
 const BrowsePage = async ({ searchParams }) => {
   const session = await auth.getSession();
 
-  const page = parseInt(searchParams?.page || "1", 10);
-  const { data: maps, total_page: totalPage } = await api(
-    "GET",
-    `/maps?page=${page}&format=json&page_size=6`
-  );
-  if (totalPage === undefined) {
-    redirect("/browse?page=1");
-  }
-  const mapID = searchParams?.map || `${maps?.[0]?.id || -1}`;
-  const activeMap = maps?.find((m) => `${m?.id}` === mapID);
-  if (!activeMap) {
+  const dates = await api("GET", "/dates");
+  const mapID = searchParams?.date || dates?.[0]?.value;
+  if (!mapID) {
     redirect("/");
   }
+  const activeMap = await api("GET", `/map/${mapID}`);
+
   return (
     <div className="w-full min-h-screen">
       <Navbar session={session} />
@@ -47,53 +38,7 @@ const BrowsePage = async ({ searchParams }) => {
             </h1>
           </div>
           <div className="w-full flex flex-col lg:flex-row align-center justify-between border-b border-b-neutral-200 py-3">
-            {page < 2 ? (
-              <Space className="text-neutral-400 cursor-not-allowed">
-                <ArrowLeft />
-                <span className="hidden xl:block">Previous</span>
-              </Space>
-            ) : (
-              <Link href={`/browse?page=${page - 1}`}>
-                <Space>
-                  <ArrowLeft />
-                  <span className="hidden xl:block">Previous</span>
-                </Space>
-              </Link>
-            )}
-            <div>
-              <ul className="w-full overflow-x-scroll flex gap-4 justify-around align-center">
-                {maps?.map((m) => (
-                  <li key={m.id}>
-                    <Link href={`/browse?page=${page}&map=${m.id}`}>
-                      <button
-                        className={classNames(
-                          "text-md xl:text-base px-4 xl:px-6 py-2 cursoir-pointer rounded-md",
-                          {
-                            "bg-rose-800 text-white": mapID === `${m.id}`,
-                            "border-2 border-2-primary": mapID !== `${m.id}`,
-                          }
-                        )}
-                      >
-                        {dayjs(m.year_month, "DD-MM-YYYY").format("MMMM YYYY")}
-                      </button>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {page === totalPage ? (
-              <Space className="text-neutral-400 cursor-not-allowed">
-                <span className="hidden xl:block">Next</span>
-                <ArrowRight />
-              </Space>
-            ) : (
-              <Link href={`/browse?page=${page + 1}`}>
-                <Space>
-                  <span className="hidden xl:block">Next</span>
-                  <ArrowRight />
-                </Space>
-              </Link>
-            )}
+            <BrowseMapForm dates={dates} searchParams={searchParams} />
           </div>
           <div className="w-full flex flex-row align-center justify-between">
             <h2 className="text-xl xl:text-2xl font-bold">
