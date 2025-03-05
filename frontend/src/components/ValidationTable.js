@@ -185,7 +185,10 @@ const ValidationTable = ({
               record?.category ||
               record?.category === 0;
             return {
-              disabled: disabled,
+              // disabled: disabled,
+              style: {
+                visibility: "hidden",
+              },
             };
           },
         }}

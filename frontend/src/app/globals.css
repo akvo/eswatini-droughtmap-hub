@@ -6,6 +6,8 @@
   --background: #ffffff;
   --foreground: #171717;
   --table-border: #e5e7eb;
+  --primary-color: #3e5eb9;
+  --white-color: #ffffff;
 
   .ant-typography {
     display: block;
@@ -32,6 +34,13 @@
   .ant-descriptions .ant-descriptions-row > td,
   .ant-descriptions .ant-descriptions-row > th {
     padding-bottom: 8px;
+  }
+  .ant-table-wrapper
+    .ant-table-tbody
+    .ant-table-row.ant-table-row-selected
+    > .ant-table-cell {
+    background-color: var(--primary-color);
+    color: var(--white-color);
   }
   /* Heading tags */
   h1,
@@ -114,34 +123,34 @@ h5 {
 .edh-row .edh-cell:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
-.edh-row > .bg-\[\#b9f8cf\],
-.ant-table-row-selected > .ant-table-cell.bg-\[\#b9f8cf\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#b9f8cf\] {
   background-color: #b9f8cf !important;
 }
-.edh-row > .bg-\[\#ffff00\],
-.edh-row.ant-table-row-selected > .bg-\[\#ffff00\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#ffff00\] {
   background-color: #ffff00 !important;
 }
-.edh-row > .bg-\[\#fbd47f\],
-.edh-row.ant-table-row-selected > .bg-\[\#fbd47f\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#fbd47f\] {
   background-color: #fbd47f !important;
 }
-.edh-row > .bg-\[\#ffaa00\],
-.edh-row.ant-table-row-selected > .bg-\[\#ffaa00\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#ffaa00\] {
   background-color: #ffaa00 !important;
 }
-.edh-row > .bg-\[\#e60000\],
-.edh-row.ant-table-row-selected > .bg-\[\#e60000\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#e60000\] {
   background-color: #e60000 !important;
   color: #ffffff;
 }
-.edh-row > .bg-\[\#730000\],
-.edh-row.ant-table-row-selected > .bg-\[\#730000\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#730000\] {
   background-color: #730000 !important;
   color: #ffffff;
 }
-.edh-row > .bg-\[\#ffffff\],
-.edh-row.ant-table-row-selected > .bg-\[\#ffffff\] {
+
+.edh-row:not(.ant-table-row-selected) > .bg-\[\#ffffff\] {
   background-color: #ffffff !important;
 }
 .ant-btn.dropdown-item {
