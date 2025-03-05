@@ -434,7 +434,7 @@ class PublicationViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
         total_adms = len(instance.initial_values)
         total_validated = len(list(filter(
-            lambda x: x["category"] is not None,
+            lambda x: x.get("category") or x.get("category") == 0,
             instance.validated_values
         )))
         instance.updated_at = timezone.now()
