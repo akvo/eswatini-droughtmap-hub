@@ -79,9 +79,9 @@ const CDIMap = ({
       {children}
       <Map
         center={DEFAULT_CENTER}
-        height={160}
+        height={80}
         zoom={9}
-        minZoom={9}
+        minZoom={7}
         scrollWheelZoom={false}
         {...props}
       >
