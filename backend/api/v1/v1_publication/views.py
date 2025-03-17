@@ -324,7 +324,7 @@ class CDIGeonodeAPI(APIView):
                 cdi_geonode_id__in=cdi_geonode_ids
             )
             if publication_status:
-                publications_query = publications_query.filter(
+                publications_query = Publication.objects.filter(
                     status=publication_status
                 )
 
