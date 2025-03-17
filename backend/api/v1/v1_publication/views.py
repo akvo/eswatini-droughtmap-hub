@@ -295,6 +295,7 @@ class CDIGeonodeAPI(APIView):
                         filter_ids
                     )
                 )
+                url = f"{url}&page={page}"
         username = settings.GEONODE_ADMIN_USERNAME
         password = settings.GEONODE_ADMIN_PASSWORD
         response = requests.get(
