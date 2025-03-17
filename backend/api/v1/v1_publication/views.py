@@ -278,6 +278,23 @@ class CDIGeonodeAPI(APIView):
                 page,
             )
         )
+        if publication_status:
+            ids = Publication.objects.filter(
+                status=publication_status
+            ).values_list("cdi_geonode_id", flat=True)
+            if len(ids):
+                filter_ids = "&".join(
+                    [
+                        f"filter{{pk.in}}={id}"
+                        for id in ids
+                    ]
+                )
+                url = (
+                    "{0}/api/v2/resources?{1}".format(
+                        settings.GEONODE_BASE_URL,
+                        filter_ids
+                    )
+                )
         username = settings.GEONODE_ADMIN_USERNAME
         password = settings.GEONODE_ADMIN_PASSWORD
         response = requests.get(
