@@ -335,7 +335,7 @@ class CDIGeonodeAPI(APIView):
                     "status": publication.status,
                     "year_month": publication.year_month
                 }
-                for publication in publications_query
+                for publication in publications_query.all()
             }
             # Merge publication data into serialized_data
             for item in serialized_data:
@@ -347,11 +347,7 @@ class CDIGeonodeAPI(APIView):
                     item["publication_id"] = publication["id"]
                     item["status"] = publication["status"]
             if publication_status:
-                serialized_data = list(filter(
-                    lambda s: s["publication_id"],
-                    serialized_data
-                ))
-                data["total"] = len(serialized_data)
+                data["total"] = publications_query.count()
             total_page = ceil(int(data["total"]) / int(data["page_size"]))
             return Response(
                 {

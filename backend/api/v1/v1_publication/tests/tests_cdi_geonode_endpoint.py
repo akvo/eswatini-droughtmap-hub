@@ -147,8 +147,36 @@ class CDIGeonodeAPITestCase(APITestCase):
 
     @patch("requests.get")
     def test_empty_results_publication_filtering_by_status(self, mock_get):
+        resources = Publication.objects.filter(
+            status=PublicationStatus.in_validation
+        )
+        data = [
+            {
+                "pk": r.cdi_geonode_id,
+                "title": "Test GeoNode Resource",
+                "detail_url": (
+                    f"https://geonode.com/catalogue/#/dataset/{r.cdi_geonode_id}"
+                ),
+                "embed_url": "https://geonode.com/datasets/geonode:test/embed",
+                "thumbnail_url": (
+                    "https://geonode.com/uploaded/thumbs/dataset-3d6e57f3.jpg"
+                ),
+                "download_url": (
+                    "https://geonode.com/datasets/geonode:test"
+                    "/dataset_download"
+                ),
+                "created": "2025-01-15T12:00:00Z",
+                "date": "2024-12-31T12:00:00Z",
+            }
+            for r in resources
+        ]
         mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = self.mock_response_data
+        mock_get.return_value.json.return_value = {
+            "total": resources.count(),
+            "page": 1,
+            "page_size": 10,
+            "resources": data
+        }
 
         Publication.objects.create(
             cdi_geonode_id=1,
