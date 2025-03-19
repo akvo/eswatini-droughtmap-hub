@@ -22,27 +22,6 @@ from api.v1.v1_publication.utils import get_category
 fake = Faker()
 
 
-# Generate dummy narrative content
-# def generate_dummy_narrative():
-#     title = fake.sentence(nb_words=6)  # Generate a title with 6 words
-#     author = fake.name()  # Generate a random author name
-#     date = fake.date()  # Generate a random date
-#     content = "\n".join(
-#         [f"<p>{fake.paragraph(nb_sentences=5)}</p>" for _ in range(5)]
-#     )
-
-#     # Combine into HTML
-#     html_narrative = f"""
-#     <narrative>
-#         <h1>{title}</h1>
-#         <p><strong>Author:</strong> {author}</p>
-#         <p><strong>Date:</strong> {date}</p>
-#         {content}
-#     </narrative>
-#     """
-#     return html_narrative
-
-
 class Command(BaseCommand):
     help = "Generates fake publication data"
 
@@ -172,34 +151,6 @@ class Command(BaseCommand):
             reviewers = SystemUser.objects.filter(
                 role=UserRoleTypes.reviewer
             ).all()
-
-            # if publication.status == PublicationStatus.published:
-            #     if not settings.TEST_ENV:
-            #         self.stdout.write(
-            #             self.style.SUCCESS(
-            #                 f"Publication ID: {publication.id} was published"
-            #             )
-            #         )
-            #     published_at = due_date + timedelta(
-            #         days=random.randint(1, 7)
-            #     )
-            #     publication.status = PublicationStatus.published
-            #     publication.published_at = timezone.make_aware(published_at)
-            #     publication.narrative = generate_dummy_narrative()
-            #     publication.bulletin_url = (
-            #         "https://www.ipcinfo.org/fileadmin/"
-            #         "user_upload/ipcinfo/docs/"
-            #         "IPC_Eswatini_AFI_2019June2020March.pdf"
-            #     )
-            #     publication.validated_values = [
-            #         {
-            #             "administration_id": v["administration_id"],
-            #             "value": v["value"] + 5,
-            #             "category": get_category(v["value"] + 5)
-            #         }
-            #         for v in initial_values
-            #     ]
-            #     publication.save()
 
             for reviewer in reviewers:
                 review, _ = Review.objects.get_or_create(
