@@ -271,7 +271,7 @@ class CDIGeonodeAPI(APIView):
         url = (
             "{0}/api/v2/resources"
             "?filter{{category.identifier}}={1}"
-            "&filter{{subtype}}=raster&page={2}"
+            "&filter{{subtype}}=raster&page={2}&sort[]=-date"
             .format(
                 settings.GEONODE_BASE_URL,
                 category,
@@ -295,7 +295,7 @@ class CDIGeonodeAPI(APIView):
                         filter_ids
                     )
                 )
-                url = f"{url}&page={page}"
+                url = f"{url}&page={page}&sort[]=-date"
         username = settings.GEONODE_ADMIN_USERNAME
         password = settings.GEONODE_ADMIN_PASSWORD
         response = requests.get(
