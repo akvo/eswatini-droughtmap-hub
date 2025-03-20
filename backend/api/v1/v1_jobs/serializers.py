@@ -53,3 +53,14 @@ class CreateJobSerializer(serializers.Serializer):
 
     class Meta:
         fields = ["name"]
+
+
+class FeedbackSerializer(serializers.Serializer):
+    email = CustomCharField()
+    feedback = CustomCharField()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    class Meta:
+        fields = ["email", "feedback"]

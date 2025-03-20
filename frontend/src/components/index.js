@@ -12,3 +12,4 @@ export { default as Navbar } from "./Navbar";
 export { default as Footer } from "./Footer";
 export { default as SelectDate } from "./SelectDate";
 export { default as LogoSection } from "./LogoSection";
+export { default as FeedbackSection } from "./FeedbackSection";

@@ -7,6 +7,7 @@ class JobTypes:
     initial_cdi_values = 6
     download_geonode_dataset = 7
     new_user_password_setup = 8
+    send_feedback = 9
 
     FieldStr = {
         test: "test",
@@ -17,6 +18,7 @@ class JobTypes:
         initial_cdi_values: "initial_cdi_values",
         download_geonode_dataset: "download_geonode_dataset",
         new_user_password_setup: "new_user_password_setup",
+        send_feedback: "send_feedback",
     }
 
 

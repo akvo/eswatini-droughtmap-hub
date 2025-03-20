@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 import { api, auth } from "@/lib";
-import { LogoSection, Navbar } from "@/components";
+import { FeedbackSection, LogoSection, Navbar } from "@/components";
 
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
@@ -62,6 +62,7 @@ const BrowsePage = async ({ searchParams }) => {
         </div>
       </div>
       <LogoSection />
+      <FeedbackSection />
     </div>
   );
 };

@@ -14,6 +14,7 @@ class EmailTypes:
     review_overdue = "review_overdue"
     review_request = "review_request"
     new_user_password_setup = "new_user_password_setup"
+    send_feedback = "send_feedback"
 
     FieldStr = {
         verification_email: "verification_email",
@@ -22,6 +23,7 @@ class EmailTypes:
         review_overdue: "review_overdue",
         review_request: "review_request",
         new_user_password_setup: "new_user_password_setup",
+        send_feedback: "send_feedback",
     }
 
 
@@ -138,13 +140,32 @@ def email_context(context: dict, type: str):
             }
         )
     if type == EmailTypes.review_request:
-        context.update({
-            "cta_text": "Submit Review",
-            "cta_url": "{0}/reviews/{1}".format(
-                WEBDOMAIN,
-                context["id"],
-            ),
-        })
+        context.update(
+            {
+                "cta_text": "Submit Review",
+                "cta_url": "{0}/reviews/{1}".format(
+                    WEBDOMAIN,
+                    context["id"],
+                ),
+            }
+        )
+    if type == EmailTypes.send_feedback:
+        context.update(
+            {
+                "subject": "Feedback from Eswatini Drought Monitor",
+                "body": (
+                    """
+                    Dear Admin,
+                    {0} has sent the following feedback:
+                    <br>
+                    {1}
+                    """.format(
+                        context["email"],
+                        context["feedback"],
+                    )
+                ),
+            }
+        )
     return context
 
 

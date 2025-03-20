@@ -1,5 +1,5 @@
 import { auth } from "@/lib";
-import { LogoSection, Navbar } from "@/components";
+import { FeedbackSection, LogoSection, Navbar } from "@/components";
 
 const AboutPage = async () => {
   const session = await auth.getSession();
@@ -47,6 +47,7 @@ const AboutPage = async () => {
         </p>
       </div>
       <LogoSection />
+      <FeedbackSection />
     </div>
   );
 };
