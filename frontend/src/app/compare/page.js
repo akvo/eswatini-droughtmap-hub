@@ -1,4 +1,4 @@
-import { CompareMapForm, LogoSection, Navbar } from "@/components";
+import { CompareMapForm, FeedbackSection, LogoSection, Navbar } from "@/components";
 import { api, auth } from "@/lib";
 import { APP_SETTINGS } from "@/static/config";
 import dynamic from "next/dynamic";
@@ -31,6 +31,7 @@ const ComparePage = async ({ searchParams }) => {
         <ComparisonSlider {...{ baseURL, searchParams }} />
       </div>
       <LogoSection />
+      <FeedbackSection />
     </div>
   );
 };
