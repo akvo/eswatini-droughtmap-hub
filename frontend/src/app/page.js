@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 import { api, auth } from "@/lib";
-import { LogoSection, Navbar } from "@/components";
+import { FeedbackSection, LogoSection, Navbar } from "@/components";
 import Link from "next/link";
 import { Button } from "antd";
 import { CaretRight } from "@/components/Icons";
@@ -67,6 +67,7 @@ const Home = async () => {
         )}
       </div>
       <LogoSection />
+      <FeedbackSection />
     </div>
   );
 };
