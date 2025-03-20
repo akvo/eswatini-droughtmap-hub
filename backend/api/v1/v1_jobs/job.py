@@ -113,6 +113,30 @@ def notify_review_request(
     }
 
 
+def notify_feedback_received(
+    email: str,
+    feedback: str
+):
+    if not settings.TEST_ENV:
+        admins = SystemUser.objects.filter(
+            is_superuser=True
+        ).values_list(
+            "email", flat=True
+        )
+        send_email(
+            type=EmailTypes.send_feedback,
+            context={
+                "send_to": admins,
+                "email": email,
+                "feedback": feedback,
+            }
+        )
+    return {
+        "email": email,
+        "feedback": feedback,
+    }
+
+
 def email_notification_results(task):
     job = Jobs.objects.get(task_id=task.id)
     job.attempt = job.attempt + 1
