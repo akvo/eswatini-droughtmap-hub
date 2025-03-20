@@ -167,3 +167,41 @@ h5 {
 .edh-validation.ant-table-wrapper table {
   border-spacing: 8px 2px !important;
 }
+
+#edh-narrative narrative {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+#edh-narrative p {
+  margin: 0;
+  padding: 0;
+}
+
+#edh-narrative h1,
+#edh-narrative h2,
+#edh-narrative h3,
+#edh-narrative h4 {
+  margin: 0;
+  padding: 0;
+  font-weight: 700;
+}
+
+#edh-narrative h1 {
+  font-size: 24px;
+}
+#edh-narrative h2 {
+  font-size: 20px;
+}
+#edh-narrative h3 {
+  font-size: 18px;
+}
+#edh-narrative h4 {
+  font-size: 16px;
+}
+#edh-narrative h5 {
+  font-size: 14px;
+}
+#edh-narrative h6 {
+  font-size: 12px;
+}
