@@ -56,3 +56,21 @@ class JobAPITestCase(APITestCase):
         url = reverse("create_job", kwargs={"version": "v1"})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_feedback_success(self):
+        """
+        Test submitting feedback successfully.
+        """
+        url = reverse("feedback", kwargs={"version": "v1"})
+        response = self.client.post(
+            url,
+            {
+                "email": "visitor@mail.com",
+                "feedback": "This is a test feedback",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["message"], "Feedback received successfully"
+        )
