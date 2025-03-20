@@ -1,7 +1,6 @@
 import dynamic from "next/dynamic";
 import { api, auth } from "@/lib";
-import Image from "next/image";
-import { Navbar } from "@/components";
+import { LogoSection, Navbar } from "@/components";
 import Link from "next/link";
 import { Button } from "antd";
 import { CaretRight } from "@/components/Icons";
@@ -67,43 +66,7 @@ const Home = async () => {
           </div>
         )}
       </div>
-      <div
-        className="w-full min-h-36 bg-image-login bg-no-repeat bg-center bg-cover"
-        id="edm-about"
-      >
-        <div className="container w-full py-9 flex flex-col items-center justify-center gap-9">
-          <h2 className="text-xl xl:text-2xl text-primary font-bold">
-            ABOUT EDM
-          </h2>
-          <p className="w-5/12 text-center">{APP_SETTINGS.about}</p>
-          <ul className="flex flex-row items-center gap-12 mb-12">
-            <li>
-              <Image
-                src="/images/home-about-1.png"
-                width={255}
-                height={95}
-                alt="Logo 1"
-              />
-            </li>
-            <li>
-              <Image
-                src="/images/home-about-2.png"
-                width={255}
-                height={95}
-                alt="Logo 2"
-              />
-            </li>
-            <li>
-              <Image
-                src="/images/home-about-3.png"
-                width={255}
-                height={95}
-                alt="Logo 3"
-              />
-            </li>
-          </ul>
-        </div>
-      </div>
+      <LogoSection />
     </div>
   );
 };
