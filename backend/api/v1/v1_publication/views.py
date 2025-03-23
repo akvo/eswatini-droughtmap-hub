@@ -447,10 +447,12 @@ class PublicationViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         instance = serializer.save()
         total_adms = len(instance.initial_values)
-        total_validated = len(list(filter(
-            lambda x: x.get("category") or x.get("category") == 0,
-            instance.validated_values
-        )))
+        total_validated = 0
+        if instance.validated_values:
+            total_validated = len(list(filter(
+                lambda x: x.get("category") or x.get("category") == 0,
+                instance.validated_values
+            )))
         instance.updated_at = timezone.now()
         if instance.narrative and total_adms == total_validated:
             instance.published_at = timezone.now()
