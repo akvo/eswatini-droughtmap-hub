@@ -31,7 +31,7 @@ const { Title } = Typography;
 const PublicationsPage = () => {
   const [publications, setPublications] = useState([]);
   const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
   const [page, setPage] = useState(1);
@@ -130,7 +130,6 @@ const PublicationsPage = () => {
     try {
       if (preload) {
         setPreload(false);
-        setLoading(true);
         const apiURL = status
           ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}`
           : `/admin/cdi-geonode?page=${page}&category=${category}`;
@@ -146,6 +145,7 @@ const PublicationsPage = () => {
       }
     } catch (err) {
       console.error(err);
+      setLoading(false);
       setPreload(false);
     }
   }, [preload, page, status, category]);
