@@ -216,10 +216,11 @@ const PublicationMap = ({
           status: PUBLICATION_STATUS.in_validation,
         });
         router.replace(`/publications/${publication?.id}/validation`);
+        setLoading(false);
       } else {
         router.push(`/publications/${publication?.id}/validation`);
+        setLoading(false);
       }
-      setLoading(false);
     } catch (err) {
       console.error(err);
       setLoading(false);
