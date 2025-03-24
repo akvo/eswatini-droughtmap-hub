@@ -3,6 +3,7 @@ import os
 import rasterio
 import geopandas as gpd
 import requests
+import numpy as np
 from rasterstats import zonal_stats
 from time import sleep
 from django.utils import timezone
@@ -232,26 +233,29 @@ def generate_initial_cdi_values(
     # Ensure the CRS of the GeoDataFrame and the raster are the same
     with rasterio.open(input_file) as src:
         gdf = gdf.to_crs(src.crs)
+        transform = src.transform  # Transformation matrix for georeferencing
 
-    # Perform zonal statistics
-    zs = zonal_stats(
+    # Compute zonal statistics for min and mean values using percentile_raster
+    stats = zonal_stats(
         gdf,
         input_file,
-        stats=["median"],  # Specify the statistics you need
-        geojson_out=True  # Output as GeoJSON features for easier handling
+        affine=transform,
+        # Compute min and mean for each polygon
+        stats=["min", "mean"],
+        # Ignore NaN values
+        nodata=np.nan,
+        # Include all pixels touched by the polygon boundary
+        all_touched=True,
+        # Output as GeoJSON features for easier handling
+        geojson_out=True,
     )
-    # Map the zonal statistics to a new column in the GeoDataFrame
-    gdf["raster_values"] = [feat["properties"] for feat in zs]
-
     # Convert raster_values to separate columns for easier analysis
-    gdf["value"] = gdf["raster_values"].apply(
-        lambda x: x.get("median", None)
-    )
+    gdf["value"] = [
+        (stat["properties"]["min"] + stat["properties"]["mean"]) * 0.5
+        for stat in stats
+    ]
     # Add a new column 'category' using the get_category function
     gdf["category"] = gdf["value"].apply(get_category)
-
-    # Remove the original 'raster_values' column if not needed
-    gdf = gdf.drop(columns=["raster_values"])
 
     # Now you have columns like 'value' in your GeoDataFrame
     result = gdf[["administration_id", "value", "category"]]
