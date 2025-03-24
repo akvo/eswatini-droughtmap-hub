@@ -45,7 +45,15 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/:path*",
+        source: "/api/docs",
+        destination: "http://localhost:8000/api/docs/",
+      },
+      {
+        source: "/api/schema",
+        destination: "http://localhost:8000/api/schema/",
+      },
+      {
+        source: "/api/:path((?!docs$)(?!schema$).*)",
         destination: "http://localhost:8000/api/:path*",
       },
       {
