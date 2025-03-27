@@ -148,16 +148,16 @@ export const PUBLIC_MENU_ITEMS = [
     label: "Home",
   },
   {
-    url: "/about",
-    label: "About",
-  },
-  {
     url: "/browse",
     label: "Browse",
   },
   {
     url: "/compare",
     label: "Compare",
+  },
+  {
+    url: "/about",
+    label: "About",
   },
 ];
 
