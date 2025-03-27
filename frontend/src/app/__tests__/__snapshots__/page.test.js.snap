@@ -23,16 +23,6 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
         </a>
         <a
           class="text-neutral-50"
-          href="/about"
-        >
-          <button
-            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
-          >
-            About
-          </button>
-        </a>
-        <a
-          class="text-neutral-50"
           href="/browse"
         >
           <button
@@ -49,6 +39,16 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
             class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
           >
             Compare
+          </button>
+        </a>
+        <a
+          class="text-neutral-50"
+          href="/about"
+        >
+          <button
+            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+          >
+            About
           </button>
         </a>
       </nav>
