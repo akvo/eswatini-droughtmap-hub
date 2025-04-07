@@ -103,7 +103,7 @@ const PublicMap = ({ id, validated_values: data = [] }) => {
         active
       >
         <div className="w-full">
-          <CDIMap dragging={false} {...{ onFeature, onClick }}>
+          <CDIMap dragging={false} {...{ onFeature, onClick }} height={180}>
             <div className="w-1/3 xl:w-1/4 absolute top-0 right-0 z-10 p-2">
               <CDIMap.Legend isPublic />
               <div className="px-6 py-4 border-x border-x-neutral-100 bg-white">

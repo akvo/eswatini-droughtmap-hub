@@ -205,3 +205,7 @@ h5 {
 #edh-narrative h6 {
   font-size: 12px;
 }
+#edh-narrative ul {
+  padding-inline-start: revert;
+  list-style: disc;
+}
