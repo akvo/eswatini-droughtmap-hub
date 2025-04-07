@@ -110,14 +110,14 @@ const FeedbackPage = () => {
           </div>
           <div className="w-2/5 pl-4">
             <div className="bg-gray-100 p-4 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">
+              <h2 className="text-xl font-semibold mb-4">
                 How to Send Feedback
               </h2>
-              <p className="mb-2">
+              <p className="mb-2 text-sm">
                 To ensure your feedback is helpful and constructive, please
                 consider the following guidelines:
               </p>
-              <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-1 text-sm ml-4">
                 <li>Be clear and concise in your message.</li>
                 <li>
                   Provide specific examples or details to support your feedback.
@@ -126,7 +126,7 @@ const FeedbackPage = () => {
                 <li>Focus on the issue, not the person.</li>
                 <li>Suggest possible solutions or improvements.</li>
               </ul>
-              <p className="mt-4">
+              <p className="mt-4 text-sm">
                 Your feedback will be sent to all Eswatini Drought Monitor
                 admins. Thank you for helping us improve!
               </p>
