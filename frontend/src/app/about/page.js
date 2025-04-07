@@ -203,16 +203,16 @@ const AboutPage = async () => {
         <div className="text-gray-700 pb-12 space-y-4">
           <p>
             The <b>Technical Working Group (TWG)</b>—comprising representatives
-            from Eswatini’s NDMA, NDMC, Ministry of Agriculture, RMSI, MET, and
-            other relevant agencies—plays a crucial role in the review and
-            validation process.
+            from Eswatini’s NDMA, the Ministry of Agriculture, MET, Department
+            of Water Affairs (DWA) and the University of Eswatini (UNESWA)
+            —plays a crucial role in the review and validation process.
           </p>
           <div className="w-full">
             <p>Their responsibilities include:</p>
             <ul className="list-disc list-inside pl-4 leading-8">
               <li>Reviewing the generated maps monthly.</li>
               <li>Benchmarking against other datasets and ground reports.</li>
-              <li>Approving or requesting changes before publication</li>
+              <li>Approving or requesting changes before publication.</li>
             </ul>
           </div>
         </div>
