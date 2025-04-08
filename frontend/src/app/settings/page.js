@@ -156,13 +156,14 @@ const SettingsPage = () => {
     }
     setLoading(true);
     try {
-      const apiData = await api(
+      const { message: resMessage, ...apiData } = await api(
         "PUT",
         `/admin/setting/${settings.id}`,
         payload
       );
-      console.log("apiData", apiData);
-      if (apiData?.id) {
+      if (resMessage) {
+        message.warning(resMessage);
+      } else {
         setSettings(apiData);
         message.success("Settings updated successfully.");
       }
@@ -257,7 +258,7 @@ const SettingsPage = () => {
       setPreload(false);
       setFetching(false);
     }
-  }, [preload]);
+  }, [preload, settings]);
 
   const fetchExecutions = useCallback(async () => {
     try {
