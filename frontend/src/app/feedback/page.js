@@ -45,12 +45,12 @@ const FeedbackPage = () => {
         <div className="w-full space-y-2">
           <div className="w-full border-b border-b-neutral-200 pb-4">
             <h1 className="text-2xl xl:text-3xl font-bold text-gray-800">
-              Feedback
+              Your Feedback Matters
             </h1>
           </div>
         </div>
-        <div className="w-full flex">
-          <div className="w-3/5 pr-4">
+        <div className="w-full min-h-[calc(100vh-256px)] flex flex-col md:flex-row pt-6">
+          <div className="w-full md:w-3/5 pr-4">
             {success ? (
               <Result
                 status="success"
@@ -107,7 +107,7 @@ const FeedbackPage = () => {
               </Form>
             )}
           </div>
-          <div className="w-2/5 pl-4">
+          <div className="w-full md:w-2/5 pl-0 pt-8 md:pl-4 md:pt-0">
             <div className="bg-gray-100 p-4 rounded-lg">
               <h2 className="text-xl font-semibold mb-4">
                 How to Send Feedback
