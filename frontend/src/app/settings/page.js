@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import advancedUTC from "dayjs/plugin/utc";
-import { DEFAULT_CDI_WEIGHT, RUNDECK_JOB_STATUS_COLOR } from "@/static/config";
+import { DEFAULT_CDI_WEIGHTS, RUNDECK_JOB_STATUS_COLOR } from "@/static/config";
 
 dayjs.extend(advancedFormat);
 dayjs.extend(advancedUTC);
@@ -105,10 +105,10 @@ const SettingsPage = () => {
     on_success_emails: [null],
     on_failure_emails: [null],
     on_exceeded_emails: [null],
-    lst_weight: DEFAULT_CDI_WEIGHT.lst,
-    ndvi_weight: DEFAULT_CDI_WEIGHT.ndvi,
-    spi_weight: DEFAULT_CDI_WEIGHT.spi,
-    sm_weight: DEFAULT_CDI_WEIGHT.sm,
+    lst_weight: DEFAULT_CDI_WEIGHTS.lst,
+    ndvi_weight: DEFAULT_CDI_WEIGHTS.ndvi,
+    spi_weight: DEFAULT_CDI_WEIGHTS.spi,
+    sm_weight: DEFAULT_CDI_WEIGHTS.sm,
   });
   const [loading, setLoading] = useState(false);
   const [admins, setAdmins] = useState([]);

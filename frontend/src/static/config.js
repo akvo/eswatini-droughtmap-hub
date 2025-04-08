@@ -186,7 +186,7 @@ export const TWG_OPTIONS = [
 
 export const DEFAULT_MAP_HEIGHT = 48;
 
-export const DEFAULT_CDI_WEIGHT = {
+export const DEFAULT_CDI_WEIGHTS = {
   lst: 0.3,
   ndvi: 0.3,
   spi: 0.4,
