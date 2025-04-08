@@ -161,6 +161,7 @@ const SettingsPage = () => {
         `/admin/setting/${settings.id}`,
         payload
       );
+      console.log("apiData", apiData);
       if (apiData?.id) {
         setSettings(apiData);
         message.success("Settings updated successfully.");
