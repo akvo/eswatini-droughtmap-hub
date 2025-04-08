@@ -124,6 +124,10 @@ class ContactsSerializer(serializers.Serializer):
 
 class RundeckJobOptionsSerializer(serializers.Serializer):
     year_month = serializers.CharField()
+    lst_weight = serializers.FloatField()
+    ndvi_weight = serializers.FloatField()
+    spi_weight = serializers.FloatField()
+    sm_weight = serializers.FloatField()
 
     def validate_year_month(self, value):
         try:
@@ -135,4 +139,10 @@ class RundeckJobOptionsSerializer(serializers.Serializer):
             )
 
     class Meta:
-        fields = ["year_month"]
+        fields = [
+            "year_month",
+            "lst_weight",
+            "ndvi_weight",
+            "spi_weight",
+            "sm_weight",
+        ]

@@ -178,6 +178,10 @@ class RundeckExecutionsAPITestCase(APITestCase):
             self.url,
             {
                 "year_month": "2025-02",
+                "lst_weight": 0.3,
+                "ndvi_weight": 0.3,
+                "spi_weight": 0.4,
+                "sm_weight": 0.0,
             }
         )
 

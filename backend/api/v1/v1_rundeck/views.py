@@ -327,7 +327,11 @@ class RundeckExecutionsAPI(APIView):
                 f"{settings.RUNDECK_API_URL}/job/{job_id}/run",
                 json={
                     "options": {
-                        "year_month": serializer.validated_data["year_month"]
+                        "year_month": serializer.validated_data["year_month"],
+                        "lst_weight": serializer.validated_data["lst_weight"],
+                        "ndvi_weight": serializer.validated_data["ndvi_weight"],
+                        "spi_weight": serializer.validated_data["spi_weight"],
+                        "sm_weight": serializer.validated_data["sm_weight"],
                     }
                 },
                 headers={
