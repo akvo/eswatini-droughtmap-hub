@@ -396,7 +396,7 @@ const SettingsPage = () => {
                   ]}
                 >
                   <InputNumber
-                    step="0.1"
+                    step={0.1}
                     min={0}
                     max={1}
                     placeholder="LST Weight"
@@ -413,7 +413,7 @@ const SettingsPage = () => {
                   ]}
                 >
                   <InputNumber
-                    step="0.1"
+                    step={0.1}
                     min={0}
                     max={1}
                     placeholder="NDVI Weight"
@@ -430,7 +430,7 @@ const SettingsPage = () => {
                   ]}
                 >
                   <InputNumber
-                    step="0.1"
+                    step={0.1}
                     min={0}
                     max={1}
                     placeholder="SPI Weight"
@@ -447,7 +447,7 @@ const SettingsPage = () => {
                   ]}
                 >
                   <InputNumber
-                    step="0.1"
+                    step={0.1}
                     min={0}
                     max={1}
                     placeholder="SM Weight"
