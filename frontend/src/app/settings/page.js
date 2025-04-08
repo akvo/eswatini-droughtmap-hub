@@ -10,6 +10,7 @@ import {
   Flex,
   Form,
   Input,
+  InputNumber,
   message,
   Select,
   Skeleton,
@@ -22,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import advancedUTC from "dayjs/plugin/utc";
-import { RUNDECK_JOB_STATUS_COLOR } from "@/static/config";
+import { DEFAULT_CDI_WEIGHT, RUNDECK_JOB_STATUS_COLOR } from "@/static/config";
 
 dayjs.extend(advancedFormat);
 dayjs.extend(advancedUTC);
@@ -104,6 +105,10 @@ const SettingsPage = () => {
     on_success_emails: [null],
     on_failure_emails: [null],
     on_exceeded_emails: [null],
+    lst_weight: DEFAULT_CDI_WEIGHT.lst,
+    ndvi_weight: DEFAULT_CDI_WEIGHT.ndvi,
+    spi_weight: DEFAULT_CDI_WEIGHT.spi,
+    sm_weight: DEFAULT_CDI_WEIGHT.sm,
   });
   const [loading, setLoading] = useState(false);
   const [admins, setAdmins] = useState([]);
@@ -121,7 +126,7 @@ const SettingsPage = () => {
   const router = useRouter();
 
   const tableProps = useMemo(() => {
-    if (execList.length <= 20) {
+    if (execList?.length <= 20) {
       return { loading: jobFetching, pagination: false };
     }
     return { loading: jobFetching };
@@ -133,7 +138,7 @@ const SettingsPage = () => {
     const totalExceededEmails = settings?.on_exceeded_emails?.length || 0;
     const totalEmails =
       totalSuccessEmails + totalFailureEmails + totalExceededEmails;
-    const anyJobRunning = execList.some((e) => e.status === "running");
+    const anyJobRunning = execList?.some((e) => e.status === "running");
 
     return totalEmails < 3 ||
       !submittable ||
@@ -156,7 +161,10 @@ const SettingsPage = () => {
         `/admin/setting/${settings.id}`,
         payload
       );
-      setSettings(apiData);
+      if (apiData?.id) {
+        setSettings(apiData);
+        message.success("Settings updated successfully.");
+      }
       setLoading(false);
       router.refresh();
     } catch (err) {
@@ -197,6 +205,10 @@ const SettingsPage = () => {
     try {
       await api("POST", `/rundeck/job/${settings?.job_id}/execs`, {
         year_month: dayjs(year_month).format("YYYY-MM"),
+        lst_weight: settings?.lst_weight,
+        ndvi_weight: settings?.ndvi_weight,
+        spi_weight: settings?.spi_weight,
+        sm_weight: settings?.sm_weight,
       });
 
       setPreload(true);
@@ -225,12 +237,21 @@ const SettingsPage = () => {
         if (_settings?.length === 0) {
           setNewSetup(true);
         }
-        setSettings(_settings[0]);
+        setSettings({
+          ...settings,
+          ..._settings[0],
+          lst_weight: _settings[0]?.lst_weight || DEFAULT_CDI_WEIGHT.lst,
+          ndvi_weight: _settings[0]?.ndvi_weight || DEFAULT_CDI_WEIGHT.ndvi,
+          spi_weight: _settings[0]?.spi_weight || DEFAULT_CDI_WEIGHT.spi,
+          sm_weight: _settings[0]?.sm_weight || DEFAULT_CDI_WEIGHT.sm,
+        });
         const { data: _execList } = await api(
           "GET",
           `/rundeck/job/${_settings[0]?.job_id}/execs`
         );
-        setExecList(_execList);
+        if (_execList?.length) {
+          setExecList(_execList);
+        }
         setFetching(false);
       }
     } catch (err) {
@@ -249,7 +270,9 @@ const SettingsPage = () => {
           "GET",
           `/rundeck/job/${settings?.job_id}/execs`
         );
-        setExecList(_execList);
+        if (_execList?.length) {
+          setExecList(_execList);
+        }
         setJobFetching(false);
       }
     } catch (err) {
@@ -258,7 +281,7 @@ const SettingsPage = () => {
   }, [settings, jobChecking]);
 
   const handleRunningJob = useCallback(() => {
-    const runningJob = execList.find((e) => e.status === "running");
+    const runningJob = execList?.find((e) => e.status === "running");
     if (!preload && runningJob) {
       setTimeout(() => {
         setJobChecking(true);
@@ -332,15 +355,15 @@ const SettingsPage = () => {
             </Form>
           </div>
         ) : (
-          <div className="w-full h-auto flex flex-col lg:flex-row align-start justify-between gap-6">
+          <div className="w-full h-auto flex flex-col lg:flex-row align-start justify-between gap-6 pb-12">
             <div className="w-full lg:w-4/12 space-y-2">
-              <Title level={3}>Email Notifications</Title>
               <Form
                 form={form}
                 initialValues={settings}
                 onFinish={onFinish}
                 layout="vertical"
               >
+                <Title level={3}>Email Notifications</Title>
                 <Form.Item
                   label={<Text strong>On Success (DH Admins)</Text>}
                   name="on_success_emails"
@@ -365,12 +388,83 @@ const SettingsPage = () => {
                   name="on_exceeded_emails"
                 />
 
-                <div className="w-full text-right">
+                <Title level={3}>CDI Weight</Title>
+                <Form.Item
+                  label="LST Weight"
+                  name="lst_weight"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    step="0.1"
+                    min={0}
+                    max={1}
+                    placeholder="LST Weight"
+                    style={{ width: "50%" }}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="NDVI Weight"
+                  name="ndvi_weight"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    step="0.1"
+                    min={0}
+                    max={1}
+                    placeholder="NDVI Weight"
+                    style={{ width: "50%" }}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="SPI Weight"
+                  name="spi_weight"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    step="0.1"
+                    min={0}
+                    max={1}
+                    placeholder="SPI Weight"
+                    style={{ width: "50%" }}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="SM Weight"
+                  name="sm_weight"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    step="0.1"
+                    min={0}
+                    max={1}
+                    placeholder="SM Weight"
+                    style={{ width: "50%" }}
+                  />
+                </Form.Item>
+                <div className="w-full">
                   <Button
+                    type="primary"
                     htmlType="submit"
                     size="large"
                     disabled={!submittable}
                     loading={loading}
+                    block
                   >
                     Save
                   </Button>
