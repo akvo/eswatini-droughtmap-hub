@@ -236,21 +236,18 @@ const SettingsPage = () => {
         const { results: _settings } = await api("GET", "/admin/settings");
         if (_settings?.length === 0) {
           setNewSetup(true);
-        }
-        setSettings({
-          ...settings,
-          ..._settings[0],
-          lst_weight: _settings[0]?.lst_weight || DEFAULT_CDI_WEIGHT.lst,
-          ndvi_weight: _settings[0]?.ndvi_weight || DEFAULT_CDI_WEIGHT.ndvi,
-          spi_weight: _settings[0]?.spi_weight || DEFAULT_CDI_WEIGHT.spi,
-          sm_weight: _settings[0]?.sm_weight || DEFAULT_CDI_WEIGHT.sm,
-        });
-        const { data: _execList } = await api(
-          "GET",
-          `/rundeck/job/${_settings[0]?.job_id}/execs`
-        );
-        if (_execList?.length) {
-          setExecList(_execList);
+        } else {
+          setSettings({
+            ...settings,
+            ..._settings[0],
+          });
+          const { data: _execList } = await api(
+            "GET",
+            `/rundeck/job/${_settings[0]?.job_id}/execs`
+          );
+          if (_execList?.length) {
+            setExecList(_execList);
+          }
         }
         setFetching(false);
       }
