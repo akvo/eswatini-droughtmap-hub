@@ -23,6 +23,22 @@ class Settings(models.Model):
         null=True,
         blank=True
     )
+    lst_weight = models.FloatField(
+        null=True,
+        blank=True
+    )
+    ndvi_weight = models.FloatField(
+        null=True,
+        blank=True
+    )
+    spi_weight = models.FloatField(
+        null=True,
+        blank=True
+    )
+    sm_weight = models.FloatField(
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 

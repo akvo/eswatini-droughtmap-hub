@@ -21,6 +21,10 @@ class SettingsSerializer(serializers.ModelSerializer):
             "on_success_emails",
             "on_failure_emails",
             "on_exceeded_emails",
+            "lst_weight",
+            "ndvi_weight",
+            "spi_weight",
+            "sm_weight",
             "created_at",
             "updated_at",
         ]
@@ -52,6 +56,10 @@ class UpdateSettingsSerializer(serializers.ModelSerializer):
             "on_failure_emails",
             "on_exceeded_emails",
             "job_config",
+            "lst_weight",
+            "ndvi_weight",
+            "spi_weight",
+            "sm_weight",
         ]
 
 
