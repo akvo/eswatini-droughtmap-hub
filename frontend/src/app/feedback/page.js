@@ -27,7 +27,6 @@ const FeedbackPage = () => {
       console.error(err);
       setLoading(false);
     }
-    console.log(values);
   };
 
   const loadCurrentUser = useCallback(async () => {
