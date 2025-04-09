@@ -41,16 +41,16 @@ const FeedbackPage = () => {
   return (
     <div className="w-full min-h-screen">
       <Navbar session={currentUser} />
-      <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 pb-9">
-        <div className="w-full space-y-2">
-          <div className="w-full border-b border-b-neutral-200 pb-4">
+      <div className="container w-full h-full relative pt-3 pb-9">
+        <div className="w-full space-y-2 px-6">
+          <div className="w-full border-b border-b-neutral-200 py-8">
             <h1 className="text-2xl xl:text-3xl font-bold text-gray-800">
               Your Feedback Matters
             </h1>
           </div>
         </div>
-        <div className="w-full min-h-[calc(100vh-256px)] flex flex-col md:flex-row pt-6">
-          <div className="w-full md:w-3/5 pr-4">
+        <div className="w-full min-h-[calc(100vh-320px)] flex flex-col md:flex-row px-6">
+          <div className="w-full md:w-3/5 pr-4 py-8">
             {success ? (
               <Result
                 status="success"
@@ -79,7 +79,7 @@ const FeedbackPage = () => {
                     },
                   ]}
                 >
-                  <Input type="email" />
+                  <Input type="email" placeholder="your@mail.com" />
                 </Form.Item>
                 <Form.Item
                   name="feedback"
@@ -91,7 +91,10 @@ const FeedbackPage = () => {
                     },
                   ]}
                 >
-                  <Input.TextArea />
+                  <Input.TextArea
+                    rows={5}
+                    placeholder="Share your thoughts with us..."
+                  />
                 </Form.Item>
                 <div>
                   <SubmitButton
@@ -107,8 +110,8 @@ const FeedbackPage = () => {
               </Form>
             )}
           </div>
-          <div className="w-full md:w-2/5 pl-0 pt-8 md:pl-4 md:pt-0">
-            <div className="bg-gray-100 p-4 rounded-lg">
+          <div className="w-full md:w-2/5 pl-0 pt-8 md:pl-4 md:pt-0 bg-gray-100">
+            <div className="px-4 py-8">
               <h2 className="text-xl font-semibold mb-4">
                 How to Send Feedback
               </h2>
@@ -125,10 +128,13 @@ const FeedbackPage = () => {
                 <li>Focus on the issue, not the person.</li>
                 <li>Suggest possible solutions or improvements.</li>
               </ul>
-              <p className="mt-4 text-sm">
-                Your feedback will be sent to all Eswatini Drought Monitor
-                admins. Thank you for helping us improve!
-              </p>
+              <div className="mt-6 p-4 bg-blue-100 border-l-4 border-l-blue-800">
+                <p className="text-sm text-blue-800 font-medium">
+                  Your feedback will be sent to all Eswatini Drought Monitor
+                  admins.
+                </p>
+              </div>
+              <p className="mt-4 text-sm">Thank you for helping us improve!</p>
             </div>
           </div>
         </div>
