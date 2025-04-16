@@ -207,10 +207,14 @@ RUNDECK_API_TOKEN = environ.get("RUNDECK_API_TOKEN")
 # Override the default user model
 AUTH_USER_MODEL = "v1_users.SystemUser"
 # MAIL SETUP
-EMAIL_BACKEND = "django_mailjet.backends.MailjetBackend"
-MAILJET_API_KEY = environ["MAILJET_APIKEY"]
-MAILJET_API_SECRET = environ["MAILJET_SECRET"]
-EMAIL_FROM = environ.get("EMAIL_FROM") or "noreply@akvo.org"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = environ.get("EMAIL_PORT", 587)
+EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_HOST_USER = environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_FROM = environ.get("EMAIL_FROM", "noreply@akvo.org")
+DEFAULT_FROM_EMAIL = EMAIL_FROM
 
 # APP CONFIG
 WEBDOMAIN = environ.get("WEBDOMAIN", "http://localhost:3000")
