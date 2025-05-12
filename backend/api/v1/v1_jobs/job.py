@@ -289,10 +289,10 @@ def generate_initial_cdi_values(
                 })
                 continue
 
-            # Filter out -1 (placeholder for missing data)
-            valid_data = valid_data[valid_data != -1]
+            # Use numpy.where to filter out missing data (-1 values)
+            positive_values = valid_data[np.where(valid_data >= 0)]
 
-            if valid_data.size == 0:
+            if positive_values.size == 0:
                 results.append({
                     "administration_id": admin_id,
                     "value": None,
@@ -300,8 +300,10 @@ def generate_initial_cdi_values(
                 })
                 continue
 
-            min_val = np.min(valid_data)
-            mean_val = np.mean(valid_data)
+            min_val = np.min(positive_values)
+            mean_val = np.mean(positive_values)
+
+            # Apply the formula (min + mean) * 0.5
             final_value = (min_val + mean_val) * 0.5
 
             category = get_category(final_value)
