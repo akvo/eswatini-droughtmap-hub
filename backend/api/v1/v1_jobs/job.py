@@ -3,8 +3,9 @@ import os
 import rasterio
 import geopandas as gpd
 import requests
-# import numpy as np
-from rasterstats import zonal_stats
+import numpy as np
+# from rasterstats import zonal_stats
+from rasterio.mask import mask
 from time import sleep
 from django.utils import timezone
 from django.conf import settings
@@ -224,6 +225,11 @@ def generate_initial_cdi_values(
     publication = Publication.objects.filter(
         pk=publication_id
     ).first()
+    if not publication:
+        logger.error(
+            f"Publication with ID {publication_id} does not exist."
+        )
+        return False
     # Read the topojson file to load all Administrations
     topojson_file = "./source/eswatini.topojson"
     gdf = gpd.read_file(topojson_file)
@@ -234,27 +240,79 @@ def generate_initial_cdi_values(
     with rasterio.open(input_file) as src:
         gdf = gdf.to_crs(src.crs)
 
-    # Perform zonal statistics
-    zs = zonal_stats(
-        gdf,
-        input_file,
-        stats=["median"],  # Specify the statistics you need
-        geojson_out=True  # Output as GeoJSON features for easier handling
-    )
-    # Map the zonal statistics to a new column in the GeoDataFrame
-    gdf["raster_values"] = [feat["properties"] for feat in zs]
+    # Custom zonal stats using rasterio and numpy
+    results = []
 
-    # Convert raster_values to separate columns for easier analysis
-    gdf["value"] = gdf["raster_values"].apply(
-        lambda x: x.get("median", None)
-    )
-    # Add a new column 'category' using the get_category function
-    gdf["category"] = gdf["value"].apply(get_category)
+    with rasterio.open(input_file) as src:
+        # Reproject GeoDataFrame to match raster CRS
+        gdf_reprojected = gdf.to_crs(src.crs)
 
-    # Now you have columns like 'value' in your GeoDataFrame
-    result = gdf[["administration_id", "value", "category"]]
+        for _, row in gdf_reprojected.iterrows():
+            geom = row["geometry"]
+            admin_id = row["administration_id"]
 
-    publication.initial_values = result.to_dict(orient="records")
+            if geom.is_empty:
+                results.append({
+                    "administration_id": admin_id,
+                    "value": None,
+                    "category": None
+                })
+                continue
+
+            try:
+                # Mask the raster using the geometry
+                masked_arr, _ = mask(
+                    dataset=src,
+                    shapes=[geom],
+                    crop=True,
+                    nodata=src.nodata,
+                    filled=False  # returns a masked array
+                )
+            except ValueError:
+                # Handle invalid geometry or no overlap
+                results.append({
+                    "administration_id": admin_id,
+                    "value": None,
+                    "category": None
+                })
+                continue
+
+            # Flatten and get valid (unmasked) data
+            masked_arr = masked_arr[0]  # first band
+            valid_data = masked_arr.compressed()  # Get only unmasked values
+
+            if valid_data.size == 0:
+                results.append({
+                    "administration_id": admin_id,
+                    "value": None,
+                    "category": None
+                })
+                continue
+
+            # Filter out -1 (placeholder for missing data)
+            valid_data = valid_data[valid_data != -1]
+
+            if valid_data.size == 0:
+                results.append({
+                    "administration_id": admin_id,
+                    "value": None,
+                    "category": None
+                })
+                continue
+
+            min_val = np.min(valid_data)
+            mean_val = np.mean(valid_data)
+            final_value = (min_val + mean_val) * 0.5
+
+            category = get_category(final_value)
+
+            results.append({
+                "administration_id": admin_id,
+                "value": float(final_value),
+                "category": category
+            })
+
+    publication.initial_values = results
     publication.save()
     return PublicationSerializer(publication).data
 
