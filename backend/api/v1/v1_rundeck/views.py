@@ -182,7 +182,7 @@ class RundeckJobsAPI(APIView):
     def get(self, request, version, project):
         try:
             response = requests.get(
-                f"{settings.RUNDECK_API_URL}/project/{[project]}/jobs",
+                f"{settings.RUNDECK_API_URL}/project/{project}/jobs",
                 headers={
                     "X-Rundeck-Auth-Token": settings.RUNDECK_API_TOKEN
                 }
