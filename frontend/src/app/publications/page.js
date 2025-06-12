@@ -59,7 +59,7 @@ const PublicationsPage = () => {
             <Image
               width={100}
               height={100}
-              src={record?.thumbnail_url}
+              src={record?.thumbnail_url || "/images/no-thumbnail.png"}
               alt={record?.title}
             />
             <small>{record?.title}</small>
@@ -188,7 +188,22 @@ const PublicationsPage = () => {
       <Can I="read" a="Publication">
         <Table
           columns={columns}
-          dataSource={publications}
+          dataSource={[
+            {
+              pk: 1,
+              title: "step_0303_cdi_pct_rank_eswatini_200002",
+              detail_url: "https://geonode.ndma.org.sz/catalogue/#/dataset/1",
+              embed_url:
+                "https://geonode.ndma.org.sz/datasets/geonode:step_0303_cdi_pct_rank_eswatini_200002/embed",
+              thumbnail_url: null,
+              download_url:
+                "https://geonode.ndma.org.sz/datasets/geonode:step_0303_cdi_pct_rank_eswatini_200002/dataset_download",
+              created: "2025-06-10T13:09:59.069019Z",
+              year_month: "2025-06-10T13:09:59.037035Z",
+              publication_id: null,
+              status: null,
+            },
+          ]}
           loading={loading}
           rowClassName={"cursor-pointer"}
           pagination={
