@@ -22,6 +22,27 @@ from api.v1.v1_publication.utils import get_category
 fake = Faker()
 
 
+# Generate dummy narrative content
+def generate_dummy_narrative():
+    title = fake.sentence(nb_words=6)  # Generate a title with 6 words
+    author = fake.name()  # Generate a random author name
+    date = fake.date()  # Generate a random date
+    content = "\n".join(
+        [f"<p>{fake.paragraph(nb_sentences=5)}</p>" for _ in range(15)]
+    )
+
+    # Combine into HTML
+    html_narrative = f"""
+    <narrative>
+        <h1>{title}</h1>
+        <p><strong>Author:</strong> {author}</p>
+        <p><strong>Date:</strong> {date}</p>
+        {content}
+    </narrative>
+    """
+    return html_narrative
+
+
 class Command(BaseCommand):
     help = "Generates fake publication data"
 
@@ -37,11 +58,49 @@ class Command(BaseCommand):
             default=3,
             type=int
         )
+        # page
+        parser.add_argument(
+            "-p",
+            "--page",
+            nargs="?",
+            const=1,
+            default=1,
+            type=int,
+        )
+        # status
+        parser.add_argument(
+            "-s",
+            "--status",
+            nargs="?",
+            const=PublicationStatus.in_review,
+            default=PublicationStatus.in_review,
+            type=str,
+        )
 
     def handle(self, *args, **kwargs):
         test = kwargs.get("test")
         repeat = kwargs.get("repeat")
         topojson_file_path = "./source/eswatini.topojson"
+        # validate the status argument
+        status = kwargs.get("status")
+        # convert status to integer if it's a string
+        if isinstance(status, str):
+            status = int(status)
+        if status not in PublicationStatus.FieldStr.keys():
+            status_keys = [
+                str(x)
+                for x in PublicationStatus.FieldStr.keys()
+            ]
+            self.stdout.write(self.style.ERROR(
+                f"Invalid status: {status}. "
+                f"Valid statuses are: "
+                f"{', '.join(status_keys)}"
+            ))
+            return
+
+        # Remove all existing publications and reviews
+        for publication in Publication.objects.all():
+            publication.delete(hard=True)
 
         with open(topojson_file_path, "r") as f:
             topo_data = json.load(f)
@@ -58,11 +117,11 @@ class Command(BaseCommand):
             cdi_geonode_ids = [44, 106]
         else:
             category = CDIGeonodeCategory.cdi
-            page = 1
+            page = kwargs.get("page", 1)
             url = (
                 "{0}/api/v2/resources"
                 "?filter{{category.identifier}}={1}"
-                "&filter{{subtype}}=raster&page={2}"
+                "&filter{{subtype}}=raster&page={2}&sort[]=-date"
                 # "&page=1"
                 .format(
                     settings.GEONODE_BASE_URL,
@@ -119,15 +178,11 @@ class Command(BaseCommand):
             # Decrement the current date by one month for the next iteration
             current_date -= relativedelta(months=1)
 
-            status = PublicationStatus.in_review
-            if index + 1 > repeat:
+            if index + 1 > repeat and status == PublicationStatus.in_review:
                 status = PublicationStatus.in_validation
             initial_values = []
-            no_data_indices = set(random.sample(range(59), 3))
-            for index, a_id in enumerate(administration_ids):
-                init_value = random.uniform(0, 100)
-                if index in no_data_indices:
-                    init_value = -9999
+            for a_id in administration_ids:
+                init_value = random.uniform(0.02, 0.4)
                 initial_values.append({
                     "administration_id": a_id,
                     "value": init_value,
@@ -136,7 +191,7 @@ class Command(BaseCommand):
 
             publication = Publication.objects.filter(
                 cdi_geonode_id=cdi_geonode_id,
-                year_month=year_month,
+                # year_month=year_month,
             ).first()
 
             if not publication:
@@ -147,6 +202,31 @@ class Command(BaseCommand):
                     status=status,
                     due_date=due_date,
                 )
+
+            if status == PublicationStatus.published:
+                published_at = datetime.combine(
+                        due_date + timedelta(days=random.randint(1, 7)),
+                        datetime.min.time()
+                    )
+                publication.status = PublicationStatus.published
+                publication.published_at = timezone.make_aware(
+                    published_at
+                )
+                publication.narrative = generate_dummy_narrative()
+                publication.bulletin_url = (
+                    "https://www.ipcinfo.org/fileadmin/"
+                    "user_upload/ipcinfo/docs/"
+                    "IPC_Eswatini_AFI_2019June2020March.pdf"
+                )
+                publication.validated_values = [
+                    {
+                        "administration_id": v["administration_id"],
+                        "value": v["value"],
+                        "category": get_category(v["value"])
+                    }
+                    for v in initial_values
+                ]
+                publication.save()
 
             reviewers = SystemUser.objects.filter(
                 role=UserRoleTypes.reviewer
@@ -180,7 +260,7 @@ class Command(BaseCommand):
                         is_diff = fake.boolean()
                         if is_diff:
                             comment = fake.sentence(nb_words=8)
-                            s_value = random.uniform(0, 100)
+                            s_value = random.uniform(0.02, 0.4)
 
                         suggestion_values.append({
                             "administration_id": v["administration_id"],
