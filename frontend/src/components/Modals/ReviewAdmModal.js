@@ -44,13 +44,15 @@ const ReviewAdmModal = ({ review }) => {
         review?.suggestion_values || review?.publication?.initial_values;
       const suggestion_values = map_values?.map((m) => {
         if (activeAdm?.administration_id === m?.administration_id) {
+          // Fix: properly handle the category value to ensure it's not null
+          const categoryValue = showSuggestion
+            ? values.suggestedCategory
+            : activeAdm?.category?.raw || 0;
+
           return {
             ...m,
-            ...values,
-            category:
-              typeof values?.category === "number"
-                ? values.category
-                : values?.category?.raw || activeAdm?.category?.raw,
+            category: categoryValue, // Use the properly calculated category value
+            comment: values.comment || comment, // Ensure comment is captured
             reviewed: true,
           };
         }
@@ -88,10 +90,24 @@ const ReviewAdmModal = ({ review }) => {
       activeAdm?.administration_id &&
       activeAdm?.comment !== form.getFieldValue("comment")
     ) {
-      form.setFieldValue("category", activeAdm.category);
+      // Ensure we're setting the right field for category
+      if (activeAdm?.reviewed) {
+        form.setFieldValue("computedCategory", activeAdm.category?.reviewed);
+      } else {
+        form.setFieldValue("computedCategory", activeAdm.category?.raw);
+        if (showSuggestion) {
+          form.setFieldValue("suggestedCategory", activeAdm.category?.reviewed);
+        }
+      }
       form.setFieldValue("comment", activeAdm.comment);
+      if (activeAdm.comment) {
+        setComment(activeAdm.comment);
+      }
     }
-  }, [activeAdm, form]);
+    if (!activeAdm?.category?.raw && !showSuggestion) {
+      setShowSuggestion(true);
+    }
+  }, [activeAdm, form, showSuggestion]);
 
   useEffect(() => {
     updateForm();
@@ -99,7 +115,7 @@ const ReviewAdmModal = ({ review }) => {
 
   useEffect(() => {
     if (form) {
-      form.validateFields(["comment"]);
+      form.validateFields(["comment", "suggestedCategory"]);
     }
   }, [showSuggestion, form]);
 
@@ -148,7 +164,14 @@ const ReviewAdmModal = ({ review }) => {
               type="primary"
               onClick={() => {
                 if (!activeAdm?.reviewed) {
-                  form.submit();
+                  form
+                    .validateFields()
+                    .then(() => {
+                      form.submit();
+                    })
+                    .catch((error) => {
+                      console.log("Validation failed:", error);
+                    });
                 } else {
                   onClose();
                 }
@@ -156,6 +179,9 @@ const ReviewAdmModal = ({ review }) => {
               disabled={
                 (showSuggestion && comment?.trim()?.length === 0) ||
                 (activeAdm?.category?.raw === DROUGHT_CATEGORY_VALUE.none &&
+                  !showSuggestion) ||
+                (!activeAdm?.category?.raw &&
+                  !activeAdm?.category?.reviewed &&
                   !showSuggestion)
               }
             >
@@ -181,14 +207,14 @@ const ReviewAdmModal = ({ review }) => {
           </Flex>
 
           {activeAdm?.reviewed ? (
-            <Form.Item label="Computed Value" name="category">
+            <Form.Item label="Computed Value" name="computedCategory">
               <Text strong>
                 {DROUGHT_CATEGORY_LABEL?.[activeAdm.category?.reviewed]}
               </Text>
             </Form.Item>
           ) : (
             <Flex align="center" justify="space-between" className="w-full">
-              <Form.Item label="Computed Value" name="category">
+              <Form.Item label="Computed Value" name="computedCategory">
                 <Text strong>
                   {DROUGHT_CATEGORY_LABEL?.[activeAdm?.category?.raw]}
                 </Text>
@@ -196,11 +222,12 @@ const ReviewAdmModal = ({ review }) => {
               {showSuggestion && (
                 <Form.Item
                   label="Suggested Value"
-                  name="category"
+                  name="suggestedCategory"
                   className="w-1/2"
                   rules={[
                     {
                       required: true,
+                      message: "Please select a drought category",
                     },
                   ]}
                 >
@@ -211,7 +238,7 @@ const ReviewAdmModal = ({ review }) => {
                     )}
                     placeholder="Select Drought category"
                     disabled={activeAdm?.reviewed}
-                    allowClear
+                    allowClear={false}
                   />
                 </Form.Item>
               )}
@@ -222,6 +249,7 @@ const ReviewAdmModal = ({ review }) => {
             rules={[
               {
                 required: showSuggestion,
+                message: "Please provide a comment",
               },
             ]}
           >
@@ -229,7 +257,10 @@ const ReviewAdmModal = ({ review }) => {
               placeholder={activeAdm?.reviewed ? "" : "Add a comment"}
               disabled={review?.is_completed || activeAdm?.reviewed}
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={(e) => {
+                setComment(e.target.value);
+                form.setFieldsValue({ comment: e.target.value });
+              }}
             />
           </Form.Item>
         </div>
