@@ -122,12 +122,27 @@ class ReviewSerializer(serializers.ModelSerializer):
         reviewed_count = sum(
             1 for item in suggestion_values if item.get("reviewed") is True
         )
-        # total = len(list(filter(
-        #     lambda x: x["category"] != DroughtCategory.none,
-        #     obj.publication.initial_values
-        # )))
         total = len(obj.publication.initial_values)
         return f"{reviewed_count}/{total}"
+
+    # Add suggestion_values validation on create and update
+    # to ensure category is not None when reviewed is True
+    def validate_suggestion_values(self, value):
+        if not value:
+            return value
+        for i, suggestion in enumerate(value):
+            # Only validate category is not None when reviewed is True
+            reviewed = suggestion.get("reviewed", False)
+            category = suggestion.get("category")
+            # Check if category is invalid when reviewed is True
+            if reviewed:
+                if category is None or (category != 0 and not category):
+                    admin_id = suggestion.get('administration_id')
+                    raise serializers.ValidationError(
+                        f"Category required when reviewed is True "
+                        f"(item #{i+1}, administration_id: {admin_id})"
+                    )
+        return value
 
     class Meta:
         model = Review

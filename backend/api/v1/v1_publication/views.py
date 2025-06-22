@@ -758,7 +758,7 @@ class PublishedMapViewSet(viewsets.ModelViewSet):
         return Publication.objects.filter(
             status=PublicationStatus.published,
             published_at__isnull=False
-        ).order_by("-published_at")
+        ).order_by("-year_month")
 
     @extend_schema(
         responses={200: PublishedMapSerializer},

@@ -9,6 +9,9 @@ from api.v1.v1_publication.models import (
     Review,
     PublicationStatus,
 )
+from api.v1.v1_publication.constants import (
+    DroughtCategory,
+)
 from api.v1.v1_publication.serializers import ReviewSerializer
 
 
@@ -87,11 +90,13 @@ class ReviewViewSetTestCase(APITestCase):
             "suggestion_values": [
                 {
                     "value": 40,
+                    "category": None,
                     "administration_id": 1253002,
                     "reviewed": False
                 },
                 {
                     "value": 2,
+                    "category": DroughtCategory.d1,
                     "administration_id": 1253053,
                     "reviewed": True
                 }
@@ -111,11 +116,13 @@ class ReviewViewSetTestCase(APITestCase):
             "suggestion_values": [
                 {
                     "value": 40,
+                    "category": DroughtCategory.d2,
                     "administration_id": 1253002,
                     "reviewed": True
                 },
                 {
                     "value": 2,
+                    "category": DroughtCategory.d4,
                     "administration_id": 1253053,
                     "reviewed": True
                 }
@@ -144,11 +151,13 @@ class ReviewViewSetTestCase(APITestCase):
             "suggestion_values": [
                 {
                     "value": 35,
+                    "category": DroughtCategory.d2,
                     "administration_id": 1253002,
                     "reviewed": True
                 },
                 {
                     "value": 12,
+                    "category": DroughtCategory.d1,
                     "administration_id": 1253053,
                     "reviewed": True
                 }
@@ -200,6 +209,56 @@ class ReviewViewSetTestCase(APITestCase):
         response = self.client.post(self.list_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_invalid_reviewed_with_null_category(
+        self
+    ):
+        payload = {
+            "publication_id": self.publication.id,
+            "user_id": self.user.id,
+            "is_completed": False,
+            "suggestion_values": [
+                {
+                    "value": 40,
+                    "administration_id": 1253002,
+                    "reviewed": True,  # Reviewed but category is None
+                    "category": None
+                },
+                {
+                    "value": 2,
+                    "administration_id": 1253053,
+                    "reviewed": True,
+                    "category": None
+                }
+            ],
+        }
+        response = self.client.post(self.list_url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_update_reviewed_with_null_category(
+        self
+    ):
+        payload = {
+            "is_completed": True,
+            "suggestion_values": [
+                {
+                    "value": 40,
+                    "administration_id": 1253002,
+                    "reviewed": True,  # Invalid: requires category
+                    "category": None
+                },
+                {
+                    "value": 2,
+                    "administration_id": 1253053,
+                    "reviewed": True,
+                    "category": None
+                }
+            ],
+        }
+        response = self.client.put(
+            self.detail_url(self.review.id), data=payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_delete_review_by_non_owner(self):
         non_owner = SystemUser.objects.exclude(
             pk=self.user.id
@@ -213,6 +272,34 @@ class ReviewViewSetTestCase(APITestCase):
             status.HTTP_404_NOT_FOUND
         )
 
+    def test_create_with_null_category_when_not_reviewed(self):
+        """Test that category can be null when reviewed is False"""
+        payload = {
+            "publication_id": self.publication.id,
+            "user_id": self.user.id,
+            "is_completed": False,
+            "suggestion_values": [
+                {
+                    "value": 40,
+                    "administration_id": 1253002,
+                    "reviewed": False,  # Not reviewed, so category can be null
+                    "category": None
+                },
+                {
+                    "value": 2,
+                    "administration_id": 1253053,
+                    "reviewed": True,
+                    "category": DroughtCategory.d1  # Must have value
+                }
+            ],
+        }
+        response = self.client.post(
+            self.list_url,
+            data=payload,
+            format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    
     def test_delete_review(self):
         response = self.client.delete(
             self.detail_url(self.review.id)
