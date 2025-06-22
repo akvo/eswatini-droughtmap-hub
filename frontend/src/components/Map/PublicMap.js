@@ -14,13 +14,13 @@ import {
   Space,
   Typography,
 } from "antd";
-import { DownloadIcon } from "../Icons";
+import { DownloadIcon, ExternalLinkIcon } from "../Icons";
 import { useEffect, useState } from "react";
 import CDIMap from "./CDIMap";
 
 const { Title } = Typography;
 
-const PublicMap = ({ id, validated_values: data = [] }) => {
+const PublicMap = ({ id, validated_values: data = [], bulletin_url }) => {
   const [currentID, setCurrentID] = useState(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -125,6 +125,27 @@ const PublicMap = ({ id, validated_values: data = [] }) => {
                   </Button>
                 </Dropdown>
               </div>
+              {bulletin_url && (
+                <div className="w-full">
+                  <div className="px-6 py-4 border-x border-x-neutral-100 bg-white">
+                    <Space>
+                      <ExternalLinkIcon />
+                      <strong>PUBLICATION BULLETIN</strong>
+                    </Space>
+                  </div>
+                  <div className="p-4 border border-neutral-100 bg-white">
+                    <Button
+                      type="primary"
+                      href={bulletin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      block
+                    >
+                      Open Bulletin
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </CDIMap>
         </div>
