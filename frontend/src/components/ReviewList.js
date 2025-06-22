@@ -70,7 +70,8 @@ const ReviewList = ({
     setCheckAll(isChecked);
     const admValues = form.getFieldValue("administrations").map((a) => {
       const checked =
-        isChecked && a?.category?.raw === DROUGHT_CATEGORY_VALUE.none
+        (isChecked && a?.category?.raw === DROUGHT_CATEGORY_VALUE.none) ||
+        (isChecked && !a?.value)
           ? false
           : isChecked;
       return !a?.reviewed ? { ...a, checked } : a;
@@ -121,7 +122,7 @@ const ReviewList = ({
         appDispatch({
           type: "REFRESH_MAP_FALSE",
         });
-      }, 500);
+      }, 1000);
       setCheckAll(false);
       setMarking(false);
       router.refresh();
@@ -259,7 +260,13 @@ const ReviewList = ({
                             "administrations",
                             field.name,
                             "category",
-                          ])?.raw === DROUGHT_CATEGORY_VALUE.none || isReviewed;
+                          ])?.raw === DROUGHT_CATEGORY_VALUE.none ||
+                          !formInstance.getFieldValue([
+                            "administrations",
+                            field.name,
+                            "value",
+                          ]) ||
+                          isReviewed;
                         return (
                           <div
                             className={classNames(
