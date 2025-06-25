@@ -21,7 +21,7 @@ const BrowsePage = async ({ searchParams }) => {
 
   const dates = await api("GET", "/dates");
   const mapID = searchParams?.date || dates?.[0]?.value;
-  if (!mapID) {
+  if (!mapID || mapID === "undefined") {
     redirect("/");
   }
   const activeMap = await api("GET", `/map/${mapID}`);
