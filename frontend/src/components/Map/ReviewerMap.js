@@ -3,7 +3,6 @@
 import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
-  DROUGHT_CATEGORY_VALUE,
   REVIEWER_MAP_FILTER,
 } from "@/static/config";
 import { styleOptions } from "@/static/poly-styles";
