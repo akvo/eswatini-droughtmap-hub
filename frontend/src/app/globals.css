@@ -209,3 +209,8 @@ h5 {
   padding-inline-start: revert;
   list-style: disc;
 }
+.logo-list .logo-image {
+  object-fit: contain;
+  height: 100px;
+  width: auto;
+}

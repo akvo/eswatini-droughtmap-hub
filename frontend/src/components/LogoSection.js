@@ -1,4 +1,4 @@
-import { APP_SETTINGS } from "@/static/config";
+import { APP_SETTINGS, TWG_LOGOS } from "@/static/config";
 import Image from "next/image";
 
 const LogoSection = () => {
@@ -12,31 +12,20 @@ const LogoSection = () => {
           ABOUT EDM
         </h2>
         <p className="w-5/12 text-center">{APP_SETTINGS.about}</p>
-        <ul className="flex flex-row items-center gap-12 mb-12">
-          <li>
-            <Image
-              src="/images/home-about-1.png"
-              width={255}
-              height={95}
-              alt="Ministry of Agriculture"
-            />
-          </li>
-          <li>
-            <Image
-              src="/images/home-about-2.png"
-              width={255}
-              height={95}
-              alt="Ministry of Natural Resources"
-            />
-          </li>
-          <li>
-            <Image
-              src="/images/home-about-3.png"
-              width={255}
-              height={95}
-              alt="Ministry of Environment"
-            />
-          </li>
+        <ul className="flex flex-row items-center gap-12 mb-12 logo-list">
+          {TWG_LOGOS.map((logo) => (
+            <li key={logo.id}>
+              <a href={logo.url} target="_blank" rel="noopener noreferrer">
+                <Image
+                  src={logo.image}
+                  width={255}
+                  height={95}
+                  alt={logo.alt}
+                  className="logo-image"
+                />
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
     </div>
