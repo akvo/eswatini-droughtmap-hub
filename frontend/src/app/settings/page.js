@@ -471,7 +471,24 @@ const SettingsPage = () => {
               </Form>
             </div>
             <div className="w-full lg:w-8/12 border-l border-l-grey-100 px-6 space-y-6">
-              <Title level={3}>Manual Executions</Title>
+              <Flex align="center" justify="space-between">
+                <div>
+                  <Title level={3}>Manual Executions</Title>
+                </div>
+                <div>
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      window.open(
+                        `/rundeck/project/${settings?.project_name}/home`,
+                        "_blank"
+                      );
+                    }}
+                  >
+                    Open Rundeck
+                  </Button>
+                </div>
+              </Flex>
               <Flex align="center" justify="space-between" className="w-full">
                 <div>
                   {execList?.[0]?.date_started && (
