@@ -70,9 +70,14 @@ export const getProfileDropdownItems = (user, isPublic = false) => {
           ...menuItems,
           {
             key: 2,
+            label: "User Management",
+            url: "/admin/v1_users/systemuser/",
+          },
+          {
+            key: 3,
             label: "Settings",
             url: "/settings",
-          },
+          }
         ]
       : menuItems;
   return menuByRoles.map(({ key, label, url }) => ({
