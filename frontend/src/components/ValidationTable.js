@@ -5,7 +5,6 @@ import {
   DROUGHT_CATEGORY,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
-  DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 import {
   Button,
@@ -82,12 +81,12 @@ const ValidationTable = ({
         title: "",
         dataIndex: "administration_id",
         render: (_, record) => {
-          // if (record?.initial_category === DROUGHT_CATEGORY_VALUE.none) {
-          //   return null;
-          // }
+          const comments = extraColumns
+            ?.map((col) => record[`${col.dataIndex}_comment`])
+            ?.filter((col) => col?.comment) || [];
           return (
             <Button type="text" onClick={() => onDetails(record)}>
-              {record?.category !== undefined && record?.category !== null ? (
+              {comments.length === 0 ? (
                 <ReadCommentIcon />
               ) : (
                 <UnreadCommentIcon />
