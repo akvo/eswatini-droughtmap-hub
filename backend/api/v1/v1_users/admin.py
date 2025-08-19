@@ -5,6 +5,7 @@ from django_q.tasks import async_task
 from django_json_widget.widgets import JSONEditorWidget
 from .models import SystemUser, Ability
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
+from api.v1.v1_users.constants import UserRoleTypes
 
 
 # Add manage users in admin django
@@ -59,6 +60,10 @@ class SystemUserAdmin(UserAdmin):
         super().save_model(request, obj, form, change)
         if not change:
             obj.generate_reset_password_code()
+            if int(request.POST.get("role")[0]) == UserRoleTypes.admin:
+                # Automatically set superuser status for admin role
+                obj.is_superuser = True
+                obj.save(update_fields=["is_superuser"])
             job = Jobs.objects.create(
                 type=JobTypes.new_user_password_setup,
                 status=JobStatus.on_progress,
