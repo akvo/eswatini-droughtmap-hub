@@ -484,6 +484,7 @@ const SettingsPage = () => {
                         "_blank"
                       );
                     }}
+                    ghost
                   >
                     Open Rundeck
                   </Button>
