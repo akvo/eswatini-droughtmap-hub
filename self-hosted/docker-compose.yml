@@ -26,7 +26,6 @@ services:
       - rundeck_data:/home/rundeck/server/data
       - rundeck_etl:/home/rundeck/server/logs
       - ./rundeck/realm.properties:/home/rundeck/server/config/realm.properties
-      - ./rundeck/rundeck-config.properties:/home/rundeck/server/config/rundeck-config.properties
 
   traefik:
     image: traefik:v3.0
