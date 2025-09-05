@@ -7,6 +7,7 @@ import numpy as np
 # from rasterstats import zonal_stats
 from rasterio.mask import mask
 from time import sleep
+from datetime import datetime
 from django.utils import timezone
 from django.conf import settings
 from django_q.tasks import async_task
@@ -334,6 +335,31 @@ def generate_initial_cdi_values_results(task):
         job.status = JobStatus.done
         job.available = timezone.now()
 
+        if not subject or not message:
+            job.result = task.result
+            job.save()
+
+            if (
+                job_info.get("is_seeder", False) and
+                not publication.validated_values
+            ):
+                # If this is from the seeder and no validated values, set them
+                publication.validated_values = publication.initial_values
+                publication.narrative = ""
+                publication.published_at = timezone.make_aware(
+                    publication.due_date
+                ) if isinstance(publication.due_date, datetime) \
+                    else timezone.make_aware(
+                        datetime.combine(
+                            publication.due_date,
+                            datetime.min.time()
+                        )
+                    )
+                publication.save()
+
+            # No subject or message provided, so no email to send
+            return
+        # Send email to all reviewers
         for review in publication.reviews.all():
             # Create a job
             job = Jobs.objects.create(
