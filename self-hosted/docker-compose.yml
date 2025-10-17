@@ -19,6 +19,7 @@ services:
       RUNDECK_CONFIG: "app.framework.security.accessControl.enabled=true"
       RUNDECK_SERVER_FORWARDED: true
       RUNDECK_TOKENS_FILE: /home/rundeck/server/config/realm.properties
+      RUNDECK_API_TOKENS_DURATION_MAX: 0
 
     network_mode: service:mainnetwork
 
