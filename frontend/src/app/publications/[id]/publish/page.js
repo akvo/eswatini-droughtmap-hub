@@ -2,7 +2,16 @@
 
 import dynamic from "next/dynamic";
 import { SubmitButton, ValidationModal } from "@/components";
-import { Checkbox, Form, Input, message, Modal, Space, Typography } from "antd";
+import {
+  Checkbox,
+  Form,
+  Input,
+  message,
+  Modal,
+  Space,
+  Typography,
+  DatePicker,
+} from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { api } from "@/lib";
@@ -122,7 +131,7 @@ const PublishPage = ({ params }) => {
         router.replace("/publications");
       }
 
-      form.setFieldValue("year_month", apiData.year_month);
+      form.setFieldValue("year_month", dayjs(apiData.year_month));
       form.setFieldValue("bulletin_url", apiData.bulletin_url);
       const validatedValues = apiData?.validated_values?.map((v) => {
         const findInit = apiData?.initial_values?.find(
@@ -216,8 +225,22 @@ const PublishPage = ({ params }) => {
             layout="vertical"
             className="w-full"
           >
-            <Form.Item name="year_month" label="Year Month">
-              <Input placeholder="YYYY-MM" readOnly />
+            <Form.Item
+              label="Publication Date"
+              name="year_month"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+            >
+              <DatePicker
+                format={{
+                  format: "YYYY-MM",
+                  type: "mask",
+                }}
+                picker="month"
+              />
             </Form.Item>
             <Form.Item name="bulletin_url" label="Bulletin URL">
               <Input placeholder="http://..." />

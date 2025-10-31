@@ -22,7 +22,7 @@ import { api } from "@/lib";
 import { CREATE_PUBLICATION_MAIL } from "@/static/config";
 import { VerifiedIcon } from "../Icons";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { useForm } = Form;
 const { Search } = Input;
 
