@@ -136,7 +136,8 @@ class PublicationsSeederCommandTestCase(TestCase):
         )
         mock_get.assert_called_with(
             expected_url,
-            auth=("admin", "admin")
+            auth=("admin", "admin"),
+            verify=False,
         )
 
     @patch("django_q.tasks.async_task")
