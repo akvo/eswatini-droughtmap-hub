@@ -8,6 +8,7 @@ from django_q.tasks import async_task
 from api.v1.v1_jobs.models import Jobs, JobStatus, JobTypes
 from api.v1.v1_publication.models import Publication
 from api.v1.v1_publication.constants import (
+    GEONODE_SSL_VERIFY,
     CDIGeonodeCategory,
     PublicationStatus,
 )
@@ -55,6 +56,7 @@ class Command(BaseCommand):
             response = requests.get(
                 url,
                 auth=(username, password),
+                verify=GEONODE_SSL_VERIFY,
             )
             if response.status_code != 200:
                 self.stdout.write(

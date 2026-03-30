@@ -1,3 +1,6 @@
+GEONODE_SSL_VERIFY = False
+
+
 class PublicationStatus:
     in_review = 1
     in_validation = 2

@@ -13,6 +13,7 @@ from django.conf import settings
 from django_q.tasks import async_task
 from api.v1.v1_jobs.models import Jobs
 from api.v1.v1_jobs.constants import JobStatus, JobTypes
+from api.v1.v1_publication.constants import GEONODE_SSL_VERIFY
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.models import Publication
 from api.v1.v1_publication.serializers import (
@@ -162,7 +163,7 @@ def download_geonode_dataset(
 
     # Download and store it in /tmp directory
     input_file = os.path.join(tmp_dir, filename)
-    response = requests.get(download_url, stream=True)
+    response = requests.get(download_url, stream=True, verify=GEONODE_SSL_VERIFY)
     if response.status_code == 200:
         with open(input_file, "wb") as f:
             # Write the response in chunks to handle large files

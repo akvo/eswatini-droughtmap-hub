@@ -14,6 +14,7 @@ from api.v1.v1_publication.models import (
     Review,
 )
 from api.v1.v1_publication.constants import (
+    GEONODE_SSL_VERIFY,
     PublicationStatus,
     CDIGeonodeCategory,
 )
@@ -134,6 +135,7 @@ class Command(BaseCommand):
             response = requests.get(
                 url,
                 auth=(username, password),
+                verify=GEONODE_SSL_VERIFY,
             )
             if response.status_code == 200:
                 data = response.json()
