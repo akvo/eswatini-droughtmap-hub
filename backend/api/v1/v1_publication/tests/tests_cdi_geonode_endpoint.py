@@ -402,6 +402,47 @@ class CDIGeonodeAPITestCase(APITestCase):
         self.assertEqual(response.data["data"][1]["pk"], 2)
 
     @patch("requests.get")
+    def test_sort_with_mixed_date_types(self, mock_get):
+        """Test sorting when some items have date objects and others have strings"""
+        # Add a third resource with a different date
+        resources = self.mock_response_data["resources"] + [{
+            "pk": 3,
+            "title": "Third Resource",
+            "detail_url": "http://geonode.com/catalogue/#/dataset/3",
+            "embed_url": "http://geonode.com/datasets/geonode:test/embed",
+            "thumbnail_url": "https://geonode.com/uploaded/thumbs/dataset-3d6e89xx.jpg",
+            "download_url": "https://geonode.com/datasets/geonode:third/dataset_download",
+            "created": "2025-01-17T10:00:00Z",
+            "date": "2024-10-31T12:00:00Z",
+        }]
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "total": 3,
+            "page": 1,
+            "page_size": 10,
+            "resources": resources
+        }
+
+        # Create publication only for pk 1 - leaving pk 2 and 3 with string dates
+        Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-12-01",
+            due_date="2025-01-31",
+            initial_values=[{
+                "administration_id": 1,
+                "value": 6,
+                "category": DroughtCategory.d3
+            }]
+        )
+
+        # This should not raise TypeError even with mixed types
+        response = self.client.get(f"{self.url}?sort=year_month&sort_order=asc")
+
+        self.assertEqual(response.status_code, 200)
+        # Verify ordering works correctly despite mixed types
+        self.assertEqual(len(response.data["data"]), 3)
+
+    @patch("requests.get")
     def test_sort_with_status_filter(self, mock_get):
         """Test sorting combined with status filter"""
         mock_get.return_value.status_code = 200

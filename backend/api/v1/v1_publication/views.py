@@ -369,10 +369,21 @@ class CDIGeonodeAPI(APIView):
             # Apply server-side sorting
             if sort_field:
                 reverse = sort_order == "desc"
+                # Normalize sort key to handle mixed types (str vs date/datetime)
+                def normalize_sort_key(value, field_name):
+                    if value is None:
+                        return ""
+                    # For year_month and created fields, convert dates to ISO strings
+                    if field_name in ("year_month", "created"):
+                        if hasattr(value, "isoformat"):
+                            return value.isoformat()
+                        return str(value)
+                    return value
+
                 serialized_data.sort(
                     key=lambda x: (
                         x.get(sort_field) is not None,
-                        x.get(sort_field) if x.get(sort_field) is not None else ""
+                        normalize_sort_key(x.get(sort_field), sort_field)
                     ),
                     reverse=reverse
                 )
