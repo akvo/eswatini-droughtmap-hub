@@ -273,3 +273,170 @@ class CDIGeonodeAPITestCase(APITestCase):
             f"{self.url}?id=9999"
         )
         self.assertEqual(response.status_code, 500)
+
+    @patch("requests.get")
+    def test_sort_by_year_month_descending(self, mock_get):
+        """Test sorting by year_month in descending order"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=year_month&sort_order=desc")
+
+        self.assertEqual(response.status_code, 200)
+        # First item should have the later date (2024-12-31 > 2024-11-31)
+        self.assertEqual(response.data["data"][0]["pk"], 1)
+        self.assertEqual(response.data["data"][1]["pk"], 2)
+
+    @patch("requests.get")
+    def test_sort_by_year_month_ascending(self, mock_get):
+        """Test sorting by year_month in ascending order"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=year_month&sort_order=asc")
+
+        self.assertEqual(response.status_code, 200)
+        # First item should have the earlier date
+        self.assertEqual(response.data["data"][0]["pk"], 2)
+        self.assertEqual(response.data["data"][1]["pk"], 1)
+
+    @patch("requests.get")
+    def test_sort_by_created_descending(self, mock_get):
+        """Test sorting by created timestamp in descending order"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=created&sort_order=desc")
+
+        self.assertEqual(response.status_code, 200)
+        # First item should have the later created timestamp (2025-01-16 > 2025-01-15)
+        self.assertEqual(response.data["data"][0]["pk"], 2)
+        self.assertEqual(response.data["data"][1]["pk"], 1)
+
+    @patch("requests.get")
+    def test_sort_by_created_ascending(self, mock_get):
+        """Test sorting by created timestamp in ascending order"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=created&sort_order=asc")
+
+        self.assertEqual(response.status_code, 200)
+        # First item should have the earlier created timestamp
+        self.assertEqual(response.data["data"][0]["pk"], 1)
+        self.assertEqual(response.data["data"][1]["pk"], 2)
+
+    @patch("requests.get")
+    def test_sort_by_title_ascending(self, mock_get):
+        """Test sorting by title in ascending alphabetical order"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=title&sort_order=asc")
+
+        self.assertEqual(response.status_code, 200)
+        # "Another Resource" < "Test GeoNode Resource"
+        self.assertEqual(response.data["data"][0]["title"], "Another Resource")
+        self.assertEqual(response.data["data"][1]["title"], "Test GeoNode Resource")
+
+    @patch("requests.get")
+    def test_sort_by_title_descending(self, mock_get):
+        """Test sorting by title in descending alphabetical order"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=title&sort_order=desc")
+
+        self.assertEqual(response.status_code, 200)
+        # "Test GeoNode Resource" > "Another Resource"
+        self.assertEqual(response.data["data"][0]["title"], "Test GeoNode Resource")
+        self.assertEqual(response.data["data"][1]["title"], "Another Resource")
+
+    @patch("requests.get")
+    def test_sort_with_publication_year_month(self, mock_get):
+        """Test sorting when publications exist with different year_month values"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        # Create publications with specific year_month values
+        Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-06-01",
+            due_date="2025-01-31",
+            initial_values=[{
+                "administration_id": 1,
+                "value": 6,
+                "category": DroughtCategory.d3
+            }]
+        )
+        Publication.objects.create(
+            cdi_geonode_id=2,
+            year_month="2024-12-01",
+            due_date="2025-01-31",
+            initial_values=[{
+                "administration_id": 1,
+                "value": 6,
+                "category": DroughtCategory.d3
+            }]
+        )
+
+        response = self.client.get(f"{self.url}?sort=year_month&sort_order=asc")
+
+        self.assertEqual(response.status_code, 200)
+        # After merging, pk 2 should have year_month=2024-12-01, pk 1 should have 2024-06-01
+        # So ascending order: pk 1 (June) then pk 2 (December)
+        self.assertEqual(response.data["data"][0]["pk"], 1)
+        self.assertEqual(response.data["data"][1]["pk"], 2)
+
+    @patch("requests.get")
+    def test_sort_defaults_to_descending(self, mock_get):
+        """Test that sort_order defaults to 'desc' when not provided"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        response = self.client.get(f"{self.url}?sort=year_month")
+
+        self.assertEqual(response.status_code, 200)
+        # Should default to descending order
+        self.assertEqual(response.data["data"][0]["pk"], 1)
+        self.assertEqual(response.data["data"][1]["pk"], 2)
+
+    @patch("requests.get")
+    def test_sort_with_status_filter(self, mock_get):
+        """Test sorting combined with status filter"""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.mock_response_data
+
+        # Create publications with different statuses
+        pub1 = Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-06-01",
+            due_date="2025-01-31",
+            status=PublicationStatus.in_review,
+            initial_values=[{
+                "administration_id": 1,
+                "value": 6,
+                "category": DroughtCategory.d3
+            }]
+        )
+        Publication.objects.create(
+            cdi_geonode_id=2,
+            year_month="2024-12-01",
+            due_date="2025-01-31",
+            status=PublicationStatus.in_review,
+            initial_values=[{
+                "administration_id": 1,
+                "value": 6,
+                "category": DroughtCategory.d3
+            }]
+        )
+
+        response = self.client.get(
+            f"{self.url}?status={PublicationStatus.in_review}"
+            f"&sort=year_month&sort_order=desc"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        # Descending order: December (pk 2) then June (pk 1)
+        self.assertEqual(response.data["data"][0]["pk"], 2)
+        self.assertEqual(response.data["data"][1]["pk"], 1)

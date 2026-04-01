@@ -215,9 +215,19 @@ class CDIGeonodeFilterSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    sort = CustomCharField(
+        required=False,
+        allow_null=True,
+        help_text="Field to sort by: year_month, created, title, status"
+    )
+    sort_order = CustomCharField(
+        required=False,
+        allow_null=True,
+        help_text="Sort order: asc or desc"
+    )
 
     class Meta:
-        fields = ["category", "status", "id"]
+        fields = ["category", "status", "id", "sort", "sort_order"]
 
 
 class CDIGeonodeListSerializer(serializers.Serializer):

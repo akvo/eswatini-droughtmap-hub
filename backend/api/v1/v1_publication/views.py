@@ -204,6 +204,19 @@ class CDIGeonodeAPI(APIView):
                 type=OpenApiTypes.NUMBER,
                 location=OpenApiParameter.QUERY,
             ),
+            OpenApiParameter(
+                name="sort",
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="sort_order",
+                required=False,
+                enum=["asc", "desc"],
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
         ],
         request=CDIGeonodeFilterSerializer,
         responses={
@@ -269,6 +282,8 @@ class CDIGeonodeAPI(APIView):
             "status",
             None
         )
+        sort_field = serializer.validated_data.get("sort", None)
+        sort_order = serializer.validated_data.get("sort_order", "desc")
         page = int(request.GET.get("page", "1"))
         url = (
             "{0}/api/v2/resources"
@@ -350,6 +365,18 @@ class CDIGeonodeAPI(APIView):
                     item["year_month"] = publication["year_month"]
                     item["publication_id"] = publication["id"]
                     item["status"] = publication["status"]
+
+            # Apply server-side sorting
+            if sort_field:
+                reverse = sort_order == "desc"
+                serialized_data.sort(
+                    key=lambda x: (
+                        x.get(sort_field) is not None,
+                        x.get(sort_field) if x.get(sort_field) is not None else ""
+                    ),
+                    reverse=reverse
+                )
+
             if publication_status:
                 data["total"] = publications_query.count()
             total_page = ceil(int(data["total"]) / int(data["page_size"]))

@@ -37,6 +37,8 @@ const PublicationsPage = () => {
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
   const [status, setStatus] = useState(null);
+  const [sortField, setSortField] = useState("year_month");
+  const [sortOrder, setSortOrder] = useState("descend");
   const router = useRouter();
 
   const columns = [
@@ -44,8 +46,7 @@ const PublicationsPage = () => {
       title: "CREATED AT",
       dataIndex: "created",
       key: "created",
-      // defaultSortOrder: "descend",
-      // sorter: (a, b) => new Date(a.created) - new Date(b.created),
+      sorter: true,
       render: (_, { created }) =>
         dayjs(created).format("MMMM Do, YYYY - h:mm A"),
     },
@@ -72,7 +73,7 @@ const PublicationsPage = () => {
       dataIndex: "year_month",
       key: "year_month",
       defaultSortOrder: "descend",
-      sorter: (a, b) => new Date(a.year_month) - new Date(b.year_month),
+      sorter: true,
       render: (_, { year_month }) => dayjs(year_month).format("MMMM YYYY"),
     },
     {
@@ -126,13 +127,23 @@ const PublicationsPage = () => {
     setPreload(true);
   };
 
+  const handleTableChange = (pagination, filters, sorter) => {
+    if (sorter && sorter.field) {
+      setSortField(sorter.field);
+      setSortOrder(sorter.order);
+      setPreload(true);
+    }
+  };
+
   const fetchData = useCallback(async () => {
     try {
       if (preload) {
         setPreload(false);
+        // Convert sortOrder from "descend"/"ascend" to "desc"/"asc"
+        const sort_order = sortOrder === "descend" ? "desc" : sortOrder === "ascend" ? "asc" : "desc";
         const apiURL = status
-          ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}`
-          : `/admin/cdi-geonode?page=${page}&category=${category}`;
+          ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}&sort=${sortField}&sort_order=${sort_order}`
+          : `/admin/cdi-geonode?page=${page}&category=${category}&sort=${sortField}&sort_order=${sort_order}`;
         const { data, total } = await api("GET", apiURL);
         if (total) {
           setTotalData(total);
@@ -148,7 +159,7 @@ const PublicationsPage = () => {
       setLoading(false);
       setPreload(false);
     }
-  }, [preload, page, status, category]);
+  }, [preload, page, status, category, sortField, sortOrder]);
 
   useEffect(() => {
     fetchData();
@@ -191,6 +202,7 @@ const PublicationsPage = () => {
           dataSource={publications}
           loading={loading}
           rowClassName={"cursor-pointer"}
+          onChange={handleTableChange}
           pagination={
             totalData < PAGE_SIZE
               ? false
