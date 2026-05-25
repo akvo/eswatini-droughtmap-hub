@@ -137,7 +137,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         mock_get.assert_called_with(
             expected_url,
             auth=("admin", "admin"),
-            verify=False,
+            verify=True,
         )
 
     @patch("django_q.tasks.async_task")
@@ -310,7 +310,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         expected_due_date = base_date + timedelta(days=30)
         self.assertEqual(pub_second_date.due_date, expected_due_date.date())
 
-    @patch("django_q.tasks.async_task")
+    @patch("api.v1.v1_publication.management.commands.publications_seeder.async_task")
     @patch("requests.get")
     def test_job_creation_details(self, mock_get, mock_async_task):
         mock_get.return_value.status_code = 200
