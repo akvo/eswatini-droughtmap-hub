@@ -1,4 +1,4 @@
-GEONODE_SSL_VERIFY = False
+GEONODE_SSL_VERIFY = True
 
 
 class PublicationStatus:
