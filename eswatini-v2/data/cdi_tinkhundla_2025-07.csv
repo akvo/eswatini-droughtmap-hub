@@ -1,0 +1,60 @@
+name,region,INKHUNDLA,AGENCY,Partner,category,cat_name,pct_rank_mean,derived_category,delta,confidence
+Hhukwini,Hhohho,HHUKWINI,ACAT,Nazarene Compassionate Ministries,1,D0 Abnormally Dry,0.2042,1,0,5
+Lobamba,Hhohho,LOBAMBA,Bantwana Initiative,Save the Children,2,D1 Moderate Drought,0.1987,2,0,5
+Madlangempisi,Hhohho,MADLANGEMPISI,Bantwana Initiative,World Vision Eswatini,3,D2 Severe Drought,0.0891,3,0,5
+Mbabane East,Hhohho,MBABANE EAST,SWAGGA,ACAT,2,D1 Moderate Drought,0.2236,1,-1,4
+Mbabane West,Hhohho,MBABANE WEST,SWAGGA,ACAT,1,D0 Abnormally Dry,0.2307,1,0,5
+Mhlangatane,Hhohho,MHLANGATANE,SWAGGA,World Vision Eswatini,5,D4 Exceptional Drought,0.0365,4,-1,4
+Motshane,Hhohho,MOTSHANE,"SWAGGA, Young Heroes",Woman Farmer Foundation,2,D1 Moderate Drought,0.233,1,-1,4
+Nkhaba,Hhohho,NKHABA,"Bantwana Initiative, SWAGAA",Woman Farmer Foundation,2,D1 Moderate Drought,0.1799,2,0,5
+Ntfonjeni,Hhohho,NTFONJENI,"SWAGGA, Young Heroes",Baphalali Eswatini Red Cross,4,D3 Extreme Drought,0.0595,3,-1,4
+Piggs Peak,Hhohho,PIGGS PEAK,"Young Heroes, SWAGAA",Baphalali Eswatini Red Cross,3,D2 Severe Drought,0.1244,2,-1,4
+Siphocosini,Hhohho,SIPHOCOSINI,"Young Heroes, SWAGAA",Woman Farmer Foundation,1,D0 Abnormally Dry,0.2337,1,0,5
+Phondo,Manzini,PHONDO,"Compassionate Swaziland, SWAGAA",ACAT,0,Wet/normal conditions,0.4251,0,0,5
+Nkomiyahlaba,Manzini,NKOMIYAHLABA,"Bantwana Initiative, NCM",Nazarene Compassionate Ministries,1,D0 Abnormally Dry,0.2446,1,0,5
+Ngwempisi,Manzini,NGWEMPISI,"Compassionate Swaziland, SWAGGA",ACAT,0,Wet/normal conditions,0.3982,0,0,5
+Mkhiweni,Manzini,MKHIWENI,Bantwana Initiative,World Vision Eswatini,2,D1 Moderate Drought,0.1766,2,0,5
+Manzini South,Manzini,MANZINI SOUTH,LUSWETI,World Vision Eswatini,0,Wet/normal conditions,0.2437,1,1,4
+Manzini North,Manzini,MANZINI NORTH,"Nazarene compassionate Ministries, Lusweti, SWAGAA",World Vision Eswatini,1,D0 Abnormally Dry,0.2078,1,0,5
+Ludzeludze,Manzini,LUDZELUDZE,"Bantwana Initiative, Nazarene compassionate Ministries",ADRA,2,D1 Moderate Drought,0.2154,1,-1,4
+Kwaluseni,Manzini,KWALUSENI,"LUSWETI, SWAGGA",World Vision Eswatini,2,D1 Moderate Drought,0.2076,1,-1,4
+Lobamba Lomdzala,Manzini,LOBAMBA LOMDZALA,Bantwana Initiative,Save the Children,1,D0 Abnormally Dry,0.295,1,0,5
+Matsanjeni South,Shiselweni,MATSANJENI SOUTH,VOOV,Baphalali Eswatini Red Cross,0,Wet/normal conditions,0.4266,0,0,5
+Mtsambama,Shiselweni,MTSAMBAMA,"Compassionate Swaziland, SWAGAA",Woman Farmer Foundation,0,Wet/normal conditions,0.4095,0,0,5
+Shiselweni,Shiselweni,SHISELWENI,NATICC,World Vision Eswatini,0,Wet/normal conditions,0.493,0,0,5
+Mbangweni,Shiselweni,MBANGWENI,Young Heroes,Save the Children,1,D0 Abnormally Dry,0.4173,0,-1,4
+Somntongo,Shiselweni,SOMNTONGO,"VOOV, SWAGAA",Baphalali Eswatini Red Cross,0,Wet/normal conditions,0.4188,0,0,5
+Dvokodvweni,Lubombo,DVOKODVWENI,Bantwana Initiative,ACAT,3,D2 Severe Drought,0.1836,2,-1,4
+Gilgal,Lubombo,GILGAL,Cabrini Ministries,Save the Children,0,Wet/normal conditions,0.3429,0,0,5
+Mhlume,Lubombo,MHLUME,"Bantwana Initiative, SWAGGA",Nazarene Compassionate Ministries,4,D3 Extreme Drought,0.0474,4,0,5
+Mpolonjeni,Lubombo,MPOLONJENI,"Compassionate Swaziland, SWAGAA",World Vision Eswatini,1,D0 Abnormally Dry,0.3395,0,-1,4
+Lomahasha,Lubombo,LOMAHASHA,"Bantwana Initiative, SWAGGA",World Vision Eswatini,4,D3 Extreme Drought,0.0422,4,0,5
+Lubuli,Lubombo,LUBULI,VOOV,World Vision Eswatini,0,Wet/normal conditions,0.3863,0,0,5
+Sithobela,Lubombo,SITHOBELA,Cabrini Ministries,Save the Children,1,D0 Abnormally Dry,0.3484,0,-1,4
+Siphofaneni,Lubombo,SIPHOFANENI,Cabrini Ministries,Save the Children,1,D0 Abnormally Dry,0.3252,0,-1,4
+Maphalaleni,Hhohho,,,World Vision Eswatini,2,D1 Moderate Drought,0.2122,1,-1,4
+Mayiwane,Hhohho,,,Baphalali Eswatini Red Cross,4,D3 Extreme Drought,0.0541,3,-1,4
+Ndzingeni,Hhohho,,,Baphalali Eswatini Red Cross,3,D2 Severe Drought,0.1235,2,-1,4
+Timphisini,Hhohho,,,Baphalali Eswatini Red Cross,4,D3 Extreme Drought,0.0542,3,-1,4
+Kukhanyeni,Manzini,,,ADRA,2,D1 Moderate Drought,0.2266,1,-1,4
+Mtfongwaneni,Manzini,,,ADRA,1,D0 Abnormally Dry,0.3017,0,-1,4
+Lamgabhi,Manzini,,,ADRA,0,Wet/normal conditions,0.3252,0,0,5
+Ntondozi,Manzini,,,ACAT,1,D0 Abnormally Dry,0.3497,0,-1,4
+Nhlambeni,Manzini,,,ADRA,1,D0 Abnormally Dry,0.277,1,0,5
+Mhlambanyatsi,Manzini,,,ACAT,2,D1 Moderate Drought,0.2554,1,-1,4
+Mangcongco,Manzini,,,ACAT,2,D1 Moderate Drought,0.3097,0,-2,2
+Mahlangatsha,Manzini,,,ACAT,0,Wet/normal conditions,0.401,0,0,5
+Mafutseni,Manzini,,,ADRA,2,D1 Moderate Drought,0.251,1,-1,4
+Gege,Shiselweni,,,Save the Children,0,Wet/normal conditions,0.4814,0,0,5
+Hosea,Shiselweni,,,Baphalali Eswatini Red Cross,0,Wet/normal conditions,0.4296,0,0,5
+Kubuta,Shiselweni,,,ACAT,1,D0 Abnormally Dry,0.3325,0,-1,4
+Maseyisini,Shiselweni,,,Save the Children,0,Wet/normal conditions,0.4347,0,0,5
+Ngudzeni,Shiselweni,,,ACAT,0,Wet/normal conditions,0.3462,0,0,5
+Nkwene,Shiselweni,,,ACAT,0,Wet/normal conditions,0.3808,0,0,5
+Sandleni,Shiselweni,,,Baphalali Eswatini Red Cross,0,Wet/normal conditions,0.4929,0,0,5
+Sigwe,Shiselweni,,,Baphalali Eswatini Red Cross,0,Wet/normal conditions,0.3944,0,0,5
+Zombodze Emuva,Shiselweni,,,ADRA,0,Wet/normal conditions,0.4912,0,0,5
+Matsanjeni North,Lubombo,,,World Vision Eswatini,0,Wet/normal conditions,0.345,0,0,5
+Nkilongo,Lubombo,,,Woman Farmer Foundation,2,D1 Moderate Drought,0.3324,0,-2,2
+Lugongolweni,Lubombo,,,World Vision Eswatini,2,D1 Moderate Drought,0.2148,1,-1,4
+Kumethula,Shiselweni,,,Nazarene Compassionate Ministries,0,Wet/normal conditions,0.4422,0,0,5

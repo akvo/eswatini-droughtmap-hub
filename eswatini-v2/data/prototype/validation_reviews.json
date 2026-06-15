@@ -1,0 +1,418 @@
+[
+ {
+  "name": "Lavumisa",
+  "region": "Shiselweni",
+  "zone": "Lowveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D3",
+    "c": "High",
+    "r": "All sources aligned. Severe drought confirmed across the whole polygon.",
+    "t": "14 May 09:12"
+   },
+   "uneswa": {
+    "d": "D3",
+    "c": "High",
+    "r": "CHIRPS, station-derived SPI and IKS all converge on D3.",
+    "t": "14 May 11:30"
+   },
+   "met": {
+    "d": "D3",
+    "c": "High",
+    "r": "Strongest rainfall deficit in the south. D3 well-supported.",
+    "t": "13 May 16:05"
+   },
+   "water": {
+    "d": "D3",
+    "c": "High",
+    "r": "Boreholes dry; community taps rationed. D3 matches field reality.",
+    "t": "14 May 13:48"
+   },
+   "moa": {
+    "d": "D3",
+    "c": "High",
+    "r": "Maize total loss reported. D3 confirmed.",
+    "t": "14 May 17:00"
+   }
+  }
+ },
+ {
+  "name": "Big Bend",
+  "region": "Lubombo",
+  "zone": "Lowveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D2",
+    "c": "High",
+    "r": "Field reports + satellite both support D2 across the irrigation belt.",
+    "t": "14 May 10:05"
+   },
+   "uneswa": {
+    "d": "D2",
+    "c": "High",
+    "r": "Standard convergence pattern; D2 is correct.",
+    "t": "14 May 12:14"
+   },
+   "met": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Station SPI consistent with satellite. Moderate because of limited radius.",
+    "t": "13 May 17:22"
+   },
+   "water": {
+    "d": "D2",
+    "c": "High",
+    "r": "Borehole stress emerging; supports D2.",
+    "t": "14 May 14:30"
+   },
+   "moa": {
+    "d": "D2",
+    "c": "High",
+    "r": "Sugarcane yield loss projection downgrades. D2 correct.",
+    "t": "14 May 18:10"
+   }
+  }
+ },
+ {
+  "name": "Kubuta",
+  "region": "Shiselweni",
+  "zone": "Middleveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "2 of 3 sources support D2. Station signal weighted down — Kubuta gauge has QC issues.",
+    "t": "14 May 14:21"
+   },
+   "uneswa": {
+    "d": "D2",
+    "c": "High",
+    "r": "Field reports + satellite both clear. Station QC issue is well documented.",
+    "t": "15 May 09:40"
+   },
+   "met": {
+    "d": "D1",
+    "c": "Low",
+    "r": "Station SPI is −0.4 only. I cannot justify D2 without resolving the gauge concern first.",
+    "t": "13 May 18:15"
+   },
+   "water": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Two communal boreholes reported dry. Aligns with satellite.",
+    "t": "14 May 16:50"
+   },
+   "moa": {
+    "d": "D0",
+    "c": "Low",
+    "r": "No formal yield reports from chiefdoms yet. I disagree; D0 reflects what farmers tell me.",
+    "t": "15 May 11:25"
+   }
+  }
+ },
+ {
+  "name": "Hluti",
+  "region": "Shiselweni",
+  "zone": "Lowveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D2",
+    "c": "High",
+    "r": "Standard D2 case; sources align.",
+    "t": "14 May 10:30"
+   },
+   "uneswa": {
+    "d": "D2",
+    "c": "High",
+    "r": "Concur with NDMA assessment.",
+    "t": "14 May 12:00"
+   },
+   "met": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "D2 supported but only 1 station nearby.",
+    "t": "13 May 17:00"
+   },
+   "water": {
+    "d": "D2",
+    "c": "High",
+    "r": "Borehole monitoring confirms.",
+    "t": "14 May 14:00"
+   },
+   "moa": {
+    "d": "D3",
+    "c": "Moderate",
+    "r": "I lean D3 — early maize tasselling observed across 4 chiefdoms.",
+    "t": "14 May 18:00"
+   }
+  }
+ },
+ {
+  "name": "Hhukwini",
+  "region": "Hhohho",
+  "zone": "Highveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D0",
+    "c": "High",
+    "r": "No drought signal. Normal conditions.",
+    "t": "14 May 09:00"
+   },
+   "uneswa": {
+    "d": "D0",
+    "c": "High",
+    "r": "Confirmed normal.",
+    "t": "14 May 10:30"
+   },
+   "met": {
+    "d": "D0",
+    "c": "High",
+    "r": "Station readings normal.",
+    "t": "13 May 15:00"
+   },
+   "water": {
+    "d": "D0",
+    "c": "High",
+    "r": "No water stress.",
+    "t": "14 May 12:00"
+   },
+   "moa": {
+    "d": "D0",
+    "c": "High",
+    "r": "Crops on track.",
+    "t": "14 May 15:00"
+   }
+  }
+ },
+ {
+  "name": "Mbabane West",
+  "region": "Hhohho",
+  "zone": "Highveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D0",
+    "c": "Moderate",
+    "r": "Satellite + stations clean; IKS reports a localised spring failure though.",
+    "t": "14 May 11:00"
+   },
+   "uneswa": {
+    "d": "D0",
+    "c": "Moderate",
+    "r": "Localised IKS signal not enough to escalate.",
+    "t": "14 May 13:00"
+   },
+   "met": {
+    "d": "D0",
+    "c": "High",
+    "r": "Stations clearly normal.",
+    "t": "13 May 17:30"
+   },
+   "water": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Spring failures are real and warrant attention; lean D2 precautionarily.",
+    "t": "14 May 16:00"
+   },
+   "moa": {
+    "d": "D1",
+    "c": "Low",
+    "r": "Some chiefdom-level concern. Split D0/D1 — I picked D1.",
+    "t": "15 May 10:00"
+   }
+  }
+ },
+ {
+  "name": "Piggs Peak",
+  "region": "Hhohho",
+  "zone": "Highveld",
+  "status": "ready",
+  "reviews": {
+   "ndma": {
+    "d": "D1",
+    "c": "Low",
+    "r": "CHIRPS topographic undershoot acknowledged. Lean D1.",
+    "t": "14 May 12:30"
+   },
+   "uneswa": {
+    "d": "D1",
+    "c": "Low",
+    "r": "Same concern as NDMA.",
+    "t": "14 May 14:00"
+   },
+   "met": {
+    "d": "D0",
+    "c": "Moderate",
+    "r": "Stations clearly show normal.",
+    "t": "13 May 18:00"
+   },
+   "water": {
+    "d": "D0",
+    "c": "High",
+    "r": "No water stress.",
+    "t": "14 May 15:30"
+   },
+   "moa": {
+    "d": "D1",
+    "c": "Low",
+    "r": "Better to be cautious; D1.",
+    "t": "14 May 19:00"
+   }
+  }
+ },
+ {
+  "name": "Mhlume",
+  "region": "Lubombo",
+  "zone": "Lowveld",
+  "status": "waiting",
+  "reviews": {
+   "ndma": {
+    "d": "D1",
+    "c": "Low",
+    "r": "Irrigation masks the signal.",
+    "t": "14 May 11:30"
+   },
+   "uneswa": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Outside irrigated zones, D2 is plausible.",
+    "t": "14 May 13:30"
+   },
+   "met": {
+    "d": "D1",
+    "c": "Low",
+    "r": "Stations show only mild deficit.",
+    "t": "13 May 16:00"
+   },
+   "water": null,
+   "moa": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Field reports support D2 outside the irrigated belt.",
+    "t": "15 May 12:00"
+   }
+  }
+ },
+ {
+  "name": "Siphofaneni",
+  "region": "Lubombo",
+  "zone": "Lowveld",
+  "status": "waiting",
+  "reviews": {
+   "ndma": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "D2 with moderate confidence.",
+    "t": "14 May 10:00"
+   },
+   "uneswa": null,
+   "met": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Station agrees.",
+    "t": "13 May 15:30"
+   },
+   "water": {
+    "d": "D2",
+    "c": "Moderate",
+    "r": "Borehole stress emerging.",
+    "t": "14 May 13:00"
+   },
+   "moa": {
+    "d": "D3",
+    "c": "Low",
+    "r": "Lean D3 based on IKS.",
+    "t": "14 May 17:30"
+   }
+  }
+ },
+ {
+  "name": "Mtsambama",
+  "region": "Shiselweni",
+  "zone": "Middleveld",
+  "status": "validated",
+  "final": {
+   "d": "D1",
+   "c": "Moderate"
+  },
+  "reviews": {
+   "ndma": {
+    "d": "D1",
+    "c": "Moderate",
+    "r": "D1.",
+    "t": "10 May 09:00"
+   },
+   "uneswa": {
+    "d": "D1",
+    "c": "High",
+    "r": "D1 confirmed.",
+    "t": "10 May 11:00"
+   },
+   "met": {
+    "d": "D1",
+    "c": "High",
+    "r": "Station agrees.",
+    "t": "10 May 14:00"
+   },
+   "water": {
+    "d": "D1",
+    "c": "Moderate",
+    "r": "No water stress yet.",
+    "t": "10 May 16:00"
+   },
+   "moa": {
+    "d": "D1",
+    "c": "Moderate",
+    "r": "D1 reasonable.",
+    "t": "11 May 09:00"
+   }
+  }
+ },
+ {
+  "name": "Dvokodvweni",
+  "region": "Lubombo",
+  "zone": "Lowveld",
+  "status": "validated",
+  "final": {
+   "d": "D2",
+   "c": "High"
+  },
+  "reviews": {
+   "ndma": {
+    "d": "D2",
+    "c": "High",
+    "r": "D2.",
+    "t": "10 May 10:00"
+   },
+   "uneswa": {
+    "d": "D2",
+    "c": "High",
+    "r": "D2.",
+    "t": "10 May 12:00"
+   },
+   "met": {
+    "d": "D2",
+    "c": "High",
+    "r": "D2.",
+    "t": "10 May 15:00"
+   },
+   "water": {
+    "d": "D2",
+    "c": "High",
+    "r": "D2.",
+    "t": "10 May 17:00"
+   },
+   "moa": {
+    "d": "D2",
+    "c": "High",
+    "r": "D2.",
+    "t": "11 May 10:00"
+   }
+  }
+ }
+]

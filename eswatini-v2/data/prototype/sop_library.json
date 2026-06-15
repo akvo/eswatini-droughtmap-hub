@@ -1,0 +1,408 @@
+[
+ {
+  "id": "SOP-WASH-3",
+  "title": "Borehole reinforcement & monitoring",
+  "shortTitle": "Borehole monitoring",
+  "description": "Weekly yield checks on existing boreholes; pre-position water trucks at regional depot.",
+  "sector": "wash",
+  "icon": "💧",
+  "triggerDclass": "D2+",
+  "triggerVulnIndicator": "vWater",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 0.65,
+  "triggerExpIndicator": "pop",
+  "triggerExpOp": ">=",
+  "triggerExpValue": 2500,
+  "triggerOther": "",
+  "owner": "DWA + Inkhundla Indvuna",
+  "coordWith": "Eswatini Water Services · Red Cross",
+  "resources": "2 trucks · 1 hydrogeologist · E120k",
+  "timing": "immediate",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP WASH-3 · v2024.1 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ },
+ {
+  "id": "SOP-WASH-1",
+  "title": "Water-trucking pre-positioning",
+  "shortTitle": "Water trucking",
+  "description": "Stage emergency water trucks at the nearest regional depot; activate fuel allocation.",
+  "sector": "wash",
+  "icon": "🚚",
+  "triggerDclass": "D3+",
+  "triggerVulnIndicator": "vWater",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 0.75,
+  "triggerExpIndicator": "none",
+  "triggerExpOp": ">=",
+  "triggerExpValue": null,
+  "triggerOther": "",
+  "owner": "Eswatini Water Services + Red Cross",
+  "coordWith": "NDMA logistics",
+  "resources": "3 trucks · 40k L tank · driver crews",
+  "timing": "immediate",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP WASH-1 · v2024.1 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ },
+ {
+  "id": "SOP-AG-2",
+  "title": "Livestock-offtake subsidy activation",
+  "shortTitle": "Livestock offtake",
+  "description": "Open the destocking window; MoA buying station at community hall with transport coordination.",
+  "sector": "ag",
+  "icon": "🐄",
+  "triggerDclass": "D2+",
+  "triggerVulnIndicator": "vestock",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 1,
+  "triggerExpIndicator": "livestock",
+  "triggerExpOp": ">=",
+  "triggerExpValue": 1500,
+  "triggerOther": "",
+  "owner": "MoA Livestock Officer",
+  "coordWith": "Red Cross transport · local auctioneers",
+  "resources": "E480k budget · buying station · weighing kit",
+  "timing": "immediate",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP AG-2 · v2023.2 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ },
+ {
+  "id": "SOP-AG-4",
+  "title": "Seed distribution for next planting",
+  "shortTitle": "Seed distribution",
+  "description": "Distribute drought-tolerant seed packs (sorghum, millet) to rain-fed smallholder households.",
+  "sector": "ag",
+  "icon": "🌱",
+  "triggerDclass": "D2+",
+  "triggerVulnIndicator": "vIpc",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 0.55,
+  "triggerExpIndicator": "cropland",
+  "triggerExpOp": ">=",
+  "triggerExpValue": 1500,
+  "triggerOther": "",
+  "owner": "MoA Crop Officer + Inkhundla Indvuna",
+  "coordWith": "NAMBoard · WFP",
+  "resources": "~3,000 seed packs · agronomy extension",
+  "timing": "thismonth",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP AG-4 · v2024.0 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ },
+ {
+  "id": "SOP-ECO-2",
+  "title": "Rangeland rest rotation",
+  "shortTitle": "Rangeland rest",
+  "description": "Close two grazing blocks for 60 days under traditional authority enforcement.",
+  "sector": "eco",
+  "icon": "🌿",
+  "triggerDclass": "D2+",
+  "triggerVulnIndicator": "vestock",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 1,
+  "triggerExpIndicator": "rangeland",
+  "triggerExpOp": ">=",
+  "triggerExpValue": 3000,
+  "triggerOther": "",
+  "owner": "Inkhundla chief + MoA range officer",
+  "coordWith": "Forestry Department",
+  "resources": "Signage · enforcement patrols · livestock census",
+  "timing": "thismonth",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP ECO-2 · v2023.1 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ },
+ {
+  "id": "SOP-PREP-1",
+  "title": "Activate Inkhundla DRMC",
+  "shortTitle": "Activate DRMC",
+  "description": "Stand up the Inkhundla Disaster Risk Management Committee; weekly situational meetings.",
+  "sector": "prep",
+  "icon": "⚠️",
+  "triggerDclass": "D2+",
+  "triggerVulnIndicator": "vPrep",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 0.55,
+  "triggerExpIndicator": "none",
+  "triggerExpOp": ">=",
+  "triggerExpValue": null,
+  "triggerOther": "",
+  "owner": "Inkhundla chief + NDMA regional coordinator",
+  "coordWith": "All sector officers",
+  "resources": "Meeting venue · per diems · comms kit",
+  "timing": "immediate",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP PREP-1 · v2025.0 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ },
+ {
+  "id": "SOP-PREP-3",
+  "title": "Social-protection seasonal top-up",
+  "shortTitle": "Social protection",
+  "description": "Activate seasonal cash supplement under existing social-protection envelope for vulnerable households.",
+  "sector": "prep",
+  "icon": "💳",
+  "triggerDclass": "D2+",
+  "triggerVulnIndicator": "vIpc",
+  "triggerVulnOp": ">=",
+  "triggerVulnValue": 0.55,
+  "triggerExpIndicator": "u5",
+  "triggerExpOp": ">=",
+  "triggerExpValue": 300,
+  "triggerOther": "",
+  "owner": "DPMO + Inkhundla Indvuna",
+  "coordWith": "UNICEF · WFP · Red Cross",
+  "resources": "E230k from existing envelope · enrolment lists",
+  "timing": "thismonth",
+  "geographicScope": "Inkhundla",
+  "sourceDoc": "SOP PREP-3 · v2024.1 (NDMA archive)",
+  "version": "2024.1",
+  "lastReviewed": "2024-09-15",
+  "notes": "Seeded from prototype illustrative set.",
+  "status": "active",
+  "approver": "T. Mthethwa, NDMA",
+  "approvedAt": "18 May 2026",
+  "activatedAt": "01 Oct 2024",
+  "history": [
+   {
+    "ts": "01 Sep 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Created draft"
+   },
+   {
+    "ts": "10 Sep 2024",
+    "user": "Sector lead",
+    "action": "Submitted for review"
+   },
+   {
+    "ts": "18 May 2026",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Approved"
+   },
+   {
+    "ts": "01 Oct 2024",
+    "user": "T. Mthethwa, NDMA",
+    "action": "Activated as v2024.1"
+   }
+  ],
+  "comments": [
+   {
+    "ts": "12 Sep 2024",
+    "user": "T. Mavuso, UNESWA",
+    "text": "Trigger condition appears statistically sound. The combination of D-class and vulnerability threshold captures both hazard severity and population susceptibility appropriately."
+   }
+  ]
+ }
+]

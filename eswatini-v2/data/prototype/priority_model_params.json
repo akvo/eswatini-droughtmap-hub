@@ -1,0 +1,23 @@
+{
+ "formula": "priority = droughtScore * exposureScore * vulnScore * 10",
+ "exposure": "exposureScore = 0.6 * popNorm + 0.4 * rainfedNorm; popWeighted = pop + 0.5 * u5",
+ "vulnerability": "vulnScore = (vWater + vIpc + vPrep) / 3",
+ "action_bands": {
+  "urgent": "> 4.5",
+  "watch": "> 2.5",
+  "monitor": "otherwise"
+ },
+ "d_norm": {
+  "None": 0,
+  "D0": 0.2,
+  "D1": 0.4,
+  "D2": 0.6,
+  "D3": 0.8,
+  "D4": 1
+ },
+ "caps": {
+  "pop": 15000,
+  "rainfed_ha": 5000,
+  "people_per_water_point": 500
+ }
+}

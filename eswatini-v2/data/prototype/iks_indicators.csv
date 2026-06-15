@@ -1,0 +1,30 @@
+type,code,en,si,group,pol
+rainfall,BS,Blue Swallows appearing,Tinkonjane tiyabonakala,birds,rain
+rainfall,SG,Southern Ground-Hornbill calling,Insingizi ikhala,birds,rain
+rainfall,AFE,African Fish Eagle calling,Inkwazi ikhala,birds,rain
+rainfall,BC,Burchell's Coucal calling,Umfuku ukhala,birds,rain
+rainfall,RCC,Red-chested Cuckoo calling,Phezukomkhono akhala,birds,rain
+rainfall,JC,Jacobin Cuckoo calling,Inkanku ikhala,birds,rain
+rainfall,EBE,European Bee-eater calling,Umhlolamvula ukhala,birds,rain
+rainfall,LB,Lightning bird (Tsekwane) calling,Tsekwane akhala,birds,rain
+rainfall,F,Frogs calling,Emacoco akhala,insects,rain
+rainfall,C,Caterpillars in abundance,Tibungu letinyenti,insects,rain
+rainfall,T,Termites gathering food,Emagenga atfutsetela kudla,insects,rain
+rainfall,C/R,Chickens / roosters crow midnight,Tinkhukhu akha ekhatsi nebusuku,insects,rain
+rainfall,EI,Euphorbia ingens flowering / fruiting,Umnhlonhlo ubhalashile,plants,rain
+rainfall,M,Mango high fruitage,Mangoza utsele kakhulu,plants,rain
+rainfall,M/S,Marula high fruitage,Umganu utsele kakhulu,plants,rain
+rainfall,LL,Live-long (Lannea) high fruitage,Siganganyane sitsele kakhulu,plants,drt
+rainfall,M/C,Crescent moon tilted with dark cloud,Inyanga lelucetu ibuke eleleni,sky,rain
+rainfall,CL,"Clouds dark, dense with lightning",Emafu lamnyama nembane,sky,rain
+rainfall,W,Wind East→West (Sep / Oct),Umoya uhhusha eMpumalanga,sky,rain
+rainfall,T/P,Temperatures very high,Lizinga lekushisa lelisetulu,sky,drt
+rainfall,Sk,Sky blue & clear (no clouds),Sibhakabhaka lesihlobile,sky,drt
+seasonal,WB1,Weaver birds nest facing West,Emahlokohloko akha tibuke Eshonalanga,,rain
+seasonal,WB2,Weaver birds nest low on riverbed,Akha tidleke etihlahleni letiphansi emfuleni,,rain
+seasonal,G/L,Grasshoppers / locust infestation,Tintsetse ne Migundzatjani leminyenti,,drt
+seasonal,B,Too many butterflies (bunch),Emavivane lamanyenti,,rain
+seasonal,CW,Cows displaying uncommon behaviour,Tinkhomo titiphatsa ngendlela lengakavami,,drt
+seasonal,LL,Live-long (Siganganyane) heavy fruit,Kutsela kakhulu kwe Siganganyane,,drt
+seasonal,TB,Turkey-berry (Mvutfwamini) heavy fruit,Kutsela kakhulu kwe Mvutfwamini,,drt
+seasonal,FW,Widespread white flowers,Kusabalala kwetimbali letimhlophe,,rain

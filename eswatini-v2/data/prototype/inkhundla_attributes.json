@@ -1,0 +1,362 @@
+{
+ "Piggs Peak": {
+  "landuse": "forest",
+  "pop": "low",
+  "precip": -12,
+  "temp": 0.4
+ },
+ "Bulembu": {
+  "landuse": "forest",
+  "pop": "low",
+  "precip": -8,
+  "temp": 0.3
+ },
+ "Ntfonjeni": {
+  "landuse": "forest",
+  "pop": "med",
+  "precip": -15,
+  "temp": 0.5
+ },
+ "Hhukwini": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -18,
+  "temp": 0.6
+ },
+ "Maphalaleni": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -22,
+  "temp": 0.7
+ },
+ "Mbabane East": {
+  "landuse": "urban",
+  "pop": "very_high",
+  "precip": -20,
+  "temp": 1
+ },
+ "Mbabane West": {
+  "landuse": "urban",
+  "pop": "very_high",
+  "precip": -18,
+  "temp": 0.9
+ },
+ "Mhlangatane": {
+  "landuse": "grazing",
+  "pop": "med",
+  "precip": -25,
+  "temp": 0.8
+ },
+ "Lobamba": {
+  "landuse": "urban",
+  "pop": "high",
+  "precip": -22,
+  "temp": 0.9
+ },
+ "Madlangempisi": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -28,
+  "temp": 0.9
+ },
+ "Mayiwane": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -24,
+  "temp": 0.8
+ },
+ "Mhlambanyatsi": {
+  "landuse": "forest",
+  "pop": "low",
+  "precip": -12,
+  "temp": 0.4
+ },
+ "Motshane": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -22,
+  "temp": 0.7
+ },
+ "Ndzingeni": {
+  "landuse": "grazing",
+  "pop": "med",
+  "precip": -26,
+  "temp": 0.8
+ },
+ "Siphocosini": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -24,
+  "temp": 0.8
+ },
+ "Timphisini": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -22,
+  "temp": 0.8
+ },
+ "Manzini North": {
+  "landuse": "urban",
+  "pop": "very_high",
+  "precip": -32,
+  "temp": 1.2
+ },
+ "Manzini South": {
+  "landuse": "urban",
+  "pop": "very_high",
+  "precip": -35,
+  "temp": 1.3
+ },
+ "Matsapha": {
+  "landuse": "commercial",
+  "pop": "very_high",
+  "precip": -34,
+  "temp": 1.4
+ },
+ "Lobamba Lomdzala": {
+  "landuse": "subsistence",
+  "pop": "high",
+  "precip": -30,
+  "temp": 1.1
+ },
+ "Mphalaleni": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -28,
+  "temp": 1
+ },
+ "Mkhiweni": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -32,
+  "temp": 1.1
+ },
+ "Mtfongwaneni": {
+  "landuse": "grazing",
+  "pop": "med",
+  "precip": -32,
+  "temp": 1.2
+ },
+ "Ngwempisi": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -30,
+  "temp": 1
+ },
+ "Mahlangatsha": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -28,
+  "temp": 1.1
+ },
+ "Mkhiweni Manz": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -32,
+  "temp": 1.1
+ },
+ "Ekukhanyeni": {
+  "landuse": "grazing",
+  "pop": "med",
+  "precip": -34,
+  "temp": 1.2
+ },
+ "Kwaluseni": {
+  "landuse": "urban",
+  "pop": "high",
+  "precip": -30,
+  "temp": 1.2
+ },
+ "Mhlambanyatsi M": {
+  "landuse": "forest",
+  "pop": "low",
+  "precip": -16,
+  "temp": 0.7
+ },
+ "Sigombeni": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -32,
+  "temp": 1.1
+ },
+ "Lamgabhi": {
+  "landuse": "grazing",
+  "pop": "med",
+  "precip": -34,
+  "temp": 1.2
+ },
+ "Big Bend": {
+  "landuse": "sugarcane",
+  "pop": "med",
+  "precip": -58,
+  "temp": 2.1
+ },
+ "Mhlume": {
+  "landuse": "sugarcane",
+  "pop": "med",
+  "precip": -52,
+  "temp": 2
+ },
+ "Tambankulu": {
+  "landuse": "sugarcane",
+  "pop": "low",
+  "precip": -48,
+  "temp": 1.9
+ },
+ "Siteki": {
+  "landuse": "commercial",
+  "pop": "med",
+  "precip": -46,
+  "temp": 1.8
+ },
+ "Sithobela": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -52,
+  "temp": 2
+ },
+ "Siphofaneni": {
+  "landuse": "sugarcane",
+  "pop": "low",
+  "precip": -54,
+  "temp": 2.1
+ },
+ "Lubuli": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -50,
+  "temp": 1.9
+ },
+ "Lugongolweni": {
+  "landuse": "conservation",
+  "pop": "low",
+  "precip": -44,
+  "temp": 1.7
+ },
+ "Mpolonjeni": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -48,
+  "temp": 1.9
+ },
+ "Matsanjeni N": {
+  "landuse": "subsistence",
+  "pop": "low",
+  "precip": -52,
+  "temp": 2
+ },
+ "Vuvulane": {
+  "landuse": "sugarcane",
+  "pop": "low",
+  "precip": -50,
+  "temp": 1.9
+ },
+ "Hlane": {
+  "landuse": "conservation",
+  "pop": "low",
+  "precip": -48,
+  "temp": 1.8
+ },
+ "Mhlangatane Lub": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -46,
+  "temp": 1.8
+ },
+ "Dvokodvweni": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -48,
+  "temp": 1.9
+ },
+ "Lavumisa": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -62,
+  "temp": 2.2
+ },
+ "Hluti": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -54,
+  "temp": 1.9
+ },
+ "Kubuta": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -48,
+  "temp": 1.6
+ },
+ "Nhlangano": {
+  "landuse": "urban",
+  "pop": "high",
+  "precip": -44,
+  "temp": 1.5
+ },
+ "Nkwene": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -46,
+  "temp": 1.7
+ },
+ "Matsanjeni S": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -52,
+  "temp": 1.8
+ },
+ "Ngudzeni": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -48,
+  "temp": 1.7
+ },
+ "Sigwe": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -50,
+  "temp": 1.8
+ },
+ "Somntongo": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -56,
+  "temp": 1.9
+ },
+ "Sandleni": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -54,
+  "temp": 1.9
+ },
+ "Maseyisini": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -46,
+  "temp": 1.6
+ },
+ "Mtsambama": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -48,
+  "temp": 1.6
+ },
+ "Zombodze": {
+  "landuse": "subsistence",
+  "pop": "med",
+  "precip": -52,
+  "temp": 1.8
+ },
+ "Shiselweni I": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -50,
+  "temp": 1.8
+ },
+ "Shiselweni II": {
+  "landuse": "grazing",
+  "pop": "low",
+  "precip": -52,
+  "temp": 1.8
+ }
+}

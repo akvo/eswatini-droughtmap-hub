@@ -1,0 +1,30 @@
+group,code,label_en,pol,kobo_choice_name
+rainfall,BS,1. BS – Blue Swallows appearance,rain,1__bs___blue_swallows_appearance__tinkon
+rainfall,SG,2. SG – Southern Ground-Hornbill calling/singing,rain,2__sg___southern_ground_hornbill_calling
+rainfall,AFE,3. AFE – African Fish Eagle calling/singing,rain,3__afe___african_fish_eagle_calling_sing
+rainfall,BC,4. BC – Burchell's Couca calling/singing,rain,4__bc___burchell_s_couca_calling_singing
+rainfall,RCC,5. RCC – Red-chested Cuckoo calling/singing,rain,5__rcc___red_chested_cuckoo_calling_sing
+rainfall,JC,6. JC – Jacobin Cuckoo calling/singing,rain,6__jc___jacobin_cuckoo_calling_singing__
+rainfall,EBE,7. EBE – European Bee-eater calling/singing,rain,7__ebe___european_bee_eater_calling_sing
+rainfall,LB,8. LB – Lightning bird calling/singing,rain,8__lb___lightning_bird_calling_singing__
+rainfall,F,9. F – Frogs calling/singing,rain,9__f___frogs_calling_singing__emacoco_ak
+rainfall,C,10. C – Caterpillars appear in abundance,rain,10__c___caterpillars_appear_in_abundance
+rainfall,T,11. T – Termites gathering food,rain,11__t___termites_gathering_food__emageng
+rainfall,C/R,12. C/R – Chicken/roosters crow midnight,rain,12__c_r___chicken_roosters_crow_midnight
+rainfall,EI,13. EI – Euphorbia ingens flowering and fruiting,rain,13__ei___euphorbia_ingens_flowering_and_
+rainfall,M,14. M – Mango high fruitage,rain,14__m___mango_high_fruitage__mangoza_uts
+rainfall,M/S,15. M/S – Marula/sclerocarya birrea high fruitage,rain,15__m_s___marula_sclerocarya_birrea_high
+rainfall,LL,16. LL – Live-long lannea discolor high fruitage,drought,16__ll___live_long_lannea_discolor_high_
+rainfall,M/C,17. M/C – Moon,drought,17__m_c___moon__crescent__appears_tilted
+rainfall,CL,"18. CL – Clouds, dark and dense with streaks of lightning",rain,18__cl___clouds__dark_and_dense_with_str
+rainfall,W,19. W – Wind blowing from East to West (September/October) (Umoya uhhusha uchamuka eMpumalanga – Ngenyoni/ngeMphala,rain,19__w___wind_blowing_from_east_to_west__
+rainfall,T/P,20. T/P – Temperatures are high,drought,20__t_p___temperatures_are_high__lizinga
+rainfall,SK,21. Sk – Sky is blue and clear,drought,21__sk___sky_is_blue_and_clear__sibhakab
+seasonal,WB,1. WB – Weaver birds build their nests facing west,rain,1__wb___weaver_birds_build_their_nests_f
+seasonal,WB,2. WB – Weaver birds build their nests low on riverbed trees,rain,2__wb___weaver_birds_build_their_nests_l
+seasonal,G/L,3. G/L – Grasshoppers and locust infestation,drought,3__g_l___grasshoppers_and_locust_infesta
+seasonal,B,4. B – Too many butterfly,drought,4__b___too_many_butterfly__bunch___emavi
+seasonal,CW,5. CW – Cows uncommon behavior,drought,5__cw___cows_uncommon_behavior__stand_in
+seasonal,LL,6. LL - Live-long high fruitage,drought,6__ll___live_long_high_fruitage__kutsela
+seasonal,TB,7. TB – Turkey-berry high fruitage,drought,7__tb___turkey_berry_high_fruitage__kuts
+seasonal,FW,8. FW – Widespread of white flowers,drought,8__fw___widespread_of_white_flowers__kus

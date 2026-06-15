@@ -1,0 +1,414 @@
+inkhundla,region,sop_id,sector,triggered
+Nkwene,Shiselweni,SOP-WASH-3,wash,1
+Hosea,Shiselweni,SOP-WASH-3,wash,1
+Sigwe,Shiselweni,SOP-WASH-3,wash,1
+Kumethula,Shiselweni,SOP-WASH-3,wash,0
+Lubuli,Lubombo,SOP-WASH-3,wash,1
+Gege,Shiselweni,SOP-WASH-3,wash,0
+Ngudzeni,Shiselweni,SOP-WASH-3,wash,1
+Sithobela,Lubombo,SOP-WASH-3,wash,1
+Siphofaneni,Lubombo,SOP-WASH-3,wash,1
+Somntongo,Shiselweni,SOP-WASH-3,wash,1
+Shiselweni,Shiselweni,SOP-WASH-3,wash,1
+Matsanjeni South,Shiselweni,SOP-WASH-3,wash,1
+Nkilongo,Lubombo,SOP-WASH-3,wash,1
+Mtsambama,Shiselweni,SOP-WASH-3,wash,0
+Mbangweni,Shiselweni,SOP-WASH-3,wash,1
+Sandleni,Shiselweni,SOP-WASH-3,wash,1
+Gilgal,Lubombo,SOP-WASH-3,wash,1
+Phondo,Manzini,SOP-WASH-3,wash,0
+Ludzeludze,Manzini,SOP-WASH-3,wash,0
+Manzini North,Manzini,SOP-WASH-3,wash,0
+Kukhanyeni,Manzini,SOP-WASH-3,wash,0
+Nkomiyahlaba,Manzini,SOP-WASH-3,wash,0
+Dvokodvweni,Lubombo,SOP-WASH-3,wash,0
+Mahlangatsha,Manzini,SOP-WASH-3,wash,0
+Piggs Peak,Hhohho,SOP-WASH-3,wash,0
+Lobamba Lomdzala,Manzini,SOP-WASH-3,wash,0
+Lamgabhi,Manzini,SOP-WASH-3,wash,0
+Ngwempisi,Manzini,SOP-WASH-3,wash,0
+Mkhiweni,Manzini,SOP-WASH-3,wash,0
+Lugongolweni,Lubombo,SOP-WASH-3,wash,1
+Lobamba,Hhohho,SOP-WASH-3,wash,0
+Kwaluseni,Manzini,SOP-WASH-3,wash,0
+Maseyisini,Shiselweni,SOP-WASH-3,wash,0
+Manzini South,Manzini,SOP-WASH-3,wash,0
+Nhlambeni,Manzini,SOP-WASH-3,wash,0
+Mtfongwaneni,Manzini,SOP-WASH-3,wash,0
+Matsanjeni North,Lubombo,SOP-WASH-3,wash,0
+Madlangempisi,Hhohho,SOP-WASH-3,wash,0
+Lomahasha,Lubombo,SOP-WASH-3,wash,0
+Ntfonjeni,Hhohho,SOP-WASH-3,wash,0
+Ntondozi,Manzini,SOP-WASH-3,wash,0
+Mbabane West,Hhohho,SOP-WASH-3,wash,0
+Zombodze Emuva,Shiselweni,SOP-WASH-3,wash,1
+Siphocosini,Hhohho,SOP-WASH-3,wash,0
+Kubuta,Shiselweni,SOP-WASH-3,wash,0
+Timphisini,Hhohho,SOP-WASH-3,wash,0
+Mpolonjeni,Lubombo,SOP-WASH-3,wash,0
+Mayiwane,Hhohho,SOP-WASH-3,wash,0
+Mafutseni,Manzini,SOP-WASH-3,wash,0
+Maphalaleni,Hhohho,SOP-WASH-3,wash,0
+Nkhaba,Hhohho,SOP-WASH-3,wash,0
+Mhlume,Lubombo,SOP-WASH-3,wash,0
+Ndzingeni,Hhohho,SOP-WASH-3,wash,0
+Mhlangatane,Hhohho,SOP-WASH-3,wash,0
+Mhlambanyatsi,Manzini,SOP-WASH-3,wash,0
+Mbabane East,Hhohho,SOP-WASH-3,wash,0
+Motshane,Hhohho,SOP-WASH-3,wash,0
+Mangcongco,Manzini,SOP-WASH-3,wash,0
+Hhukwini,Hhohho,SOP-WASH-3,wash,0
+Nkwene,Shiselweni,SOP-WASH-1,wash,1
+Hosea,Shiselweni,SOP-WASH-1,wash,1
+Sigwe,Shiselweni,SOP-WASH-1,wash,0
+Kumethula,Shiselweni,SOP-WASH-1,wash,0
+Lubuli,Lubombo,SOP-WASH-1,wash,0
+Gege,Shiselweni,SOP-WASH-1,wash,0
+Ngudzeni,Shiselweni,SOP-WASH-1,wash,0
+Sithobela,Lubombo,SOP-WASH-1,wash,0
+Siphofaneni,Lubombo,SOP-WASH-1,wash,0
+Somntongo,Shiselweni,SOP-WASH-1,wash,0
+Shiselweni,Shiselweni,SOP-WASH-1,wash,0
+Matsanjeni South,Shiselweni,SOP-WASH-1,wash,0
+Nkilongo,Lubombo,SOP-WASH-1,wash,0
+Mtsambama,Shiselweni,SOP-WASH-1,wash,0
+Mbangweni,Shiselweni,SOP-WASH-1,wash,0
+Sandleni,Shiselweni,SOP-WASH-1,wash,0
+Gilgal,Lubombo,SOP-WASH-1,wash,0
+Phondo,Manzini,SOP-WASH-1,wash,0
+Ludzeludze,Manzini,SOP-WASH-1,wash,0
+Manzini North,Manzini,SOP-WASH-1,wash,0
+Kukhanyeni,Manzini,SOP-WASH-1,wash,0
+Nkomiyahlaba,Manzini,SOP-WASH-1,wash,0
+Dvokodvweni,Lubombo,SOP-WASH-1,wash,0
+Mahlangatsha,Manzini,SOP-WASH-1,wash,0
+Piggs Peak,Hhohho,SOP-WASH-1,wash,0
+Lobamba Lomdzala,Manzini,SOP-WASH-1,wash,0
+Lamgabhi,Manzini,SOP-WASH-1,wash,0
+Ngwempisi,Manzini,SOP-WASH-1,wash,0
+Mkhiweni,Manzini,SOP-WASH-1,wash,0
+Lugongolweni,Lubombo,SOP-WASH-1,wash,0
+Lobamba,Hhohho,SOP-WASH-1,wash,0
+Kwaluseni,Manzini,SOP-WASH-1,wash,0
+Maseyisini,Shiselweni,SOP-WASH-1,wash,0
+Manzini South,Manzini,SOP-WASH-1,wash,0
+Nhlambeni,Manzini,SOP-WASH-1,wash,0
+Mtfongwaneni,Manzini,SOP-WASH-1,wash,0
+Matsanjeni North,Lubombo,SOP-WASH-1,wash,0
+Madlangempisi,Hhohho,SOP-WASH-1,wash,0
+Lomahasha,Lubombo,SOP-WASH-1,wash,0
+Ntfonjeni,Hhohho,SOP-WASH-1,wash,0
+Ntondozi,Manzini,SOP-WASH-1,wash,0
+Mbabane West,Hhohho,SOP-WASH-1,wash,0
+Zombodze Emuva,Shiselweni,SOP-WASH-1,wash,0
+Siphocosini,Hhohho,SOP-WASH-1,wash,0
+Kubuta,Shiselweni,SOP-WASH-1,wash,0
+Timphisini,Hhohho,SOP-WASH-1,wash,0
+Mpolonjeni,Lubombo,SOP-WASH-1,wash,0
+Mayiwane,Hhohho,SOP-WASH-1,wash,0
+Mafutseni,Manzini,SOP-WASH-1,wash,0
+Maphalaleni,Hhohho,SOP-WASH-1,wash,0
+Nkhaba,Hhohho,SOP-WASH-1,wash,0
+Mhlume,Lubombo,SOP-WASH-1,wash,0
+Ndzingeni,Hhohho,SOP-WASH-1,wash,0
+Mhlangatane,Hhohho,SOP-WASH-1,wash,0
+Mhlambanyatsi,Manzini,SOP-WASH-1,wash,0
+Mbabane East,Hhohho,SOP-WASH-1,wash,0
+Motshane,Hhohho,SOP-WASH-1,wash,0
+Mangcongco,Manzini,SOP-WASH-1,wash,0
+Hhukwini,Hhohho,SOP-WASH-1,wash,0
+Nkwene,Shiselweni,SOP-AG-2,ag,0
+Hosea,Shiselweni,SOP-AG-2,ag,1
+Sigwe,Shiselweni,SOP-AG-2,ag,0
+Kumethula,Shiselweni,SOP-AG-2,ag,0
+Lubuli,Lubombo,SOP-AG-2,ag,0
+Gege,Shiselweni,SOP-AG-2,ag,1
+Ngudzeni,Shiselweni,SOP-AG-2,ag,0
+Sithobela,Lubombo,SOP-AG-2,ag,1
+Siphofaneni,Lubombo,SOP-AG-2,ag,1
+Somntongo,Shiselweni,SOP-AG-2,ag,1
+Shiselweni,Shiselweni,SOP-AG-2,ag,0
+Matsanjeni South,Shiselweni,SOP-AG-2,ag,0
+Nkilongo,Lubombo,SOP-AG-2,ag,0
+Mtsambama,Shiselweni,SOP-AG-2,ag,0
+Mbangweni,Shiselweni,SOP-AG-2,ag,1
+Sandleni,Shiselweni,SOP-AG-2,ag,1
+Gilgal,Lubombo,SOP-AG-2,ag,0
+Phondo,Manzini,SOP-AG-2,ag,0
+Ludzeludze,Manzini,SOP-AG-2,ag,0
+Manzini North,Manzini,SOP-AG-2,ag,0
+Kukhanyeni,Manzini,SOP-AG-2,ag,0
+Nkomiyahlaba,Manzini,SOP-AG-2,ag,0
+Dvokodvweni,Lubombo,SOP-AG-2,ag,0
+Mahlangatsha,Manzini,SOP-AG-2,ag,0
+Piggs Peak,Hhohho,SOP-AG-2,ag,0
+Lobamba Lomdzala,Manzini,SOP-AG-2,ag,0
+Lamgabhi,Manzini,SOP-AG-2,ag,0
+Ngwempisi,Manzini,SOP-AG-2,ag,0
+Mkhiweni,Manzini,SOP-AG-2,ag,0
+Lugongolweni,Lubombo,SOP-AG-2,ag,0
+Lobamba,Hhohho,SOP-AG-2,ag,0
+Kwaluseni,Manzini,SOP-AG-2,ag,0
+Maseyisini,Shiselweni,SOP-AG-2,ag,0
+Manzini South,Manzini,SOP-AG-2,ag,0
+Nhlambeni,Manzini,SOP-AG-2,ag,0
+Mtfongwaneni,Manzini,SOP-AG-2,ag,0
+Matsanjeni North,Lubombo,SOP-AG-2,ag,0
+Madlangempisi,Hhohho,SOP-AG-2,ag,0
+Lomahasha,Lubombo,SOP-AG-2,ag,0
+Ntfonjeni,Hhohho,SOP-AG-2,ag,0
+Ntondozi,Manzini,SOP-AG-2,ag,0
+Mbabane West,Hhohho,SOP-AG-2,ag,0
+Zombodze Emuva,Shiselweni,SOP-AG-2,ag,0
+Siphocosini,Hhohho,SOP-AG-2,ag,0
+Kubuta,Shiselweni,SOP-AG-2,ag,0
+Timphisini,Hhohho,SOP-AG-2,ag,0
+Mpolonjeni,Lubombo,SOP-AG-2,ag,0
+Mayiwane,Hhohho,SOP-AG-2,ag,0
+Mafutseni,Manzini,SOP-AG-2,ag,0
+Maphalaleni,Hhohho,SOP-AG-2,ag,0
+Nkhaba,Hhohho,SOP-AG-2,ag,0
+Mhlume,Lubombo,SOP-AG-2,ag,0
+Ndzingeni,Hhohho,SOP-AG-2,ag,0
+Mhlangatane,Hhohho,SOP-AG-2,ag,0
+Mhlambanyatsi,Manzini,SOP-AG-2,ag,0
+Mbabane East,Hhohho,SOP-AG-2,ag,0
+Motshane,Hhohho,SOP-AG-2,ag,0
+Mangcongco,Manzini,SOP-AG-2,ag,0
+Hhukwini,Hhohho,SOP-AG-2,ag,0
+Nkwene,Shiselweni,SOP-AG-4,ag,0
+Hosea,Shiselweni,SOP-AG-4,ag,1
+Sigwe,Shiselweni,SOP-AG-4,ag,0
+Kumethula,Shiselweni,SOP-AG-4,ag,0
+Lubuli,Lubombo,SOP-AG-4,ag,0
+Gege,Shiselweni,SOP-AG-4,ag,0
+Ngudzeni,Shiselweni,SOP-AG-4,ag,0
+Sithobela,Lubombo,SOP-AG-4,ag,0
+Siphofaneni,Lubombo,SOP-AG-4,ag,0
+Somntongo,Shiselweni,SOP-AG-4,ag,0
+Shiselweni,Shiselweni,SOP-AG-4,ag,0
+Matsanjeni South,Shiselweni,SOP-AG-4,ag,0
+Nkilongo,Lubombo,SOP-AG-4,ag,0
+Mtsambama,Shiselweni,SOP-AG-4,ag,0
+Mbangweni,Shiselweni,SOP-AG-4,ag,0
+Sandleni,Shiselweni,SOP-AG-4,ag,0
+Gilgal,Lubombo,SOP-AG-4,ag,0
+Phondo,Manzini,SOP-AG-4,ag,0
+Ludzeludze,Manzini,SOP-AG-4,ag,0
+Manzini North,Manzini,SOP-AG-4,ag,0
+Kukhanyeni,Manzini,SOP-AG-4,ag,0
+Nkomiyahlaba,Manzini,SOP-AG-4,ag,0
+Dvokodvweni,Lubombo,SOP-AG-4,ag,0
+Mahlangatsha,Manzini,SOP-AG-4,ag,0
+Piggs Peak,Hhohho,SOP-AG-4,ag,0
+Lobamba Lomdzala,Manzini,SOP-AG-4,ag,0
+Lamgabhi,Manzini,SOP-AG-4,ag,0
+Ngwempisi,Manzini,SOP-AG-4,ag,0
+Mkhiweni,Manzini,SOP-AG-4,ag,0
+Lugongolweni,Lubombo,SOP-AG-4,ag,0
+Lobamba,Hhohho,SOP-AG-4,ag,0
+Kwaluseni,Manzini,SOP-AG-4,ag,0
+Maseyisini,Shiselweni,SOP-AG-4,ag,0
+Manzini South,Manzini,SOP-AG-4,ag,0
+Nhlambeni,Manzini,SOP-AG-4,ag,0
+Mtfongwaneni,Manzini,SOP-AG-4,ag,0
+Matsanjeni North,Lubombo,SOP-AG-4,ag,0
+Madlangempisi,Hhohho,SOP-AG-4,ag,0
+Lomahasha,Lubombo,SOP-AG-4,ag,0
+Ntfonjeni,Hhohho,SOP-AG-4,ag,0
+Ntondozi,Manzini,SOP-AG-4,ag,0
+Mbabane West,Hhohho,SOP-AG-4,ag,0
+Zombodze Emuva,Shiselweni,SOP-AG-4,ag,0
+Siphocosini,Hhohho,SOP-AG-4,ag,0
+Kubuta,Shiselweni,SOP-AG-4,ag,0
+Timphisini,Hhohho,SOP-AG-4,ag,0
+Mpolonjeni,Lubombo,SOP-AG-4,ag,0
+Mayiwane,Hhohho,SOP-AG-4,ag,0
+Mafutseni,Manzini,SOP-AG-4,ag,0
+Maphalaleni,Hhohho,SOP-AG-4,ag,0
+Nkhaba,Hhohho,SOP-AG-4,ag,0
+Mhlume,Lubombo,SOP-AG-4,ag,0
+Ndzingeni,Hhohho,SOP-AG-4,ag,0
+Mhlangatane,Hhohho,SOP-AG-4,ag,0
+Mhlambanyatsi,Manzini,SOP-AG-4,ag,0
+Mbabane East,Hhohho,SOP-AG-4,ag,0
+Motshane,Hhohho,SOP-AG-4,ag,0
+Mangcongco,Manzini,SOP-AG-4,ag,0
+Hhukwini,Hhohho,SOP-AG-4,ag,0
+Nkwene,Shiselweni,SOP-ECO-2,eco,0
+Hosea,Shiselweni,SOP-ECO-2,eco,1
+Sigwe,Shiselweni,SOP-ECO-2,eco,0
+Kumethula,Shiselweni,SOP-ECO-2,eco,1
+Lubuli,Lubombo,SOP-ECO-2,eco,0
+Gege,Shiselweni,SOP-ECO-2,eco,1
+Ngudzeni,Shiselweni,SOP-ECO-2,eco,0
+Sithobela,Lubombo,SOP-ECO-2,eco,0
+Siphofaneni,Lubombo,SOP-ECO-2,eco,0
+Somntongo,Shiselweni,SOP-ECO-2,eco,0
+Shiselweni,Shiselweni,SOP-ECO-2,eco,0
+Matsanjeni South,Shiselweni,SOP-ECO-2,eco,0
+Nkilongo,Lubombo,SOP-ECO-2,eco,0
+Mtsambama,Shiselweni,SOP-ECO-2,eco,0
+Mbangweni,Shiselweni,SOP-ECO-2,eco,0
+Sandleni,Shiselweni,SOP-ECO-2,eco,0
+Gilgal,Lubombo,SOP-ECO-2,eco,0
+Phondo,Manzini,SOP-ECO-2,eco,0
+Ludzeludze,Manzini,SOP-ECO-2,eco,0
+Manzini North,Manzini,SOP-ECO-2,eco,0
+Kukhanyeni,Manzini,SOP-ECO-2,eco,0
+Nkomiyahlaba,Manzini,SOP-ECO-2,eco,0
+Dvokodvweni,Lubombo,SOP-ECO-2,eco,0
+Mahlangatsha,Manzini,SOP-ECO-2,eco,0
+Piggs Peak,Hhohho,SOP-ECO-2,eco,0
+Lobamba Lomdzala,Manzini,SOP-ECO-2,eco,0
+Lamgabhi,Manzini,SOP-ECO-2,eco,0
+Ngwempisi,Manzini,SOP-ECO-2,eco,0
+Mkhiweni,Manzini,SOP-ECO-2,eco,0
+Lugongolweni,Lubombo,SOP-ECO-2,eco,0
+Lobamba,Hhohho,SOP-ECO-2,eco,0
+Kwaluseni,Manzini,SOP-ECO-2,eco,0
+Maseyisini,Shiselweni,SOP-ECO-2,eco,0
+Manzini South,Manzini,SOP-ECO-2,eco,0
+Nhlambeni,Manzini,SOP-ECO-2,eco,0
+Mtfongwaneni,Manzini,SOP-ECO-2,eco,0
+Matsanjeni North,Lubombo,SOP-ECO-2,eco,0
+Madlangempisi,Hhohho,SOP-ECO-2,eco,0
+Lomahasha,Lubombo,SOP-ECO-2,eco,0
+Ntfonjeni,Hhohho,SOP-ECO-2,eco,0
+Ntondozi,Manzini,SOP-ECO-2,eco,0
+Mbabane West,Hhohho,SOP-ECO-2,eco,0
+Zombodze Emuva,Shiselweni,SOP-ECO-2,eco,0
+Siphocosini,Hhohho,SOP-ECO-2,eco,0
+Kubuta,Shiselweni,SOP-ECO-2,eco,0
+Timphisini,Hhohho,SOP-ECO-2,eco,0
+Mpolonjeni,Lubombo,SOP-ECO-2,eco,0
+Mayiwane,Hhohho,SOP-ECO-2,eco,0
+Mafutseni,Manzini,SOP-ECO-2,eco,0
+Maphalaleni,Hhohho,SOP-ECO-2,eco,0
+Nkhaba,Hhohho,SOP-ECO-2,eco,0
+Mhlume,Lubombo,SOP-ECO-2,eco,0
+Ndzingeni,Hhohho,SOP-ECO-2,eco,0
+Mhlangatane,Hhohho,SOP-ECO-2,eco,0
+Mhlambanyatsi,Manzini,SOP-ECO-2,eco,0
+Mbabane East,Hhohho,SOP-ECO-2,eco,0
+Motshane,Hhohho,SOP-ECO-2,eco,0
+Mangcongco,Manzini,SOP-ECO-2,eco,0
+Hhukwini,Hhohho,SOP-ECO-2,eco,0
+Nkwene,Shiselweni,SOP-PREP-1,prep,0
+Hosea,Shiselweni,SOP-PREP-1,prep,0
+Sigwe,Shiselweni,SOP-PREP-1,prep,0
+Kumethula,Shiselweni,SOP-PREP-1,prep,0
+Lubuli,Lubombo,SOP-PREP-1,prep,0
+Gege,Shiselweni,SOP-PREP-1,prep,0
+Ngudzeni,Shiselweni,SOP-PREP-1,prep,0
+Sithobela,Lubombo,SOP-PREP-1,prep,0
+Siphofaneni,Lubombo,SOP-PREP-1,prep,0
+Somntongo,Shiselweni,SOP-PREP-1,prep,0
+Shiselweni,Shiselweni,SOP-PREP-1,prep,0
+Matsanjeni South,Shiselweni,SOP-PREP-1,prep,0
+Nkilongo,Lubombo,SOP-PREP-1,prep,0
+Mtsambama,Shiselweni,SOP-PREP-1,prep,0
+Mbangweni,Shiselweni,SOP-PREP-1,prep,0
+Sandleni,Shiselweni,SOP-PREP-1,prep,0
+Gilgal,Lubombo,SOP-PREP-1,prep,0
+Phondo,Manzini,SOP-PREP-1,prep,0
+Ludzeludze,Manzini,SOP-PREP-1,prep,0
+Manzini North,Manzini,SOP-PREP-1,prep,0
+Kukhanyeni,Manzini,SOP-PREP-1,prep,0
+Nkomiyahlaba,Manzini,SOP-PREP-1,prep,0
+Dvokodvweni,Lubombo,SOP-PREP-1,prep,0
+Mahlangatsha,Manzini,SOP-PREP-1,prep,0
+Piggs Peak,Hhohho,SOP-PREP-1,prep,0
+Lobamba Lomdzala,Manzini,SOP-PREP-1,prep,0
+Lamgabhi,Manzini,SOP-PREP-1,prep,0
+Ngwempisi,Manzini,SOP-PREP-1,prep,0
+Mkhiweni,Manzini,SOP-PREP-1,prep,0
+Lugongolweni,Lubombo,SOP-PREP-1,prep,0
+Lobamba,Hhohho,SOP-PREP-1,prep,0
+Kwaluseni,Manzini,SOP-PREP-1,prep,0
+Maseyisini,Shiselweni,SOP-PREP-1,prep,0
+Manzini South,Manzini,SOP-PREP-1,prep,0
+Nhlambeni,Manzini,SOP-PREP-1,prep,0
+Mtfongwaneni,Manzini,SOP-PREP-1,prep,0
+Matsanjeni North,Lubombo,SOP-PREP-1,prep,0
+Madlangempisi,Hhohho,SOP-PREP-1,prep,0
+Lomahasha,Lubombo,SOP-PREP-1,prep,0
+Ntfonjeni,Hhohho,SOP-PREP-1,prep,0
+Ntondozi,Manzini,SOP-PREP-1,prep,0
+Mbabane West,Hhohho,SOP-PREP-1,prep,0
+Zombodze Emuva,Shiselweni,SOP-PREP-1,prep,0
+Siphocosini,Hhohho,SOP-PREP-1,prep,0
+Kubuta,Shiselweni,SOP-PREP-1,prep,0
+Timphisini,Hhohho,SOP-PREP-1,prep,0
+Mpolonjeni,Lubombo,SOP-PREP-1,prep,0
+Mayiwane,Hhohho,SOP-PREP-1,prep,0
+Mafutseni,Manzini,SOP-PREP-1,prep,0
+Maphalaleni,Hhohho,SOP-PREP-1,prep,0
+Nkhaba,Hhohho,SOP-PREP-1,prep,0
+Mhlume,Lubombo,SOP-PREP-1,prep,0
+Ndzingeni,Hhohho,SOP-PREP-1,prep,0
+Mhlangatane,Hhohho,SOP-PREP-1,prep,0
+Mhlambanyatsi,Manzini,SOP-PREP-1,prep,0
+Mbabane East,Hhohho,SOP-PREP-1,prep,0
+Motshane,Hhohho,SOP-PREP-1,prep,0
+Mangcongco,Manzini,SOP-PREP-1,prep,0
+Hhukwini,Hhohho,SOP-PREP-1,prep,0
+Nkwene,Shiselweni,SOP-PREP-3,prep,0
+Hosea,Shiselweni,SOP-PREP-3,prep,0
+Sigwe,Shiselweni,SOP-PREP-3,prep,0
+Kumethula,Shiselweni,SOP-PREP-3,prep,0
+Lubuli,Lubombo,SOP-PREP-3,prep,1
+Gege,Shiselweni,SOP-PREP-3,prep,1
+Ngudzeni,Shiselweni,SOP-PREP-3,prep,0
+Sithobela,Lubombo,SOP-PREP-3,prep,1
+Siphofaneni,Lubombo,SOP-PREP-3,prep,1
+Somntongo,Shiselweni,SOP-PREP-3,prep,1
+Shiselweni,Shiselweni,SOP-PREP-3,prep,0
+Matsanjeni South,Shiselweni,SOP-PREP-3,prep,0
+Nkilongo,Lubombo,SOP-PREP-3,prep,0
+Mtsambama,Shiselweni,SOP-PREP-3,prep,0
+Mbangweni,Shiselweni,SOP-PREP-3,prep,1
+Sandleni,Shiselweni,SOP-PREP-3,prep,1
+Gilgal,Lubombo,SOP-PREP-3,prep,0
+Phondo,Manzini,SOP-PREP-3,prep,0
+Ludzeludze,Manzini,SOP-PREP-3,prep,0
+Manzini North,Manzini,SOP-PREP-3,prep,0
+Kukhanyeni,Manzini,SOP-PREP-3,prep,0
+Nkomiyahlaba,Manzini,SOP-PREP-3,prep,0
+Dvokodvweni,Lubombo,SOP-PREP-3,prep,0
+Mahlangatsha,Manzini,SOP-PREP-3,prep,0
+Piggs Peak,Hhohho,SOP-PREP-3,prep,0
+Lobamba Lomdzala,Manzini,SOP-PREP-3,prep,0
+Lamgabhi,Manzini,SOP-PREP-3,prep,0
+Ngwempisi,Manzini,SOP-PREP-3,prep,0
+Mkhiweni,Manzini,SOP-PREP-3,prep,0
+Lugongolweni,Lubombo,SOP-PREP-3,prep,0
+Lobamba,Hhohho,SOP-PREP-3,prep,0
+Kwaluseni,Manzini,SOP-PREP-3,prep,0
+Maseyisini,Shiselweni,SOP-PREP-3,prep,0
+Manzini South,Manzini,SOP-PREP-3,prep,0
+Nhlambeni,Manzini,SOP-PREP-3,prep,0
+Mtfongwaneni,Manzini,SOP-PREP-3,prep,0
+Matsanjeni North,Lubombo,SOP-PREP-3,prep,0
+Madlangempisi,Hhohho,SOP-PREP-3,prep,0
+Lomahasha,Lubombo,SOP-PREP-3,prep,0
+Ntfonjeni,Hhohho,SOP-PREP-3,prep,0
+Ntondozi,Manzini,SOP-PREP-3,prep,0
+Mbabane West,Hhohho,SOP-PREP-3,prep,0
+Zombodze Emuva,Shiselweni,SOP-PREP-3,prep,0
+Siphocosini,Hhohho,SOP-PREP-3,prep,0
+Kubuta,Shiselweni,SOP-PREP-3,prep,0
+Timphisini,Hhohho,SOP-PREP-3,prep,0
+Mpolonjeni,Lubombo,SOP-PREP-3,prep,0
+Mayiwane,Hhohho,SOP-PREP-3,prep,0
+Mafutseni,Manzini,SOP-PREP-3,prep,0
+Maphalaleni,Hhohho,SOP-PREP-3,prep,0
+Nkhaba,Hhohho,SOP-PREP-3,prep,0
+Mhlume,Lubombo,SOP-PREP-3,prep,0
+Ndzingeni,Hhohho,SOP-PREP-3,prep,0
+Mhlangatane,Hhohho,SOP-PREP-3,prep,0
+Mhlambanyatsi,Manzini,SOP-PREP-3,prep,0
+Mbabane East,Hhohho,SOP-PREP-3,prep,0
+Motshane,Hhohho,SOP-PREP-3,prep,0
+Mangcongco,Manzini,SOP-PREP-3,prep,0
+Hhukwini,Hhohho,SOP-PREP-3,prep,0
