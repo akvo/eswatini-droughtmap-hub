@@ -13,6 +13,19 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Source SOPs whose trigger conditions are evaluated per Inkhundla.](screens/04_sops_SOP-1-2-3.png)
+*Source SOPs whose trigger conditions are evaluated per Inkhundla.*
+
+![Trigger evaluation result: recommended actions attached to each priority area.](screens/08_insights_priority_PA-1-2-3.png)
+*Trigger evaluation result: recommended actions attached to each priority area.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

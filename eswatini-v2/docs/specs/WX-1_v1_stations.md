@@ -14,6 +14,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Weather-station explorer (station registry + daily aggregates).](screens/06_insights_stations_WX-1.png)
+*Weather-station explorer (station registry + daily aggregates).*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

@@ -7,6 +7,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![App shell, top navigation and design tokens (brand, radius, neutral/semantic ramps) in context.](screens/01_overview_INS-2.png)
+*App shell, top navigation and design tokens (brand, radius, neutral/semantic ramps) in context.*
+
+<!-- /prototype-screens -->
+
 ## Feature: Design system foundation + app shell from Figma
 
 Estimate: **18h**. Frontend-only. Stack: Next.js 14 (App Router) + Ant Design 5 (`ConfigProvider`) + Tailwind CSS + CSS custom properties.

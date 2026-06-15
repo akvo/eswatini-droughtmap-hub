@@ -13,6 +13,19 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Priority Areas page: ranked list + recommended-actions side panel.](screens/08_insights_priority_PA-1-2-3.png)
+*Priority Areas page: ranked list + recommended-actions side panel.*
+
+![Priority-area action detail modal opened from a ranked row.](screens/09_priority_action_modal_SOP-4.png)
+*Priority-area action detail modal opened from a ranked row.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 Describe the current state and why this change is needed.

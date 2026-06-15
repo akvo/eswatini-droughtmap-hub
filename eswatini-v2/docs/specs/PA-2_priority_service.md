@@ -9,6 +9,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Priority-score output: ranked Inkhundla list with the D x Exposure x Vulnerability formula and band labels.](screens/08_insights_priority_PA-1-2-3.png)
+*Priority-score output: ranked Inkhundla list with the D x Exposure x Vulnerability formula and band labels.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

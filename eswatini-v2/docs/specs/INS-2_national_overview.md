@@ -9,6 +9,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![National Overview dashboard: status pill, regional breakdown and map overlays.](screens/01_overview_INS-2.png)
+*National Overview dashboard: status pill, regional breakdown and map overlays.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

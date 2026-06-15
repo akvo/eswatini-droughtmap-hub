@@ -14,6 +14,22 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Drought Review portal: review queue + disagreement/progress map views.](screens/02_review_WX-2.png)
+*Drought Review portal: review queue + disagreement/progress map views.*
+
+![Validation detail with D-class voting and station-derived confidence deltas.](screens/13_validation_detail_WX-2.png)
+*Validation detail with D-class voting and station-derived confidence deltas.*
+
+![Drought Validation queue (ready / disagree / waiting / validated tabs).](screens/03_validation_WX-2.png)
+*Drought Validation queue (ready / disagree / waiting / validated tabs).*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

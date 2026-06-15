@@ -9,6 +9,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![IKS explorer tab: regional breakdown and per-indicator observation strips.](screens/07_insights_iks_IKS-1-2.png)
+*IKS explorer tab: regional breakdown and per-indicator observation strips.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

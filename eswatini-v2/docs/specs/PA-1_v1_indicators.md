@@ -9,6 +9,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Per-Tinkhundla indicators (population, cropland, livestock, rangeland, vulnerability) surfaced in the priority ranking.](screens/08_insights_priority_PA-1-2-3.png)
+*Per-Tinkhundla indicators (population, cropland, livestock, rangeland, vulnerability) surfaced in the priority ranking.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

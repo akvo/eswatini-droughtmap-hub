@@ -9,6 +9,19 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Detailed Insights shell + CDI explorer tab.](screens/05_insights_cdi_INS-1.png)
+*Detailed Insights shell + CDI explorer tab.*
+
+![Inkhundla drill-down tab within the Insights shell.](screens/10_insights_inkhundla_INS-1.png)
+*Inkhundla drill-down tab within the Insights shell.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

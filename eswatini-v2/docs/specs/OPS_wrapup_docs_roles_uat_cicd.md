@@ -9,6 +9,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![About page: data sources, roles and methodology notes (docs/UAT reference).](screens/11_about_OPS.png)
+*About page: data sources, roles and methodology notes (docs/UAT reference).*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

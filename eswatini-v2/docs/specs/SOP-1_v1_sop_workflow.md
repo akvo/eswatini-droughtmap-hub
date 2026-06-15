@@ -13,6 +13,19 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![SOP Library: the 7 seeded SOPs with status/approval columns (Active/Approved/Review/Draft/Archived).](screens/04_sops_SOP-1-2-3.png)
+*SOP Library: the 7 seeded SOPs with status/approval columns (Active/Approved/Review/Draft/Archived).*
+
+![New-SOP authoring wizard (create / approval workflow entry point).](screens/12_sop_create_wizard_SOP-1.png)
+*New-SOP authoring wizard (create / approval workflow entry point).*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

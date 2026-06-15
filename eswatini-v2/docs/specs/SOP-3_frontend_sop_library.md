@@ -13,6 +13,19 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![SOP Library list with sector/status filters and search.](screens/04_sops_SOP-1-2-3.png)
+*SOP Library list with sector/status filters and search.*
+
+![SOP create / edit wizard.](screens/12_sop_create_wizard_SOP-1.png)
+*SOP create / edit wizard.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```

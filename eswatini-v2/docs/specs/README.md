@@ -35,6 +35,31 @@ dependencies and is the design-system foundation every later frontend page consu
 
 > Note: INS-1 (#12) is sequenced **before** IKS-2 (#13) because IKS-2 plugs into the Detailed Insights shell INS-1 creates. Order within a feature follows backend → service → frontend.
 
+## Prototype screens
+
+Reference screenshots captured from the prototype (`../../index.html`) with Playwright, stored in
+[`screens/`](./screens/). Each spec embeds the screens it implements under its **Prototype reference**
+heading. Sign-in gates (TWG portal + SOP Library) were bypassed for the capture; insights tabs were shot
+at a tall viewport so their inner scroll panels render fully.
+
+| Screen | File | Specs |
+|--------|------|-------|
+| National Overview | [`01_overview_INS-2.png`](./screens/01_overview_INS-2.png) | INS-2, UI-1 |
+| Drought Review | [`02_review_WX-2.png`](./screens/02_review_WX-2.png) | WX-2 |
+| Drought Validation (queue) | [`03_validation_WX-2.png`](./screens/03_validation_WX-2.png) | WX-2 |
+| Drought Validation (detail + voting) | [`13_validation_detail_WX-2.png`](./screens/13_validation_detail_WX-2.png) | WX-2 |
+| SOP Library | [`04_sops_SOP-1-2-3.png`](./screens/04_sops_SOP-1-2-3.png) | SOP-1, SOP-2, SOP-3 |
+| SOP create wizard | [`12_sop_create_wizard_SOP-1.png`](./screens/12_sop_create_wizard_SOP-1.png) | SOP-1, SOP-3 |
+| Insights · CDI explorer | [`05_insights_cdi_INS-1.png`](./screens/05_insights_cdi_INS-1.png) | INS-1 |
+| Insights · Stations | [`06_insights_stations_WX-1.png`](./screens/06_insights_stations_WX-1.png) | WX-1 |
+| Insights · IKS | [`07_insights_iks_IKS-1-2.png`](./screens/07_insights_iks_IKS-1-2.png) | IKS-1, IKS-2 |
+| Insights · Priority | [`08_insights_priority_PA-1-2-3.png`](./screens/08_insights_priority_PA-1-2-3.png) | PA-1, PA-2, PA-3, SOP-2, SOP-4 |
+| Priority action modal | [`09_priority_action_modal_SOP-4.png`](./screens/09_priority_action_modal_SOP-4.png) | PA-3, SOP-4 |
+| Insights · Inkhundla | [`10_insights_inkhundla_INS-1.png`](./screens/10_insights_inkhundla_INS-1.png) | INS-1 |
+| About | [`11_about_OPS.png`](./screens/11_about_OPS.png) | OPS |
+
+> Regenerate with `scripts/embed_spec_screens.py` (idempotent — replaces the `<!-- prototype-screens -->` block in each spec).
+
 ## Cross-cutting decisions (in `notes.md`)
 - **D-1**: new per-Administration data attaches via FK; never modify the core `Administration` model.
 - **D-2**: current D-class comes from the latest `Publication(published).validated_values[].category`.

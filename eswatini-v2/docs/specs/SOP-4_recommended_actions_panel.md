@@ -13,6 +13,19 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![Recommended-action detail modal (sector, timing chip, resources, status).](screens/09_priority_action_modal_SOP-4.png)
+*Recommended-action detail modal (sector, timing chip, resources, status).*
+
+![Recommended-actions panel alongside the priority ranking.](screens/08_insights_priority_PA-1-2-3.png)
+*Recommended-actions panel alongside the priority ranking.*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 Describe the current state and why this change is needed.

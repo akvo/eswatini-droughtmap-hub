@@ -9,6 +9,16 @@
 
 ---
 
+<!-- prototype-screens -->
+### Prototype reference
+
+Screens captured from the prototype (`index.html`) that this spec implements:
+
+![IKS submissions explorer (citizen-science indicator catalogue + monthly observations).](screens/07_insights_iks_IKS-1-2.png)
+*IKS submissions explorer (citizen-science indicator catalogue + monthly observations).*
+
+<!-- /prototype-screens -->
+
 ## 1. Context & Problem Statement
 
 ```
