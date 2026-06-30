@@ -49,6 +49,7 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
+    GEONODE_REQUEST_TIMEOUT,
     CDIGeonodeCategory,
     PublicationStatus,
     DroughtCategory,
@@ -247,6 +248,7 @@ class CDIGeonodeAPI(APIView):
             response = requests.get(
                 f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}",
                 verify=GEONODE_SSL_VERIFY,
+                timeout=GEONODE_REQUEST_TIMEOUT,
             )
             data = response.json().get("resource", None)
             if response.status_code == 200 and data:
@@ -319,6 +321,7 @@ class CDIGeonodeAPI(APIView):
             url,
             auth=(username, password),
             verify=GEONODE_SSL_VERIFY,
+            timeout=GEONODE_REQUEST_TIMEOUT,
         )
         if response.status_code == 200:
             data = response.json()
