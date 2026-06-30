@@ -1,4 +1,7 @@
 GEONODE_SSL_VERIFY = True
+# (connect, read) timeout in seconds for outbound GeoNode requests so a slow
+# or unresponsive upstream can never hang the request thread indefinitely.
+GEONODE_REQUEST_TIMEOUT = (10, 60)
 
 
 class PublicationStatus:

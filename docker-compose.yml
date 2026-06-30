@@ -50,6 +50,7 @@ services:
     working_dir: /app
     environment:
       - WEBDOMAIN=${WEBDOMAIN}
+      - BACKEND_URL=${BACKEND_URL:-http://127.0.0.1:8000}
       - SESSION_SECRET=${SESSION_SECRET}
       - GEONODE_BASE_URL=${GEONODE_BASE_URL}
     depends_on:
