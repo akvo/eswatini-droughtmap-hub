@@ -21,7 +21,7 @@ const ResetPasswordPage = ({ searchParams }) => {
     try {
       const { message: res } = await api(
         "GET",
-        `/auth/verify-password-code?code=${code}`
+        `/auth/verify-password-code?code=${code}`,
       );
 
       if (res === "OK") {
@@ -92,45 +92,47 @@ const ResetPasswordPage = ({ searchParams }) => {
   }
 
   return (
-    <Card
-      style={{ width: 400 }}
-      classNames={{
-        header: "text-center",
-      }}
-      title={<Title level={3}>Reset Password</Title>}
-      loading={loading}
-    >
-      <Text>Enter your new password below to reset it.</Text>
-      <Form
-        layout="vertical"
-        name="reset-password"
-        form={form}
-        onFinish={onFinish}
+    <div className="w-full flex-1 flex flex-row items-center justify-center py-16">
+      <Card
+        style={{ width: 400 }}
+        classNames={{
+          header: "text-center",
+        }}
+        title={<Title level={3}>Reset Password</Title>}
+        loading={loading}
       >
-        {(_, formInstance) => (
-          <>
-            <PasswordInput.WithRules
-              label="Password"
-              placeholder="New Password"
-              errors={formInstance.getFieldError("password")}
-            />
-            <PasswordInput
-              label="Confirm Password"
-              name="confirm_password"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}
-              placeholder="Confirm new password"
-            />
-            <SubmitButton form={form} loading={submitting} block>
-              Reset Password
-            </SubmitButton>
-          </>
-        )}
-      </Form>
-    </Card>
+        <Text>Enter your new password below to reset it.</Text>
+        <Form
+          layout="vertical"
+          name="reset-password"
+          form={form}
+          onFinish={onFinish}
+        >
+          {(_, formInstance) => (
+            <>
+              <PasswordInput.WithRules
+                label="Password"
+                placeholder="New Password"
+                errors={formInstance.getFieldError("password")}
+              />
+              <PasswordInput
+                label="Confirm Password"
+                name="confirm_password"
+                rules={[
+                  {
+                    required: true,
+                  },
+                ]}
+                placeholder="Confirm new password"
+              />
+              <SubmitButton form={form} loading={submitting} block>
+                Reset Password
+              </SubmitButton>
+            </>
+          )}
+        </Form>
+      </Card>
+    </div>
   );
 };
 
