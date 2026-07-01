@@ -1,7 +1,10 @@
 "use client";
 
 import { Doughnut } from "akvo-charts";
-import { DROUGHT_CATEGORY_COLOR, DROUGHT_CATEGORY_LABEL } from "@/static/config";
+import {
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_LABEL,
+} from "@/static/config";
 
 // Reusable label-free D-class doughnut (Figma node 3154:28294).
 // Pass `byClass` ({ [category]: count }) and an optional `centerLabel` (e.g. "55%").

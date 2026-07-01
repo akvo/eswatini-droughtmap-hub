@@ -13,7 +13,9 @@ const textOn = (hex) => {
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#333333" : "#ffffff";
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
+    ? "#333333"
+    : "#ffffff";
 };
 
 const TREND = {
@@ -35,7 +37,9 @@ const ZoneCard = ({ zone }) => {
         >
           D{zone.class - 1}
         </span>
-        <span className="text-xl font-medium text-neutral-800">{zone.name}</span>
+        <span className="text-xl font-medium text-neutral-800">
+          {zone.name}
+        </span>
         <span className="text-xs font-normal" style={{ color: trend.color }}>
           {trend.arrow} {trend.label}
         </span>
@@ -64,7 +68,9 @@ const ZoneBreakdown = () => {
   }, []);
 
   if (error) {
-    return <p className="text-sm text-red-600">Failed to load zones: {error}</p>;
+    return (
+      <p className="text-sm text-red-600">Failed to load zones: {error}</p>
+    );
   }
   if (!zones) {
     return <p className="text-sm text-neutral-500">Loading zones…</p>;
