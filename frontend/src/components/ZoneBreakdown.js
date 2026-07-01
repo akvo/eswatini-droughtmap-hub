@@ -5,7 +5,9 @@ import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
 
 // Track1 "Breakdown by zones" section — 4 zone cards, each a badge + name + trend
-// chip + the reusable D-class doughnut. Data from the mock /api/t1/national-overview/zones.
+// chip + the reusable D-class doughnut. Data from a static mock in /public
+// (App-Router /api route handlers aren't served by the prod build).
+const API_URL = "/mocks/national-overview/zones.json";
 
 // readable badge text colour for a given background (luminance)
 const textOn = (hex) => {
@@ -58,7 +60,7 @@ const ZoneBreakdown = () => {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/t1/national-overview/zones")
+    fetch(API_URL)
       .then((r) => r.json())
       .then((d) => active && setZones(d?.items || []))
       .catch((e) => active && setError(String(e)));
