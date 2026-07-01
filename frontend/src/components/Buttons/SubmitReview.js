@@ -21,7 +21,7 @@ const SubmitReviewButton = ({ review = {} }) => {
         completed_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
       });
       setLoading(false);
-      router.refresh(`/reviews/${review?.id}`);
+      router.refresh(`//reviews/${review?.id}`);
     } catch (err) {
       console.error(err);
       setLoading(false);
