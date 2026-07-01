@@ -13,7 +13,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { Can } from "@/components";
+import { Can, FeedbackSection } from "@/components";
 import {
   MAP_CATEGORY_OPTIONS,
   PAGE_SIZE,
@@ -82,7 +82,7 @@ const PublicationsPage = () => {
       key: "status",
       render: (_, { status }) => {
         const findStatus = PUBLICATION_STATUS_OPTIONS.find(
-          (s) => s?.value === status
+          (s) => s?.value === status,
         );
         return (
           <Tag color={findStatus?.color}>
@@ -140,7 +140,12 @@ const PublicationsPage = () => {
       if (preload) {
         setPreload(false);
         // Convert sortOrder from "descend"/"ascend" to "desc"/"asc"
-        const sort_order = sortOrder === "descend" ? "desc" : sortOrder === "ascend" ? "asc" : "desc";
+        const sort_order =
+          sortOrder === "descend"
+            ? "desc"
+            : sortOrder === "ascend"
+              ? "asc"
+              : "desc";
         const apiURL = status
           ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}&sort=${sortField}&sort_order=${sort_order}`
           : `/admin/cdi-geonode?page=${page}&category=${category}&sort=${sortField}&sort_order=${sort_order}`;
@@ -245,6 +250,9 @@ const PublicationsPage = () => {
           />
         )}
       </Modal>
+      <div className="py-8">
+        <FeedbackSection />
+      </div>
     </div>
   );
 };

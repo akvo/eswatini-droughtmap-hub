@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
 const ReviewerMap = dynamic(
-  () => import("../../../components/Map/ReviewerMap"),
+  () => import("@/components/Map/ReviewerMap"),
   {
     ssr: false,
   }
