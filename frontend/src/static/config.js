@@ -95,6 +95,9 @@ export const APP_SETTINGS = {
   title: "Eswatini Drought Monitor",
   about:
     "The Eswatini Drought Monitor is developed through a collaboration between the National Disaster Management Agency of Eswatini, the Ministry of Agriculture, and the Eswatini Meteorological Service.",
+  // Placeholder for the header notice bar — wire to real bulletin /
+  // last-refresh data when that source is available.
+  notice: "Bulletin period - May 2026. Last refresh: 15 May 2026, 06:12 SAST",
 };
 
 export const RUNDECK_JOB_STATUS_COLOR = {
@@ -145,19 +148,61 @@ export const EXPORT_FORMAT_OPTIONS = [
 export const PUBLIC_MENU_ITEMS = [
   {
     url: "/",
-    label: "Home",
+    label: "National overview",
   },
   {
-    url: "/browse",
-    label: "Browse",
+    url: "/detailed-insights",
+    label: "Detailed insights",
   },
   {
-    url: "/compare",
-    label: "Compare",
+    url: "/reviews",
+    label: "Drought review",
+    authenticated: true,
+    is_admin: false,
+  },
+  {
+    url: "/validations",
+    label: "Data validation",
+    authenticated: true,
+    is_admin: true,
+  },
+  {
+    // Authenticated-only: hidden until a session is present.
+    url: "/sop-library",
+    label: "SOP library",
+    authenticated: true,
+    is_admin: true,
+    align: "right",
   },
   {
     url: "/about",
     label: "About",
+    align: "right",
+  },
+];
+
+// Footer link columns (Figma node 3562:110459). Some targets are placeholders
+// until their pages exist; /, /about and /feedback are live.
+export const FOOTER_LINK_COLUMNS = [
+  {
+    title: "Product",
+    links: [
+      { label: "National overview", url: "/" },
+      { label: "Drought review", url: "/reviews" },
+      { label: "Data validation", url: "/publications" },
+      { label: "Detailed insights", url: "/detailed-insights" },
+      { label: "SOP library", url: "/sop-library" },
+    ],
+  },
+  {
+    title: "General",
+    links: [
+      { label: "About", url: "/about" },
+      { label: "Contact", url: "/feedback" },
+      { label: "FAQ", url: "/faq" },
+      { label: "Methodology", url: "/methodology" },
+      { label: "Privacy policy", url: "/privacy-policy" },
+    ],
   },
 ];
 
