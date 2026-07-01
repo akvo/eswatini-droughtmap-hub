@@ -71,7 +71,7 @@ const ReviewList = ({
     const admValues = form.getFieldValue("administrations").map((a) => {
       const checked =
         (isChecked && a?.category?.raw === DROUGHT_CATEGORY_VALUE.none) ||
-        (isChecked && !a?.value)
+        (isChecked && a?.value == null)
           ? false
           : isChecked;
       return !a?.reviewed ? { ...a, checked } : a;
@@ -261,11 +261,11 @@ const ReviewList = ({
                             field.name,
                             "category",
                           ])?.raw === DROUGHT_CATEGORY_VALUE.none ||
-                          !formInstance.getFieldValue([
+                          formInstance.getFieldValue([
                             "administrations",
                             field.name,
                             "value",
-                          ]) ||
+                          ]) == null ||
                           isReviewed;
                         return (
                           <div
