@@ -55,7 +55,7 @@ Goal:
 - [ ] Uses **existing published-map APIs only** — no new backend endpoint or model.
 - [ ] Per region, the stacked-bar segments **sum to 100%** (normalised share of Tinkhundla), matching notebook §1's `normalize='index'`.
 - [ ] Implemented as a **public server component** (no auth), same pattern as `browse/page.js`.
-- [ ] Charts reuse the `DROUGHT_CATEGORY_COLOR` constant (single source of truth) and the recharts dependency introduced by INS-1.
+- [ ] Charts reuse the `DROUGHT_CATEGORY_COLOR` constant (single source of truth) and the already-installed `akvo-charts` dependency (shared across the insights surface).
 - [ ] Smoke tests (Jest + RTL) cover: pill renders the worst-widespread class; each region's segments sum to 100%; empty/No-Data months render a safe fallback.
 
 ---
@@ -121,7 +121,7 @@ regionShare[region][category] = (#Tinkhundla in region with that category)
 
 **Decision**: Option 2 — async server component at `frontend/src/app/overview/page.js` (or `/insights` national-summary section), **not** added to `middleware.js` `protectedRoutes`.
 
-**Rationale**: The overview is public, read-only, and SEO/first-paint friendly. `browse/page.js` already establishes the public-server-component-using-`api()` pattern; reusing it keeps the JWT-from-cookie `api()` call server-side and ships static HTML to anonymous visitors. recharts widgets are wrapped in a small `"use client"` child (charts can't render in a server component), mirroring how `browse` embeds the client `Map`.
+**Rationale**: The overview is public, read-only, and SEO/first-paint friendly. `browse/page.js` already establishes the public-server-component-using-`api()` pattern; reusing it keeps the JWT-from-cookie `api()` call server-side and ships static HTML to anonymous visitors. `akvo-charts` widgets are wrapped in a small `"use client"` child (ECharts can't render in a server component), mirroring how `browse` embeds the client `Map`.
 
 **Impact**: No auth gate; data fetch on the server; only the chart leaves are client components.
 
@@ -138,13 +138,13 @@ regionShare[region][category] = (#Tinkhundla in region with that category)
 
 **Impact**: One pure function over the latest `validated_values`; documented threshold; `-9999` excluded from both numerator and denominator.
 
-### D-3: Reuse INS-1's charting library (recharts)
+### D-3: Reuse the installed charting library (`akvo-charts`)
 
-**Decision**: Render the regional stacked bars with **recharts** (added in INS-1), not a new dependency.
+**Decision**: Render the regional stacked bars with **`akvo-charts`** (`^1.3.4`, already a dependency), not a new library.
 
-**Rationale**: Single charting lib across the insights surface; recharts `BarChart`/stacked `Bar` maps directly onto the §1 stacked-bar visual; tree-shakeable, React 18 / Next 14.2 friendly.
+**Rationale**: Single charting lib across the insights surface; `akvo-charts` is an Apache ECharts wrapper whose stacked `<Bar>` (or a `rawConfig` ECharts stacked-bar `series`) maps directly onto the §1 stacked-bar visual; React 18 / Next 14.2 friendly, charts in `"use client"` leaves.
 
-**Impact**: INS-2 depends on INS-1 landing the `recharts` dependency (or adds it if INS-2 ships first).
+**Impact**: No new dependency — shared with INS-1 / IKS-2 / Track 1.
 
 ### D-4: Percentages computed as normalised share (sum to 100%)
 
@@ -231,7 +231,7 @@ Resolved 2026-06-12 (decisions below; two product params flagged for NDMA/comms 
 
 ## 11. References
 
-- Related tasks: INS-1 (Detailed Insights shell — introduces the `recharts` dependency and reuses `DROUGHT_CATEGORY_COLOR`; the overview may surface as a section/tab there); PA-1 (priority areas, shares the D-2 source).
+- Related tasks: INS-1 (Detailed Insights shell — shares the `akvo-charts` dependency and reuses `DROUGHT_CATEGORY_COLOR`; the overview may surface as a section/tab there); PA-1 (priority areas, shares the D-2 source).
 - Conventions: `docs/specs/notes.md` (D-2 validated_values source; public server-component pattern; `api()`; `DROUGHT_CATEGORY_COLOR`; 59-Tinkhundla region source).
 - Prior art: `frontend/src/app/browse/page.js` (public async server component using `api()`), `frontend/src/static/config.js` (`DROUGHT_CATEGORY_COLOR/LABEL`), `frontend/src/context/AppContextProvider.js` (`administrations`, region join), `frontend/src/app/__tests__/page.test.js` (RTL pattern).
 - Notebook: `eswatini_drought_analysis.ipynb` §1 — regional breakdown computation (cell `7fdc9bfe`: `pd.crosstab(gdf['region'], gdf['category'], normalize='index') * 100`, stacked horizontal bars coloured by `CAT_COLORS`); §5 consensus/modal logic informs the worst-widespread fallback.

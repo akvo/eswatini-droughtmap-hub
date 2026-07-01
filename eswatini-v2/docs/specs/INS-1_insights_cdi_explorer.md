@@ -59,7 +59,7 @@ Goal:
 ### Technical Acceptance Criteria
 - [ ] Built entirely from existing publication endpoints (D-2: `validated_values[].value/.category` of `status=published` publications) plus WX-1 weather aggregates; **no new backend endpoint or model**.
 - [ ] Tabs are lazy-loaded: each tab's heavy content (chart, map, station widgets) is `next/dynamic`-imported and only mounted when first activated; the shell itself stays light.
-- [ ] Charting uses a newly added, tree-shakeable React charting library (see D-3) — the repo currently ships **no** charting dependency.
+- [ ] Charting uses the already-installed **`akvo-charts`** (Apache ECharts wrapper; see D-3) — no new charting dependency.
 - [ ] Page degrades gracefully with sparse history (<2 months) and with Tinkhundla that have `category = -9999` (No Data) in some months — gaps, not crashes.
 - [ ] Smoke tests (Jest + RTL) cover: shell renders all 4 tab labels; tab switch updates URL; CDI explorer renders the sparse-history fallback when given <2 months of data.
 
@@ -139,24 +139,25 @@ history = dates.slice(0,12).map(month =>
 
 **Impact**: Explorer is read-only and auto-tracks new publications with zero backend work.
 
-### D-3: Charting library recommendation
+### D-3: Charting library — use the installed `akvo-charts`
 
 **Options Considered**:
-1. `recharts` — React-first, declarative, composable, tree-shakeable, ~widely used with Next 14.
-2. `@ant-design/plots` (G2) — matches the Ant Design 5 look but heavier bundle.
-3. Hand-rolled SVG/`d3`.
+1. **`akvo-charts`** (^1.3.4) — already a dependency; Akvo-maintained Apache ECharts wrapper with `<Line>`/`<Bar>`/`<Doughnut>` components and a `rawConfig` (raw ECharts option) escape hatch.
+2. A new React SVG chart lib — React-first, but a **new** dependency.
+3. `@ant-design/plots` (G2) — matches Ant look, heavier bundle.
+4. Hand-rolled SVG/`d3`.
 
-**Decision**: Add **`recharts`** (`frontend/package.json`, currently no chart dep).
+**Decision**: Use **`akvo-charts`** (already in `frontend/package.json`) for the line/stacked-bar charts needed here and in INS-2/Track 1.
 
-**Rationale**: Smallest integration cost for line/stacked-bar charts needed here and in INS-2, plays well with React 18 + Next 14.2 server/client split (charts live in client tab modules), and avoids pulling the full G2 runtime. Ant Design is retained for everything non-chart (tabs, selects, layout) to stay visually consistent with the `colorPrimary:#3E5EB9` theme.
+**Rationale**: Ladder — reuse the installed dependency rather than add one. `akvo-charts` covers the line/bar charts, keeps charts consistent with other Akvo apps, and `rawConfig` exposes any ECharts capability. Charts live in `"use client"` modules (ECharts needs the DOM); Ant Design is retained for everything non-chart (tabs, selects, layout) under the `colorPrimary:#3E5EB9` theme.
 
-**Impact**: One new dependency shared by INS-1 and INS-2. Charts must be in `"use client"` modules; the `/insights` shell stays a server component.
+**Impact**: No new dependency; shared by INS-1 / INS-2 / IKS-2 / Track 1. Charts must be in `"use client"` modules; the `/insights` shell stays a server component.
 
 ### D-4: Lazy-loaded tabs
 
 **Decision**: Each tab body is `next/dynamic`-imported (`ssr: false` for chart/map tabs, consistent with `DynamicMap.js`), mounted on first activation.
 
-**Rationale**: Keeps the initial `/insights` payload small and avoids loading Leaflet/recharts for tabs the user never opens.
+**Rationale**: Keeps the initial `/insights` payload small and avoids loading Leaflet/`akvo-charts` (ECharts) for tabs the user never opens.
 
 **Impact**: Tab modules export a default client component; the shell renders a placeholder until activated.
 
@@ -235,7 +236,7 @@ Resolved 2026-06-12 (decisions below).
 
 ## 11. References
 
-- Related tasks: INS-2 (national overview dashboard, shares the recharts dependency and `DROUGHT_CATEGORY_COLOR`); IKS-2 (IKS tab module plugging into this shell); WX-1 (weather-station aggregates consumed here); PA-1 (priority-areas link target).
+- Related tasks: INS-2 (national overview dashboard, shares the `akvo-charts` dependency and `DROUGHT_CATEGORY_COLOR`); IKS-2 (IKS tab module plugging into this shell); WX-1 (weather-station aggregates consumed here); PA-1 (priority-areas link target).
 - Conventions: `docs/specs/notes.md` (D-2 validated_values source; server vs client page pattern; `api()` helper; testing setup).
 - Prior art: `frontend/src/app/browse/page.js` (public async server component), `frontend/src/app/compare/page.js`, `frontend/src/components/Map/CDIMap.js` (+ `.Legend`), `frontend/src/components/Map/DynamicMap.js` (`ssr:false` lazy pattern), `frontend/src/static/config.js` (`DROUGHT_CATEGORY_COLOR/LABEL`), `frontend/src/app/__tests__/page.test.js` (RTL pattern).
 - Notebook: `eswatini_drought_analysis.ipynb` §1 (per-Inkhundla `category` 0–5 is the same value plotted in the class history).
