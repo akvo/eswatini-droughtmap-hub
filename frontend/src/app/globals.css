@@ -8,6 +8,16 @@
   --table-border: #e5e7eb;
   --primary-color: #3e5eb9;
   --white-color: #ffffff;
+  /* Button disabled (Figma node 3019:7379) — mirrors tokens.button */
+  --btn-disabled-bg: #e8e8e8;
+  --btn-disabled-text: #a4a4a4;
+  --btn-secondary-disabled-text: #c5c6d0;
+  /* Resting input shadow (Figma node 3019:7303) — no Ant theme token for it */
+  --input-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+  /* Select focus ring (Figma node 3019:7261) — brand.muted @ 20%, 4px */
+  --select-focus-ring: 0 0 0 4px rgba(72, 93, 146, 0.2);
+  /* Select selector padding — matches the input fields (tokens.input.paddingX) */
+  --select-padding-x: 14px;
 
   .ant-typography {
     display: block;
@@ -152,6 +162,46 @@ h5 {
 
 .edh-row:not(.ant-table-row-selected) > .bg-\[\#ffffff\] {
   background-color: #ffffff !important;
+}
+.ant-input-outlined,
+.ant-input-affix-wrapper-outlined {
+  box-shadow: var(--input-shadow);
+}
+.ant-select-outlined.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+.ant-select-outlined.ant-select-open:not(.ant-select-disabled) .ant-select-selector {
+  box-shadow: var(--select-focus-ring);
+}
+.ant-select-single .ant-select-selector {
+  padding-inline: var(--select-padding-x);
+}
+.ant-select-single .ant-select-arrow,
+.ant-select-single .ant-select-clear {
+  inset-inline-end: var(--select-padding-x);
+}
+.ant-btn-primary:disabled,
+.ant-btn-primary.ant-btn-disabled {
+  background-color: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-bg);
+  color: var(--btn-disabled-text);
+}
+.ant-btn-default:disabled,
+.ant-btn-default.ant-btn-disabled,
+.ant-btn-link:disabled,
+.ant-btn-text:disabled {
+  color: var(--btn-secondary-disabled-text);
+}
+/* Table (Figma 3217:34504 header / 3217:34521 cell) — header 12px/44px,
+   body 14px/64px; tokens.table handles colours via the Ant theme */
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  padding-block: 12px;
+}
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  font-size: 14px;
+  line-height: 20px;
+  padding-block: 22px;
 }
 .ant-btn.dropdown-item {
   min-width: 128px;

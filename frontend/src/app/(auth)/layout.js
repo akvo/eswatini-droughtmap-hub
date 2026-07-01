@@ -1,9 +1,12 @@
-const AuthLayout = ({ children }) => {
+import { UserContextProvider } from "@/context";
+import { auth } from "@/lib";
+
+const DashboardTemplate = async ({ children }) => {
+  const session = await auth.getSession();
+  const abilities = session?.abilities || [];
   return (
-    <div className="w-full min-h-screen bg-image-login bg-no-repeat bg-center bg-cover flex flex-row items-center justify-center">
-      {children}
-    </div>
+    <UserContextProvider abilities={abilities}>{children}</UserContextProvider>
   );
 };
 
-export default AuthLayout;
+export default DashboardTemplate;

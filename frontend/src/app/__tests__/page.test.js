@@ -4,7 +4,7 @@ import { render } from "@testing-library/react";
 describe("HomePage", () => {
   it("renders login button when session empty", () => {
     const { getByText } = render(<Navbar />);
-    expect(getByText("LOGIN")).toBeInTheDocument();
+    expect(getByText("Login")).toBeInTheDocument();
   });
 
   it("renders profile button when session exists", () => {

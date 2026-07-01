@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import { AppContextProvider } from "@/context";
 import { inter, roboto, robotoMono } from "./fonts";
 import classNames from "classnames";
-import { Footer } from "@/components";
+import { Footer, LogoSection, Navbar } from "@/components";
+import antTheme from "@/static/ant-theme";
+import { auth } from "@/lib";
 
 export const metadata = {
   title: "eSwatini - DroughtMap Hub",
@@ -17,7 +19,9 @@ const DynamicScript = dynamic(() => import("@/components/DynamicScript"), {
   ssr: false,
 });
 
-export default function RootLayout({ children }) {
+const RootLayout = async ({ children }) => {
+  const session = await auth.getSession();
+
   return (
     <html lang="en">
       <body
@@ -25,46 +29,19 @@ export default function RootLayout({ children }) {
           "antialiased",
           inter.variable,
           roboto.variable,
-          robotoMono.variable
+          robotoMono.variable,
         )}
       >
         <AppContextProvider>
           <AntdRegistry>
-            <ConfigProvider
-              theme={{
-                token: {
-                  borderRadius: 0,
-                  fontFamily: "inherit",
-                  fontFamilyCode: "--font-geist-sans",
-                  colorPrimary: "#3E5EB9",
-                  colorLink: "#3E5EB9",
-                },
-                components: {
-                  Form: {
-                    itemMarginBottom: 16,
-                  },
-                  Tabs: {
-                    inkBarColor: "#3E5EB9",
-                    itemActiveColor: "#3E5EB9",
-                    itemColor: "#3E4958",
-                    itemHoverColor: "#3E4958",
-                    itemSelectedColor: "#3E5EB9",
-                    titleFontSize: 16,
-                    titleFontSizeLG: 20,
-                    titleFontSizeSM: 16,
-                  },
-                  Table: {
-                    cellPaddingInline: 8,
-                    cellPaddingBlock: 4,
-                  },
-                  Descriptions: {
-                    labelBg: "#f1f5f9",
-                    titleColor: "#020618",
-                  },
-                },
-              }}
-            >
-              {children}
+            <ConfigProvider theme={antTheme}>
+              <div className="w-full min-h-screen bg-image-login bg-no-repeat bg-center bg-cover flex flex-col">
+                <Navbar session={session} />
+                <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 pb-9 bg-white">
+                  {children}
+                </div>
+                <LogoSection />
+              </div>
               <Footer />
             </ConfigProvider>
           </AntdRegistry>
@@ -75,4 +52,6 @@ export default function RootLayout({ children }) {
       </body>
     </html>
   );
-}
+};
+
+export default RootLayout;

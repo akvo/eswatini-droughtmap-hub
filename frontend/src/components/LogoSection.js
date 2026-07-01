@@ -3,10 +3,7 @@ import Image from "next/image";
 
 const LogoSection = () => {
   return (
-    <div
-      className="w-full min-h-36 bg-image-login bg-no-repeat bg-center bg-cover"
-      id="edm-about"
-    >
+    <div className="w-full min-h-36" id="edm-about">
       <div className="container w-full py-9 flex flex-col items-center justify-center gap-9">
         <h2 className="text-xl xl:text-2xl text-primary font-bold">
           ABOUT EDM
