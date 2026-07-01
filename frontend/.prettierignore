@@ -1,0 +1,13 @@
+# Build output & deps
+.next/
+node_modules/
+coverage/
+build/
+.swc/
+
+# Static/generated assets
+public/
+*.min.js
+
+# Lockfiles
+yarn.lock
