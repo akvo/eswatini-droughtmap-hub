@@ -66,7 +66,7 @@ const PublishPage = ({ params }) => {
         router.push(`/publications/${params.id}`);
       } else {
         message.error(
-          "[ADM-P-3] Please report this issue along with the code."
+          "[ADM-P-3] Please report this issue along with the code.",
         );
       }
       setLoading(false);
@@ -91,9 +91,9 @@ const PublishPage = ({ params }) => {
         `/admin/publication/${params?.id}`,
         {
           validated_values: publication?.validated_values?.map((v) =>
-            v?.administration_id === admID ? { ...v, category: val } : v
+            v?.administration_id === admID ? { ...v, category: val } : v,
           ),
-        }
+        },
       );
       if (validated_values) {
         setPublication({
@@ -135,7 +135,7 @@ const PublishPage = ({ params }) => {
       form.setFieldValue("bulletin_url", apiData.bulletin_url);
       const validatedValues = apiData?.validated_values?.map((v) => {
         const findInit = apiData?.initial_values?.find(
-          (i) => i?.administration_id === v?.administration_id
+          (i) => i?.administration_id === v?.administration_id,
         );
         return {
           ...v,

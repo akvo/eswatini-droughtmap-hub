@@ -167,8 +167,10 @@ h5 {
 .ant-input-affix-wrapper-outlined {
   box-shadow: var(--input-shadow);
 }
-.ant-select-outlined.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
-.ant-select-outlined.ant-select-open:not(.ant-select-disabled) .ant-select-selector {
+.ant-select-outlined.ant-select-focused:not(.ant-select-disabled)
+  .ant-select-selector,
+.ant-select-outlined.ant-select-open:not(.ant-select-disabled)
+  .ant-select-selector {
   box-shadow: var(--select-focus-ring);
 }
 .ant-select-single .ant-select-selector {

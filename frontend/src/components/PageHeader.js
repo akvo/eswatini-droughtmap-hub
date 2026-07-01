@@ -23,7 +23,12 @@ const CalendarIcon = () => (
  * @param date        optional "Last updated" value; hides the row when null
  * @param actions     optional right-aligned node (buttons, etc.)
  */
-const PageHeader = ({ title = "", description = "", date = null, actions = null }) => {
+const PageHeader = ({
+  title = "",
+  description = "",
+  date = null,
+  actions = null,
+}) => {
   return (
     <div className="flex flex-col gap-6 w-full">
       {date && (

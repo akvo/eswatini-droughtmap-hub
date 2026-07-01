@@ -36,7 +36,11 @@ const FIXTURE = {
           { period: "2026-05", value: 2.3 },
         ],
       },
-      donut: { unit: "tinkhundla", total: 15, byClass: { 1: 6, 2: 5, 3: 3, 4: 1, 5: 0 } },
+      donut: {
+        unit: "tinkhundla",
+        total: 15,
+        byClass: { 1: 6, 2: 5, 3: 3, 4: 1, 5: 0 },
+      },
     },
     {
       name: "Manzini",
@@ -55,7 +59,11 @@ const FIXTURE = {
           { period: "2026-05", value: 2.1 },
         ],
       },
-      donut: { unit: "tinkhundla", total: 18, byClass: { 1: 5, 2: 7, 3: 4, 4: 2, 5: 0 } },
+      donut: {
+        unit: "tinkhundla",
+        total: 18,
+        byClass: { 1: 5, 2: 7, 3: 4, 4: 2, 5: 0 },
+      },
     },
     {
       name: "Lubombo",
@@ -74,7 +82,11 @@ const FIXTURE = {
           { period: "2026-05", value: 2.4 },
         ],
       },
-      donut: { unit: "tinkhundla", total: 11, byClass: { 1: 1, 2: 3, 3: 3, 4: 3, 5: 1 } },
+      donut: {
+        unit: "tinkhundla",
+        total: 11,
+        byClass: { 1: 1, 2: 3, 3: 3, 4: 3, 5: 1 },
+      },
     },
     {
       name: "Shiselweni",
@@ -93,7 +105,11 @@ const FIXTURE = {
           { period: "2026-05", value: 3.0 },
         ],
       },
-      donut: { unit: "tinkhundla", total: 15, byClass: { 1: 2, 2: 4, 3: 5, 4: 3, 5: 1 } },
+      donut: {
+        unit: "tinkhundla",
+        total: 15,
+        byClass: { 1: 2, 2: 4, 3: 5, 4: 3, 5: 1 },
+      },
     },
   ],
 };

@@ -34,8 +34,8 @@ export const api = (method, url, payload = {}) =>
         return reject(
           new Error(
             `Non-JSON response from ${url} (HTTP ${res.status}): ` +
-              `${raw.slice(0, 200)}`
-          )
+              `${raw.slice(0, 200)}`,
+          ),
         );
       }
       return resolve(body);

@@ -16,7 +16,7 @@ const TabButtons = ({ options = [], value, onChange, className }) => {
       role="tablist"
       className={classNames(
         "inline-flex items-center gap-1 p-0.5 rounded-[10px] bg-brandTint",
-        className
+        className,
       )}
     >
       {options.map((opt) => {
@@ -32,7 +32,7 @@ const TabButtons = ({ options = [], value, onChange, className }) => {
               "px-2.5 py-1.5 rounded-lg border text-sm font-medium leading-5 tracking-[-0.084px] transition-colors",
               active
                 ? "bg-white border-[#e2e4e9] text-[#333333]"
-                : "border-transparent text-[#a4a4a4] hover:text-[#606060]"
+                : "border-transparent text-[#a4a4a4] hover:text-[#606060]",
             )}
           >
             {opt.label}
