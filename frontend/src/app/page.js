@@ -1,6 +1,5 @@
 import dynamic from "next/dynamic";
-import { api, auth } from "@/lib";
-import { FeedbackSection, LogoSection, Navbar } from "@/components";
+import { api } from "@/lib";
 import Link from "next/link";
 import { Button } from "antd";
 import { CaretRight } from "@/components/Icons";
@@ -16,8 +15,11 @@ const PublicMap = dynamic(() => import("../components/Map/PublicMap"), {
   ssr: false,
 });
 
+const ZoneBreakdown = dynamic(() => import("../components/ZoneBreakdown"), {
+  ssr: false,
+});
+
 const Home = async () => {
-  const session = await auth.getSession();
   const { data } = await api("GET", "/maps?page_size=1");
   const map = data?.[0] || null;
   return (
@@ -27,6 +29,12 @@ const Home = async () => {
           <h1 className="text-2xl xl:text-3xl font-bold">
             {APP_SETTINGS.title}
           </h1>
+        </div>
+        <div className="w-full pt-6">
+          <h2 className="mb-3 text-lg font-semibold text-neutral-800">
+            Breakdown by zones
+          </h2>
+          <ZoneBreakdown />
         </div>
         {map && (
           <div className="w-full flex flex-row align-center justify-between">
