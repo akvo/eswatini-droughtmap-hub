@@ -100,6 +100,31 @@ docker compose -f docker-compose.test.yml run --rm --no-deps frontend sh test.sh
 - **GeoNode integration**: Fetches CDI raster datasets from external GeoNode instance
 - **Email notifications**: SMTP-based notifications for review workflows and overdue checks
 
+## eswatini-v2 Redesign — Planning
+
+`eswatini-v2/docs/` holds the design/planning docs for the platform redesign. **Plan before you implement**: every new feature gets a design doc written from the template at [`eswatini-v2/docs/templates/FEATURE_DESIGN_TEMPLATE.md`](eswatini-v2/docs/templates/FEATURE_DESIGN_TEMPLATE.md), saved under the relevant track folder (`eswatini-v2/docs/track-{1,2,3}/`).
+
+The product is organized into **exactly 3 tracks** (see the sitemap):
+
+### Track 1 — Decision Track
+Public, anonymous decision-support surface off the Landing page.
+- **National overview** · About · Contact us
+- Docs: `eswatini-v2/docs/track-1/` — e.g. [`national-overview.md`](eswatini-v2/docs/track-1/national-overview.md)
+
+### Track 2 — Review and Validation
+Authenticated reviewer/validator workflow (behind Login).
+- My Reviews → Drought review → Individual review page
+- My Validation → Drought validation → Individual validation page
+- Docs: `eswatini-v2/docs/track-2/`
+
+### Track 3 — Operational response
+Analytical + operational tooling.
+- Detailed insights → CDI-E explorer · Weather station explorer · IKS explorer · Priority insights · Inkhundla Report
+- SOP library · Profile
+- Docs: `eswatini-v2/docs/track-3/`
+
+> `eswatini-v2/docs/specs/` holds the earlier task-ID specs (INS-*, PA-*, SOP-*, WX-*, IKS-*); they feed the tracks (Track 1 references them) but the **3 tracks above are the canonical top-level structure** — do not introduce a 4th track.
+
 ## Environment
 
 Copy `env.example` to `.env` for local development. Key variables:
