@@ -46,7 +46,9 @@ const CDIMap = ({
   ...props
 }) => {
   const appContext = useAppContext();
-  const geoData = appContext?.geoData || window?.topojson;
+  const geoData =
+    appContext?.geoData ||
+    (typeof window !== "undefined" ? window.topojson : undefined);
 
   const onEachFeature = (feature, layer, currentMap) => {
     const { fillColor, weight, color } =

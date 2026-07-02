@@ -1,4 +1,14 @@
-export const zonesData = {
+import { NextResponse } from "next/server";
+
+// Mock for Track 1 · National overview · Breakdown by zones.
+// Shape mirrors the intended real backend so swapping mock->real is a delete.
+// - class      : zone headline drought class (badge)
+// - confidence : score shown in the doughnut center (%)
+// - trend      : history-based (series of the last N published maps), not a single delta
+// - donut      : per-Inkhundla D-class distribution within the zone (differs per zone)
+// Tinkhundla per region (backend/source/eswatini.topojson): Hhohho 15, Manzini 18,
+// Lubombo 11, Shiselweni 15 (= 59). donut.byClass counts sum to donut.total.
+const FIXTURE = {
   grouping: "regions",
   period: "2026-05",
   legend: [
@@ -103,3 +113,7 @@ export const zonesData = {
     },
   ],
 };
+
+export function GET() {
+  return NextResponse.json(FIXTURE);
+}

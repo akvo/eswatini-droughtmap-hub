@@ -1,11 +1,11 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
-import { zonesData } from "@/static/mocks/national-overview/zones";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
 
 // Track1 "Breakdown by zones" section — 4 zone cards, each a badge + name + trend
-// chip + the reusable D-class doughnut.
+// chip + the reusable D-class doughnut. Data from the mock /api/t1/national-overview/zones.
 
 // readable badge text colour for a given background (luminance)
 const textOn = (hex) => {
@@ -29,7 +29,7 @@ const ZoneCard = ({ zone }) => {
   const trend = TREND[zone.trend?.direction] || TREND.stable;
 
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-neutral-300 bg-white p-4">
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-md border border-neutral-300 bg-white p-4">
       <div className="flex min-w-0 flex-col gap-2">
         <span
           className="w-fit rounded px-1.5 py-0.5 text-xs font-medium"
@@ -53,10 +53,37 @@ const ZoneCard = ({ zone }) => {
 };
 
 const ZoneBreakdown = () => {
-  const zones = zonesData.items || [];
+  const [zones, setZones] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fetchZones = useCallback(async () => {
+    try {
+      const response = await fetch("/api/t1/national-overview/zones");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setZones(data?.items || []);
+    } catch (error) {
+      setError(String(error));
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchZones();
+  }, [fetchZones]);
+
+  if (error) {
+    return (
+      <p className="text-sm text-red-600">Failed to load zones: {error}</p>
+    );
+  }
+  if (!zones) {
+    return <p className="text-sm text-neutral-500">Loading zones…</p>;
+  }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {zones.map((zone) => (
         <ZoneCard key={zone.name} zone={zone} />
       ))}
