@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import { zonesData } from "@/static/mocks/national-overview/zones";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
 
 // Track1 "Breakdown by zones" section — 4 zone cards, each a badge + name + trend
-// chip + the reusable D-class doughnut. Data from a static mock in /public
-// (App-Router /api route handlers aren't served by the prod build).
-const API_URL = "/mocks/national-overview/zones.json";
+// chip + the reusable D-class doughnut.
 
 // readable badge text colour for a given background (luminance)
 const textOn = (hex) => {
@@ -31,15 +29,15 @@ const ZoneCard = ({ zone }) => {
   const trend = TREND[zone.trend?.direction] || TREND.stable;
 
   return (
-    <div className="flex w-[320px] items-center justify-between gap-4 rounded-md border border-neutral-300 bg-white p-4">
-      <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-neutral-300 bg-white p-4">
+      <div className="flex min-w-0 flex-col gap-2">
         <span
           className="w-fit rounded px-1.5 py-0.5 text-xs font-medium"
           style={{ backgroundColor: badgeBg, color: textOn(badgeBg) }}
         >
           D{zone.class - 1}
         </span>
-        <span className="text-xl font-medium text-neutral-800">
+        <span className="truncate text-xl font-medium text-neutral-800">
           {zone.name}
         </span>
         <span className="text-xs font-normal" style={{ color: trend.color }}>
@@ -55,31 +53,10 @@ const ZoneCard = ({ zone }) => {
 };
 
 const ZoneBreakdown = () => {
-  const [zones, setZones] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    fetch(API_URL)
-      .then((r) => r.json())
-      .then((d) => active && setZones(d?.items || []))
-      .catch((e) => active && setError(String(e)));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (error) {
-    return (
-      <p className="text-sm text-red-600">Failed to load zones: {error}</p>
-    );
-  }
-  if (!zones) {
-    return <p className="text-sm text-neutral-500">Loading zones…</p>;
-  }
+  const zones = zonesData.items || [];
 
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {zones.map((zone) => (
         <ZoneCard key={zone.name} zone={zone} />
       ))}
