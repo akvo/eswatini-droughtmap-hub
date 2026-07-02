@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import {
+  breakdownsData,
+  trendsData,
+  zonesData,
+} from "@/static/mocks/national-overview/zones";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
 
 // Track1 "Breakdown by zones" section — 4 zone cards, each a badge + name + trend
-// chip + the reusable D-class doughnut. Data from the mock /api/t1/national-overview/zones.
+// chip + the reusable D-class doughnut.
 
 // readable badge text colour for a given background (luminance)
 const textOn = (hex) => {
@@ -24,9 +28,12 @@ const TREND = {
   stable: { arrow: "–", label: "STABLE", color: "#606060" },
 };
 
-const ZoneCard = ({ zone }) => {
-  const badgeBg = DROUGHT_CATEGORY_COLOR[zone.class];
-  const trend = TREND[zone.trend?.direction] || TREND.stable;
+const ZoneCard = ({ zone, breakdown, trend }) => {
+  const badgeBg = DROUGHT_CATEGORY_COLOR[zone.value];
+  const trendMeta = TREND[trend?.value] || TREND.stable;
+  const byClass = Object.fromEntries(
+    (breakdown?.data || []).map((item) => [item.key, item.value]),
+  );
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-md border border-neutral-300 bg-white p-4">
@@ -35,57 +42,41 @@ const ZoneCard = ({ zone }) => {
           className="w-fit rounded px-1.5 py-0.5 text-xs font-medium"
           style={{ backgroundColor: badgeBg, color: textOn(badgeBg) }}
         >
-          D{zone.class - 1}
+          D{zone.value - 1}
         </span>
         <span className="truncate text-xl font-medium text-neutral-800">
-          {zone.name}
+          {zone.label}
         </span>
-        <span className="text-xs font-normal" style={{ color: trend.color }}>
-          {trend.arrow} {trend.label}
+        <span
+          className="text-xs font-normal"
+          style={{ color: trendMeta.color }}
+        >
+          {trendMeta.arrow} {trendMeta.label}
         </span>
       </div>
-      <ZoneDoughnut
-        byClass={zone.donut?.byClass}
-        centerLabel={`${zone.confidence}%`}
-      />
+      <ZoneDoughnut byClass={byClass} centerLabel={`${zone.confidence}%`} />
     </div>
   );
 };
 
 const ZoneBreakdown = () => {
-  const [zones, setZones] = useState(null);
-  const [error, setError] = useState(null);
-
-  const fetchZones = useCallback(async () => {
-    try {
-      const response = await fetch("/api/t1/national-overview/zones");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setZones(data?.items || []);
-    } catch (error) {
-      setError(String(error));
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchZones();
-  }, [fetchZones]);
-
-  if (error) {
-    return (
-      <p className="text-sm text-red-600">Failed to load zones: {error}</p>
-    );
-  }
-  if (!zones) {
-    return <p className="text-sm text-neutral-500">Loading zones…</p>;
-  }
+  const zones = zonesData.data || [];
+  const trendsByAdministration = Object.fromEntries(
+    (trendsData.data || []).map((item) => [item.administration_id, item]),
+  );
+  const breakdownsByAdministration = Object.fromEntries(
+    (breakdownsData.data || []).map((item) => [item.administration_id, item]),
+  );
 
   return (
     <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {zones.map((zone) => (
-        <ZoneCard key={zone.name} zone={zone} />
+        <ZoneCard
+          key={zone.id}
+          zone={zone}
+          trend={trendsByAdministration[zone.id]}
+          breakdown={breakdownsByAdministration[zone.id]}
+        />
       ))}
     </div>
   );
