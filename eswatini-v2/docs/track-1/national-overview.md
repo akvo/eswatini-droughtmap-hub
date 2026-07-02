@@ -53,16 +53,15 @@ Currently:
 - Most of those widgets need data beyond the published-map API (station rainfall/temp,
   field/IKS reports, priority actions, non-CDI map layers) — some of which sibling
   specs (WX-1, IKS-1, PA/SOP) provide and some of which do not exist yet.
-- A mock route at frontend/src/app/api/t1/national-overview/zones/route.js used the
-  Pages-Router handler(req,res) idiom, so it 405'd (no GET) — mistaken for the backend
-  proxy breaking. Fixed to a named GET(); the /api/* proxy was never at fault.
+- Frontend-only Track 1 mocks live under `frontend/src/static/mocks/` and are
+  imported directly into client/server components until the Django endpoints are ready.
 
 Goal:
 - Plan the full National Overview page as a public, mock-first frontend:
-  every section renders from Next.js App-Router route handlers returning fixture
-  JSON, so the page is buildable/reviewable before any new backend lands.
+  every section renders from response-shaped static mock modules, so the page is
+  buildable/reviewable before any new backend lands.
 - Give each section a documented mapping to the REAL backend that will eventually
-  replace its mock (delete the mock route → the /api/* proxy falls through to Django).
+  replace its static mock (swap the data source from static import to backend API).
 - Reuse the hub's existing shell (Navbar/Footer/Feedback/Logo), tabs, date select,
   Leaflet choropleth machinery, and DROUGHT_CATEGORY_COLOR — no net-new design system.
 ```
@@ -81,9 +80,9 @@ Goal:
 
 ### Technical Acceptance Criteria
 - [ ] Page is a **public server component** at `frontend/src/app/page.js` (same public pattern as `browse/page.js`); NOT added to `middleware.js` `protectedRoutes`.
-- [ ] All data comes from **mock App-Router route handlers** under `frontend/src/app/api/t1/national-overview/*/route.js`, each exporting `GET()` and returning static fixture JSON (one route per section — see §4).
+- [ ] Until the Django API exists, frontend data comes from response-shaped static mock modules under `frontend/src/static/mocks/`.
 - [ ] Interactive leaves (donuts, map, tab/toggle/date controls) are small `"use client"` children; the page shell stays a server component.
-- [ ] Each mock route's JSON shape mirrors the intended real backend response so swapping mock→real is a delete, not a rewrite (§4 mapping table).
+- [ ] Each mock module's JSON shape mirrors the intended real backend response so swapping mock→real is a small data-source change, not a UI rewrite (§4 mapping table).
 - [ ] Reuses existing components (`Navbar`, `Footer`, `FeedbackSection`, `LogoSection`, `TabButtons`, `SelectDate`, `Map/`) and constants (`DROUGHT_CATEGORY_COLOR`, `DROUGHT_CATEGORY_LABEL`). Charts use **`akvo-charts` (already a dependency, `^1.3.4`)** — no new charting dependency is added (D-8).
 - [ ] Smoke tests (Jest + RTL) cover: page renders each section with mock data; zone donut segments sum to 100%; trend chip maps to the correct up/down/flat variant; empty-fixture fallback renders without crashing.
 
@@ -91,43 +90,35 @@ Goal:
 
 ## 3. Data Model Changes
 
-**N/A for this task — frontend + mock routes only.** No Django models, migrations, or endpoints are added here. Track 1 deliberately defers all persistence to the sibling backends it will later consume (§4). New backend fields that the *real* page will eventually need — an **editorial `summary`/`headline`**, a **`next_update` date**, and a **per-region/per-Inkhundla `confidence`** — are flagged in §10 as owned by future publication/insights work, not built here.
+**N/A for this task — frontend + static mock responses only.** No Django models, migrations, or endpoints are added here. Track 1 deliberately defers all persistence to the sibling backends it will later consume (§4). New backend fields that the *real* page will eventually need — an **editorial `summary`/`headline`**, a **`next_update` date**, and a **per-region/per-Inkhundla `confidence`** — are flagged in §10 as owned by future publication/insights work, not built here.
 
 ---
 
 ## 4. API Contract
 
-No new Django endpoints. The page consumes **mock Next.js App-Router route handlers**; each is a thin `GET()` returning fixture JSON committed under the route folder.
+No new Django endpoints. Until the backend API is ready, the frontend consumes **static mock modules** under `frontend/src/static/mocks/`. These modules are shaped like backend responses: simple, serializer-friendly objects with generic keys (`id`, `administration_id`, `label`, `value`, `data`, `group`, `period`). Components adapt those response shapes into UI-specific props.
 
-> **Route shape (correction):** App Router requires `src/app/api/<seg…>/route.js` exporting an HTTP **method**, e.g.
-> ```js
-> // frontend/src/app/api/t1/national-overview/zones/route.js
-> import { NextResponse } from "next/server";
-> export function GET() { return NextResponse.json(FIXTURE); }
-> ```
-> A `route.js` with a **default** `handler(req,res)` (Pages-Router idiom) registers the route but exposes **no method handler**, so Next returns **405 Method Not Allowed** — not a proxy hit. Every mock uses named `GET()`.
->
-> **Proxy precedence (verified empirically):** `next.config.mjs` rewrites `/api/:path* → :8000` as **`afterFiles`** (rewrites run *after* filesystem routes), so real route files are matched **first**. Confirmed on 2026-07-01 (Next 14.2.18): with the `zones` `route.js` in place, `GET /api/t1/national-overview/zones` → **200** (the mock), while `GET /api/v1/config.js` (no mock file) → **200** from Django. Deleting a mock later makes that path fall through to the real backend with **no config change**. The 405 above is the diagnostic tell that a mock exists but its handler is mis-shaped — a proxy fall-through would surface Django's **404** instead.
+### Static mock modules and backend mapping
 
-### Mock routes (this task)
+Current implemented mock source: `frontend/src/static/mocks/national-overview/zones.js`.
 
-Base path: `/api/t1/national-overview/` (one folder per section, `route.js` with `GET()`).
+| Static export / future endpoint | Feeds section | Real backend that will replace it |
+|---------------------------------|---------------|-----------------------------------|
+| `zonesData` | Breakdown by zones cards | Latest published-map `validated_values` joined to `Administration` (`id`, `name`, `region`) or climatic-zone lookup for headline drought class + confidence. |
+| `trendsData` | Zone trend chips | History window of the last N published maps, grouped by `administration_id`; may become a separate analytics endpoint because it reads multiple periods (see D-7). |
+| `breakdownsData` | Zone doughnut rings | Latest map D-class distribution by zone, grouped by `administration_id`; may become a separate aggregation endpoint because it computes bucket counts. |
+| future `bulletin` data | Bulletin bar | Latest `Publication(published)` `year_month` + `generated_at` (existing publication API). |
+| future `hero` data | Hero status + dates + summary | Published-map worst-widespread (INS-2 logic) + **new editorial `headline`/`summary`/`next_update`** (future publication field, §3/§10). |
+| future `metrics` data | 4 metric cards | **WX-1** (`v1_stations`: rainfall/temp vs normal, active stations) + **IKS-1** (`v1_iks`: field reports + verified %). |
+| future `map` data | Drought map | Published-map (drought class per Inkhundla) + **WX-1** (precip/temp layers) + GeoNode rasters (land use / population). |
+| future `priority-actions` data | Priority adaptation actions | **PA-2/PA-3** (priority areas) + **SOP-4** (recommended actions per sector). |
 
-| Method | URL | Feeds section | Real backend that will replace it |
-|--------|-----|---------------|-----------------------------------|
-| GET | `/api/t1/national-overview/bulletin` | Bulletin bar | Latest `Publication(published)` `year_month` + `generated_at` (existing publication API) |
-| GET | `/api/t1/national-overview/hero` | Hero status + dates + summary | Published-map worst-widespread (INS-2 logic) + **new editorial `headline`/`summary`/`next_update`** (future publication field, §3/§10) |
-| GET | `/api/t1/national-overview/zones` | Breakdown by zones | **Latest** published-map `validated_values` joined to region (topojson) or climatic-zone (`backend/source/climatic-zones.json`) for the badge + donut distribution + confidence, **plus a history window of the last N published maps** for the trend (see D-7). Not a single-month read. |
-| GET | `/api/t1/national-overview/metrics` | 4 metric cards | **WX-1** (`v1_stations`: rainfall/temp vs normal, active stations) + **IKS-1** (`v1_iks`: field reports + verified %) |
-| GET | `/api/t1/national-overview/map` | Drought map | Published-map (drought class per Inkhundla) + **WX-1** (precip/temp layers) + GeoNode rasters (land use / population) |
-| GET | `/api/t1/national-overview/priority-actions` | Priority adaptation actions | **PA-2/PA-3** (priority areas) + **SOP-4** (recommended actions per sector) |
-
-Status: `zones/route.js` implemented (returns the fixture below). The other five are the same one-line `GET` pattern, added per section. Static sections (CTA, About EDM, Footer) need no data route.
+Static sections (CTA, About EDM, Footer) need no mock data source.
 
 ### Request/Response Examples (mock fixtures — shapes mirror the real sources)
 
 ```json
-// GET /api/t1/national-overview/hero
+// Future hero response
 {
   "status": { "category": 3, "label": "D2 Severe Drought" },
   "published": "2026-05-15",
@@ -137,48 +128,76 @@ Status: `zones/route.js` implemented (returns the fixture below). The other five
 }
 ```
 
-```json
-// GET /api/t1/national-overview/zones   (grouping = "regions" | "climatic")  — IMPLEMENTED
-{
-  "grouping": "regions",
-  "period": "2026-05",
-  "legend": [
-    { "category": 0, "label": "None" },   { "category": 1, "label": "D0 Normal" },
-    { "category": 2, "label": "D1 Moderate" }, { "category": 3, "label": "D2 Severe" },
-    { "category": 4, "label": "D3 Extreme" },  { "category": 5, "label": "D4 Exceptional" }
-  ],
-  "items": [
+```js
+// frontend/src/static/mocks/national-overview/zones.js — IMPLEMENTED
+export const zonesData = {
+  group: "regions",
+  period: "2026-05",
+  data: [
     {
-      "name": "Lubombo",
-      "class": 3,                 // headline badge = worst-widespread D-class within the zone (INS-2 logic, scoped to the zone)
-      "confidence": 55,           // score rendered in the donut center — definition pending (§10)
-      "trend": {
-        "direction": "improving", // worsening | stable | improving  — from the series below, NOT one delta
-        "method": "cdi-mean-slope",   // e.g. sign of the slope / net change of the zone's mean D_norm over the window
-        "windowMonths": 6,
-        "series": [               // per-period backing values (last N published maps) — what makes the chip history-based
-          { "period": "2025-12", "value": 3.2 },
-          { "period": "2026-01", "value": 3.0 },
-          { "period": "2026-02", "value": 2.8 },
-          { "period": "2026-03", "value": 2.7 },
-          { "period": "2026-04", "value": 2.6 },
-          { "period": "2026-05", "value": 2.4 }
-        ]
-      },
-      "donut": {                  // "division of drought level per Inkhundla in the region" — differs per zone
-        "unit": "tinkhundla",
-        "total": 11,              // #Tinkhundla in this zone (Lubombo = 11)
-        "byClass": { "1": 1, "2": 4, "3": 3, "4": 2, "5": 1 }  // count of the zone's Tinkhundla in each D-class
-      }
+      id: 3,              // Administration.id
+      label: "Lubombo",   // Administration.name
+      value: 3,           // headline drought class for the zone
+      confidence: 55      // score rendered in the doughnut center — definition pending (§10)
     }
+  ]
+};
+
+export const trendsData = {
+  group: "regions",
+  data: [
+    {
+      administration_id: 3,
+      value: "improving",     // worsening | stable | improving — derived from the history below
+      method: "cdi-mean-slope",
+      group: "months",
+      data: [
+        { key: "2025-12", value: 3.2 },
+        { key: "2026-01", value: 3.0 },
+        { key: "2026-02", value: 2.8 },
+        { key: "2026-03", value: 2.7 },
+        { key: "2026-04", value: 2.6 },
+        { key: "2026-05", value: 2.4 }
+      ]
+    }
+  ]
+};
+
+export const breakdownsData = {
+  group: "regions",
+  data: [
+    {
+      administration_id: 3,
+      group: "tinkhundla",
+      data: [
+        { key: 1, value: 1 },
+        { key: 2, value: 3 },
+        { key: 3, value: 3 },
+        { key: 4, value: 3 },
+        { key: 5, value: 1 }
+      ]
+    }
+  ]
+};
+```
+
+Equivalent future backend responses can be split across endpoints, for example:
+
+```json
+// GET /api/v1/national-overview/zones?group=regions&period=2026-05
+{
+  "group": "regions",
+  "period": "2026-05",
+  "data": [
+    { "id": 3, "label": "Lubombo", "value": 3, "confidence": 55 }
   ]
 }
 ```
 
-> The donut ring is coloured by `DROUGHT_CATEGORY_COLOR[category]`; `byClass` counts (or their normalised shares) drive the segment sizes and **vary per zone**. `class`, `confidence`, and `donut` come from the **latest** map; `trend.series` is the **history window**. The mock fixture ships a realistic multi-period `series` so the trend chip and any sparkline render before the backend exists.
+> `legend` is intentionally **not** part of the response. Drought labels and colours come from `frontend/src/static/config.js` (`DROUGHT_CATEGORY_LABEL`, `DROUGHT_CATEGORY_COLOR`). The doughnut ring is coloured by `DROUGHT_CATEGORY_COLOR[category]`; `breakdownsData.data[].data` counts drive segment sizes and **vary per zone**. `zonesData.value`, `zonesData.confidence`, and `breakdownsData` come from the **latest** map; `trendsData.data[].data` is the **history window**.
 
 ```json
-// GET /api/t1/national-overview/metrics
+// Future metrics response
 {
   "rainfall":       { "value": -58, "unit": "mm", "note": "2-month cumulative, vs 30-yr normal" },
   "temperature":    { "value": 1.4, "unit": "°C", "note": "May mean Tmax anomaly vs 30-yr normal, all stations" },
@@ -188,7 +207,7 @@ Status: `zones/route.js` implemented (returns the fixture below). The other five
 ```
 
 ```json
-// GET /api/t1/national-overview/map
+// Future map response
 {
   "date": "2026-05",                // base month (right side of the swipe); date list = existing GET /api/v1/dates
   "compareTo": "2026-01",           // comparison month (left side of the swipe); null = single map (D-11)
@@ -218,7 +237,7 @@ The hub **already renders this exact choropleth**. Figma element → hub reuse:
 **Integration requirement:** `CDIMap` reads `appContext?.geoData || window.topojson`, so the National Overview page (or the map leaf) must sit under the **`AppContextProvider`** that loads `eswatini.topojson` — same as `browse`. Confirm the public shell provides it.
 
 ```json
-// GET /api/t1/national-overview/priority-actions
+// Future priority-actions response
 {
   "sectors": [
     { "key": "water",       "label": "Water / WASH",  "activities": 2, "tinkhundla": 3,
@@ -248,30 +267,30 @@ The hub **already renders this exact choropleth**. Figma element → hub reuse:
 
 **Impact**: INS-2 stays the reference for the status/region derivations Track 1 reuses; README task table gains a Track 1 row (or notes Track 1 supersedes INS-2 scope) at approval time.
 
-### D-2: Mock-first, per-section route handlers, mapped to real backends
+### D-2: Mock-first static response modules, mapped to real backends
 
 **Options Considered**:
-1. Reference sibling specs only (no mock routes) — thin layout spec.
-2. Mock-first Next.js route handlers now, with a real-backend mapping table.
+1. Reference sibling specs only (no mock data) — thin layout spec.
+2. Mock-first static response modules now, with a real-backend mapping table.
 3. Build the full Django aggregation backend with the page.
 
 **Decision**: Option 2 (§4 table).
 
-**Rationale**: Lets the whole page be built, styled, and reviewed against the Figma before any backend lands, matches the team's "mock all data" approach, and — because the `/api/*` proxy is `afterFiles` — each mock deletes cleanly into its real endpoint. One route per section keeps each mock aligned to the future endpoint that will own it.
+**Rationale**: Lets the whole page be built, styled, reviewed, and deployed before any backend lands, matches the team's "mock all data" approach, and avoids depending on temporary Next.js API routes that may not be served by production deployment. Each static mock export stays aligned to the future endpoint or serializer that will own it.
 
-**Impact**: Six fixture routes to maintain until their backends exist; fixture shapes are a contract other specs (WX-1, IKS-1, PA/SOP) should honour when they land.
+**Impact**: Static fixture modules under `frontend/src/static/mocks/` must be maintained until their backends exist; fixture shapes are a contract other specs (WX-1, IKS-1, PA/SOP) should honour when they land.
 
-### D-3: App-Router `route.js` with named `GET()` — path `api/t1/national-overview/<section>/`
+### D-3: Static mocks are the frontend source of truth
 
-**Decision**: One folder per section under `api/t1/national-overview/`, each a `route.js` exporting named `GET()`. Path chosen over the earlier `api/track1/*` sketch.
+**Decision**: Components consume `frontend/src/static/mocks/` directly while the backend API is absent.
 
-**Rationale**: This project is App Router (`src/app/`); a default `handler(req,res)` export exposes no method handler. **Verified 2026-07-01**: a `route.js` with the default-export idiom returned **405** (route matched, no `GET`), *not* a proxy fall-through — proving both the `afterFiles` precedence and that the fix is the handler shape, not the path. Corrected to `export function GET()` returning `NextResponse.json(...)` → 200.
+**Rationale**: Direct static imports are bundled with the frontend, keep mocks close to the UI work, and make the intended backend response shape explicit before Django serializers exist.
 
-**Impact**: Six section routes; no `next.config` change (proxy precedence covers fall-through). `zones` is implemented; five remain.
+**Impact**: No `next.config` change. Static mocks work in production builds and later swap to Django API calls when endpoints are ready.
 
 ### D-4: Zone cards use a **per-zone doughnut** (`akvo-charts`), not INS-2's stacked bars; add Regions⇄Climatic toggle
 
-**Decision**: Render each zone card with `akvo-charts` `<Doughnut>` whose ring = that zone's **per-Inkhundla D-class distribution** (`donut.byClass`, §4), coloured by `DROUGHT_CATEGORY_COLOR`, with the zone **confidence score** in the center; add a `Regions | Climatic zones` toggle that re-buckets the same `validated_values`.
+**Decision**: Render each zone card with `akvo-charts` `<Doughnut>` whose ring = that zone's **per-Inkhundla D-class distribution** (`breakdownsData.data[].data`, §4), coloured by `DROUGHT_CATEGORY_COLOR`, with the zone **confidence score** in the center; add a `Regions | Climatic zones` toggle that re-buckets the same `validated_values`.
 
 **Rationale**: Matches the Figma card (node `3154:28297`) and its caption "division of drought level per inkhundla in the region". The ring is INS-2 §4's `crosstab(..normalize='index')` **scoped per zone** — same computation, one doughnut per zone instead of one national stacked bar.
 
@@ -284,11 +303,11 @@ The hub **already renders this exact choropleth**. Figma element → hub reuse:
 2. Trend over the last **N** published maps (series): sign of the net change / slope of the zone's mean `D_norm` (`category/5`, PA-2 §6) across the window, with a dead-band for "stable".
 3. Full statistical trend test (Mann-Kendall) over the series.
 
-**Decision**: Option 2 — the endpoint returns a per-zone **series** over a window of the last N published maps (default N = 6, tunable), and `trend.direction ∈ {worsening, stable, improving}` is derived from the net change / slope with a small dead-band. `improving` = drought easing (mean `D_norm` falling).
+**Decision**: Option 2 — the response returns a per-zone **series** over a window of the last N published maps (default N = 6, tunable), and `trendsData.data[].value ∈ {worsening, stable, improving}` is derived from the net change / slope with a small dead-band. `improving` = drought easing (mean `D_norm` falling).
 
 **Rationale**: The user confirmed the chip "evaluate[s] based on history", so a single delta is wrong — one noisy month would flip the chip. A short series with a dead-band is robust, cheap, and reuses the existing published-map history (each month is a `Publication`). Mann-Kendall (opt 3) is over-engineered for a 3-state chip at this stage.
 
-**Impact**: `/api/track1/zones` (and its real backend) must read **N maps**, not one — a genuine data-provenance change from INS-2's single-latest-map assumption. Window length, the `D_norm`-vs-worst-class choice, and the stable dead-band are tunable constants flagged in §10. The mock fixture carries a realistic `series` so the chip renders now.
+**Impact**: `trendsData` (and its real backend endpoint/serializer later) must read **N maps**, not one — a genuine data-provenance change from INS-2's single-latest-map assumption. Window length, the `D_norm`-vs-worst-class choice, and the stable dead-band are tunable constants flagged in §10. The mock fixture carries realistic history data so the chip renders now.
 
 ### D-8: Charting library = `akvo-charts` (already installed), no new chart lib
 
@@ -315,11 +334,11 @@ The hub **already renders this exact choropleth**. Figma element → hub reuse:
 
 ### D-6: Public server component; only leaves are client
 
-**Decision**: `frontend/src/app/page.js` becomes an async public server component that fetches the mock routes; donuts/map/controls are `"use client"` children. Not added to `protectedRoutes`.
+**Decision**: `frontend/src/app/page.js` becomes a public server component that composes response-shaped static mocks while the backend is absent; donuts/map/controls are `"use client"` children. Not added to `protectedRoutes`.
 
 **Rationale**: Mirrors INS-2 D-1 and `browse/page.js`: SEO/first-paint friendly, anonymous-accessible, charts isolated to client leaves. `page.old.js` is left untouched as the previous home.
 
-**Impact**: No auth gate; server-side fetch of local mock routes; the current stub `page.js` is replaced (old one preserved as `page.old.js`).
+**Impact**: No auth gate; the current stub `page.js` is replaced (old one preserved as `page.old.js`).
 
 ### D-9: Map tooltip = a rich Inkhundla card (name, badge, region · climatic-zone, confidence, CTA)
 
@@ -385,24 +404,24 @@ Additional Track 1 enumerations (new; propose as UI-1 token/config additions):
 ## 7. Compatibility & Migration
 
 ### Backward Compatibility
-- [ ] No Django endpoint/schema/model change — read-only page over mock routes.
-- [ ] Existing `/api/*` proxy behaviour unchanged; mock routes only *add* filesystem matches ahead of the fall-through rewrite.
+- [ ] No Django endpoint/schema/model change — read-only page over static mock modules.
+- [ ] Existing `/api/*` proxy behaviour unchanged; Track 1 static imports do not depend on proxy behaviour.
 - [ ] `page.old.js` preserved; no other route touched.
 
 ### Degraded data handling
-- [ ] Any mock route returning empty/missing → its section renders a safe "No data yet" state, never a crash.
+- [ ] Any static mock export empty/missing → its section renders a safe "No data yet" state, never a crash.
 - [ ] Zone donut with all-`-9999` → renders a "No Data" state; segment maths never divides by zero.
 - [ ] Map with no features → base map + legend render; tooltip disabled.
 
 ### Seeder/CLI Compatibility
-- [ ] None affected — no backend touched. Mock fixtures are committed JSON, not seeded.
+- [ ] None affected — no backend touched. Mock fixtures are committed frontend modules, not seeded.
 
 ---
 
 ## 8. Security Considerations
 
 - [ ] **Public, no auth** — not added to `middleware.js` `protectedRoutes`; mirrors `browse` and INS-2.
-- [ ] Mock routes are **GET-only**, return static fixtures, take no user input — no injection surface.
+- [ ] Static mock modules take no user input — no injection surface.
 - [ ] No secrets in the client bundle; when real backends replace mocks, the existing server-side `api()` (JWT-from-cookie) pattern applies, same as INS-2.
 - [ ] Map/tooltip data is server-fixtured for now; when wired to GeoNode/WX-1, sanitize Inkhundla names/agro-zones against the fixed 59-Inkhundla table (unknown → "Unknown", logged, not crashed).
 
