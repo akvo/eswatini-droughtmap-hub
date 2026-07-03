@@ -46,6 +46,11 @@ const button = {
   linkText: "#485D92",
   linkHover: "#465D91",
   linkActive: "#2F4578",
+  // Ghost button hover (e.g. navbar Login) — white fill, primary text.
+  // Applied in globals.css: AntD exposes no ghost-hover-bg token (ghost forces
+  // bg = ghostBg on both rest and hover), so it can't come from the Ant theme.
+  ghostHoverBg: "#ffffff",
+  ghostHoverText: brand.primary, // #3E5EB9
   // XL size (Ant `large`) — Figma 44px height, 24px inline padding, 14px text
   xlHeight: 44,
   xlPaddingX: 24,

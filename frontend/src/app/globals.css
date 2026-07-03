@@ -12,6 +12,9 @@
   --btn-disabled-bg: #e8e8e8;
   --btn-disabled-text: #a4a4a4;
   --btn-secondary-disabled-text: #c5c6d0;
+  /* Ghost button hover (navbar Login) — mirrors tokens.button.ghostHover* */
+  --btn-ghost-hover-bg: #ffffff;
+  --btn-ghost-hover-text: #3e5eb9;
   /* Resting input shadow (Figma node 3019:7303) — no Ant theme token for it */
   --input-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
   /* Select focus ring (Figma node 3019:7261) — brand.muted @ 20%, 4px */
@@ -191,6 +194,16 @@ h5 {
 .ant-btn-link:disabled,
 .ant-btn-text:disabled {
   color: var(--btn-secondary-disabled-text);
+}
+/* Ghost hover: AntD keeps ghost bg transparent on hover (no token for it),
+   so override to a white fill + primary text/border. */
+.ant-btn-color-default.ant-btn-background-ghost:not(:disabled):not(
+    .ant-btn-disabled
+  ):hover,
+.ant-btn-background-ghost:not(:disabled):not(.ant-btn-disabled):hover {
+  background-color: var(--btn-ghost-hover-bg) !important;
+  color: var(--btn-ghost-hover-text);
+  border-color: var(--btn-ghost-hover-text);
 }
 /* Table (Figma 3217:34504 header / 3217:34521 cell) — header 12px/44px,
    body 14px/64px; tokens.table handles colours via the Ant theme */
