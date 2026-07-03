@@ -8,7 +8,7 @@ const FeedbackSection = () => {
           drops the white bg (blue preserved) and shows lines as faint highlights */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-image-login bg-cover bg-center pointer-events-none [filter:invert(1)] [mix-blend-mode:screen]"
+        className="absolute inset-0 bg-dhi-pattern bg-cover bg-center pointer-events-none [filter:invert(1)] [mix-blend-mode:screen]"
       />
       <div className="relative flex flex-col gap-2 max-w-3xl text-white">
         <h2 className="text-2xl font-bold leading-[30px]">

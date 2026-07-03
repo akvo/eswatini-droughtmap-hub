@@ -35,7 +35,7 @@ const RootLayout = async ({ children }) => {
         <AppContextProvider>
           <AntdRegistry>
             <ConfigProvider theme={antTheme}>
-              <div className="w-full min-h-screen bg-image-login bg-no-repeat bg-center bg-cover flex flex-col">
+              <div className="w-full min-h-screen bg-dhi-pattern bg-no-repeat bg-center bg-cover flex flex-col">
                 <Navbar session={session} />
                 <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 pb-9 bg-white">
                   {children}

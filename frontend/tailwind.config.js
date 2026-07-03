@@ -35,7 +35,7 @@ module.exports = {
         pill: `${tokens.radius.pill}px`,
       },
       backgroundImage: {
-        "image-login": "url('/images/bg-image-login.png')",
+        "dhi-pattern": "url('/images/dhi-pattern.svg')",
       },
       maxWidth: {
         "8xl": "90rem",
