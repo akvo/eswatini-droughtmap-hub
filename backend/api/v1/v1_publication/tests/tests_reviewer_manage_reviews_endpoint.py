@@ -11,6 +11,7 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_publication.constants import (
     DroughtCategory,
+    FilterStatus,
 )
 from api.v1.v1_publication.serializers import ReviewSerializer
 
@@ -180,6 +181,29 @@ class ReviewViewSetTestCase(APITestCase):
         self.assertIn("total", response.data)
         self.assertEqual(
             response.data["total"], 2
+        )
+
+    def test_list_reviews_status_filter(self):
+        # Two reviews for this user; mark one completed.
+        self.review.is_completed = True
+        self.review.save()
+
+        all_res = self.client.get(f"{self.list_url}?status={FilterStatus.all}")
+        self.assertEqual(all_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(all_res.data["total"], 2)
+
+        pending_res = self.client.get(
+            f"{self.list_url}?status={FilterStatus.pending}"
+        )
+        self.assertEqual(pending_res.data["total"], 1)
+        self.assertFalse(pending_res.data["data"][0]["is_completed"])
+
+        completed_res = self.client.get(
+            f"{self.list_url}?status={FilterStatus.completed}"
+        )
+        self.assertEqual(completed_res.data["total"], 1)
+        self.assertEqual(
+            completed_res.data["data"][0]["id"], self.review.id
         )
 
     def test_permission_denied_for_unauthenticated_user(self):

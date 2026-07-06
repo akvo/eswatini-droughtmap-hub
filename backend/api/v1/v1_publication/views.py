@@ -55,6 +55,7 @@ from api.v1.v1_publication.constants import (
     DroughtCategory,
     ExportMapTypes,
     DroughtCategoryColor,
+    FilterStatus,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
@@ -95,10 +96,30 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Review.objects.filter(
+        queryset = Review.objects.filter(
             user_id=user.id
         ).order_by("-created_at")
+        # All / Pending / Completed tabs (missing or "all" -> no filter)
+        status_filter = self.request.query_params.get("status")
+        if status_filter == FilterStatus.pending:
+            queryset = queryset.filter(is_completed=False)
+        elif status_filter == FilterStatus.completed:
+            queryset = queryset.filter(is_completed=True)
+        return queryset
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                required=False,
+                enum=list(FilterStatus.FieldStr.keys()),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter reviews by completion state.",
+            ),
+        ],
+        responses={200: ReviewListSerializer(many=True)},
+    )
     def list(self, request, *args, **kwargs):
         """
         Override the list method to add extra context.

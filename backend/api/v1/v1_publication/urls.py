@@ -10,6 +10,12 @@ from .views import (
     PublishedMapViewSet,
     PublicationDateAPI,
 )
+from .review.view import (
+    ReviewStatsAPI,
+    ReviewAdministrationsAPI,
+    ReviewAdministrationDetailAPI,
+    ReviewMapAPI,
+)
 
 urlpatterns = [
     re_path(r"^(?P<version>(v1))/config.js", get_config_file),
@@ -29,6 +35,27 @@ urlpatterns = [
             }
         ),
         name="review-details",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/reviewer/(?P<pk>[0-9]+)/stats$",
+        ReviewStatsAPI.as_view(),
+        name="review-queue-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/reviewer/(?P<pk>[0-9]+)"
+        r"/administrations/(?P<administration_id>[0-9]+)$",
+        ReviewAdministrationDetailAPI.as_view(),
+        name="review-queue-administration",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/reviewer/(?P<pk>[0-9]+)/administrations$",
+        ReviewAdministrationsAPI.as_view(),
+        name="review-queue-administrations",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/reviewer/(?P<pk>[0-9]+)/map$",
+        ReviewMapAPI.as_view(),
+        name="review-queue-map",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/cdi-geonode",
