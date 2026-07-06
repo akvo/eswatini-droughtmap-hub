@@ -14,4 +14,6 @@ class ConfigJS(TestCase):
         self.assertFalse(Path(config_path).exists())
         self.client.get("/api/v1/config.js", follow=True)
         self.assertTrue(Path(config_path).exists())
+        # climatic `zone` is injected into topojson properties for filtering
+        self.assertIn("zone", Path(config_path).read_text())
         os.remove(config_path)
