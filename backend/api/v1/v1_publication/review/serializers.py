@@ -21,7 +21,7 @@ class ReviewQueueFilterSerializer(serializers.Serializer):
     reviewed = serializers.BooleanField(required=False, default=False)
     region = serializers.CharField(required=False, allow_blank=True)
     zone = serializers.ChoiceField(
-        choices=[z.value for z in AdministrationZones],
+        choices=AdministrationZones.values(),
         required=False,
         allow_null=True,
     )

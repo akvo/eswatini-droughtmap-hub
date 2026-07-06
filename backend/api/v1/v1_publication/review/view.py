@@ -43,31 +43,6 @@ from utils.custom_pagination import Pagination
 from utils.default_serializers import DefaultResponseSerializer
 
 
-_FILTER_PARAMS = [
-    OpenApiParameter(
-        name="search", required=False, type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-    ),
-    OpenApiParameter(
-        name="confidence", required=False, enum=BANDS,
-        type=OpenApiTypes.STR, location=OpenApiParameter.QUERY,
-    ),
-    OpenApiParameter(
-        name="reviewed", required=False, type=OpenApiTypes.BOOL,
-        location=OpenApiParameter.QUERY,
-    ),
-    OpenApiParameter(
-        name="region", required=False, type=OpenApiTypes.STR,
-        location=OpenApiParameter.QUERY,
-    ),
-    OpenApiParameter(
-        name="zone", required=False,
-        enum=[z.value for z in AdministrationZones],
-        type=OpenApiTypes.STR, location=OpenApiParameter.QUERY,
-    ),
-]
-
-
 def _filtered_rows(publication, request):
     serializer = ReviewQueueFilterSerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
@@ -107,9 +82,40 @@ class ReviewAdministrationsAPI(APIView):
     permission_classes = [IsAuthenticated, IsReviewer]
 
     @extend_schema(
+        operation_id="reviewer_administrations_list",
         summary="Review-queue table (per-Inkhundla, filtered + paginated)",
         tags=["Reviewer"],
-        parameters=_FILTER_PARAMS,
+        parameters=[
+            OpenApiParameter(
+                name="search", required=False, type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="confidence", required=False, enum=BANDS,
+                type=OpenApiTypes.STR, location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="reviewed", required=False, type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="region", required=False, type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="zone", required=False,
+                enum=AdministrationZones.values(),
+                type=OpenApiTypes.STR, location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="page", required=False, type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="page_size", required=False, type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
         responses={200: OpenApiTypes.OBJECT, 404: DefaultResponseSerializer},
     )
     def get(self, request, version, pk):
@@ -124,6 +130,7 @@ class ReviewAdministrationDetailAPI(APIView):
     permission_classes = [IsAuthenticated, IsReviewer]
 
     @extend_schema(
+        operation_id="reviewer_administration_retrieve",
         summary="Single Inkhundla review context (submission via review PUT)",
         tags=["Reviewer"],
         responses={
@@ -183,7 +190,29 @@ class ReviewMapAPI(APIView):
     @extend_schema(
         summary="Review-queue map rows (filtered by confidence / reviewed)",
         tags=["Reviewer"],
-        parameters=_FILTER_PARAMS,
+        parameters=[
+            OpenApiParameter(
+                name="search", required=False, type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="confidence", required=False, enum=BANDS,
+                type=OpenApiTypes.STR, location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="reviewed", required=False, type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="region", required=False, type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="zone", required=False,
+                enum=AdministrationZones.values(),
+                type=OpenApiTypes.STR, location=OpenApiParameter.QUERY,
+            ),
+        ],
         responses={
             200: inline_serializer(
                 "ReviewMapResponse",

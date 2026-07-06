@@ -110,3 +110,7 @@ class AdministrationZones(Enum):
     @classmethod
     def choices(cls):
         return [(tag.value, tag.name.capitalize()) for tag in cls]
+
+    @classmethod
+    def values(cls):
+        return [tag.value for tag in cls]

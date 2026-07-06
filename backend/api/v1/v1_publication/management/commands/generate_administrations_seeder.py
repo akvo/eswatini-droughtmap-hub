@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_publication.constants import AdministrationZones
 
-_VALID_ZONES = {z.value for z in AdministrationZones}
+_VALID_ZONES = set(AdministrationZones.values())
 
 
 def _normalize_zone(raw):
