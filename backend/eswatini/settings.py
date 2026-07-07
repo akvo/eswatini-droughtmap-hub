@@ -220,3 +220,6 @@ DEFAULT_FROM_EMAIL = EMAIL_FROM
 WEBDOMAIN = environ.get("WEBDOMAIN", "http://localhost:3000")
 TEST_ENV = environ.get("TEST_ENV") or False
 CSRF_TRUSTED_ORIGINS = environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+
+# STORAGE CONFIG
+STORAGE_PATH = environ.get("STORAGE_PATH", "./storage")
