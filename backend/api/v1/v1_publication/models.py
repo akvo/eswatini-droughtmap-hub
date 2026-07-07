@@ -2,12 +2,21 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from utils.soft_deletes_model import SoftDeletes
 from api.v1.v1_users.models import SystemUser
-from api.v1.v1_publication.constants import PublicationStatus
+from api.v1.v1_publication.constants import (
+    PublicationStatus,
+    AdministrationZones,
+)
 
 
 class Administration(models.Model):
     name = models.CharField(max_length=100, null=False)
     region = models.CharField(max_length=50, null=True, blank=True)
+    zone = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        choices=AdministrationZones.choices(),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 

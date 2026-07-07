@@ -1,7 +1,13 @@
+from enum import Enum
+
 GEONODE_SSL_VERIFY = True
 # (connect, read) timeout in seconds for outbound GeoNode requests so a slow
 # or unresponsive upstream can never hang the request thread indefinitely.
 GEONODE_REQUEST_TIMEOUT = (10, 60)
+
+# ponytail: SPI/LST have no backend source yet — fixed placeholder per row.
+MOCK_STATIONS = {"spi": 0.49, "lst": 2.0, "is_mock": True}
+BANDS = ["low", "medium", "high"]
 
 
 class PublicationStatus:
@@ -80,3 +86,31 @@ class ExportMapTypes:
         png: "PNG",
         svg: "SVG",
     }
+
+
+class FilterStatus:
+    all = "all"
+    pending = "pending"
+    completed = "completed"
+
+    FieldStr = {
+        all: "All",
+        pending: "Pending",
+        completed: "Completed",
+    }
+
+
+class AdministrationZones(Enum):
+    # Highveld, Middleveld, Lowveld, Lubombo Plateau
+    HIGHVELD = "highveld"
+    MIDDLEVELD = "middleveld"
+    LOWVELD = "lowveld"
+    LUBOMBO_PLATEAU = "lubombo_plateau"
+
+    @classmethod
+    def choices(cls):
+        return [(tag.value, tag.name.capitalize()) for tag in cls]
+
+    @classmethod
+    def values(cls):
+        return [tag.value for tag in cls]

@@ -28,6 +28,8 @@ from django.conf import settings
 from django_q.tasks import async_task
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.db.models.functions import TruncMonth
 from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
@@ -55,6 +57,7 @@ from api.v1.v1_publication.constants import (
     DroughtCategory,
     ExportMapTypes,
     DroughtCategoryColor,
+    FilterStatus,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from utils.custom_permissions import IsReviewer, IsAdmin
@@ -95,10 +98,59 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Review.objects.filter(
+        queryset = Review.objects.filter(
             user_id=user.id
         ).order_by("-created_at")
+        params = self.request.query_params
+        # All / Pending / Completed tabs (missing or "all" -> no filter)
+        status_filter = params.get("status")
+        if status_filter == FilterStatus.pending:
+            queryset = queryset.filter(is_completed=False)
+        elif status_filter == FilterStatus.completed:
+            queryset = queryset.filter(is_completed=True)
+        # Date-range filter on the review period (publication.year_month).
+        # year_month is stored with an arbitrary day, so compare by month:
+        # truncate the stored value and snap both bounds to day 1.
+        # Invalid/absent dates parse to None -> that bound is skipped.
+        start_date = parse_date(params.get("start_date") or "")
+        end_date = parse_date(params.get("end_date") or "")
+        if start_date or end_date:
+            queryset = queryset.annotate(
+                ym=TruncMonth("publication__year_month")
+            )
+        if start_date:
+            queryset = queryset.filter(ym__gte=start_date.replace(day=1))
+        if end_date:
+            queryset = queryset.filter(ym__lte=end_date.replace(day=1))
+        return queryset
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                required=False,
+                enum=list(FilterStatus.FieldStr.keys()),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter reviews by completion state.",
+            ),
+            OpenApiParameter(
+                name="start_date",
+                required=False,
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description="Include reviews whose month >= this date.",
+            ),
+            OpenApiParameter(
+                name="end_date",
+                required=False,
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description="Include reviews whose month <= this date.",
+            ),
+        ],
+        responses={200: ReviewListSerializer(many=True)},
+    )
     def list(self, request, *args, **kwargs):
         """
         Override the list method to add extra context.

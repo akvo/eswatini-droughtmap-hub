@@ -1,3 +1,4 @@
+from datetime import date
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
@@ -11,6 +12,7 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_publication.constants import (
     DroughtCategory,
+    FilterStatus,
 )
 from api.v1.v1_publication.serializers import ReviewSerializer
 
@@ -181,6 +183,71 @@ class ReviewViewSetTestCase(APITestCase):
         self.assertEqual(
             response.data["total"], 2
         )
+
+    def test_list_reviews_status_filter(self):
+        # Two reviews for this user; mark one completed.
+        self.review.is_completed = True
+        self.review.save()
+
+        all_res = self.client.get(f"{self.list_url}?status={FilterStatus.all}")
+        self.assertEqual(all_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(all_res.data["total"], 2)
+
+        pending_res = self.client.get(
+            f"{self.list_url}?status={FilterStatus.pending}"
+        )
+        self.assertEqual(pending_res.data["total"], 1)
+        self.assertFalse(pending_res.data["data"][0]["is_completed"])
+
+        completed_res = self.client.get(
+            f"{self.list_url}?status={FilterStatus.completed}"
+        )
+        self.assertEqual(completed_res.data["total"], 1)
+        self.assertEqual(
+            completed_res.data["data"][0]["id"], self.review.id
+        )
+
+    def _set_review_months(self):
+        # year_month is stored with an ARBITRARY day (real data has both the
+        # 1st and the last of the month), so the filter must compare by month.
+        reviews = list(
+            Review.objects.filter(
+                user_id=self.user.id
+            ).select_related("publication").order_by("id")
+        )
+        self.jan_review, self.may_review = reviews[0], reviews[1]
+        self.jan_review.publication.year_month = date(2026, 1, 31)
+        self.jan_review.publication.save()
+        self.may_review.publication.year_month = date(2026, 5, 1)
+        self.may_review.publication.save()
+
+    def test_list_reviews_date_range_filter(self):
+        self._set_review_months()
+
+        # Window covering both months returns everything.
+        wide = self.client.get(
+            f"{self.list_url}?start_date=2026-01-01&end_date=2026-05-31"
+        )
+        self.assertEqual(wide.data["total"], 2)
+
+        # Range fully in months with no reviews returns nothing.
+        empty = self.client.get(
+            f"{self.list_url}?start_date=2026-02-01&end_date=2026-04-30"
+        )
+        self.assertEqual(empty.data["total"], 0)
+
+    def test_list_reviews_month_covers_any_day(self):
+        # Nov 2025 - Jan 2026 must include the Jan review even though it is
+        # stored as 2026-01-31 and end_date is 2026-01-01 (the user's case).
+        self._set_review_months()
+
+        res = self.client.get(
+            f"{self.list_url}?start_date=2025-11-01&end_date=2026-01-01"
+        )
+        ids = [row["id"] for row in res.data["data"]]
+        self.assertIn(self.jan_review.id, ids)
+        self.assertNotIn(self.may_review.id, ids)
+        self.assertEqual(res.data["total"], 1)
 
     def test_permission_denied_for_unauthenticated_user(self):
         self.client.logout()
