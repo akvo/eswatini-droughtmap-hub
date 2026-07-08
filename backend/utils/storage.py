@@ -1,7 +1,9 @@
 import os
-from mis.settings import STORAGE_PATH
+from django.conf import settings
 from pathlib import Path
 import shutil
+
+STORAGE_PATH = settings.STORAGE_PATH
 
 
 def upload(file: str, folder: str = None, filename: str = None):
