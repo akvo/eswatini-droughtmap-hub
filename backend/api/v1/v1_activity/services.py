@@ -1,11 +1,16 @@
 import re
 
-from api.v1.v1_activity.models import ResponseActivity
+from django.db import transaction
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
+
+from api.v1.v1_activity.models import ResponseActivity, ActivityHistory
 from api.v1.v1_activity.constants import (
     ActivityStatus,
     ActivitySector,
     TriggerOperator,
     DCLASS_SEGMENT,
+    ACTIVITY_TRANSITIONS,
 )
 
 _VERSION_RE = re.compile(r"^v(\d+)\.(\d+)$")
@@ -62,3 +67,21 @@ def trigger_summary(triggers):
     if other:
         parts.append(other)
     return " · ".join(parts)
+
+
+def apply_transition(activity, to_status, user, note=None):
+    """Validate and perform a lifecycle transition, writing a history row."""
+    if to_status not in ACTIVITY_TRANSITIONS.get(activity.status, []):
+        raise ValidationError({"to_status": "Illegal transition."})
+    from_status = activity.status
+    with transaction.atomic():
+        activity.status = to_status
+        if to_status == ActivityStatus.active:
+            activity.version = bump_minor(activity.version)
+            activity.activated_by = user
+            activity.activated_at = timezone.now()
+        activity.save()
+        ActivityHistory.objects.create(
+            activity=activity, from_status=from_status,
+            to_status=to_status, user=user, note=note)
+    return activity

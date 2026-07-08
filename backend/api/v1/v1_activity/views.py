@@ -1,9 +1,18 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import get_object_or_404
+from rest_framework import serializers as drf_serializers
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    inline_serializer,
+)
 
+from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import ActivityStatus, ActivitySector
 from api.v1.v1_activity.permissions import CanManageActivity
@@ -12,6 +21,7 @@ from api.v1.v1_activity.serializers import (
     ActivityDetailSerializer,
     ActivityWriteSerializer,
 )
+from api.v1.v1_activity import services
 from utils.custom_pagination import Pagination
 
 
@@ -69,3 +79,23 @@ class ResponseActivityViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.delete()  # soft delete
+
+
+class ActivityTransitionAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="Activate or archive an activity (admin only)",
+        request=inline_serializer(
+            "ActivityTransitionRequest",
+            fields={"to_status": drf_serializers.IntegerField()}),
+        responses={200: ActivityDetailSerializer},
+    )
+    def post(self, request, version, pk):
+        if request.user.role != UserRoleTypes.admin:
+            raise PermissionDenied("Only NDRMA (admin) can change lifecycle.")
+        activity = get_object_or_404(ResponseActivity, pk=pk)
+        to_status = request.data.get("to_status")
+        activity = services.apply_transition(activity, to_status, request.user)
+        return Response(ActivityDetailSerializer(activity).data)
