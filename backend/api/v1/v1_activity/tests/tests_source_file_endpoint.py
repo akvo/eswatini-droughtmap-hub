@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_activity.models import ResponseActivity
-from api.v1.v1_activity.constants import ActivitySector
+from api.v1.v1_activity.constants import ActivityStatus, ActivitySector
 from utils import storage
 
 
@@ -62,3 +62,11 @@ class SourceFileTestCase(APITestCase):
         resp = self.client.post(
             self._url(), {"source_file": bad}, format="multipart")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_replace_blocked_when_active(self):
+        self.client.force_authenticate(self.admin)
+        self.activity.status = ActivityStatus.active
+        self.activity.save()
+        resp = self.client.post(
+            self._url(), {"source_file": _png_upload()}, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)

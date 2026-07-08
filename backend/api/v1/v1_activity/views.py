@@ -148,11 +148,12 @@ class ActivitySourceFileAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def _can_write(self, user, activity):
+        if activity.status != ActivityStatus.draft:
+            return False
         if user.role == UserRoleTypes.admin:
             return True
         return (user.role == UserRoleTypes.reviewer
-                and lead_sector(user) == activity.sector
-                and activity.status == ActivityStatus.draft)
+                and lead_sector(user) == activity.sector)
 
     @extend_schema(
         tags=["Activity"],
