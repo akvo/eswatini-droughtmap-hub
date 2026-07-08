@@ -49,6 +49,7 @@ API_APPS = [
     "api.v1.v1_users",
     "api.v1.v1_publication",
     "api.v1.v1_rundeck",
+    "api.v1.v1_iks",
 ]
 
 # Add third party apps below
@@ -184,9 +185,7 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "AUTH_TOKEN_CLASSES": (
-        "rest_framework_simplejwt.tokens.AccessToken",
-    ),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
 Q_CLUSTER = {
@@ -210,7 +209,11 @@ AUTH_USER_MODEL = "v1_users.SystemUser"
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = environ.get("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = environ.get("EMAIL_PORT", 587)
-EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_TLS = environ.get("EMAIL_USE_TLS", "True").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 EMAIL_HOST_USER = environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_FROM = environ.get("EMAIL_FROM", "noreply@akvo.org")
@@ -223,3 +226,7 @@ CSRF_TRUSTED_ORIGINS = environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
 
 # STORAGE CONFIG
 STORAGE_PATH = environ.get("STORAGE_PATH", "./storage")
+
+# IKS CONFIG
+X_API_KEY_HEADER = "HTTP_X_API_KEY"
+X_API_KEY = environ.get("X_API_KEY", "default-secret-key")
