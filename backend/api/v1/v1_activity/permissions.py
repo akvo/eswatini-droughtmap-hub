@@ -4,11 +4,6 @@ from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_activity.constants import ActivityStatus
 
 
-def lead_sector(user):
-    """The sector a reviewer leads, or None."""
-    return getattr(user, "activity_sector", None)
-
-
 class CanManageActivity(BasePermission):
     """
     Read: any authenticated user (no anonymous access).
@@ -36,7 +31,7 @@ class CanManageActivity(BasePermission):
             return True
         # Reviewer acting as sector lead: own-sector drafts, edits only.
         if (user.role == UserRoleTypes.reviewer
-                and lead_sector(user) == obj.sector
+                and user.activity_sector == obj.sector
                 and obj.status == ActivityStatus.draft
                 and request.method in ("PUT", "PATCH")):
             return True

@@ -70,15 +70,6 @@ class TriggerOperator:
 # water = litres water demand; cattle = amount of cattle.
 EXPOSURE_INDICATORS = ["population", "cropland", "water", "cattle"]
 
-# Valid drought-class gate values: D0..D4 only (never normal/none).
-VALID_DCLASS = {
-    DroughtCategory.d0,
-    DroughtCategory.d1,
-    DroughtCategory.d2,
-    DroughtCategory.d3,
-    DroughtCategory.d4,
-}
-
 # class int -> wizard segment label, for trigger_summary.
 DCLASS_SEGMENT = {
     DroughtCategory.d0: "D0",
@@ -87,6 +78,9 @@ DCLASS_SEGMENT = {
     DroughtCategory.d3: "D3",
     DroughtCategory.d4: "D4",
 }
+
+# Valid drought-class gate values: D0..D4 only (never normal/none).
+VALID_DCLASS = set(DCLASS_SEGMENT)
 
 # Vulnerability = IPC food-security phase threshold (Phase 1..4).
 VULN_PHASE_MIN, VULN_PHASE_MAX = 1, 4

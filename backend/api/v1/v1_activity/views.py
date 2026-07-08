@@ -18,7 +18,7 @@ from drf_spectacular.utils import (
 from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import ActivityStatus, ActivitySector
-from api.v1.v1_activity.permissions import CanManageActivity, lead_sector
+from api.v1.v1_activity.permissions import CanManageActivity
 from api.v1.v1_activity.serializers import (
     ActivityListSerializer,
     ActivityDetailSerializer,
@@ -53,9 +53,6 @@ class ResponseActivityViewSet(viewsets.ModelViewSet):
         if self.action in ("create", "update", "partial_update"):
             return ActivityWriteSerializer
         return ActivityDetailSerializer
-
-    def get_serializer_context(self):
-        return {**super().get_serializer_context(), "request": self.request}
 
     @extend_schema(
         parameters=[
@@ -153,7 +150,7 @@ class ActivitySourceFileAPI(APIView):
         if user.role == UserRoleTypes.admin:
             return True
         return (user.role == UserRoleTypes.reviewer
-                and lead_sector(user) == activity.sector)
+                and user.activity_sector == activity.sector)
 
     @extend_schema(
         tags=["Activity"],

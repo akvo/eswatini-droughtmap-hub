@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from django.test import TestCase, RequestFactory
-from api.v1.v1_activity.permissions import CanManageActivity, lead_sector
+from api.v1.v1_activity.permissions import CanManageActivity
 from api.v1.v1_activity.constants import ActivityStatus, ActivitySector
 from api.v1.v1_users.constants import UserRoleTypes
 
@@ -14,11 +14,6 @@ class PermissionsTestCase(TestCase):
     def setUp(self):
         self.perm = CanManageActivity()
         self.rf = RequestFactory()
-
-    def test_lead_sector(self):
-        self.assertEqual(
-            lead_sector(_user(UserRoleTypes.reviewer, ActivitySector.wash)),
-            ActivitySector.wash)
 
     def test_anonymous_denied(self):
         request = self.rf.get("/")

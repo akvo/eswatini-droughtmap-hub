@@ -107,16 +107,6 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         fields = ["sector", "title", "description", "triggers", "owner",
                   "coord_with", "response_type", "source_doc", "source_file"]
 
-    def validate_sector(self, value):
-        if value not in ActivitySector.FieldStr:
-            raise serializers.ValidationError("Invalid sector.")
-        return value
-
-    def validate_response_type(self, value):
-        if value is not None and value not in ActivityResponseType.FieldStr:
-            raise serializers.ValidationError("Invalid response type.")
-        return value
-
     def validate_triggers(self, value):
         try:
             validate_triggers(value)
