@@ -8,6 +8,8 @@ __pycache__
 db.dbml
 **/app.env
 **/rundeck.env
-**/realm.properties.agent/
+**/realm.properties
+
+.agent/
 agent_docs/
-.agent
+.vscode

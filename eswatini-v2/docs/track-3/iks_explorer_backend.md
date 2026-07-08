@@ -60,12 +60,14 @@ sequenceDiagram
 ## 2. Requirements
 
 ### User Acceptance Criteria
+
 - [ ] Admins can seed and configure Kobo credentials and forms.
 - [ ] Users can query statistical calculations (total reported, percentage validation, average validation time, form completion) per Inkhundla.
 - [ ] Users can retrieve fiscal year series data for selected indicators and Inkhundla.
 - [ ] External triggers can invoke monthly Kobo data download securely.
 
 ### Technical Acceptance Criteria
+
 - [ ] Base all work on the `develop` branch.
 - [ ] Create a new Django app `api.v1.v1_iks` registered in `API_APPS` inside [settings.py](/backend/eswatini/settings.py).
 - [ ] Support `X_API_KEY_HEADER = "HTTP_X_API_KEY"` validation inside `settings.py` and implement a validation mechanism for the download trigger.
