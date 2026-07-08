@@ -20,6 +20,8 @@ from api.v1.v1_activity.serializers import (
     ActivityListSerializer,
     ActivityDetailSerializer,
     ActivityWriteSerializer,
+    ActivitySignOffSerializer,
+    ActivitySignOffCreateSerializer,
 )
 from api.v1.v1_activity import services
 from utils.custom_pagination import Pagination
@@ -99,3 +101,39 @@ class ActivityTransitionAPI(APIView):
         to_status = request.data.get("to_status")
         activity = services.apply_transition(activity, to_status, request.user)
         return Response(ActivityDetailSerializer(activity).data)
+
+
+class ActivitySignOffAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="Record an offline sign-off (admin only)",
+        request=ActivitySignOffCreateSerializer,
+        responses={201: ActivitySignOffSerializer},
+    )
+    def post(self, request, version, pk):
+        if request.user.role != UserRoleTypes.admin:
+            raise PermissionDenied("Only NDRMA (admin) can record sign-offs.")
+        activity = get_object_or_404(ResponseActivity, pk=pk)
+        serializer = ActivitySignOffCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        signoff = serializer.save(activity=activity, recorded_by=request.user)
+        return Response(
+            ActivitySignOffSerializer(signoff).data,
+            status=status.HTTP_201_CREATED)
+
+
+class ActivitySignOffListAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="List offline sign-offs (verification panel)",
+        responses={200: ActivitySignOffSerializer(many=True)},
+    )
+    def get(self, request, version, pk):
+        activity = get_object_or_404(ResponseActivity, pk=pk)
+        return Response(
+            ActivitySignOffSerializer(
+                activity.signoffs.all(), many=True).data)
