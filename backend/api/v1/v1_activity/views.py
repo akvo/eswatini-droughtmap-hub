@@ -344,6 +344,6 @@ class RecommendedActionsAPI(APIView):
             "drought_category": category,
             "drought_category_label": DroughtCategory.FieldStr.get(
                 category),
-            "evaluated": activities.count(),
+            "evaluated": len(activities),
             "recommended": recommended,
         })

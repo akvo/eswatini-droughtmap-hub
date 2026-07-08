@@ -82,3 +82,11 @@ class BuildDatasetTestCase(TestCase):
             status=PublicationStatus.published, published_at=timezone.now())
         ds = build_dataset()
         self.assertIsNone(ds[101]["category"])
+
+    def test_name_join_is_normalized(self):
+        # An administration whose name differs only by case/whitespace from
+        # the CSV must still pick up its exposures.
+        Administration.objects.create(
+            id=201, name="  nkwene  ", region="Shiselweni")
+        ds = build_dataset()
+        self.assertEqual(ds[201]["population"], 8956)   # Nkwene's pop

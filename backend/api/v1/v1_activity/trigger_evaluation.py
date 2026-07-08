@@ -104,6 +104,12 @@ _CSV_FIELDS = {
 }
 
 
+def _norm(name):
+    """Normalize an administration name for the CSV join (tolerate case
+    and surrounding-whitespace drift between the CSV and the DB)."""
+    return (name or "").strip().casefold()
+
+
 def _num(raw):
     """Parse a CSV numeric cell; blank/garbage -> None."""
     if raw is None or raw == "":
@@ -137,7 +143,7 @@ def _read_priority_areas():
     rows = {}
     with open(_PRIORITY_CSV, newline="") as handle:
         for record in csv.DictReader(handle):
-            rows[record["name"]] = {
+            rows[_norm(record["name"])] = {
                 key: _num(record.get(column))
                 for column, key in _CSV_FIELDS.items()
             }
@@ -160,7 +166,7 @@ def build_dataset():
             "ipc_phase": None,    # UNAVAILABLE
             "months_active": None,
         }
-        matched = exposures.get(adm.name)
+        matched = exposures.get(_norm(adm.name))
         if matched is not None:
             row.update(matched)
         else:
