@@ -95,7 +95,7 @@ class KoboAdapter(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "kobo_adapter"
+        db_table = "kobo_adapters"
 
 class KoboForm(models.Model):
     uuid = models.CharField(max_length=100, unique=True)
@@ -108,7 +108,7 @@ class KoboForm(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "kobo_form"
+        db_table = "kobo_forms"
 
 class KoboData(models.Model):
     form = models.ForeignKey(KoboForm, on_delete=models.CASCADE, related_name="data")
@@ -131,18 +131,18 @@ class IKSIndicator(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "iks_indicator"
+        db_table = "iks_indicators"
 
 class IKSValue(models.Model):
     kobo_id = models.BigIntegerField()
     administration = models.ForeignKey(Administration, on_delete=models.CASCADE, related_name="iks_values")
     iks_indicator = models.ForeignKey(IKSIndicator, on_delete=models.CASCADE, related_name="values")
-    value = models.CharField(max_length=255)  # Raw value or mapping
+    value = models.CharField(max_length=255)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "iks_value"
+        db_table = "iks_values"
 ```
 
 ---

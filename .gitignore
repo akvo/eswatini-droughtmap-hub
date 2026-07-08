@@ -13,3 +13,4 @@ db.dbml
 .agent/
 agent_docs/
 .vscode
+task.md
