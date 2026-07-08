@@ -72,3 +72,15 @@ class ActivityCrudTestCase(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(ResponseActivity.objects.count(), 0)
         self.assertEqual(ResponseActivity.objects_with_deleted.count(), 1)
+
+    def test_sector_immutable_on_update(self):
+        self.client.force_authenticate(self.admin)
+        activity = ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash)
+        resp = self.client.patch(
+            self._detail(activity.pk),
+            {"sector": ActivitySector.food}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        activity.refresh_from_db()
+        self.assertEqual(activity.sector, ActivitySector.wash)
+        self.assertEqual(activity.code, "ACT-WASH-1")

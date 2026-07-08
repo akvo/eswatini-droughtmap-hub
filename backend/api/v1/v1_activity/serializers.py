@@ -172,6 +172,9 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         request = self.context["request"]
         upload = validated_data.pop("source_file", None)
+        # `code` encodes the sector at creation, so sector is immutable
+        # once the activity exists — ignore any attempt to change it.
+        validated_data.pop("sector", None)
         for field, value in validated_data.items():
             setattr(instance, field, value)
         if upload:
