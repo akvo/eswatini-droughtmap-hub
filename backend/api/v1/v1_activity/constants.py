@@ -64,7 +64,8 @@ class TriggerOperator:
     FieldStr = {gte: ">=", lte: "<="}
 
 
-# Exposure indicators the wizard authors. Constrains triggers["exp"][*]["indicator"].
+# Exposure indicators the wizard authors.
+# Constrains triggers["exp"][*]["indicator"].
 # population = people exposed; cropland = ha rain-fed cropland;
 # water = litres water demand; cattle = amount of cattle.
 EXPOSURE_INDICATORS = ["population", "cropland", "water", "cattle"]

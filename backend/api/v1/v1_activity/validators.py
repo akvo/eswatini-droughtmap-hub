@@ -16,7 +16,8 @@ def _is_number(x):
 
 
 def _validate_op(op):
-    if op not in _OPERATORS:
+    if (not isinstance(op, int) or isinstance(op, bool)
+            or op not in _OPERATORS):
         raise ValidationError(f"Invalid trigger operator: {op!r}.")
 
 
@@ -36,10 +37,16 @@ def validate_triggers(value):
         if not isinstance(dclass, dict) or set(dclass) - {"class", "months"}:
             raise ValidationError("dclass must be an object {class, months}.")
         cls = dclass.get("class")
-        if cls is not None and cls not in VALID_DCLASS:
-            raise ValidationError("dclass.class must be one of D0..D4 (1..5) or null.")
+        if cls is not None and (
+            not isinstance(cls, int) or isinstance(cls, bool)
+            or cls not in VALID_DCLASS
+        ):
+            raise ValidationError(
+                "dclass.class must be one of D0..D4 (1..5) or null."
+            )
         months = dclass.get("months", 1)
-        if not isinstance(months, int) or isinstance(months, bool) or months < 1:
+        if (not isinstance(months, int) or isinstance(months, bool)
+                or months < 1):
             raise ValidationError("dclass.months must be an integer >= 1.")
 
     vuln = value.get("vuln")
@@ -48,15 +55,19 @@ def validate_triggers(value):
             raise ValidationError("vuln must be an object {op, value}.")
         _validate_op(vuln.get("op"))
         phase = vuln.get("value")
-        if phase not in range(VULN_PHASE_MIN, VULN_PHASE_MAX + 1):
+        if (not isinstance(phase, int) or isinstance(phase, bool)
+                or phase not in range(VULN_PHASE_MIN, VULN_PHASE_MAX + 1)):
             raise ValidationError("vuln.value must be an IPC phase 1..4.")
 
     exp = value.get("exp", [])
     if not isinstance(exp, list):
         raise ValidationError("exp must be a list of conditions.")
     for cond in exp:
-        if not isinstance(cond, dict) or set(cond) - {"indicator", "op", "value"}:
-            raise ValidationError("Each exp condition must be {indicator, op, value}.")
+        if (not isinstance(cond, dict)
+                or set(cond) - {"indicator", "op", "value"}):
+            raise ValidationError(
+                "Each exp condition must be {indicator, op, value}."
+            )
         if cond.get("indicator") not in EXPOSURE_INDICATORS:
             raise ValidationError(
                 f"exp.indicator must be one of {EXPOSURE_INDICATORS}."

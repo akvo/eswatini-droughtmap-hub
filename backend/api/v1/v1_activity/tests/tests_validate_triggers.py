@@ -33,12 +33,32 @@ class ValidateTriggersTestCase(SimpleTestCase):
 
     def test_exp_unknown_indicator_rejected(self):
         with self.assertRaises(ValidationError):
-            validate_triggers({"exp": [{"indicator": "gdp", "op": 1, "value": 1}]})
+            validate_triggers(
+                {"exp": [{"indicator": "gdp", "op": 1, "value": 1}]}
+            )
 
     def test_exp_must_be_list(self):
         with self.assertRaises(ValidationError):
-            validate_triggers({"exp": {"indicator": "population", "op": 1, "value": 1}})
+            validate_triggers({
+                "exp": {"indicator": "population", "op": 1, "value": 1}
+            })
 
     def test_other_must_be_string_or_null(self):
         with self.assertRaises(ValidationError):
             validate_triggers({"other": 5})
+
+    def test_dclass_class_bool_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_triggers({"dclass": {"class": True, "months": 1}})
+
+    def test_dclass_class_float_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_triggers({"dclass": {"class": 3.0, "months": 1}})
+
+    def test_vuln_op_bool_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_triggers({"vuln": {"op": True, "value": 2}})
+
+    def test_vuln_value_bool_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_triggers({"vuln": {"op": 1, "value": True}})
