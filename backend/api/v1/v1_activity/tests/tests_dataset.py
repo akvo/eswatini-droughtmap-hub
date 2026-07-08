@@ -70,3 +70,15 @@ class BuildDatasetTestCase(TestCase):
     def test_no_publication_leaves_category_none(self):
         ds = build_dataset()
         self.assertIsNone(ds[101]["category"])
+
+    def test_empty_validated_values_does_not_fall_back(self):
+        # A publication validated to zero entries must NOT revert to
+        # initial_values; its resolved categories are simply empty.
+        Publication.objects.create(
+            year_month="2025-04-01", cdi_geonode_id=3, due_date="2025-05-01",
+            initial_values=[
+                {"administration_id": 101, "category": DroughtCategory.d4}],
+            validated_values=[],
+            status=PublicationStatus.published, published_at=timezone.now())
+        ds = build_dataset()
+        self.assertIsNone(ds[101]["category"])

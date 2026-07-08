@@ -124,7 +124,10 @@ def _latest_published_categories():
     ).order_by("-year_month", "-id").first()
     if not pub:
         return {}
-    values = pub.validated_values or pub.initial_values or []
+    if pub.validated_values is not None:
+        values = pub.validated_values
+    else:
+        values = pub.initial_values or []
     return {v["administration_id"]: v.get("category") for v in values}
 
 
