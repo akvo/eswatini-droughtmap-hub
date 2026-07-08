@@ -12,6 +12,7 @@ from api.v1.v1_activity.constants import (
     DCLASS_SEGMENT,
     ACTIVITY_TRANSITIONS,
 )
+from api.v1.v1_publication.models import Administration
 
 _VERSION_RE = re.compile(r"^v(\d+)\.(\d+)$")
 
@@ -85,3 +86,26 @@ def apply_transition(activity, to_status, user, note=None):
             activity=activity, from_status=from_status,
             to_status=to_status, user=user, note=note)
     return activity
+
+
+def preview_trigger(triggers):
+    """
+    MOCKED: how many Tinkhundla the draft trigger would currently fire for.
+    `total` is the authoritative Inkhundla count from the Administration table
+    (falls back to 59 before administrations are seeded). `matched` is a
+    deterministic placeholder derived from the trigger's specificity.
+
+    TODO(SOP-2): replace with the shared evaluate_trigger(triggers, dataset)
+    against real PA-2 / Administration per-Inkhundla data, and drop `mock`.
+    """
+    total = Administration.objects.count() or 59
+    conditions = 0
+    if triggers:
+        if (triggers.get("dclass") or {}).get("class"):
+            conditions += 1
+        if triggers.get("vuln"):
+            conditions += 1
+        conditions += len(triggers.get("exp") or [])
+    # More conditions -> fewer matches. Purely illustrative until SOP-2 lands.
+    matched = max(0, total - conditions * 8)
+    return {"matched": matched, "total": total, "mock": True}

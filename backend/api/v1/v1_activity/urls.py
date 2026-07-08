@@ -5,9 +5,15 @@ from api.v1.v1_activity.views import (
     ActivitySignOffAPI,
     ActivitySignOffListAPI,
     ActivitySourceFileAPI,
+    ActivityTriggerPreviewAPI,
 )
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/activities/trigger-preview$",
+        ActivityTriggerPreviewAPI.as_view(),
+        name="activity-trigger-preview",
+    ),
     re_path(
         r"^(?P<version>(v1))/activities$",
         ResponseActivityViewSet.as_view({"get": "list", "post": "create"}),

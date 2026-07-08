@@ -25,6 +25,7 @@ from api.v1.v1_activity.serializers import (
     ActivityWriteSerializer,
     ActivitySignOffSerializer,
     ActivitySignOffCreateSerializer,
+    TriggerPreviewSerializer,
 )
 from api.v1.v1_activity import services
 from api.v1.v1_activity import files
@@ -187,3 +188,25 @@ class ActivitySourceFileAPI(APIView):
         activity.source_file = files.save_source_file(upload, activity.code)
         activity.save(update_fields=["source_file"])
         return Response(ActivityDetailSerializer(activity).data)
+
+
+class ActivityTriggerPreviewAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="Preview how many Tinkhundla a draft trigger would fire for",
+        request=TriggerPreviewSerializer,
+        responses={200: inline_serializer(
+            "TriggerPreviewResponse",
+            fields={
+                "matched": drf_serializers.IntegerField(),
+                "total": drf_serializers.IntegerField(),
+                "mock": drf_serializers.BooleanField(),
+            })},
+    )
+    def post(self, request, version):
+        serializer = TriggerPreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            services.preview_trigger(serializer.validated_data["triggers"]))
