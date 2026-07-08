@@ -84,3 +84,20 @@ VALID_DCLASS = set(DCLASS_SEGMENT)
 
 # Vulnerability = IPC food-security phase threshold (Phase 1..4).
 VULN_PHASE_MIN, VULN_PHASE_MAX = 1, 4
+
+
+# --- Trigger evaluation (SOP-2) -----------------------------------------
+# exp[].indicator -> dataset row key. Unknown indicator -> condition fails.
+INDICATOR_FIELDS = {
+    "population": "population",
+    "cropland": "cropland",
+    "cattle": "cattle",
+    "water": "water",
+}
+
+# Dimensions with no honest per-administration source yet. Conditions on
+# these are treated as satisfied (never block firing) and reported in
+# `matched_on` with source "unavailable". Removed once PA-2 lands.
+# TODO(PA-2): supply water (litres), a true IPC phase (1..4), and drought
+# duration history for months, then drop this set.
+UNAVAILABLE = {"months", "ipc_phase", "water"}
