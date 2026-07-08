@@ -200,7 +200,6 @@ class ActivityTriggerPreviewAPI(APIView):
             fields={
                 "matched": drf_serializers.IntegerField(),
                 "total": drf_serializers.IntegerField(),
-                "mock": drf_serializers.BooleanField(),
             })},
     )
     def post(self, request, version):
