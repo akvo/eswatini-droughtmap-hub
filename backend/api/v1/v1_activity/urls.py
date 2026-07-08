@@ -4,6 +4,7 @@ from api.v1.v1_activity.views import (
     ActivityTransitionAPI,
     ActivitySignOffAPI,
     ActivitySignOffListAPI,
+    ActivitySourceFileAPI,
 )
 
 urlpatterns = [
@@ -36,5 +37,10 @@ urlpatterns = [
         r"^(?P<version>(v1))/activity/(?P<pk>[0-9]+)/signoff$",
         ActivitySignOffAPI.as_view(),
         name="activity-signoff",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/activity/(?P<pk>[0-9]+)/source-file$",
+        ActivitySourceFileAPI.as_view(),
+        name="activity-source-file",
     ),
 ]

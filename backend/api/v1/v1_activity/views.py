@@ -1,3 +1,6 @@
+import os
+
+from django.http import FileResponse, Http404
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +18,7 @@ from drf_spectacular.utils import (
 from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import ActivityStatus, ActivitySector
-from api.v1.v1_activity.permissions import CanManageActivity
+from api.v1.v1_activity.permissions import CanManageActivity, lead_sector
 from api.v1.v1_activity.serializers import (
     ActivityListSerializer,
     ActivityDetailSerializer,
@@ -24,6 +27,7 @@ from api.v1.v1_activity.serializers import (
     ActivitySignOffCreateSerializer,
 )
 from api.v1.v1_activity import services
+from api.v1.v1_activity import files
 from utils.custom_pagination import Pagination
 
 
@@ -137,3 +141,49 @@ class ActivitySignOffListAPI(APIView):
         return Response(
             ActivitySignOffSerializer(
                 activity.signoffs.all(), many=True).data)
+
+
+class ActivitySourceFileAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _can_write(self, user, activity):
+        if user.role == UserRoleTypes.admin:
+            return True
+        return (user.role == UserRoleTypes.reviewer
+                and lead_sector(user) == activity.sector
+                and activity.status == ActivityStatus.draft)
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="Download the attached source file",
+        responses={200: OpenApiTypes.BINARY},
+    )
+    def get(self, request, version, pk):
+        from utils import storage
+        activity = get_object_or_404(ResponseActivity, pk=pk)
+        if not activity.source_file or not storage.check(activity.source_file):
+            raise Http404("No source file.")
+        path = storage.download(activity.source_file)
+        return FileResponse(
+            open(path, "rb"),
+            as_attachment=True,
+            filename=os.path.basename(activity.source_file))
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="Replace the attached source file (admin or own-sector lead)",
+        request=ActivityWriteSerializer,
+        responses={200: ActivityDetailSerializer},
+    )
+    def post(self, request, version, pk):
+        activity = get_object_or_404(ResponseActivity, pk=pk)
+        if not self._can_write(request.user, activity):
+            raise PermissionDenied("Not allowed to change this file.")
+        upload = request.data.get("source_file")
+        if not upload:
+            raise drf_serializers.ValidationError(
+                {"source_file": "No file submitted."})
+        files.validate_source_file(upload)
+        activity.source_file = files.save_source_file(upload, activity.code)
+        activity.save(update_fields=["source_file"])
+        return Response(ActivityDetailSerializer(activity).data)
