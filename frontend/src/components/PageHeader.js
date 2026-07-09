@@ -1,3 +1,5 @@
+import classNames from "classnames";
+
 const CalendarIcon = () => (
   <svg
     width="16"
@@ -28,34 +30,50 @@ const PageHeader = ({
   description = "",
   date = null,
   actions = null,
+  className = "",
 }) => {
   return (
-    <div className="flex flex-col gap-6 w-full">
-      {date && (
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-sm text-[#606060]">
-            <CalendarIcon />
-            Last updated
-          </span>
-          <span className="border border-[#d2d2d2] rounded px-2 py-0.5 text-sm text-[#333333]">
-            {date}
-          </span>
-        </div>
+    <section
+      className={classNames(
+        "relative -mx-4 -mt-3 overflow-hidden bg-white px-4 pb-24 pt-16 sm:-mx-8 sm:px-8 md:-mx-12 md:px-12 xl:-mx-16 xl:px-16",
+        className,
       )}
-      <div className="flex items-start gap-4 w-full">
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <h1 className="text-[34px] leading-10 font-bold text-[#333333]">
-            {title}
-          </h1>
-          {description && (
-            <p className="text-base leading-6 text-[#606060]">{description}</p>
+    >
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-dhi-pattern bg-cover bg-center opacity-10 pointer-events-none"
+      />
+      <header className="relative mx-auto flex w-full max-w-[1280px] flex-col gap-6">
+        {date && (
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-sm leading-[21px] text-[#606060]">
+              <CalendarIcon />
+              Last updated
+            </span>
+            <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-sm leading-[21px] text-[#333333]">
+              {date}
+            </span>
+          </div>
+        )}
+        <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <h1 className="text-[34px] font-bold leading-10 text-[#333333]">
+              {title}
+            </h1>
+            {description && (
+              <p className="text-base leading-6 text-[#606060]">
+                {description}
+              </p>
+            )}
+          </div>
+          {actions && (
+            <div className="flex h-11 shrink-0 items-center gap-3">
+              {actions}
+            </div>
           )}
         </div>
-        {actions && (
-          <div className="flex items-center gap-3 shrink-0">{actions}</div>
-        )}
-      </div>
-    </div>
+      </header>
+    </section>
   );
 };
 
