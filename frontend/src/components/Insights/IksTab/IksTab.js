@@ -1,26 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Spin,
-  Empty,
-  Result,
-  Card,
-  Row,
-  Col,
-  Select,
-  Button,
-  Collapse,
-  Tag,
-} from "antd";
+import Image from "next/image";
+import { Spin, Result, Row, Col, Collapse, Button, Tag } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
-import { REGION_COLOR, IKS_INDICATOR_CATALOGUE } from "@/static/config";
 
-const { Option } = Select;
 const { Panel } = Collapse;
 
-// Mock Terrains for Carousel
+// Mock Photos for Carousel
 const SAMPLE_PHOTOS = [
   {
     title: "Patchy recovery after recent rain",
@@ -39,12 +27,151 @@ const SAMPLE_PHOTOS = [
   },
 ];
 
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+// Configuration for Rainfall and Seasonal predictors Collapse items (DRY principle)
+const RAINFALL_PREDICTORS = [
+  {
+    key: "b-birds",
+    header: "Birds (Tinyoni)",
+    content:
+      "Details and indicators on regional bird presence patterns during rainfall prediction seasons.",
+  },
+  {
+    key: "b-insects",
+    header: "Insects & animals",
+    content:
+      "Insect singing and animal behavior cycles during rain predictors.",
+  },
+  {
+    key: "b-plants",
+    header: "Plants & fruits",
+    content: "Fruiting and flowering cycles predicting rainfall levels.",
+  },
+  {
+    key: "b-sky",
+    header: "Atmosphere & sky",
+    content: "Wind directions, cloud structures, and atmospheric patterns.",
+  },
+];
+
+const SEASONAL_PREDICTORS = [
+  {
+    key: "c-animals",
+    header: "Animals",
+    content: "Behavioral signs of extreme weather and drought.",
+  },
+  {
+    key: "c-birds",
+    header: "Birds (Tinyoni)",
+    content: "Migration and call patterns predicting extreme weather.",
+  },
+];
+
+/**
+ * Sub-component for individual KPI metric panel (Clean Code/DRY)
+ */
+const KpiMetricCard = ({ title, value, subtitle }) => (
+  <div className="p-4 bg-white">
+    <span className="text-[10px] text-neutral-400 font-bold block uppercase tracking-wider">
+      {title}
+    </span>
+    <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
+      {value}
+    </span>
+    <span className="text-xs text-neutral-400 block mt-1">{subtitle}</span>
+  </div>
+);
+
+/**
+ * Reusable Monthly Status Grids component (Clean Code/DRY)
+ */
+const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend }) => (
+  <div className="p-4">
+    <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
+    <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
+    <div className="grid grid-cols-12 gap-0">
+      {MONTHS.map((m, idx) => {
+        const state = statesMap(idx);
+        let colorClass = "bg-neutral-200 text-neutral-500";
+        if (state === "W" || state === "G")
+          colorClass = "bg-emerald-500 text-white";
+        else if (state === "D" || state === "B")
+          colorClass = "bg-red-600 text-white";
+        else if (state === "S") colorClass = "bg-amber-400 text-white";
+
+        return (
+          <div
+            key={m}
+            className="flex flex-col items-center justify-center text-center"
+          >
+            <div
+              className={`w-8 h-8 p-2 rounded-sm text-center font-bold text-xs ${colorClass}`}
+            >
+              <span>{state}</span>
+            </div>
+            <span className="text-[9px] font-normal block uppercase opacity-85 mt-1">
+              {m}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+    <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
+      <span className="flex items-center gap-1">
+        <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
+        No submission
+      </span>
+      {legend.map((item, idx) => (
+        <span key={idx} className="flex items-center gap-1">
+          <span
+            className={`w-2.5 h-2.5 ${item.color} block rounded-full`}
+          ></span>{" "}
+          {item.label}
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
+/**
+ * Reusable Predictor Collapse component (Clean Code/DRY)
+ */
+const PredictorAccordion = ({ title, subtitle, items }) => (
+  <div>
+    <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
+    <p className="text-xs text-neutral-400 mb-2">{subtitle}</p>
+    <Collapse ghost className="border border-neutral-100 rounded-lg">
+      {items.map((item) => (
+        <Panel
+          header={item.header}
+          key={item.key}
+          className="font-semibold text-neutral-700 bg-neutral-50"
+        >
+          <p className="text-xs text-neutral-500 font-normal">{item.content}</p>
+        </Panel>
+      ))}
+    </Collapse>
+  </div>
+);
+
 const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [constituencies, setConstituencies] = useState([]);
   const [regionMap, setRegionMap] = useState({});
-
   const [data, setData] = useState({
     netSignal: null,
     soilTrend: null,
@@ -56,37 +183,11 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         setLoading(true);
         setError(null);
 
-        // Fetch primary datasets using the API wrapper
-        const [netSignal, soilTrend, indicators] = await Promise.all([
+        const [netSignal, soilTrend] = await Promise.all([
           api("GET", "/iks/aggregations/net-signal"),
           api("GET", "/iks/aggregations/soil-trend"),
-          api("GET", "/iks/indicators"),
         ]);
 
-        // Dynamically get the list of constituencies and region map from raw prototype data
-        // since we read directly from iks_data.json inside api.js, we can also query the main lists
-        const rawIndicators = indicators || [];
-
-        // We will default constituencies list of Eswatini
-        const eswatiniConstituencies = [
-          "Hhukwini",
-          "Lobamba",
-          "Madlangempisi",
-          "Maphalaleni",
-          "Mayiwane",
-          "Mbabane East",
-          "Mbabane West",
-          "Mhlangatane",
-          "Motshane",
-          "Ndzingeni",
-          "Nkhaba",
-          "Ntfonjeni",
-          "Piggs Peak",
-        ];
-
-        setConstituencies(eswatiniConstituencies);
-
-        // Map region names
         setRegionMap({
           Mhlangatane: "Hhohho",
           Hhukwini: "Hhohho",
@@ -94,10 +195,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
           Motshane: "Hhohho",
         });
 
-        setData({
-          netSignal,
-          soilTrend,
-        });
+        setData({ netSignal, soilTrend });
       } catch (err) {
         console.error("Failed to load IKS data:", err);
         setError(err.message || "An error occurred while fetching IKS data.");
@@ -131,15 +229,14 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     );
   }
 
-  const { netSignal, soilTrend } = data;
   const region = regionMap[selectedInkhundla] || "Hhohho";
 
   // Derive metrics deterministically based on selected name for premium visuals
   const selectedIdx = selectedInkhundla.charCodeAt(0) || 0;
-  const consistency = 90 + (selectedIdx % 11); // 90% - 100%
-  const validationRate = 85 + (selectedIdx % 15); // 85% - 100%
-  const validationTime = (1.0 + (selectedIdx % 9) * 0.2).toFixed(1); // 1.0 - 2.6 days
-  const completionRate = 80 + (selectedIdx % 19); // 80% - 99%
+  const consistency = 90 + (selectedIdx % 11);
+  const validationRate = 85 + (selectedIdx % 15);
+  const validationTime = (1.0 + (selectedIdx % 9) * 0.2).toFixed(1);
+  const completionRate = 80 + (selectedIdx % 19);
   const droughtLevel =
     selectedIdx % 3 === 0 ? "D3" : selectedIdx % 3 === 1 ? "D2" : "D1";
   const droughtBadgeColor =
@@ -149,7 +246,6 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         ? "#ffaa00"
         : "#fbd47f";
 
-  // 1. Indicator activity chart configuration (Rain-leaning vs Drought-leaning)
   const activityOptions = {
     tooltip: {
       trigger: "axis",
@@ -160,34 +256,22 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     },
     legend: {
       data: ["Rain-leaning", "Drought-leaning"],
-      bottom: 0,
-      icon: "roundRect",
-      textStyle: { color: "#6b7280" },
+      left: 0,
+      top: 0,
+      icon: "rect",
+      textStyle: { color: "#6b7280", fontWeight: "bold" },
     },
     grid: {
-      top: "8%",
+      top: 55,
       left: "3%",
       right: "4%",
-      bottom: "12%",
+      bottom: "10%",
       containLabel: true,
     },
     xAxis: {
       type: "category",
       boundaryGap: false,
-      data: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
+      data: MONTHS,
       axisLine: { lineStyle: { color: "#e5e7eb" } },
       axisLabel: { color: "#6b7280" },
     },
@@ -220,29 +304,11 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     ],
   };
 
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-
   return (
-    <div className="space-y-6 bg-neutral-50 p-6 rounded-xl">
-
-
-      {/* Main Details Panel */}
-      <div className="bg-white p-6 rounded-lg border border-neutral-100 shadow-sm space-y-6">
+    <div className="space-y-6 w-full">
+      <div className="bg-white">
         {/* Inkhundla Header */}
-        <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+        <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-6">
           <div>
             <h2 className="text-2xl font-bold text-neutral-800">
               {selectedInkhundla} Inkhundla
@@ -260,64 +326,32 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
           </Tag>
         </div>
 
-        {/* 4 KPI Cards Grid */}
-        <Row gutter={[16, 16]}>
-          <Col xs={12} sm={12} md={6}>
-            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-100">
-              <span className="text-xs text-neutral-400 font-semibold block uppercase tracking-wider">
-                Reporting consistency
-              </span>
-              <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
-                {consistency}%
-              </span>
-              <span className="text-xs text-neutral-400 block mt-1">
-                12 / 12 months reported
-              </span>
-            </div>
-          </Col>
-          <Col xs={12} sm={12} md={6}>
-            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-100">
-              <span className="text-xs text-neutral-400 font-semibold block uppercase tracking-wider">
-                Validation rate
-              </span>
-              <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
-                {validationRate}%
-              </span>
-              <span className="text-xs text-neutral-400 block mt-1">
-                reports validated by TWG
-              </span>
-            </div>
-          </Col>
-          <Col xs={12} sm={12} md={6}>
-            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-100">
-              <span className="text-xs text-neutral-400 font-semibold block uppercase tracking-wider">
-                Avg. validation time
-              </span>
-              <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
-                {validationTime} d
-              </span>
-              <span className="text-xs text-neutral-400 block mt-1">
-                submission / TWG sign-off
-              </span>
-            </div>
-          </Col>
-          <Col xs={12} sm={12} md={6}>
-            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-100">
-              <span className="text-xs text-neutral-400 font-semibold block uppercase tracking-wider">
-                Form completion
-              </span>
-              <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
-                {completionRate}%
-              </span>
-              <span className="text-xs text-neutral-400 block mt-1">
-                Sections B + C + D filled
-              </span>
-            </div>
-          </Col>
-        </Row>
+        {/* 4 KPI metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 bg-white divide-y md:divide-y-0 md:divide-x divide-neutral-100 overflow-hidden shadow-sm">
+          <KpiMetricCard
+            title="Reporting consistency"
+            value={`${consistency}%`}
+            subtitle="12 / 12 months reported"
+          />
+          <KpiMetricCard
+            title="Validation rate"
+            value={`${validationRate}%`}
+            subtitle="reports validated by TWG"
+          />
+          <KpiMetricCard
+            title="Avg. validation time"
+            value={`${validationTime} d`}
+            subtitle="submission / TWG sign-off"
+          />
+          <KpiMetricCard
+            title="Form completion"
+            value={`${completionRate}%`}
+            subtitle="Sections B + C + D filled"
+          />
+        </div>
 
-        {/* Chart Panel */}
-        <div className="border border-neutral-100 p-4 rounded-lg">
+        {/* Line Chart Panel */}
+        <div className="px-4 py-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-bold text-neutral-800">
@@ -332,203 +366,62 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               1 Jun 2023 - 11 Feb 2024
             </span>
           </div>
-          <div className="w-full h-72">
+          <div className="w-full h-80 border-t border-neutral-200 pt-4">
             <Line rawConfig={activityOptions} />
           </div>
         </div>
 
-        {/* Soil & Vegetation grids */}
-        <Row gutter={[16, 16]}>
+        {/* Soil Moisture and Vegetation Grids (DRY) */}
+        <Row>
           <Col xs={24} md={12}>
-            <div className="border border-neutral-100 p-4 rounded-lg">
-              <h4 className="text-sm font-bold text-neutral-800 mb-1">
-                Soil moisture (Womile / Ubutsile / Umanti)
-              </h4>
-              <p className="text-xs text-neutral-400 mb-3">
-                one answer per monthly report
-              </p>
-              <div className="grid grid-cols-6 gap-2">
-                {months.map((m, idx) => {
-                  const state = idx < 3 ? "W" : idx < 9 ? "D" : "-";
-                  const color =
-                    state === "W"
-                      ? "bg-emerald-500 text-white"
-                      : state === "D"
-                        ? "bg-red-600 text-white"
-                        : "bg-neutral-200 text-neutral-500";
-                  return (
-                    <div
-                      key={m}
-                      className={`flex flex-col items-center justify-center p-2 rounded text-center font-bold text-xs ${color}`}
-                    >
-                      <span>{state}</span>
-                      <span className="text-[9px] font-normal block uppercase opacity-85 mt-1">
-                        {m}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
-                  No submission
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-sky-200 block rounded-full"></span>{" "}
-                  W-Wet
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-amber-400 block rounded-full"></span>{" "}
-                  M-Moist
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-red-600 block rounded-full"></span>{" "}
-                  D-Dry
-                </span>
-              </div>
+            <div className="border-t border-b border-r border-neutral-100">
+              <MonthlyStatusGrid
+                title="Soil moisture (Womile / Ubutsile / Umanti)"
+                subtitle="one answer per monthly report"
+                statesMap={(idx) => (idx < 3 ? "W" : idx < 9 ? "D" : "-")}
+                legend={[
+                  { color: "bg-sky-200", label: "W-Wet" },
+                  { color: "bg-amber-400", label: "M-Moist" },
+                  { color: "bg-red-600", label: "D-Dry" },
+                ]}
+              />
             </div>
           </Col>
 
           <Col xs={24} md={12}>
-            <div className="border border-neutral-100 p-4 rounded-lg">
-              <h4 className="text-sm font-bold text-neutral-800 mb-1">
-                D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata /
-                Bushile)
-              </h4>
-              <p className="text-xs text-neutral-400 mb-3">
-                one answer per monthly report
-              </p>
-              <div className="grid grid-cols-6 gap-2">
-                {months.map((m, idx) => {
-                  const state =
-                    idx < 3 ? "G" : idx < 7 ? "S" : idx < 9 ? "B" : "-";
-                  const color =
-                    state === "G"
-                      ? "bg-emerald-500 text-white"
-                      : state === "S"
-                        ? "bg-amber-400 text-white"
-                        : state === "B"
-                          ? "bg-red-600 text-white"
-                          : "bg-neutral-200 text-neutral-500";
-                  return (
-                    <div
-                      key={m}
-                      className={`flex flex-col items-center justify-center p-2 rounded text-center font-bold text-xs ${color}`}
-                    >
-                      <span>{state}</span>
-                      <span className="text-[9px] font-normal block uppercase opacity-85 mt-1">
-                        {m}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
-                  No submission
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-emerald-500 block rounded-full"></span>{" "}
-                  G-Generally green
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-amber-400 block rounded-full"></span>{" "}
-                  S-Some green
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 bg-red-600 block rounded-full"></span>{" "}
-                  B-Brown
-                </span>
-              </div>
+            <div className="border-t border-b border-l border-neutral-100">
+              <MonthlyStatusGrid
+                title="D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
+                subtitle="one answer per monthly report"
+                statesMap={(idx) =>
+                  idx < 3 ? "G" : idx < 7 ? "S" : idx < 9 ? "B" : "-"
+                }
+                legend={[
+                  { color: "bg-emerald-500", label: "G-Generally green" },
+                  { color: "bg-amber-400", label: "S-Some green" },
+                  { color: "bg-red-600", label: "B-Brown" },
+                ]}
+              />
             </div>
           </Col>
         </Row>
 
-        {/* Section Collapse lists */}
-        <div className="space-y-4">
-          <div>
-            <h4 className="text-sm font-bold text-neutral-800 mb-1">
-              Section B: Rainfall predictors (21 indicators)
-            </h4>
-            <p className="text-xs text-neutral-400 mb-2">
-              One strip per indicator · each cell = one monthly report
-            </p>
-            <Collapse ghost className="border border-neutral-100 rounded-lg">
-              <Panel
-                header="Birds (Tinyoni)"
-                key="b-birds"
-                className="font-semibold text-neutral-700 bg-neutral-50"
-              >
-                <p className="text-xs text-neutral-500 font-normal">
-                  Details and indicators on regional bird presence patterns
-                  during rainfall prediction seasons.
-                </p>
-              </Panel>
-              <Panel
-                header="Insects & animals"
-                key="b-insects"
-                className="font-semibold text-neutral-700 bg-neutral-50"
-              >
-                <p className="text-xs text-neutral-500 font-normal">
-                  Insect singing and animal behavior cycles during rain
-                  predictors.
-                </p>
-              </Panel>
-              <Panel
-                header="Plants & fruits"
-                key="b-plants"
-                className="font-semibold text-neutral-700 bg-neutral-50"
-              >
-                <p className="text-xs text-neutral-500 font-normal">
-                  Fruiting and flowering cycles predicting rainfall levels.
-                </p>
-              </Panel>
-              <Panel
-                header="Atmosphere & sky"
-                key="b-sky"
-                className="font-semibold text-neutral-700 bg-neutral-50"
-              >
-                <p className="text-xs text-neutral-500 font-normal">
-                  Wind directions, cloud structures, and atmospheric patterns.
-                </p>
-              </Panel>
-            </Collapse>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-bold text-neutral-800 mb-1">
-              Section C: Seasonal & extreme-weather predictors (8 indicators)
-            </h4>
-            <p className="text-xs text-neutral-400 mb-2">
-              Signs of drought, floods, storms · one strip per indicator
-            </p>
-            <Collapse ghost className="border border-neutral-100 rounded-lg">
-              <Panel
-                header="Animals"
-                key="c-animals"
-                className="font-semibold text-neutral-700 bg-neutral-50"
-              >
-                <p className="text-xs text-neutral-500 font-normal">
-                  Behavioral signs of extreme weather and drought.
-                </p>
-              </Panel>
-              <Panel
-                header="Birds (Tinyoni)"
-                key="c-birds"
-                className="font-semibold text-neutral-700 bg-neutral-50"
-              >
-                <p className="text-xs text-neutral-500 font-normal">
-                  Migration and call patterns predicting extreme weather.
-                </p>
-              </Panel>
-            </Collapse>
-          </div>
+        {/* Dynamic Collapse Lists (DRY) */}
+        <div className="space-y-4 px-4 py-6">
+          <PredictorAccordion
+            title="Section B: Rainfall predictors (21 indicators)"
+            subtitle="One strip per indicator · each cell = one monthly report"
+            items={RAINFALL_PREDICTORS}
+          />
+          <PredictorAccordion
+            title="Section C: Seasonal & extreme-weather predictors (8 indicators)"
+            subtitle="Signs of drought, floods, storms · one strip per indicator"
+            items={SEASONAL_PREDICTORS}
+          />
         </div>
 
-        {/* Photo Carousel */}
-        <div className="border border-neutral-100 p-4 rounded-lg">
+        {/* Photos Grid Carousel */}
+        <div className="border-t border-neutral-100 p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-bold text-neutral-800">
@@ -550,10 +443,13 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
             {SAMPLE_PHOTOS.map((photo, i) => (
               <Col xs={24} sm={8} key={i}>
                 <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
-                  <img
+                  <Image
                     src={photo.url}
                     alt={photo.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    fill
+                    unoptimized
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4">
                     <span className="text-white text-xs font-bold">
