@@ -48,6 +48,7 @@ API_APPS = [
     "api.v1.v1_jobs",
     "api.v1.v1_users",
     "api.v1.v1_publication",
+    "api.v1.v1_activity",
     "api.v1.v1_rundeck",
     "api.v1.v1_iks",
 ]
@@ -177,6 +178,15 @@ SPECTACULAR_SETTINGS = {
     "SORT_OPERATIONS": False,
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key",
+            }
+        }
+    },
 }
 
 # SIMPLE_JWT SETTINGS

@@ -1,4 +1,8 @@
+import json
 import logging
+from datetime import timezone as dt_timezone
+from urllib.parse import quote
+
 import requests
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -72,151 +76,49 @@ class Command(BaseCommand):
         auth = (adapter.username, adapter.password)
 
         sync_count = 0
+        # Track the newest submission actually processed so the next run
+        # only pulls records after it (incremental sync).
+        newest = adapter.last_sync_timestamp
         for form in forms:
-            url = f"{adapter.server_url.rstrip('/')}/api/v2/assets"
-            url += f"/{form.uuid}/data/?format=json"
-            try:
-                response = requests.get(
-                    url, auth=auth, headers=headers, timeout=30
-                )
-                if response.status_code != 200:
+            url = self._build_data_url(adapter, form)
+
+            # Kobo paginates at 100 records per page; follow the "next"
+            # link until it is null. Pages are processed and dropped as we
+            # go so memory stays flat regardless of total submission count.
+            while url:
+                try:
+                    response = requests.get(
+                        url, auth=auth, headers=headers, timeout=30
+                    )
+                    if response.status_code != 200:
+                        self.stdout.write(
+                            self.style.ERROR(
+                                f"Kobo API returned status {response.status_code} for form {form.uuid}"  # noqa
+                            )
+                        )
+                        break
+                    data = response.json()
+                except Exception as e:
                     self.stdout.write(
                         self.style.ERROR(
-                            f"Kobo API returned status {response.status_code} for form {form.uuid}"  # noqa
+                            f"Failed to fetch data for form {form.uuid}: {str(e)}"  # noqa
                         )
                     )
-                    continue
-                data = response.json()
-            except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(
-                        f"Failed to fetch data for form {form.uuid}: {str(e)}"
-                    )
-                )
-                continue
+                    break
 
-            results = data.get("results", [])
-            for res in results:
-                kobo_id = res.get("_id")
-                if not kobo_id:
-                    continue
+                for res in data.get("results", []):
+                    sub_time = self._process_submission(form, res, gdf)
+                    if sub_time is None:
+                        continue
+                    sync_count += 1
+                    if newest is None or sub_time > newest:
+                        newest = sub_time
 
-                # Parse geolocation
-                gps_str = res.get("survey_start_gps", "")
-                lat, lon = None, None
-                administration_id = None
-                if gps_str:
-                    try:
-                        parts = gps_str.split()
-                        if len(parts) >= 2:
-                            lat = float(parts[0])
-                            lon = float(parts[1])
-                            # Point in polygon check
-                            point = Point(lon, lat)
-                            matched = gdf[gdf.geometry.contains(point)]
-                            if not matched.empty:
-                                administration_id = matched.iloc[0][
-                                    "administration_id"
-                                ]
-                    except Exception as ex:
-                        logger.error(f"Error parsing GPS {gps_str}: {str(ex)}")
+                url = data.get("next")
 
-                # Get or create KoboData
-                sub_time_str = res.get("_submission_time", "")
-                sub_time = timezone.now()
-                if sub_time_str:
-                    parsed = parse_datetime(sub_time_str)
-                    if parsed:
-                        sub_time = (
-                            timezone.make_aware(parsed)
-                            if timezone.is_naive(parsed)
-                            else parsed
-                        )
-
-                kobo_data, created = KoboData.objects.update_or_create(
-                    kobo_id=kobo_id,
-                    defaults={
-                        "form": form,
-                        "geo": (
-                            {"latitude": lat, "longitude": lon}
-                            if lat and lon
-                            else None
-                        ),
-                        "submission_time": sub_time,
-                        "submitted_by": res.get("_submitted_by"),
-                        "instance_name": res.get("meta/instanceID"),
-                        "raw_data": res,
-                    },
-                )
-
-                # Map Indicators and values
-                # Scan common indicator group keys B1 and C1
-                indicator_fields = [
-                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho",
-                    "group_mq8ds86/C1_Which_of_the_fol_lotivile_kulendzawo",
-                ]
-
-                # If administration_id was matched, store mapped IKS values
-                if administration_id:
-                    try:
-                        admin_obj = Administration.objects.get(
-                            pk=administration_id
-                        )
-                        for field_name in indicator_fields:
-                            answers = res.get(field_name, "")
-                            if answers:
-                                # Answers is a space separated string
-                                # of selected indicators
-                                for choice in answers.split():
-                                    indicator, _ = (
-                                        IKSIndicator.objects.get_or_create(
-                                            kobo_form=form, name=choice
-                                        )
-                                    )
-                                    # Create or update Value
-                                    IKSValue.objects.update_or_create(
-                                        kobo_id=kobo_id,
-                                        iks_indicator=indicator,
-                                        defaults={
-                                            "administration": admin_obj,
-                                            "value": "observed",
-                                        },
-                                    )
-                    except Administration.DoesNotExist:
-                        logger.warning(
-                            f"Administration with ID {administration_id} not found in database."  # noqa
-                        )
-
-                # Trigger image download jobs asynchronously
-                # if attachments exist
-                attachments = res.get("_attachments", [])
-                for attach in attachments:
-                    download_url = attach.get("download_url")
-                    filename = attach.get("filename", "").split("/")[-1]
-                    if download_url and filename:
-                        # Create async job
-                        Jobs.objects.create(
-                            type=JobTypes.test,
-                            status=JobStatus.pending,
-                            info={
-                                "filename": filename,
-                                "download_url": download_url,
-                            },
-                        )
-                        # Dispatch async task
-                        save_path = f"{settings.STORAGE_PATH}/{filename}"
-                        async_task(
-                            download_attachment,
-                            download_url,
-                            save_path,
-                            group=f"iks-image-{kobo_id}",
-                            hook="api.v1.v1_jobs.job.job_done_hook",  # noqa
-                        )
-
-                sync_count += 1
-
-        # Update last sync timestamp
-        adapter.last_sync_timestamp = timezone.now()
+        # Advance the cursor to the newest submission seen (its own clock),
+        # which is safer than wall-clock now() against API/DB skew.
+        adapter.last_sync_timestamp = newest or timezone.now()
         adapter.save()
 
         self.stdout.write(
@@ -224,3 +126,141 @@ class Command(BaseCommand):
                 f"Synchronized {sync_count} submissions from Kobo Toolbox."
             )
         )
+
+    def _build_data_url(self, adapter, form):
+        """Build the Kobo data URL, filtering to new submissions when
+        the adapter has a last_sync_timestamp."""
+        url = f"{adapter.server_url.rstrip('/')}/api/v2/assets"
+        url += f"/{form.uuid}/data/?format=json"
+        if adapter.last_sync_timestamp:
+            # ponytail: Kobo _submission_time is UTC; format the cursor in
+            # UTC so the $gt comparison lines up.
+            cursor = adapter.last_sync_timestamp.astimezone(
+                dt_timezone.utc
+            ).strftime("%Y-%m-%dT%H:%M:%S")
+            query = {"_submission_time": {"$gt": cursor}}
+            url += "&query=" + quote(json.dumps(query))
+        return url
+
+    def _process_submission(self, form, res, gdf):
+        """Upsert a single Kobo submission and its IKS values.
+
+        Returns the submission_time on success, or None if skipped.
+        """
+        kobo_id = res.get("_id")
+        if not kobo_id:
+            return None
+
+        # Parse geolocation
+        gps_str = res.get("survey_start_gps", "")
+        lat, lon = None, None
+        administration_id = None
+        if gps_str:
+            try:
+                parts = gps_str.split()
+                if len(parts) >= 2:
+                    lat = float(parts[0])
+                    lon = float(parts[1])
+                    # Point in polygon check
+                    point = Point(lon, lat)
+                    matched = gdf[gdf.geometry.contains(point)]
+                    if not matched.empty:
+                        administration_id = matched.iloc[0][
+                            "administration_id"
+                        ]
+            except Exception as ex:
+                logger.error(f"Error parsing GPS {gps_str}: {str(ex)}")
+
+        # Get or create KoboData
+        sub_time_str = res.get("_submission_time", "")
+        sub_time = timezone.now()
+        if sub_time_str:
+            parsed = parse_datetime(sub_time_str)
+            if parsed:
+                sub_time = (
+                    timezone.make_aware(parsed)
+                    if timezone.is_naive(parsed)
+                    else parsed
+                )
+
+        KoboData.objects.update_or_create(
+            kobo_id=kobo_id,
+            defaults={
+                "form": form,
+                "geo": (
+                    {"latitude": lat, "longitude": lon}
+                    if lat and lon
+                    else None
+                ),
+                "submission_time": sub_time,
+                "submitted_by": res.get("_submitted_by"),
+                "instance_name": res.get("meta/instanceID"),
+                "raw_data": res,
+            },
+        )
+
+        # Map Indicators and values
+        # Scan common indicator group keys B1 and C1
+        indicator_fields = [
+            "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho",
+            "group_mq8ds86/C1_Which_of_the_fol_lotivile_kulendzawo",
+        ]
+
+        # If administration_id was matched, store mapped IKS values
+        if administration_id:
+            try:
+                admin_obj = Administration.objects.get(pk=administration_id)
+                for field_name in indicator_fields:
+                    answers = res.get(field_name, "")
+                    if answers:
+                        # Answers is a space separated string
+                        # of selected indicators
+                        for choice in answers.split():
+                            indicator, _ = (
+                                IKSIndicator.objects.get_or_create(
+                                    kobo_form=form, name=choice
+                                )
+                            )
+                            # Create or update Value
+                            IKSValue.objects.update_or_create(
+                                kobo_id=kobo_id,
+                                iks_indicator=indicator,
+                                defaults={
+                                    "administration": admin_obj,
+                                    "value": "observed",
+                                },
+                            )
+            except Administration.DoesNotExist:
+                logger.warning(
+                    f"Administration with ID {administration_id} not found in database."  # noqa
+                )
+
+        # Trigger image download jobs asynchronously if attachments exist
+        attachments = res.get("_attachments", [])
+        for attach in attachments:
+            download_url = attach.get("download_url")
+            filename = attach.get("filename", "").split("/")[-1]
+            if download_url and filename:
+                # Create async job
+                job = Jobs.objects.create(
+                    type=JobTypes.test,
+                    status=JobStatus.pending,
+                    info={
+                        "filename": filename,
+                        "download_url": download_url,
+                    },
+                )
+                # Dispatch async task and link its task_id so the
+                # completion hook can resolve this Job.
+                save_path = f"{settings.STORAGE_PATH}/{filename}"
+                task_id = async_task(
+                    download_attachment,
+                    download_url,
+                    save_path,
+                    group=f"iks-image-{kobo_id}",
+                    hook="api.v1.v1_jobs.job.job_done_hook",  # noqa
+                )
+                job.task_id = task_id
+                job.save()
+
+        return sub_time

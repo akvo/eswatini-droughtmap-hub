@@ -45,6 +45,22 @@ def demo_q_response_func(task):
     job.save()
 
 
+def job_done_hook(task):
+    # Generic completion hook: mark the linked Job done/failed.
+    job = Jobs.objects.filter(task_id=task.id).first()
+    if not job:
+        logger.warning(f"No Job found for task {task.id}")
+        return
+    job.attempt = job.attempt + 1
+    if task.success:
+        job.status = JobStatus.done
+        job.available = timezone.now()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
+
+
 def notify_verification_email(email: str, code: str):
     if not settings.TEST_ENV:
         send_email(

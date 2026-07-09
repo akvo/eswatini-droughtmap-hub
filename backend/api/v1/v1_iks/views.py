@@ -542,6 +542,7 @@ class IKSHeatmapAggregationView(APIView):
     post=extend_schema(
         tags=["IKS"],
         summary="Trigger Kobo monthly download",
+        auth=[{"ApiKeyAuth": []}],
         responses={202: OpenApiTypes.OBJECT},
     )
 )

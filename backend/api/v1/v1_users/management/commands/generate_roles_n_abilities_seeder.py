@@ -51,6 +51,22 @@ class Command(BaseCommand):
                         "action": ActionEnum.DELETE.value,
                         "subject": "Review"
                     },
+                    {
+                        "action": ActionEnum.CREATE.value,
+                        "subject": "Activity"
+                    },
+                    {
+                        "action": ActionEnum.READ.value,
+                        "subject": "Activity"
+                    },
+                    {
+                        "action": ActionEnum.UPDATE.value,
+                        "subject": "Activity"
+                    },
+                    {
+                        "action": ActionEnum.DELETE.value,
+                        "subject": "Activity"
+                    },
                 ],
             },
             {
@@ -73,6 +89,19 @@ class Command(BaseCommand):
                         "action": ActionEnum.UPDATE.value,
                         "subject": "Review",
                         "conditions": {"owner": "true"},
+                    },
+                    {
+                        "action": ActionEnum.READ.value,
+                        "subject": "Activity"
+                    },
+                    {
+                        "action": ActionEnum.CREATE.value,
+                        "subject": "Activity"
+                    },
+                    {
+                        "action": ActionEnum.UPDATE.value,
+                        "subject": "Activity",
+                        "conditions": {"sector": "$own"},
                     },
                 ],
             },

@@ -172,6 +172,7 @@ class ReviewListSerializer(serializers.ModelSerializer):
     )
     progress_review = serializers.SerializerMethodField()
     publication_id = serializers.IntegerField(source="publication.id")
+    last_updated = serializers.SerializerMethodField()
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_review(self, obj):
@@ -187,6 +188,11 @@ class ReviewListSerializer(serializers.ModelSerializer):
         total = len(obj.publication.initial_values)
         return f"{reviewed_count}/{total}"
 
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_last_updated(self, obj):
+        if obj.updated_at:
+            return obj.updated_at.strftime("%Y-%m-%d")
+        return obj.publication.created_at.strftime("%Y-%m-%d")
     class Meta:
         model = Review
         fields = [
@@ -197,6 +203,7 @@ class ReviewListSerializer(serializers.ModelSerializer):
             "completed_at",
             "is_completed",
             "progress_review",
+            "last_updated",
         ]
 
 
