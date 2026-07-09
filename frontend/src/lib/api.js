@@ -1,4 +1,5 @@
 "use server";
+
 import fs from "fs";
 import path from "path";
 import { getSession } from "./auth";
@@ -14,10 +15,7 @@ export const api = (method, url, payload = {}) =>
     // Intercept IKS endpoints to return static mock data using the prototype file
     if (url.startsWith("/iks")) {
       try {
-        const protoPath = path.join(
-          process.cwd(),
-          "../eswatini-v2/data/prototype/iks_data.json",
-        );
+        const protoPath = path.join(process.cwd(), "src/static/iks_data.json");
         const rawData = fs.readFileSync(protoPath, "utf-8");
         const proto = JSON.parse(rawData);
 
@@ -49,6 +47,13 @@ export const api = (method, url, payload = {}) =>
         if (url === "/iks/aggregations/agreement") {
           return resolve({
             agreement: proto.agreement,
+          });
+        }
+
+        if (url === "/iks/aggregations/soil-trend") {
+          return resolve({
+            weeks: proto.weeks,
+            soil_trend: proto.soil_trend,
           });
         }
 

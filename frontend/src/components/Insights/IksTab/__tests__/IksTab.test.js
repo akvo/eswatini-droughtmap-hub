@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import IksTab from "../IksTab";
 import { api } from "../../../../lib/api";
@@ -8,7 +8,7 @@ jest.mock("../../../../lib/api", () => ({
   api: jest.fn(),
 }));
 
-// Mock akvo-charts to avoid canvas/DOM errors in jsdom during test run
+// Mock akvo-charts to avoid JSDOM canvas issues
 jest.mock("akvo-charts", () => ({
   Line: ({ rawConfig }) => (
     <div data-testid="line-chart" data-config={JSON.stringify(rawConfig)}>
@@ -17,12 +17,25 @@ jest.mock("akvo-charts", () => ({
   ),
 }));
 
+const mockNetSignal = {
+  weeks: ["May 01", "May 08"],
+  trend: {
+    Hhohho: [2.0, 1.4],
+  },
+};
+
+const mockSoilTrend = {
+  weeks: ["May 01", "May 08"],
+  soil_trend: {
+    dry: [18.6, 22.0],
+  },
+};
+
 const mockIndicators = [
   { id: 1, name: "1__bs___blue_swallows_appearance__tinkon" },
-  { id: 9, name: "9__f___frogs_calling_singing__emacoco_ak" },
 ];
 
-// Mock matchMedia for Ant Design responsiveness tests in JSDOM
+// Mock matchMedia for Ant Design responsiveness in JSDOM tests
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -39,59 +52,12 @@ beforeAll(() => {
   });
 });
 
-const mockNetSignal = {
-  weeks: ["May 01", "May 08"],
-  trend: {
-    Hhohho: [2.0, 1.4],
-    Manzini: [1.5, 1.22],
-    Lubombo: [1.82, 1.0],
-    Shiselweni: [2.07, 1.0],
-  },
-};
-
-const mockCounts = {
-  radar_labels: ["Frogs", "Southern Ground-Hornbill"],
-  radar: {
-    Hhohho: [60.5, 57.9],
-    Manzini: [67.1, 67.5],
-  },
-};
-
-const mockAgreement = {
-  agreement: [
-    {
-      name: "Hhukwini",
-      region: "Hhohho",
-      iks: 65.9,
-      sat: 16.7,
-      agreement: "contested",
-    },
-    {
-      name: "Lobamba",
-      region: "Hhohho",
-      iks: 70.3,
-      sat: 16.7,
-      agreement: "contested",
-    },
-  ],
-};
-
-const mockHeatmap = {
-  constituencies: ["Hhukwini", "Lobamba"],
-  weeks: ["May 01", "May 08"],
-  heatmap: [
-    [1, 5],
-    [2, 4],
-  ],
-};
-
-describe("IksTab Component", () => {
+describe("IksTab Component Redesigned Mockup", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("renders spin loading state initially", () => {
-    // Make api promise pending
     api.mockImplementation(() => new Promise(() => {}));
     render(<IksTab />);
     expect(
@@ -104,74 +70,46 @@ describe("IksTab Component", () => {
     render(<IksTab />);
     await waitFor(() => {
       expect(screen.getByText("Failed to Load IKS Data")).toBeInTheDocument();
-      expect(screen.getByText("Network failure")).toBeInTheDocument();
     });
   });
 
-  it("renders empty state when data is empty", async () => {
-    api.mockImplementation((method, url) => {
-      if (url === "/iks/indicators") return Promise.resolve([]);
-      if (url === "/iks/aggregations/net-signal")
-        return Promise.resolve({ weeks: [], trend: {} });
-      return Promise.resolve(null);
-    });
-
-    render(<IksTab />);
-    await waitFor(() => {
-      expect(
-        screen.getByText("No submissions yet for this season."),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("renders data views successfully (trend line chart, catalogue table, heatmap)", async () => {
+  it("renders layout successfully mapping figma mockup elements", async () => {
     api.mockImplementation((method, url) => {
       if (url === "/iks/indicators") return Promise.resolve(mockIndicators);
       if (url === "/iks/aggregations/net-signal")
         return Promise.resolve(mockNetSignal);
-      if (url === "/iks/aggregations/indicator-counts")
-        return Promise.resolve(mockCounts);
-      if (url === "/iks/aggregations/agreement")
-        return Promise.resolve(mockAgreement);
-      if (url === "/iks/aggregations/heatmap")
-        return Promise.resolve(mockHeatmap);
+      if (url === "/iks/aggregations/soil-trend")
+        return Promise.resolve(mockSoilTrend);
       return Promise.resolve(null);
     });
 
     render(<IksTab />);
 
-    // 1. Verify trend line chart renders and has the correct region colors
+    // 1. Verify Header
     await waitFor(() => {
-      const chartMock = screen.getByTestId("line-chart");
-      expect(chartMock).toBeInTheDocument();
-      const configStr = chartMock.getAttribute("data-config");
-      const config = JSON.parse(configStr);
-
-      // Verify the 4 region series colors are present in line chart config
-      const hhohhoSeries = config.series.find((s) => s.name === "Hhohho");
-      expect(hhohhoSeries.itemStyle.color).toBe("#3E5EB9");
-
-      const manziniSeries = config.series.find((s) => s.name === "Manzini");
-      expect(manziniSeries.itemStyle.color).toBe("#2E8B57");
+      expect(screen.getByText("Mhlangatane Inkhundla")).toBeInTheDocument();
     });
 
-    // 2. Verify indicator catalogue table renders headers and indicator rows
-    expect(screen.getByText("IKS Indicators Catalogue")).toBeInTheDocument();
+    // 2. Verify KPI Panels
+    expect(screen.getByText("Reporting consistency")).toBeInTheDocument();
+    expect(screen.getByText("Validation rate")).toBeInTheDocument();
+    expect(screen.getByText("Avg. validation time")).toBeInTheDocument();
+    expect(screen.getByText("Form completion")).toBeInTheDocument();
+
+    // 3. Verify Soil grids and Accordions
     expect(
-      screen.getByText("1. BS – Blue Swallows appearance"),
+      screen.getByText("Soil moisture (Womile / Ubutsile / Umanti)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("9. F – Frogs calling/singing"),
+      screen.getByText("Section B: Rainfall predictors (21 indicators)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Section C: Seasonal & extreme-weather predictors (8 indicators)",
+      ),
     ).toBeInTheDocument();
 
-    // Verify submission count mappings (Frogs count: Hhohho 60.5 + Manzini 67.1 = 128)
-    expect(screen.getByText("128")).toBeInTheDocument();
-
-    // 3. Verify deferred heatmap mounts
-    await waitFor(() => {
-      expect(
-        screen.getByText("Constituency × Week Submission Heatmap"),
-      ).toBeInTheDocument();
-    });
+    // 4. Verify Photo attachments block
+    expect(screen.getByText("Submitted photos")).toBeInTheDocument();
   });
 });

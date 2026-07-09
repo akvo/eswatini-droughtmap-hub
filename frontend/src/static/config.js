@@ -158,10 +158,6 @@ export const PUBLIC_MENU_ITEMS = [
     label: "National overview",
   },
   {
-    url: "/detailed-insights",
-    label: "Detailed insights",
-  },
-  {
     url: "/reviews",
     label: "Drought review",
     authenticated: true,
@@ -172,6 +168,10 @@ export const PUBLIC_MENU_ITEMS = [
     label: "Data validation",
     authenticated: true,
     is_admin: true,
+  },
+  {
+    url: "/detailed-insights",
+    label: "Detailed insights",
   },
   {
     // Authenticated-only: hidden until a session is present.
@@ -187,6 +187,7 @@ export const PUBLIC_MENU_ITEMS = [
     align: "right",
   },
 ];
+
 
 // Footer link columns (Figma node 3562:110459). Some targets are placeholders
 // until their pages exist; /, /about and /feedback are live.
