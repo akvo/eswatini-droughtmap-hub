@@ -218,6 +218,75 @@ h5 {
   line-height: 20px;
   padding-block: 22px;
 }
+.edm-reviews-table.ant-table-wrapper .ant-table {
+  border: 0;
+}
+.edm-reviews-table.ant-table-wrapper .ant-table-container {
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+.edm-reviews-table.ant-table-wrapper .ant-table-thead > tr > th {
+  height: 56px;
+  padding-block: 18px;
+  font-weight: 700;
+}
+.edm-reviews-table.ant-table-wrapper .ant-table-thead > tr > th::before {
+  display: none;
+}
+.edm-reviews-table.ant-table-wrapper .ant-table-tbody > tr > td {
+  border-bottom-color: var(--table-border);
+}
+.edm-reviews-table.ant-table-wrapper
+  .ant-table-tbody
+  > tr.ant-table-placeholder
+  > td {
+  height: 173px;
+  padding: 0;
+}
+.edm-reviews-table.ant-table-wrapper .ant-empty {
+  margin-block: 0;
+}
+.edm-reviews-table.ant-table-wrapper .ant-empty-description {
+  color: #a4a4a4;
+}
+.edm-reviews-table.ant-table-wrapper .ant-table-thead > tr > th:last-child {
+  text-align: right;
+}
+.edm-reviews-action.ant-btn {
+  height: auto;
+  padding: 0;
+  color: #485d92;
+  font-size: 14px;
+  line-height: 20px;
+}
+.edm-reviews-action.ant-btn:hover {
+  color: #2f4578;
+}
+.edm-reviews-status-tag.ant-tag {
+  margin-inline-end: 0;
+  border: 0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 21px;
+}
+.edm-reviews-range-picker.ant-picker {
+  min-height: 42px;
+  border-color: #d2d2d2;
+  border-radius: 8px;
+  padding-inline: 12px 16px;
+  box-shadow: none;
+}
+.edm-reviews-range-picker.ant-picker .ant-picker-input > input {
+  color: #606060;
+  font-size: 14px;
+  line-height: 21px;
+}
+.edm-reviews-range-picker.ant-picker .ant-picker-separator,
+.edm-reviews-range-picker.ant-picker .ant-picker-suffix {
+  color: #606060;
+}
 .ant-btn.dropdown-item {
   min-width: 128px;
   padding: 0;
