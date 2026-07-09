@@ -40,6 +40,7 @@ services:
       - EMAIL_FROM=test@example.com
       - WEBDOMAIN=notset
       - CSRF_TRUSTED_ORIGINS=https://example.com
+      - X_API_KEY
     depends_on:
       - db
   frontend:
