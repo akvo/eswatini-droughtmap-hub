@@ -19,6 +19,7 @@ services:
     command: ["./start.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=eswatini
       - DB_USER=akvo
@@ -62,6 +63,7 @@ services:
     command: ["./run_worker.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=eswatini
       - DB_USER=akvo

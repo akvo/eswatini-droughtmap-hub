@@ -48,6 +48,7 @@ API_APPS = [
     "api.v1.v1_jobs",
     "api.v1.v1_users",
     "api.v1.v1_publication",
+    "api.v1.v1_activity",
     "api.v1.v1_rundeck",
     "api.v1.v1_iks",
 ]
