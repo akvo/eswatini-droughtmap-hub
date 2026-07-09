@@ -139,7 +139,7 @@ const ReviewsPage = () => {
       <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
         <div
           aria-hidden
-          className="absolute inset-x-0 bottom-0 top-[72px] bg-brandTint"
+          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
         />
         <Can I="read" a="Review">
           <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-[#eaecf0] bg-white">

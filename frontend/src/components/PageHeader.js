@@ -41,7 +41,7 @@ const PageHeader = ({
     >
       <div
         aria-hidden
-        className="absolute inset-0 bg-dhi-pattern bg-cover bg-center opacity-10 pointer-events-none"
+        className="absolute inset-0 bg-dhi-pattern bg-[length:200%_auto] bg-center bg-no-repeat opacity-50 pointer-events-none"
       />
       <header className="relative mx-auto flex w-full max-w-[1280px] flex-col gap-6">
         {date && (
