@@ -2,13 +2,41 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { Spin, Result, Row, Col, Collapse, Button, Tag } from "antd";
+import dynamic from "next/dynamic";
+import {
+  Spin,
+  Result,
+  Row,
+  Col,
+  Collapse,
+  Button,
+  Tag,
+  Table,
+  Empty,
+} from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
+import { REGION_COLOR, IKS_INDICATOR_CATALOGUE } from "@/static/config";
+
+const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
 
 const { Panel } = Collapse;
 
-// Mock Photos for Carousel
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 const SAMPLE_PHOTOS = [
   {
     title: "Patchy recovery after recent rain",
@@ -37,22 +65,6 @@ const SAMPLE_PHOTOS = [
   },
 ];
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-// Configuration for Rainfall and Seasonal predictors Collapse items (DRY principle)
 const RAINFALL_PREDICTORS = [
   {
     key: "b-birds",
@@ -259,6 +271,8 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     netSignal: null,
     soilTrend: null,
   });
+  const [catalogueRows, setCatalogueRows] = useState([]);
+  const [heatmapData, setHeatmapData] = useState({});
   const [startIndex, setStartIndex] = useState(0);
 
   const handlePrev = () => {
@@ -266,7 +280,9 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
   };
 
   const handleNext = () => {
-    setStartIndex((prev) => Math.min(SAMPLE_PHOTOS.length - 3, prev + 1));
+    setStartIndex((prev) =>
+      Math.max(0, Math.min(SAMPLE_PHOTOS.length - 3, prev + 1)),
+    );
   };
 
   useEffect(() => {
@@ -275,17 +291,39 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         setLoading(true);
         setError(null);
 
-        const [netSignal, soilTrend] = await Promise.all([
-          api("GET", "/iks/aggregations/net-signal"),
-          api("GET", "/iks/aggregations/soil-trend"),
-        ]);
+        const [netSignal, soilTrend, indicatorCounts, agreement, heatmap] =
+          await Promise.all([
+            api("GET", "/iks/aggregations/net-signal"),
+            api("GET", "/iks/aggregations/soil-trend"),
+            api("GET", "/iks/aggregations/indicator-counts"),
+            api("GET", "/iks/aggregations/agreement"),
+            api("GET", "/iks/aggregations/heatmap"),
+          ]);
 
-        setRegionMap({
-          Mhlangatane: "Hhohho",
-          Hhukwini: "Hhohho",
-          Lobamba: "Hhohho",
-          Motshane: "Hhohho",
+        setRegionMap(soilTrend.region_map || {});
+        setHeatmapData(heatmap || {});
+
+        // Build catalogue: join IKS_INDICATOR_CATALOGUE with indicator-counts +
+        // agreement data - no invented data, all sourced from mock DB
+        const countMap = {};
+        (indicatorCounts?.data || []).forEach((row) => {
+          countMap[row.indicator] = row.submission_count;
         });
+        const agreementCounts = { aligned: 0, watch: 0, contested: 0 };
+        (agreement?.agreement || []).forEach((r) => {
+          if (r.agreement in agreementCounts) agreementCounts[r.agreement]++;
+        });
+        const catalogue = Object.keys(IKS_INDICATOR_CATALOGUE).map(
+          (key, i) => ({
+            key: String(i + 1),
+            code: IKS_INDICATOR_CATALOGUE[key].code,
+            label: IKS_INDICATOR_CATALOGUE[key].label,
+            type: IKS_INDICATOR_CATALOGUE[key].type,
+            meaning: IKS_INDICATOR_CATALOGUE[key].meaning,
+            submission_count: countMap[i + 1] ?? 0,
+          }),
+        );
+        setCatalogueRows(catalogue);
 
         setData({ netSignal, soilTrend });
       } catch (err) {
@@ -345,6 +383,39 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         : "Moderate drought";
   const droughtBadgeTextColor = droughtLevel === "D1" ? "#7c5a00" : "#ffffff";
 
+  // Derive date range from first and last weeks in the DB payload
+  const dbWeeks = data.netSignal?.weeks || [];
+  const firstWeek = dbWeeks[0] || "";
+  const lastWeek = dbWeeks[dbWeeks.length - 1] || "";
+  const dateRange =
+    firstWeek && lastWeek
+      ? `${firstWeek} - ${lastWeek} ${new Date().getFullYear()}`
+      : "";
+
+  const getSoilState = (idx) => {
+    const st = data.soilTrend?.soil_trend;
+    if (!st || !st.dry || !st.moist || !st.wet) return "-";
+    const d = st.dry[idx] || 0;
+    const m = st.moist[idx] || 0;
+    const w = st.wet[idx] || 0;
+    if (w >= m && w >= d) return "W";
+    if (d >= w && d >= m) return "D";
+    return "M";
+  };
+
+  // Spec: 4-region net-signal trend lines, one per region, using REGION_COLOR
+  const trendSeries = Object.entries(REGION_COLOR).map(
+    ([regionName, color]) => ({
+      name: regionName,
+      type: "line",
+      data: data.netSignal?.trend?.[regionName] || [],
+      itemStyle: { color },
+      lineStyle: { width: 2.5 },
+      symbol: "none",
+      smooth: true,
+    }),
+  );
+
   const activityOptions = {
     tooltip: {
       trigger: "axis",
@@ -354,7 +425,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
       textStyle: { color: "#1f2937" },
     },
     legend: {
-      data: ["Rain-leaning", "Drought-leaning"],
+      data: Object.keys(REGION_COLOR),
       left: 0,
       top: 0,
       icon: "rect",
@@ -370,9 +441,9 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     xAxis: {
       type: "category",
       boundaryGap: false,
-      data: MONTHS,
+      data: dbWeeks,
       axisLine: { lineStyle: { color: "#e5e7eb" } },
-      axisLabel: { color: "#6b7280" },
+      axisLabel: { color: "#6b7280", rotate: 30 },
     },
     yAxis: {
       type: "value",
@@ -381,27 +452,67 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
       splitLine: { lineStyle: { color: "#f3f4f6" } },
       axisLabel: { color: "#6b7280" },
     },
-    series: [
-      {
-        name: "Rain-leaning",
-        type: "line",
-        data: [750, 800, 780, 820, 770, 980, 950, 920, 880, 900, 1020, 1010],
-        itemStyle: { color: "#1D4ED8" },
-        lineStyle: { width: 3 },
-        symbol: "none",
-        smooth: true,
-      },
-      {
-        name: "Drought-leaning",
-        type: "line",
-        data: [420, 600, 580, 600, 750, 630, 780, 650, 650, 520, 600, 780],
-        itemStyle: { color: "#DC2626" },
-        lineStyle: { width: 3 },
-        symbol: "none",
-        smooth: true,
-      },
-    ],
+    series: trendSeries,
   };
+
+  // Catalogue table columns (spec section 6)
+  const catalogueColumns = [
+    {
+      title: "Code",
+      dataIndex: "code",
+      key: "code",
+      width: 70,
+      render: (v) => (
+        <span className="font-mono text-xs font-bold text-neutral-700">
+          {v}
+        </span>
+      ),
+    },
+    {
+      title: "Indicator",
+      dataIndex: "label",
+      key: "label",
+      render: (v) => <span className="text-xs text-neutral-700">{v}</span>,
+    },
+    {
+      title: "Type",
+      dataIndex: "type",
+      key: "type",
+      width: 90,
+      render: (v) => (
+        <Tag
+          color={v === "rainfall" ? "blue" : "orange"}
+          className="text-[10px] capitalize"
+        >
+          {v}
+        </Tag>
+      ),
+    },
+    {
+      title: "Predicts",
+      dataIndex: "meaning",
+      key: "meaning",
+      width: 90,
+      render: (v) => (
+        <Tag
+          color={v === "rain" ? "cyan" : "volcano"}
+          className="text-[10px] capitalize"
+        >
+          {v}
+        </Tag>
+      ),
+    },
+    {
+      title: "Submissions",
+      dataIndex: "submission_count",
+      key: "submission_count",
+      width: 100,
+      align: "right",
+      render: (v) => (
+        <span className="font-semibold text-xs text-neutral-800">{v}</span>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 w-full">
@@ -413,7 +524,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               {selectedInkhundla} Inkhundla
             </h2>
             <p className="text-sm text-neutral-400 font-medium">
-              {region} · Highveld
+              {region} - Highveld
             </p>
           </div>
           <Tag
@@ -466,7 +577,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               </p>
             </div>
             <span className="text-xs text-neutral-400 font-medium border border-neutral-100 px-2 py-1 rounded bg-neutral-50">
-              1 Jun 2023 - 11 Feb 2024
+              {dateRange}
             </span>
           </div>
           <div className="w-full h-80 border-t border-neutral-200 pt-4">
@@ -481,7 +592,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               <MonthlyStatusGrid
                 title="Soil moisture (Womile / Ubutsile / Umanti)"
                 subtitle="one answer per monthly report"
-                statesMap={(idx) => (idx < 3 ? "W" : idx < 9 ? "D" : "-")}
+                statesMap={getSoilState}
                 legend={[
                   { color: "bg-sky-200", label: "W-Wet" },
                   { color: "bg-amber-400", label: "M-Moist" },
@@ -513,12 +624,12 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         <div className="space-y-0 py-6">
           <PredictorAccordion
             title="Section B: Rainfall predictors (21 indicators)"
-            subtitle="One strip per indicator · each cell = one monthly report"
+            subtitle="One strip per indicator | each cell = one monthly report"
             items={RAINFALL_PREDICTORS}
           />
           <PredictorAccordion
             title="Section C: Seasonal & extreme-weather predictors (8 indicators)"
-            subtitle="Signs of drought, floods, storms · one strip per indicator"
+            subtitle="Signs of drought, floods, storms | one strip per indicator"
             items={SEASONAL_PREDICTORS}
           />
         </div>
@@ -531,7 +642,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
                 Submitted photos
               </h4>
               <p className="text-xs text-neutral-400">
-                Photos uploaded with monthly Kobo reports · click to view full ·
+                Photos uploaded with monthly Kobo reports | click to view full |
                 12 of 12 months had a photo
               </p>
             </div>
@@ -608,6 +719,44 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               </svg>
             </Button>
           </div>
+        </div>
+
+        {/* Indicator Catalogue Table - spec UAC */}
+        <div className="border-t border-neutral-100 px-4 py-6">
+          <div className="mb-4">
+            <h4 className="text-sm font-bold text-neutral-800">
+              Indicator catalogue
+            </h4>
+            <p className="text-xs text-neutral-400">
+              29 indicators | submission counts derived from regional averages |
+              matches IKS-1 aggregation output
+            </p>
+          </div>
+          {catalogueRows.length === 0 ? (
+            <Empty description="No indicator data" />
+          ) : (
+            <Table
+              dataSource={catalogueRows}
+              columns={catalogueColumns}
+              pagination={false}
+              size="small"
+              className="text-xs"
+              scroll={{ x: 600 }}
+            />
+          )}
+        </div>
+
+        {/* Inkhundla x Week Heatmap - spec UAC (non-blocking via dynamic import) */}
+        <div className="border-t border-neutral-100 px-4 py-6">
+          <div className="mb-4">
+            <h4 className="text-sm font-bold text-neutral-800">
+              Inkhundla x week submission heatmap
+            </h4>
+            <p className="text-xs text-neutral-400">
+              Hover a cell to see Inkhundla name, week and submission count
+            </p>
+          </div>
+          <IksHeatmap data={heatmapData} />
         </div>
       </div>
     </div>
