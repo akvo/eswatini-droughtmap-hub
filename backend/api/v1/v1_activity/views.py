@@ -21,7 +21,6 @@ from api.v1.v1_activity.constants import (
     ActivityStatus,
     ActivitySector,
     ActivityResponseType,
-    INDICATOR_FIELDS,
     TriggerOperator,
     UNAVAILABLE,
 )
@@ -263,7 +262,7 @@ def _matched_on(triggers, row):
             entry["source"] = "unavailable"
             entry["actual"] = None
         else:
-            entry["actual"] = row.get(INDICATOR_FIELDS[indicator])
+            entry["actual"] = row.get(indicator)
         exp.append(entry)
     detail["exp"] = exp
     return detail

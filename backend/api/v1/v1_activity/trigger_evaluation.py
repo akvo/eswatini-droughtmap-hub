@@ -17,22 +17,14 @@ import logging
 
 from api.v1.v1_activity.constants import (
     TriggerOperator,
-    INDICATOR_FIELDS,
+    EXPOSURE_INDICATORS,
     UNAVAILABLE,
 )
-from api.v1.v1_publication.constants import DroughtCategory
 from api.v1.v1_publication.models import (
     Administration,
     Publication,
     PublicationStatus,
 )
-
-
-def _satisfied(actual, op, value):
-    """Apply a single operator. Caller guarantees `actual` is not None."""
-    if op == TriggerOperator.gte:
-        return actual >= value
-    return actual <= value
 
 
 def _condition_pass(actual, op, value, dimension):
@@ -42,7 +34,9 @@ def _condition_pass(actual, op, value, dimension):
         return True
     if actual is None:
         return False
-    return _satisfied(actual, op, value)
+    if op == TriggerOperator.gte:
+        return actual >= value
+    return actual <= value
 
 
 def activity_passes(triggers, row):
@@ -56,7 +50,8 @@ def activity_passes(triggers, row):
     cls = dclass.get("class")
     if cls is not None:
         cat = row.get("category")
-        if cat is None or cat == DroughtCategory.none or cat < cls:
+        # DroughtCategory.none (-9999) fails cat < cls automatically.
+        if cat is None or cat < cls:
             return False
         # dclass.months is UNAVAILABLE -> no further check.
 
@@ -69,10 +64,10 @@ def activity_passes(triggers, row):
     # Exposure gates — all AND-ed; unknown indicator fails safe.
     for cond in triggers.get("exp") or []:
         indicator = cond["indicator"]
-        if indicator not in INDICATOR_FIELDS:
+        if indicator not in EXPOSURE_INDICATORS:
             return False
         if not _condition_pass(
-                row.get(INDICATOR_FIELDS[indicator]),
+                row.get(indicator),
                 cond["op"], cond["value"], indicator):
             return False
 

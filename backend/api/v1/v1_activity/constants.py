@@ -87,14 +87,6 @@ VULN_PHASE_MIN, VULN_PHASE_MAX = 1, 4
 
 
 # --- Trigger evaluation (SOP-2) -----------------------------------------
-# exp[].indicator -> dataset row key. Unknown indicator -> condition fails.
-INDICATOR_FIELDS = {
-    "population": "population",
-    "cropland": "cropland",
-    "cattle": "cattle",
-    "water": "water",
-}
-
 # Dimensions with no honest per-administration source yet. Conditions on
 # these are treated as satisfied (never block firing) and reported in
 # `matched_on` with source "unavailable". Removed once PA-2 lands.
