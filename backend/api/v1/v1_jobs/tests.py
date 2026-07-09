@@ -1,7 +1,9 @@
+from types import SimpleNamespace
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from .models import Jobs, JobTypes, JobStatus
+from .job import job_done_hook
 
 
 class JobAPITestCase(APITestCase):
@@ -56,6 +58,38 @@ class JobAPITestCase(APITestCase):
         url = reverse("create_job", kwargs={"version": "v1"})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_job_done_hook_marks_done(self):
+        """job_done_hook marks the linked Job done on task success."""
+        job = Jobs.objects.create(
+            task_id="task-abc",
+            type=JobTypes.test,
+            status=JobStatus.pending,
+        )
+        task = SimpleNamespace(id="task-abc", success=True, result="ok")
+        job_done_hook(task)
+        job.refresh_from_db()
+        self.assertEqual(job.status, JobStatus.done)
+        self.assertEqual(job.result, "ok")
+        self.assertEqual(job.attempt, 1)
+
+    def test_job_done_hook_marks_failed(self):
+        """job_done_hook marks the linked Job failed on task failure."""
+        job = Jobs.objects.create(
+            task_id="task-fail",
+            type=JobTypes.test,
+            status=JobStatus.pending,
+        )
+        task = SimpleNamespace(id="task-fail", success=False, result="boom")
+        job_done_hook(task)
+        job.refresh_from_db()
+        self.assertEqual(job.status, JobStatus.failed)
+
+    def test_job_done_hook_missing_job_is_noop(self):
+        """job_done_hook silently returns when no Job matches the task."""
+        task = SimpleNamespace(id="no-such-task", success=True, result="ok")
+        # Should not raise
+        job_done_hook(task)
 
     def test_feedback_success(self):
         """

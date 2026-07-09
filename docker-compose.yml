@@ -41,6 +41,7 @@ services:
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
       - CSRF_TRUSTED_ORIGINS
+      - X_API_KEY
     depends_on:
       - db
   frontend:

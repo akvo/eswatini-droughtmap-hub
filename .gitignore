@@ -9,3 +9,8 @@ db.dbml
 **/app.env
 **/rundeck.env
 **/realm.properties
+
+.agent/
+agent_docs/
+.vscode
+task.md
