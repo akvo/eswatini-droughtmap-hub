@@ -337,6 +337,13 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
       : droughtLevel === "D2"
         ? "#ffaa00"
         : "#fbd47f";
+  const droughtLabelText =
+    droughtLevel === "D3"
+      ? "Extreme drought"
+      : droughtLevel === "D2"
+        ? "Severe drought"
+        : "Moderate drought";
+  const droughtBadgeTextColor = droughtLevel === "D1" ? "#7c5a00" : "#ffffff";
 
   const activityOptions = {
     tooltip: {
@@ -411,10 +418,14 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
           </div>
           <Tag
             color={droughtBadgeColor}
-            style={{ color: "#ffffff", fontWeight: 700, border: "none" }}
+            style={{
+              color: droughtBadgeTextColor,
+              fontWeight: 700,
+              border: "none",
+            }}
             className="px-3 py-1 text-sm rounded"
           >
-            {droughtLevel} Extreme drought
+            {droughtLevel} {droughtLabelText}
           </Tag>
         </div>
 

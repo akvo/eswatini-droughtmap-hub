@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Spin, Select, Button } from "antd";
 import { api } from "@/lib/api";
+import FeedbackSection from "@/components/FeedbackSection";
 
 const { Option } = Select;
 
@@ -223,6 +224,9 @@ const DetailedInsightsContent = () => {
         {/* Tab panel contents */}
         <div className="w-full">{renderTabContent()}</div>
       </div>
+
+      {/* Feedback Section */}
+      <FeedbackSection />
     </div>
   );
 };
