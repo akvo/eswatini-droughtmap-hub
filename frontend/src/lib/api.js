@@ -38,10 +38,21 @@ export const api = (method, url, payload = {}) =>
         }
 
         if (url === "/iks/aggregations/indicator-counts") {
-          return resolve({
-            radar_labels: proto.radar_labels,
-            radar: proto.radar,
-          });
+          // Derive per-indicator submission counts from radar region averages
+          const regionAvgs = Object.values(proto.radar).map(
+            (arr) => arr.reduce((a, b) => a + b, 0) / arr.length,
+          );
+          const baseCount = Math.round(
+            regionAvgs.reduce((a, b) => a + b, 0) / regionAvgs.length,
+          );
+          const data = Object.keys(IKS_INDICATOR_CATALOGUE).map((key, i) => ({
+            indicator: i + 1,
+            code: IKS_INDICATOR_CATALOGUE[key].code,
+            indicator_type: IKS_INDICATOR_CATALOGUE[key].type,
+            meaning: IKS_INDICATOR_CATALOGUE[key].meaning,
+            submission_count: Math.max(1, baseCount + ((i * 7) % 30) - 10),
+          }));
+          return resolve({ data });
         }
 
         if (url === "/iks/aggregations/agreement") {
@@ -54,6 +65,7 @@ export const api = (method, url, payload = {}) =>
           return resolve({
             weeks: proto.weeks,
             soil_trend: proto.soil_trend,
+            region_map: proto.region_map,
           });
         }
 
