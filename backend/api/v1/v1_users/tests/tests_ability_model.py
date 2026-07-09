@@ -75,4 +75,4 @@ class AbilityModelTestCase(TestCase):
         call_command(
             "generate_roles_n_abilities_seeder"
         )
-        self.assertEqual(Ability.objects.count(), 12)
+        self.assertEqual(Ability.objects.count(), 19)

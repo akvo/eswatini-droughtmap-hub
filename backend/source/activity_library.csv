@@ -1,0 +1,5 @@
+code,title,description,sector,status,owner,coord_with,response_type,source_doc,trigger_dclass_class,trigger_dclass_months,trigger_vuln_op,trigger_vuln_value,trigger_exp,trigger_other
+ACT-WASH-1,Emergency water tankering,Dispatch tankers to affected Tinkhundla,WASH,active,Department of Water Affairs,Eswatini Water Services,institutional,NWEP 2024 §4.2,3,3,gte,2,population gte 2000,
+ACT-FOOD-1,Fodder pre-positioning,Pre-position livestock fodder ahead of severe drought,FOOD,active,Ministry of Agriculture,NAMBoard,institutional,NAP 2023,4,2,gte,3,cattle gte 1500;cropland gte 3000,
+ACT-HEALTH-1,Nutrition screening surge,Scale up child nutrition screening,HEALTH,active,Ministry of Health,UNICEF,public,Health SOP 2024,3,4,gte,3,population gte 1000,
+ACT-COORD-1,Activate district response teams,Stand up coordination cells,COORD,active,NDRMA,Regional offices,institutional,NDRMA Handbook,4,1,,,,Escalate when multiple sectors trigger

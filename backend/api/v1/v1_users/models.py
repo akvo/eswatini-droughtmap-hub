@@ -37,6 +37,12 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
         default=None,
         null=True,
     )
+    # Marks a reviewer as a sector lead (create/edit own-sector drafts).
+    activity_sector = models.IntegerField(
+        default=None,
+        null=True,
+        blank=True,
+    )
 
     objects = UserManager()
 
