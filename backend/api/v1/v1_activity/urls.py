@@ -6,6 +6,7 @@ from api.v1.v1_activity.views import (
     ActivitySignOffListAPI,
     ActivitySourceFileAPI,
     ActivityTriggerPreviewAPI,
+    RecommendedActionsAPI,
 )
 
 urlpatterns = [
@@ -13,6 +14,11 @@ urlpatterns = [
         r"^(?P<version>(v1))/activities/trigger-preview$",
         ActivityTriggerPreviewAPI.as_view(),
         name="activity-trigger-preview",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/recommended-actions$",
+        RecommendedActionsAPI.as_view(),
+        name="recommended-actions",
     ),
     re_path(
         r"^(?P<version>(v1))/activities$",
