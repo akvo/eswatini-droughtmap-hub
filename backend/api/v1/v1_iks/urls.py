@@ -3,6 +3,11 @@ from api.v1.v1_iks.views import (
     IKSStatsView,
     IKSSeriesView,
     IKSDownloadMonthlyView,
+    IKSIndicatorsListView,
+    IKSNetSignalAggregationView,
+    IKSIndicatorCountsAggregationView,
+    IKSAgreementAggregationView,
+    IKSHeatmapAggregationView,
 )
 
 urlpatterns = [
@@ -20,5 +25,30 @@ urlpatterns = [
         r"^(?P<version>(v1))/iks/download/monthly$",
         IKSDownloadMonthlyView.as_view(),
         name="iks-download-monthly",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/indicators$",
+        IKSIndicatorsListView.as_view(),
+        name="iks-indicators",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/aggregations/net-signal$",
+        IKSNetSignalAggregationView.as_view(),
+        name="iks-net-signal-aggregation",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/aggregations/indicator-counts$",
+        IKSIndicatorCountsAggregationView.as_view(),
+        name="iks-indicator-counts-aggregation",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/aggregations/agreement$",
+        IKSAgreementAggregationView.as_view(),
+        name="iks-agreement-aggregation",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/aggregations/heatmap$",
+        IKSHeatmapAggregationView.as_view(),
+        name="iks-heatmap-aggregation",
     ),
 ]
