@@ -123,8 +123,8 @@ const ReviewsPage = () => {
 
   const headerDate = useMemo(() => {
     const firstReview = reviews?.[0];
-    if (firstReview?.year_month) {
-      return dayjs(firstReview.year_month).format("MMMM YYYY");
+    if (firstReview?.last_updated) {
+      return dayjs(firstReview.last_updated).format("d MMMM YYYY");
     }
     return null;
   }, [reviews]);
