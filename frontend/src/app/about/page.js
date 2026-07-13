@@ -1,210 +1,138 @@
-import {
-  DROUGHT_CATEGORY_COLOR,
-  DROUGHT_CATEGORY_VALUE,
-} from "@/static/config";
+import AboutSection from "@/components/AboutSection";
+import AboutSectionChild from "@/components/AboutSectionChild";
+import { FeedbackSection } from "@/components";
+import { headerConfig } from "@/static/about/header";
+import { howCdiComputedConfig } from "@/static/about/how-cdi-computed";
+import { whatCdiCategoriesMeanConfig } from "@/static/about/what-cdi-categories-mean";
+import { whoInvolvedValidationConfig } from "@/static/about/who-involved-validation";
 
 const AboutPage = () => {
   return (
     <div className="w-full">
-      <div className="w-full space-y-2">
-        <div className="w-full">
-          <h1 className="text-2xl xl:text-3xl font-bold text-gray-800">
-            About the Eswatini Drought Monitor
-          </h1>
-        </div>
+      {/* Header */}
+      <div className="relative w-screen left-1/2 -translate-x-1/2">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
+        />
+        <AboutSection
+          title={headerConfig.title}
+          titleSize="text-3xl"
+          description={headerConfig.description}
+          textAlign="text-center"
+          className="relative container mx-auto"
+        />
       </div>
-      <p className="text-gray-700 border-b-2 border-b-neutral-400 pb-6">
-        The <strong>Eswatini Drought Monitor</strong> provides a monthly
-        assessment of drought conditions across the country using a
-        scientifically robust indicator known as the{" "}
-        <strong>Composite Drought Indicator (CDI)</strong>. The system is
-        designed to offer real-time insights to everyone involved in proactive
-        drought preparedness and response in the Kingdom of Eswatini.
-      </p>
-      <h2 className="text-xl font-semibold text-gray-800 pt-4">
-        What is the Composite Drought Indicator (CDI)?
-      </h2>
-      <div className="text-gray-700 border-b-2 border-b-neutral-400 pb-6 space-y-4">
-        <p>
-          The <b>CDI</b> combines four different types of drought-relevant
-          datasets into a single map that reflects the overall severity of
-          drought conditions:
-        </p>
-        <ul className="list-disc list-inside pl-4 leading-8">
-          <li>
-            <strong>Land Surface Temperature (LST)</strong> – measures heat
-            stress and temperature anomalies
-          </li>
-          <li>
-            <strong>Normalized Difference Vegetation Index (NDVI)</strong> –
-            captures vegetation health and greenness
-          </li>
-          <li>
-            <strong>Standardized Precipitation Index (SPI)</strong> – assesses
-            rainfall deficits
-          </li>
-          <li>
-            <strong>Soil Moisture</strong> – reflects water availability for
-            crops and plants
-          </li>
-        </ul>
-        <p>
-          These datasets are combined using a weighted average system, with
-          flexibility to adjust the weights depending on regional
-          characteristics or if certain data is missing.
-        </p>
+      <div className="relative w-full h-[300px] md:h-[400px] mt-6 overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={headerConfig.image_url}
+          alt={headerConfig.title}
+          className="w-full h-full object-cover"
+        />
       </div>
-      <h2 className="text-xl font-semibold text-gray-800 pt-4">
-        How is the CDI Computed?
-      </h2>
-      <div className="text-gray-700 border-b-2 border-b-neutral-400 pb-6">
-        <p>
-          The CDI is generated in a mostly automated process that includes the
-          following steps:
-        </p>
-        <ol className="list-decimal list-inside pl-4 leading-8">
-          <li>
-            <b>Data Retrieval</b> – The system checks for the latest datasets
-            from global sources, and automatically downloads and stores LST,
-            NDVI, SPI, and Soil Moisture data.
-          </li>
-          <li>
-            <b>Processing</b> – Computes percentile ranks and long-term trends
-            using 40+ years of data where available.
-          </li>
-          <li>
-            <b>Weight Adjustment</b> – If needed, experts can change the weight
-            of each dataset depending on data quality or relevance.
-          </li>
-          <li>
-            <b>CDI Map Generation</b> – Monthly drought maps (CDI) are produced
-            indicating the drought levels per Inkundla (region).
-          </li>
-          <li>
-            <b>Validation</b> – The Technical Working Group (TWG) reviews the
-            maps and provides expert feedback.
-          </li>
-          <li>
-            <b>Final Publication</b> – Once validated, the CDI is published and
-            made available to the public on this platform.
-          </li>
-        </ol>
-      </div>
-      <h2 className="text-xl font-semibold text-gray-800">
-        What Do the CDI Categories Mean?
-      </h2>
-      <div className="w-full text-gray-700 space-y-4 border-b-2 border-b-neutral-400 pb-6">
-        <p>
-          CDI drought classifications are <b>relative</b>, meaning they compare
-          current conditions to a <b>long-term historical baseline</b> for each
-          specific location. This helps answer the question:{" "}
-          <i>
-            &quot;How rare or severe are current drought conditions compared to
-            what&rsquo;s typical in this area?&quot;
-          </i>
-        </p>
-        <p>
-          For example, if an area is classified under <b>Severe Drought (D2)</b>
-          , it means that in the long-term record (usually 40+ years),{" "}
-          <b>conditions have only been this dry less than 10% of the time</b>.
-          This percentile-based method allows us to detect both long-term
-          droughts and short-lived, extreme events—always in the context of
-          local climate norms.
-        </p>
-        <table className="w-full border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-gray-300 text-left font-semibold p-2">
-                Category
-              </th>
-              <th className="border border-gray-300 text-left font-semibold p-2">
-                Description
-              </th>
-              <th className="border border-gray-300 text-left font-semibold p-2">
-                CDI Percentile
-              </th>
-              <th className="border border-gray-300 text-left font-semibold p-2">
-                Meaning
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              {
-                category: "None",
-                description: "Normal or wet",
-                percentile: ">30.01",
-                meaning: "Common or wetter-than-average",
-                color: DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.normal],
-              },
-              {
-                category: "D0",
-                description: "Abnormally Dry",
-                percentile: "20.01 – 30.00",
-                meaning: "Drier than usual, but not yet drought",
-                color: DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d0],
-              },
-              {
-                category: "D1",
-                description: "Moderate Drought",
-                percentile: "10.01 – 20.00",
-                meaning: "Unusual dryness—seen ~1 in 5 years",
-                color: DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d1],
-              },
-              {
-                category: "D2",
-                description: "Severe Drought",
-                percentile: "5.01 – 10.00",
-                meaning: "Rarely this dry—<10% of the time",
-                color: DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d2],
-              },
-              {
-                category: "D3",
-                description: "Extreme Drought",
-                percentile: "2.01 – 5.00",
-                meaning: "Extreme dryness—only ~2–5% of years",
-                color: DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d3],
-              },
-              {
-                category: "D4",
-                description: "Exceptional Drought",
-                percentile: "0.00 – 2.00",
-                meaning: "Among the driest conditions on record",
-                color: DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d4],
-              },
-            ].map((row, index) => (
-              <tr className="edh-row" key={index}>
-                <td className={`border border-gray-300 p-2 bg-[${row.color}]`}>
-                  {row.category}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {row.description}
-                </td>
-                <td className="border border-gray-300 p-2">{row.percentile}</td>
-                <td className="border border-gray-300 p-2">{row.meaning}</td>
-              </tr>
+
+      {/* How is the CDI Computed? */}
+      <div className="relative w-screen left-1/2 -translate-x-1/2 border-b border-gray-200">
+        <AboutSection
+          title={howCdiComputedConfig.title}
+          description={howCdiComputedConfig.description}
+          className="container mx-auto"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
+            {howCdiComputedConfig.children.map((child) => (
+              <AboutSectionChild
+                key={child.id}
+                icon={child.icon}
+                title={child.title}
+                description={child.description}
+                flex="col"
+              />
             ))}
-          </tbody>
-        </table>
+          </div>
+        </AboutSection>
       </div>
-      <h2 className="text-xl font-semibold text-gray-800 pt-4">
-        Who is Involved in Validation?
-      </h2>
-      <div className="text-gray-700 pb-12 space-y-4">
-        <p>
-          The <b>Technical Working Group (TWG)</b>—comprising representatives
-          from Eswatini’s NDMA, the Ministry of Agriculture, MET, Department of
-          Water Affairs (DWA) and the University of Eswatini (UNESWA) —plays a
-          crucial role in the review and validation process.
-        </p>
-        <div className="w-full">
-          <p>Their responsibilities include:</p>
-          <ul className="list-disc list-inside pl-4 leading-8">
-            <li>Reviewing the generated maps monthly.</li>
-            <li>Benchmarking against other datasets and ground reports.</li>
-            <li>Approving or requesting changes before publication.</li>
-          </ul>
-        </div>
+
+      {/* What Do the CDI Categories Mean? */}
+      <div className="relative w-screen left-1/2 -translate-x-1/2 border-b border-gray-200">
+        <AboutSection
+          title={whatCdiCategoriesMeanConfig.title}
+          description={whatCdiCategoriesMeanConfig.description}
+          className="container mx-auto"
+        >
+          <div className="w-full overflow-x-auto mt-6">
+            <table className="w-full border border-gray-200 [&_td]:border-0 [&_th]:border-0 [&_tr]:border-b [&_tr]:border-gray-200 [&_tr:last-child]:border-0">
+              <thead>
+                <tr className="bg-gray-100 text-left text-sm text-[#606060]">
+                  <th className="p-3 font-semibold">Category</th>
+                  <th className="p-3 font-semibold">Description</th>
+                  <th className="p-3 font-semibold">CDI Percentile</th>
+                  <th className="p-3 font-semibold">Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {whatCdiCategoriesMeanConfig.children.map((row) => (
+                  <tr key={row.id} className="text-sm text-[#606060]">
+                    <td className="p-3">
+                      <span
+                        className="inline-block px-2 py-0.5 rounded text-xs font-semibold"
+                        style={{
+                          backgroundColor: row.color,
+                          color:
+                            row.color === "#730000" || row.color === "#e60000"
+                              ? "#fff"
+                              : "#333",
+                        }}
+                      >
+                        {row.category}
+                      </span>
+                    </td>
+                    <td className="p-3">{row.description}</td>
+                    <td className="p-3">{row.percentile}</td>
+                    <td className="p-3">{row.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AboutSection>
+      </div>
+
+      {/* Who is Involved in Validation? */}
+      <div className="relative w-screen left-1/2 -translate-x-1/2">
+        <AboutSection
+          title={whoInvolvedValidationConfig.title}
+          description={whoInvolvedValidationConfig.description}
+          className="container mx-auto pt-16 pb-8"
+        >
+          <div className="flex flex-col md:flex-row gap-8 mt-6">
+            <div className="flex flex-col gap-6 md:w-1/2">
+              {whoInvolvedValidationConfig.children.map((child, index) => (
+                <AboutSectionChild
+                  key={index}
+                  icon={child.icon}
+                  title={child.title}
+                  flex="row"
+                />
+              ))}
+            </div>
+            {whoInvolvedValidationConfig.image_url && (
+              <div className="relative md:w-1/2 h-[200px] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={whoInvolvedValidationConfig.image_url}
+                  alt="Validation process"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+        </AboutSection>
+      </div>
+
+      {/* Feedback */}
+      <div className="my-8">
+        <FeedbackSection />
       </div>
     </div>
   );

@@ -14,3 +14,5 @@ export { default as LogoSection } from "./LogoSection";
 export { default as FeedbackSection } from "./FeedbackSection";
 export { default as TabButtons } from "./TabButtons";
 export { default as PageHeader } from "./PageHeader";
+export { default as AboutSection } from "./AboutSection";
+export { default as AboutSectionChild } from "./AboutSectionChild";
