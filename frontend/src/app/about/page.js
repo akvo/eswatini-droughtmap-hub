@@ -23,7 +23,7 @@ const AboutPage = () => {
           className="relative container mx-auto"
         />
       </div>
-      <div className="relative w-full h-[300px] md:h-[400px] mt-6 overflow-hidden">
+      <div className="relative w-full h-[300px] md:h-[400px] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={headerConfig.image_url}
