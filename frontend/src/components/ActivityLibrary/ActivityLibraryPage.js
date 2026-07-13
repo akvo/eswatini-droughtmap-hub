@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Spin } from "antd";
-import { api } from "@/lib/api";
+import { api, apiText } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import FeedbackSection from "@/components/FeedbackSection";
 import ActivityMetricCards from "./ActivityMetricCards";
@@ -63,19 +63,34 @@ export default function ActivityLibraryPage() {
     fetchList();
   }, [statusFilter, sectorFilter, searchQuery, page]);
 
-  const handleExport = () => {
-    const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
-    if (sectorFilter !== "all") params.set("sector", sectorFilter);
-    if (searchQuery) params.set("search", searchQuery);
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (sectorFilter !== "all") params.set("sector", sectorFilter);
+      if (searchQuery) params.set("search", searchQuery);
 
-    const url = `/api/v1/activities/export?${params.toString()}`;
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "activities.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Fetch the CSV text using the authenticated Server Action
+      const csvText = await apiText(
+        "GET",
+        `/activities/export?${params.toString()}`,
+      );
+
+      // Create a Blob and trigger a local download
+      const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const dateStr = new Date().toISOString().split("T")[0];
+      const filename = `drought_response_activities_${dateStr}.csv`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export activities", err);
+    }
   };
 
   // Derive most recent update date from loaded activities
@@ -95,7 +110,7 @@ export default function ActivityLibraryPage() {
     : null;
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full">
       <PageHeader
         title="Activity Library"
         description="Standard Operating Procedures | Click any row to view details"

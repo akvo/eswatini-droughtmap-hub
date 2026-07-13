@@ -21,7 +21,7 @@ export default function ActivityTableFilters({
   }, [searchVal]);
 
   return (
-    <div className="bg-white p-4 border border-neutral-200 rounded-lg mb-6 shadow-sm">
+    <div className="bg-white p-4 border border-neutral-200">
       {/* Title + Action controls row */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <h3 className="text-base font-bold text-neutral-800 m-0">

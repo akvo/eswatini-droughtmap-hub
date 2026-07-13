@@ -96,7 +96,7 @@ export default function ActivityTable({
         onChange: onPageChange,
         showSizeChanger: false,
       }}
-      className="border border-neutral-200 rounded-lg overflow-hidden bg-white shadow-sm"
+      className="border border-neutral-200 overflow-hidden bg-white shadow-sm"
     />
   );
 }

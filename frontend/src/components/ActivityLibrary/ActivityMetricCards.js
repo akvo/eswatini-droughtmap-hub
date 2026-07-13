@@ -13,12 +13,9 @@ export default function ActivityMetricCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 mb-12 md:grid-cols-3">
       {cards.map((c, i) => (
-        <Card
-          key={i}
-          className="rounded-lg shadow-sm border border-neutral-200"
-        >
+        <Card key={i} className="border border-neutral-200">
           <div className="text-[#606060] text-sm font-semibold mb-2">
             {c.title}
           </div>
