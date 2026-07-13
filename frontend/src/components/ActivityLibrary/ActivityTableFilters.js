@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Radio, Select, Input, Button } from "antd";
-
-const SECTORS = [
-  { value: "all", label: "All Sectors" },
-  { value: 1, label: "Food & Agriculture" },
-  { value: 2, label: "Health & Nutrition" },
-  { value: 3, label: "Water & Sanitation" },
-  { value: 4, label: "Education" },
-  { value: 5, label: "Environment & Energy" },
-  { value: 6, label: "Coordination" },
-  { value: 7, label: "Social Protection" },
-  { value: 8, label: "Transport & Logistics" },
-];
+import { ACTIVITY_SECTOR_OPTIONS } from "@/static/config";
 
 export default function ActivityTableFilters({
   statusFilter = "all",
@@ -69,7 +58,7 @@ export default function ActivityTableFilters({
           value={sectorFilter}
           onChange={onSectorChange}
           className="w-full md:w-48"
-          options={SECTORS}
+          options={ACTIVITY_SECTOR_OPTIONS}
         />
       </div>
     </div>

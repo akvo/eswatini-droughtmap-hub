@@ -24,9 +24,9 @@ export default function ActivityLibraryPage() {
     async function fetchCounts() {
       try {
         const [draftRes, activeRes, archivedRes] = await Promise.all([
-          api("GET", "/v1/activities?status=1"),
-          api("GET", "/v1/activities?status=2"),
-          api("GET", "/v1/activities?status=3"),
+          api("GET", "/activities?status=1"),
+          api("GET", "/activities?status=2"),
+          api("GET", "/activities?status=3"),
         ]);
         setCounts({
           draft: draftRes?.total || 0,
@@ -45,12 +45,13 @@ export default function ActivityLibraryPage() {
     async function fetchList() {
       setLoading(true);
       try {
-        const params = { page };
-        if (statusFilter !== "all") params.status = statusFilter;
-        if (sectorFilter !== "all") params.sector = sectorFilter;
-        if (searchQuery) params.search = searchQuery;
+        const params = new URLSearchParams();
+        params.set("page", page);
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        if (sectorFilter !== "all") params.set("sector", sectorFilter);
+        if (searchQuery) params.set("search", searchQuery);
 
-        const res = await api("GET", "/v1/activities", { params });
+        const res = await api("GET", `/activities?${params.toString()}`);
         setActivities(res?.data || []);
         setTotal(res?.total || 0);
       } catch (err) {
@@ -94,12 +95,11 @@ export default function ActivityLibraryPage() {
     : null;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-[1280px]">
+    <div className="w-full space-y-6">
       <PageHeader
         title="Activity Library"
         description="Standard Operating Procedures | Click any row to view details"
         date={formattedDate}
-        className="mb-8"
       />
 
       <ActivityMetricCards
