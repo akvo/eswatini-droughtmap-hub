@@ -182,12 +182,17 @@ export const PUBLIC_MENU_ITEMS = [
     align: "right",
   },
   {
+    url: "/activity-library",
+    label: "Activity Library",
+    authenticated: true,
+    align: "right",
+  },
+  {
     url: "/about",
     label: "About",
     align: "right",
   },
 ];
-
 
 // Footer link columns (Figma node 3562:110459). Some targets are placeholders
 // until their pages exist; /, /about and /feedback are live.
@@ -200,6 +205,7 @@ export const FOOTER_LINK_COLUMNS = [
       { label: "Data validation", url: "/publications" },
       { label: "Detailed insights", url: "/detailed-insights" },
       { label: "SOP library", url: "/sop-library" },
+      { label: "Activity library", url: "/activity-library" },
     ],
   },
   {
