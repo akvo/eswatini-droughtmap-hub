@@ -13,7 +13,7 @@ export default function ActivityMetricCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 mb-12 md:grid-cols-3">
+    <div className="grid grid-cols-1 -mt-14 mb-12 md:grid-cols-3">
       {cards.map((c, i) => (
         <Card key={i} className="border border-neutral-200">
           <div className="text-[#606060] text-sm font-semibold mb-2">

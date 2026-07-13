@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Button } from "antd";
 import { api, apiText } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import FeedbackSection from "@/components/FeedbackSection";
@@ -114,6 +115,14 @@ export default function ActivityLibraryPage() {
         title="Activity Library"
         description="Standard Operating Procedures | Click any row to view details"
         date={formattedDate}
+        actions={
+          <Button
+            type="primary"
+            className="font-semibold bg-blue-600 border-blue-600 hover:bg-blue-700"
+          >
+            Add new library
+          </Button>
+        }
       />
 
       <ActivityMetricCards
