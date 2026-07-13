@@ -39,6 +39,50 @@ export const REGION_COLOR = {
   Shiselweni: "#9B59B6",
 };
 
+export const REGION_OPTIONS = Object.keys(REGION_COLOR).map((r) => ({
+  value: r,
+  label: r,
+}));
+
+// Climatic zones — values must match backend AdministrationZones.
+export const ZONE_OPTIONS = [
+  { value: "highveld", label: "Highveld" },
+  { value: "middleveld", label: "Middleveld" },
+  { value: "lowveld", label: "Lowveld" },
+  { value: "lubombo_plateau", label: "Lubombo Plateau" },
+];
+
+// Short D-code for the review-queue badges. The long-form drought copy lives in
+// DROUGHT_CATEGORY_LABEL; these are the chips (Figma 3117-42637).
+export const DROUGHT_CATEGORY_CODE = {
+  [DROUGHT_CATEGORY_VALUE.normal]: "Normal",
+  [DROUGHT_CATEGORY_VALUE.d0]: "D0",
+  [DROUGHT_CATEGORY_VALUE.d1]: "D1",
+  [DROUGHT_CATEGORY_VALUE.d2]: "D2",
+  [DROUGHT_CATEGORY_VALUE.d3]: "D3",
+  [DROUGHT_CATEGORY_VALUE.d4]: "D4",
+  [DROUGHT_CATEGORY_VALUE.none]: "No data",
+};
+
+// Confidence bands and review status — the two colourings of the queue map.
+// Mock until the confidence formula lands (backend flags them is_mock).
+export const CONFIDENCE_STYLE = {
+  low: { color: "#B10D0B", bg: "#FEF3F2", label: "Low" },
+  medium: { color: "#B54708", bg: "#FFFAEB", label: "Medium" },
+  high: { color: "#027A48", bg: "#ECFDF3", label: "High" },
+};
+
+export const REVIEW_STATUS_STYLE = {
+  fully_reviewed: { color: "#12B76A", label: "Fully reviewed" },
+  partially_reviewed: { color: "#FAAD14", label: "Partially reviewed" },
+  not_started: { color: "#D2D2D2", label: "Not started" },
+};
+
+export const REVIEW_MAP_MODE = [
+  { value: "confidence", label: "Confidence score" },
+  { value: "progress", label: "Review progress" },
+];
+
 export const DROUGHT_CATEGORY_LABEL = {
   [DROUGHT_CATEGORY_VALUE.normal]: "Wet/normal conditions",
   [DROUGHT_CATEGORY_VALUE.d0]: "D0 Abnormally Dry",
@@ -187,7 +231,6 @@ export const PUBLIC_MENU_ITEMS = [
     align: "right",
   },
 ];
-
 
 // Footer link columns (Figma node 3562:110459). Some targets are placeholders
 // until their pages exist; /, /about and /feedback are live.
