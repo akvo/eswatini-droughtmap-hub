@@ -1,5 +1,9 @@
 "use server";
+
+import fs from "fs";
+import path from "path";
 import { getSession } from "./auth";
+import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
 
 // Server-side calls go straight to the backend, bypassing the Next.js rewrite
 // proxy (which resets long-running upstream requests at ~30s). Falls back to
@@ -8,6 +12,78 @@ const backendBaseURL = process.env.BACKEND_URL || process.env.WEBDOMAIN;
 
 export const api = (method, url, payload = {}) =>
   new Promise(async (resolve, reject) => {
+    // Intercept IKS endpoints to return static mock data using the prototype file
+    if (url.startsWith("/iks")) {
+      try {
+        const protoPath = path.join(process.cwd(), "src/static/iks_data.json");
+        const rawData = fs.readFileSync(protoPath, "utf-8");
+        const proto = JSON.parse(rawData);
+
+        if (url === "/iks/indicators") {
+          // Construct the 29 indicators from our config keys
+          const indicators = Object.keys(IKS_INDICATOR_CATALOGUE).map(
+            (name, index) => ({
+              id: index + 1,
+              name: name,
+            }),
+          );
+          return resolve(indicators);
+        }
+
+        if (url === "/iks/aggregations/net-signal") {
+          return resolve({
+            weeks: proto.weeks,
+            trend: proto.trend,
+          });
+        }
+
+        if (url === "/iks/aggregations/indicator-counts") {
+          // Derive per-indicator submission counts from radar region averages
+          const regionAvgs = Object.values(proto.radar).map(
+            (arr) => arr.reduce((a, b) => a + b, 0) / arr.length,
+          );
+          const baseCount = Math.round(
+            regionAvgs.reduce((a, b) => a + b, 0) / regionAvgs.length,
+          );
+          const data = Object.keys(IKS_INDICATOR_CATALOGUE).map((key, i) => ({
+            indicator: i + 1,
+            code: IKS_INDICATOR_CATALOGUE[key].code,
+            indicator_type: IKS_INDICATOR_CATALOGUE[key].type,
+            meaning: IKS_INDICATOR_CATALOGUE[key].meaning,
+            submission_count: Math.max(1, baseCount + ((i * 7) % 30) - 10),
+          }));
+          return resolve({ data });
+        }
+
+        if (url === "/iks/aggregations/agreement") {
+          return resolve({
+            agreement: proto.agreement,
+          });
+        }
+
+        if (url === "/iks/aggregations/soil-trend") {
+          return resolve({
+            weeks: proto.weeks,
+            soil_trend: proto.soil_trend,
+            region_map: proto.region_map,
+          });
+        }
+
+        if (url === "/iks/aggregations/heatmap") {
+          return resolve({
+            constituencies: proto.constituencies.slice(0, 20),
+            weeks: proto.weeks,
+            heatmap: proto.heatmap,
+          });
+        }
+      } catch (err) {
+        console.error(
+          "IKS prototype mock load failed, falling back to network",
+          err,
+        );
+      }
+    }
+
     const _session = await getSession();
     const headers = {
       "Content-Type": "application/json",
