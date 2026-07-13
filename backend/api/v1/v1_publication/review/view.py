@@ -73,6 +73,14 @@ def _filtered_rows(publication, request):
     return filter_rows(build_rows(publication), **serializer.filters())
 
 
+def _previous_rows(publication):
+    """Rows of the preceding publication month, or None if this is the first."""
+    previous = Publication.objects.filter(
+        year_month__lt=publication.year_month
+    ).order_by("-year_month").first()
+    return build_rows(previous) if previous else None
+
+
 class ReviewStatsAPI(APIView):
     permission_classes = [IsAuthenticated, IsReviewer]
 
@@ -96,8 +104,9 @@ class ReviewStatsAPI(APIView):
         meta = ReviewMetaSerializer(
             publication, context={"total": len(rows)}
         ).data
+        summary = build_stats(rows, _previous_rows(publication))
         return Response(
-            {"meta": meta, "summary": build_stats(rows)},
+            {"meta": meta, "summary": summary},
             status=status.HTTP_200_OK,
         )
 

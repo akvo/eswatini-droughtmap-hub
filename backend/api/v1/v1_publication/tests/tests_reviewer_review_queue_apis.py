@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
@@ -51,6 +53,63 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertTrue(summary["high_confidence"]["is_mock"])
         breakdown = {b["key"]: b["value"] for b in summary["status_breakdown"]}
         self.assertEqual(sum(breakdown.values()), self.total)
+
+    def test_stats_delta_is_null_without_previous_publication(self):
+        earliest = Publication.objects.order_by("year_month").first()
+        res = self.client.get(
+            reverse(
+                "review-queue-stats",
+                kwargs={"version": "v1", "pk": earliest.id},
+            )
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        summary = res.data["summary"]
+        self.assertIsNone(summary["pending_review"]["delta"])
+        self.assertIsNone(summary["tinkhundla_reviewed"]["delta"])
+        self.assertTrue(
+            all(b["delta"] is None for b in summary["status_breakdown"])
+        )
+
+    def test_stats_delta_against_previous_publication(self):
+        earliest = Publication.objects.order_by("year_month").first()
+        # One Inkhundla reviewed last month -> one fewer "not started" there.
+        review = earliest.reviews.first()
+        review.suggestion_values = [{
+            "administration_id": (
+                earliest.initial_values[0]["administration_id"]
+            ),
+            "category": DroughtCategory.d2,
+            "reviewed": True,
+        }]
+        review.is_completed = True
+        review.completed_at = timezone.now()
+        review.save()
+
+        # A later publication with no reviews at all -> everything not started.
+        later = Publication.objects.create(
+            year_month=earliest.year_month + timedelta(days=31),
+            cdi_geonode_id=987654,
+            initial_values=earliest.initial_values,
+            due_date=earliest.due_date + timedelta(days=31),
+        )
+        res = self.client.get(
+            reverse(
+                "review-queue-stats",
+                kwargs={"version": "v1", "pk": later.id},
+            )
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        breakdown = {
+            b["key"]: b for b in res.data["summary"]["status_breakdown"]
+        }
+        # last month one Inkhundla had left "not started"; this month none has
+        self.assertEqual(
+            breakdown["not_started"]["delta"], {"value": 1, "direction": "up"}
+        )
+        self.assertEqual(
+            res.data["summary"]["tinkhundla_reviewed"]["delta"]["direction"],
+            "flat",  # neither month is validated yet
+        )
 
     # ---- administrations table ------------------------------------------
     def test_table_paginated_shape(self):

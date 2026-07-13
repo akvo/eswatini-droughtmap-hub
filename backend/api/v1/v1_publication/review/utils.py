@@ -104,64 +104,107 @@ def filter_rows(rows, search=None, confidence=None,
     return [row for row in rows if keep(row)]
 
 
-def build_stats(rows):
-    """Cards + half-doughnut summary derived from ``build_rows`` output."""
-    total = len(rows)
+def _tally(rows):
+    """Raw counters behind the summary — for this month and the previous."""
     counts = {"fully_reviewed": 0, "partially_reviewed": 0, "not_started": 0}
-    disputed = 0
-    high_confidence = 0
-    validated_count = 0
+    tally = {
+        "total": len(rows),
+        "disputed": 0,
+        "high_confidence": 0,
+        "validated": 0,
+    }
     for row in rows:
         counts[row["review_status"]] += 1
         if row["disputed"]:
-            disputed += 1
+            tally["disputed"] += 1
         if row["confidence"]["band"] == "high":
-            high_confidence += 1
+            tally["high_confidence"] += 1
         if row["assigned_score"] is not None:
-            validated_count += 1
-
-    reviews_collected = (
+            tally["validated"] += 1
+    tally.update(counts)
+    tally["reviews_collected"] = (
         counts["fully_reviewed"] + counts["partially_reviewed"]
     )
+    return tally
+
+
+def _pct(value, total):
+    return round(value / total * 100) if total else 0
+
+
+def _delta(current, previous):
+    """Change vs the previous publication. ``None`` when there is no previous
+    publication to compare against — the card then renders no arrow."""
+    if previous is None:
+        return None
+    change = current - previous
+    direction = "flat"
+    if change > 0:
+        direction = "up"
+    elif change < 0:
+        direction = "down"
+    return {"value": change, "direction": direction}
+
+
+def build_stats(rows, previous_rows=None):
+    """Cards + half-doughnut summary derived from ``build_rows`` output.
+
+    ``previous_rows`` are the rows of the preceding publication month; when
+    given, every card carries a ``delta`` against it (percentage points for
+    ``tinkhundla_reviewed``, absolute counts elsewhere).
+    """
+    now = _tally(rows)
+    was = _tally(previous_rows) if previous_rows is not None else None
+
+    def delta(key):
+        return _delta(now[key], was[key] if was else None)
+
     return {
         "pending_review": {
-            "value": disputed,
+            "value": now["disputed"],
             "label": "disagreement detected / sign-off needed",
+            "delta": delta("disputed"),
         },
         "high_confidence": {
-            "value": high_confidence,
+            "value": now["high_confidence"],
             "label": "ready to bulk-accept",
             "is_mock": True,
+            "delta": delta("high_confidence"),
         },
         "tinkhundla_reviewed": {
-            "value": validated_count,
-            "total": total,
+            "value": now["validated"],
+            "total": now["total"],
+            "delta": _delta(
+                _pct(now["validated"], now["total"]),
+                _pct(was["validated"], was["total"]) if was else None,
+            ),
         },
-        "overall_readiness": (
-            round(reviews_collected / total * 100) if total else 0
-        ),
+        "overall_readiness": _pct(now["reviews_collected"], now["total"]),
         "reviews_collected": {
-            "value": reviews_collected,
-            "total": total,
+            "value": now["reviews_collected"],
+            "total": now["total"],
         },
         "status_breakdown": [
             {
                 "key": "fully_reviewed",
                 "label": "Fully reviewed",
-                "value": counts["fully_reviewed"],
+                "value": now["fully_reviewed"],
                 "note": "ready to validate",
+                "delta": delta("fully_reviewed"),
             },
             {
                 "key": "partially_reviewed",
                 "label": "Partially reviewed",
-                "value": counts["partially_reviewed"],
+                "value": now["partially_reviewed"],
                 "note": "in progress",
+                "delta": delta("partially_reviewed"),
             },
             {
                 "key": "not_started",
                 "label": "Not started",
-                "value": counts["not_started"],
+                "value": now["not_started"],
                 "note": "awaiting first review",
+                "delta": delta("not_started"),
             },
         ],
     }
