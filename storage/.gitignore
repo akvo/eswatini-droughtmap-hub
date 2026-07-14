@@ -1,2 +1,2 @@
-*.csv
-# Add any other file types you want to ignore here
+*
+!.gitignore
