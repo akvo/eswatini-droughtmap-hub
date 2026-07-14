@@ -13,19 +13,19 @@ export default function ActivityAddedModal({ open, onClose, subtitle }) {
       styles={{
         body: {
           padding: 24,
-          borderRadius: 8,
+          borderRadius: 0,
           overflow: "hidden",
           position: "relative",
         },
       }}
     >
-      <div className="flex flex-col items-center gap-6 text-center">
-        {/* Decorative Map Contour Bg Pattern matching PageHeader */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-dhi-pattern bg-[length:200%_auto] bg-center bg-no-repeat opacity-[0.12] pointer-events-none rounded-lg"
-        />
+      {/* Decorative Map Contour Bg Pattern matching PageHeader */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-dhi-pattern bg-[length:100%_auto] bg-center bg-no-repeat opacity-[0.85] pointer-events-none z-0"
+      />
 
+      <div className="flex flex-col items-center gap-6 text-center relative z-10">
         {/* Featured Icon Circle */}
         <div className="size-12 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 z-10">
           <span className="text-blue-600 text-lg font-bold">✓</span>
