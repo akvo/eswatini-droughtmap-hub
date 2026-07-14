@@ -1,7 +1,7 @@
 # Feature Design: Track 3 Operational Response - IKS Explorer Frontend
 
 **Task ID**: IKS-Frontend
-**Author**: Antigravity
+**Author**: Galih Pratama
 **Date**: 2026-07-09
 **Status**: Approved
 

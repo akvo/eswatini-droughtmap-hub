@@ -246,8 +246,8 @@ export const PUBLIC_MENU_ITEMS = [
   },
   {
     // Authenticated-only: hidden until a session is present.
-    url: "/sop-library",
-    label: "SOP library",
+    url: "/activity-library",
+    label: "Activity Library",
     authenticated: true,
     is_admin: true,
     align: "right",
@@ -269,7 +269,7 @@ export const FOOTER_LINK_COLUMNS = [
       { label: "Drought review", url: "/reviews" },
       { label: "Data validation", url: "/publications" },
       { label: "Detailed insights", url: "/detailed-insights" },
-      { label: "SOP library", url: "/sop-library" },
+      { label: "Activity library", url: "/activity-library" },
     ],
   },
   {
@@ -305,6 +305,18 @@ export const TWG_OPTIONS = [
     value: 5,
     label: "UNESWA (University of Eswatini)",
   },
+];
+
+export const ACTIVITY_SECTOR_OPTIONS = [
+  { value: "all", label: "All Sectors" },
+  { value: 1, label: "Food & Agriculture" },
+  { value: 2, label: "Health & Nutrition" },
+  { value: 3, label: "Water & Sanitation" },
+  { value: 4, label: "Education" },
+  { value: 5, label: "Environment & Energy" },
+  { value: 6, label: "Coordination" },
+  { value: 7, label: "Social Protection" },
+  { value: 8, label: "Transport & Logistics" },
 ];
 
 export const DEFAULT_MAP_HEIGHT = 48;
