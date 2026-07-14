@@ -41,9 +41,7 @@ const SectorCard = ({ sector }) => {
           <p className="text-xs text-neutral-400">Tinkhundla</p>
         </div>
       </div>
-      <p className="text-xs text-neutral-500 leading-5">
-        {sector.description}
-      </p>
+      <p className="text-xs text-neutral-500 leading-5">{sector.description}</p>
     </div>
   );
 };
@@ -62,7 +60,8 @@ const ResponseActivities = () => {
               Response Activities
             </h2>
             <span className="flex items-center gap-1.5 text-xs text-neutral-400 shrink-0">
-              <CalendarOutlined /> last updated: <strong className="text-neutral-600">{lastUpdated}</strong>
+              <CalendarOutlined /> last updated:{" "}
+              <strong className="text-neutral-600">{lastUpdated}</strong>
             </span>
           </div>
           <p className="text-sm text-neutral-500 leading-6">{summary}</p>

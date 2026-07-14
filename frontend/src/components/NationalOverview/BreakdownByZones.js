@@ -73,7 +73,8 @@ const BreakdownByZones = () => {
             </span>
           ))}
           <span className="ml-auto text-xs text-neutral-400 italic">
-            Piecharts show division of drought level per inkhundla in the region.
+            Piecharts show division of drought level per inkhundla in the
+            region.
           </span>
         </div>
       </div>

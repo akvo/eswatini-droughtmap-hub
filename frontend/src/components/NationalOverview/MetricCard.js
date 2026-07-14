@@ -3,7 +3,15 @@
 import MiniBarChart from "./MiniBarChart";
 import MiniDonutChart from "./MiniDonutChart";
 
-const MetricCard = ({ label, value, unit, note, history, icon, percentage }) => {
+const MetricCard = ({
+  label,
+  value,
+  unit,
+  note,
+  history,
+  icon,
+  percentage,
+}) => {
   const hasHistory = history && history.length > 0;
   const hasPercentage = percentage != null;
 
@@ -11,9 +19,7 @@ const MetricCard = ({ label, value, unit, note, history, icon, percentage }) => 
     <div className="w-full flex-1 border-b border-neutral-200 p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-neutral-500">{label}</span>
-        {icon && (
-          <span className="text-neutral-400">{icon}</span>
-        )}
+        {icon && <span className="text-neutral-400">{icon}</span>}
       </div>
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col">

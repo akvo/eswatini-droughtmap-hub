@@ -1,10 +1,7 @@
 "use client";
 
 import { Button } from "antd";
-import {
-  CalendarOutlined,
-  DownloadOutlined,
-} from "@ant-design/icons";
+import { CalendarOutlined, DownloadOutlined } from "@ant-design/icons";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
 import { heroData } from "@/static/mocks/national-overview/hero";
 
@@ -40,10 +37,12 @@ const HeroSection = () => {
 
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-neutral-500">
           <span className="flex items-center gap-1.5">
-            <CalendarOutlined /> Published: <strong className="text-neutral-700">{published}</strong>
+            <CalendarOutlined /> Published:{" "}
+            <strong className="text-neutral-700">{published}</strong>
           </span>
           <span className="flex items-center gap-1.5">
-            <CalendarOutlined /> Next update: <strong className="text-neutral-700">{nextUpdate}</strong>
+            <CalendarOutlined /> Next update:{" "}
+            <strong className="text-neutral-700">{nextUpdate}</strong>
           </span>
         </div>
 
