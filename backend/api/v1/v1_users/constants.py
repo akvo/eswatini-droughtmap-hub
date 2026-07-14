@@ -30,10 +30,10 @@ class TechnicalWorkingGroup:
 
 
 class ActionEnum(Enum):
-    CREATE = 'create'
-    READ = 'read'
-    UPDATE = 'update'
-    DELETE = 'delete'
+    CREATE = "create"
+    READ = "read"
+    UPDATE = "update"
+    DELETE = "delete"
 
     @classmethod
     def choices(cls):

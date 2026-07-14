@@ -170,7 +170,7 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
 
     def validate_source_file(self, value):
         if value is not None:
-            files.validate_source_file(value)
+            files.validate_source_file(value, validate_dimensions=False)
         return value
 
     def create(self, validated_data):

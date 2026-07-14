@@ -37,7 +37,7 @@ export default function ActivityTableFilters({
         </h2>
         <div className="flex w-full items-center gap-3 lg:w-auto">
           <Input.Search
-            placeholder="Search"
+            placeholder="Search by title or code..."
             value={searchVal}
             onChange={(e) => setSearchVal(e.target.value)}
             className="w-full lg:w-80"
