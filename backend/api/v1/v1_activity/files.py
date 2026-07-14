@@ -1,13 +1,17 @@
 import os
 from pathlib import Path
 
-from PIL import Image
 from rest_framework.exceptions import ValidationError
 
 from utils import storage
 
 ALLOWED_EXT = {"svg", "png", "jpg", "jpeg", "gif", "pdf", "docx"}
-RASTER_IMAGE_EXT = {"png", "jpg", "jpeg", "gif"}  # SVG has no raster dimensions
+RASTER_IMAGE_EXT = {
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+}  # SVG has no raster dimensions
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_IMAGE_W, MAX_IMAGE_H = 800, 400
 
@@ -22,16 +26,19 @@ def sanitize_filename(name):
     return base or "upload"
 
 
-def validate_source_file(f):
+def validate_source_file(f, validate_dimensions=True):
     """Extension + size + (for raster images) max-dimension check."""
     ext = _ext(getattr(f, "name", ""))
     if ext not in ALLOWED_EXT:
         raise ValidationError(
-            f"Unsupported file type '.{ext}'. Allowed: {sorted(ALLOWED_EXT)}.")
+            f"Unsupported file type '.{ext}'. Allowed: {sorted(ALLOWED_EXT)}."
+        )
     if f.size > MAX_FILE_SIZE:
         raise ValidationError("File too large (max 10 MB).")
-    if ext in RASTER_IMAGE_EXT:
+    if validate_dimensions and ext in RASTER_IMAGE_EXT:
         try:
+            from PIL import Image
+
             image = Image.open(f)
             width, height = image.size
         except Exception:
@@ -40,7 +47,8 @@ def validate_source_file(f):
             f.seek(0)
         if width > MAX_IMAGE_W or height > MAX_IMAGE_H:
             raise ValidationError(
-                f"Image exceeds max dimensions {MAX_IMAGE_W}x{MAX_IMAGE_H}px.")
+                f"Image exceeds max dimensions {MAX_IMAGE_W}x{MAX_IMAGE_H}px."
+            )
 
 
 def save_source_file(uploaded, code):
