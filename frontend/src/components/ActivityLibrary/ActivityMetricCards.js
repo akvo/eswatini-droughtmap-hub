@@ -1,5 +1,4 @@
 import React from "react";
-import { Card } from "antd";
 
 export default function ActivityMetricCards({
   active = 0,
@@ -13,14 +12,14 @@ export default function ActivityMetricCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 -mt-14 mb-12 md:grid-cols-3">
-      {cards.map((c, i) => (
-        <Card key={i} className="border border-neutral-200">
-          <div className="text-[#606060] text-sm font-semibold mb-2">
-            {c.title}
+    <div className="grid grid-cols-1 border border-[#d2d2d2] bg-white md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#d2d2d2]">
+      {cards.map((c) => (
+        <div key={c.title} className="flex flex-col gap-4 p-4">
+          <div className="text-base leading-6 text-[#333333]">{c.title}</div>
+          <div className="text-[28px] font-bold leading-[42px] text-[#333333]">
+            {c.count}
           </div>
-          <div className="text-3xl font-bold text-neutral-800">{c.count}</div>
-        </Card>
+        </div>
       ))}
     </div>
   );

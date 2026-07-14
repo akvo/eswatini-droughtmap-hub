@@ -110,7 +110,7 @@ export default function ActivityLibraryPage() {
     : null;
 
   return (
-    <div className="w-full">
+    <div className="w-full h-auto">
       <PageHeader
         title="Activity Library"
         description="Standard Operating Procedures | Click any row to view details"
@@ -124,42 +124,48 @@ export default function ActivityLibraryPage() {
           </Button>
         }
       />
-
-      <ActivityMetricCards
-        active={counts.active}
-        draft={counts.draft}
-        archived={counts.archived}
-      />
-
-      <ActivityTableFilters
-        statusFilter={statusFilter}
-        sectorFilter={sectorFilter}
-        searchQuery={searchQuery}
-        onStatusChange={(val) => {
-          setStatusFilter(val);
-          setPage(1);
-        }}
-        onSectorChange={(val) => {
-          setSectorFilter(val);
-          setPage(1);
-        }}
-        onSearchChange={(val) => {
-          setSearchQuery(val);
-          setPage(1);
-        }}
-        onExport={handleExport}
-      />
-
-      <ActivityTable
-        activities={activities}
-        loading={loading}
-        page={page}
-        total={total}
-        onPageChange={setPage}
-      />
-
-      <div className="mt-12">
-        <FeedbackSection />
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+        />
+        <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px]">
+          <ActivityMetricCards
+            active={counts.active}
+            draft={counts.draft}
+            archived={counts.archived}
+          />
+        </div>
+        <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
+          <ActivityTableFilters
+            statusFilter={statusFilter}
+            sectorFilter={sectorFilter}
+            searchQuery={searchQuery}
+            onStatusChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            onSectorChange={(val) => {
+              setSectorFilter(val);
+              setPage(1);
+            }}
+            onSearchChange={(val) => {
+              setSearchQuery(val);
+              setPage(1);
+            }}
+            onExport={handleExport}
+          />
+          <ActivityTable
+            activities={activities}
+            loading={loading}
+            page={page}
+            total={total}
+            onPageChange={setPage}
+          />
+        </section>
+        <div className="mx-auto w-full max-w-[1280px] py-8">
+          <FeedbackSection />
+        </div>
       </div>
     </div>
   );
