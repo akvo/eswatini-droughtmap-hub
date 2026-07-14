@@ -8,7 +8,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "-t", "--test", nargs="?", const=False, default=False, type=bool,
+            "-t",
+            "--test",
+            nargs="?",
+            const=False,
+            default=False,
+            type=bool,
         )
 
     def handle(self, *args, **options):
@@ -20,53 +25,32 @@ class Command(BaseCommand):
                 "abilities": [
                     {
                         "action": ActionEnum.CREATE.value,
-                        "subject": "Publication"
+                        "subject": "Publication",
                     },
                     {
                         "action": ActionEnum.READ.value,
-                        "subject": "Publication"
+                        "subject": "Publication",
                     },
                     {
                         "action": ActionEnum.UPDATE.value,
-                        "subject": "Publication"
+                        "subject": "Publication",
                     },
                     {
                         "action": ActionEnum.DELETE.value,
-                        "subject": "Publication"
+                        "subject": "Publication",
                     },
-                    {
-                        "action": ActionEnum.CREATE.value,
-                        "subject": "Review"
-                    },
-                    {
-                        "action": ActionEnum.READ.value,
-                        "subject": "Review"
-                    },
+                    {"action": ActionEnum.CREATE.value, "subject": "Review"},
+                    {"action": ActionEnum.READ.value, "subject": "Review"},
                     {
                         "action": ActionEnum.UPDATE.value,
                         "subject": "Review",
                         "conditions": {"owner": "true"},
                     },
-                    {
-                        "action": ActionEnum.DELETE.value,
-                        "subject": "Review"
-                    },
-                    {
-                        "action": ActionEnum.CREATE.value,
-                        "subject": "Activity"
-                    },
-                    {
-                        "action": ActionEnum.READ.value,
-                        "subject": "Activity"
-                    },
-                    {
-                        "action": ActionEnum.UPDATE.value,
-                        "subject": "Activity"
-                    },
-                    {
-                        "action": ActionEnum.DELETE.value,
-                        "subject": "Activity"
-                    },
+                    {"action": ActionEnum.DELETE.value, "subject": "Review"},
+                    {"action": ActionEnum.CREATE.value, "subject": "Activity"},
+                    {"action": ActionEnum.READ.value, "subject": "Activity"},
+                    {"action": ActionEnum.UPDATE.value, "subject": "Activity"},
+                    {"action": ActionEnum.DELETE.value, "subject": "Activity"},
                 ],
             },
             {
@@ -74,12 +58,9 @@ class Command(BaseCommand):
                 "abilities": [
                     {
                         "action": ActionEnum.READ.value,
-                        "subject": "Publication"
+                        "subject": "Publication",
                     },
-                    {
-                        "action": ActionEnum.CREATE.value,
-                        "subject": "Review"
-                    },
+                    {"action": ActionEnum.CREATE.value, "subject": "Review"},
                     {
                         "action": ActionEnum.READ.value,
                         "subject": "Review",
@@ -90,14 +71,8 @@ class Command(BaseCommand):
                         "subject": "Review",
                         "conditions": {"owner": "true"},
                     },
-                    {
-                        "action": ActionEnum.READ.value,
-                        "subject": "Activity"
-                    },
-                    {
-                        "action": ActionEnum.CREATE.value,
-                        "subject": "Activity"
-                    },
+                    {"action": ActionEnum.READ.value, "subject": "Activity"},
+                    {"action": ActionEnum.CREATE.value, "subject": "Activity"},
                     {
                         "action": ActionEnum.UPDATE.value,
                         "subject": "Activity",
@@ -112,21 +87,18 @@ class Command(BaseCommand):
                 {
                     "role": UserRoleTypes.admin,
                     "abilities": [
-                        {
-                            "action": ActionEnum.CREATE.value,
-                            "subject": "TEST"
-                        }
-                    ]
+                        {"action": ActionEnum.CREATE.value, "subject": "TEST"}
+                    ],
                 }
             ]
         # Seed roles and abilities
         for role_data in default_data:
             for ability_data in role_data["abilities"]:
-                Ability.objects.get_or_create(
+                Ability.objects.update_or_create(
                     role=role_data["role"],
                     action=ability_data["action"],
                     subject=ability_data["subject"],
-                    conditions=ability_data.get("conditions"),
+                    defaults={"conditions": ability_data.get("conditions")},
                 )
 
         if not settings.TEST_ENV:

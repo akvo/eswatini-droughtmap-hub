@@ -2,10 +2,10 @@
 
 ## Feature: Activity Library — Add New Response Activity (4-Step Slide-In)
 
-**Task ID**: TBD
+**Task ID**: #105
 **Author**: Galih Pratama
 **Date**: 2026-07-14
-**Status**: Draft — updated after Figma review (node 4139-141841)
+**Status**: Approved
 
 ---
 
@@ -536,18 +536,23 @@ await api("POST", "/activities", fd);
 
 ### Exposure Indicators (Step 2 exp rows)
 
+Indicator names match backend `EXPOSURE_INDICATORS`
+(`backend/api/v1/v1_activity/constants.py`) — no frontend mapping.
+
 | Label | Indicator Name |
 |---|---|
 | Water demand indicator | `"water"` |
-| Susceptibility to drought threshold | `"susceptibility"` |
+| Susceptibility to drought threshold | `vuln: { op, value }` (IPC phase 1–4, not an `exp` row) |
 | Cattle count | `"cattle"` |
-| Land use share | `"land_use"` |
+| Land use share | `"cropland"` |
 | Population | `"population"` |
 
 ---
 
 ## 9. Security Considerations
 
+- [x] CASL rules wrapped on UI: `<Can I="create" a="Activity">` blocks unauthorized creation actions.
+- [x] Sector filtering enforced inside Step 1 Identify dropdown based on reviewer `$own` conditions mapping.
 - [ ] `CanManageActivity` enforced server-side (admin or matching-sector reviewer)
 - [ ] Sector restriction enforced in `ActivityWriteSerializer.create()` — surfaced as field error
 - [ ] File upload validated by `files.validate_source_file()`

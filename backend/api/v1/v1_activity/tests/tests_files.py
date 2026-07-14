@@ -14,44 +14,57 @@ def _png(width, height):
 
 class FilesTestCase(TestCase):
     def test_sanitize_filename_strips_paths(self):
-        self.assertEqual(
-            files.sanitize_filename("../../etc/passwd"), "passwd")
+        self.assertEqual(files.sanitize_filename("../../etc/passwd"), "passwd")
         self.assertEqual(files.sanitize_filename("a/b\\c.pdf"), "c.pdf")
 
     def test_reject_unknown_extension(self):
         f = SimpleUploadedFile(
-            "x.exe", b"data", content_type="application/octet-stream")
+            "x.exe", b"data", content_type="application/octet-stream"
+        )
         with self.assertRaises(ValidationError):
             files.validate_source_file(f)
 
     def test_reject_oversized_image_dimensions(self):
         f = SimpleUploadedFile(
-            "big.png", _png(1000, 500), content_type="image/png")
+            "big.png", _png(1000, 500), content_type="image/png"
+        )
         with self.assertRaises(ValidationError):
             files.validate_source_file(f)
 
     def test_accept_valid_image(self):
         f = SimpleUploadedFile(
-            "ok.png", _png(400, 200), content_type="image/png")
+            "ok.png", _png(400, 200), content_type="image/png"
+        )
         files.validate_source_file(f)  # no raise
 
     def test_accept_pdf(self):
         f = SimpleUploadedFile(
-            "doc.pdf", b"%PDF-1.4 ...", content_type="application/pdf")
+            "doc.pdf", b"%PDF-1.4 ...", content_type="application/pdf"
+        )
         files.validate_source_file(f)  # no raise
+
+    def test_reject_invalid_mime_type(self):
+        f = SimpleUploadedFile(
+            "doc.pdf", b"data", content_type="application/x-msdownload"
+        )
+        with self.assertRaises(ValidationError):
+            files.validate_source_file(f)
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
 class SaveSourceFileTestCase(TestCase):
     def test_save_returns_relative_path(self, *_):
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             with override_settings(STORAGE_PATH=tmp):
                 # storage.py caches STORAGE_PATH at import; patch it too.
                 from utils import storage
+
                 storage.STORAGE_PATH = tmp
                 f = SimpleUploadedFile(
-                    "ok.png", _png(100, 100), content_type="image/png")
+                    "ok.png", _png(100, 100), content_type="image/png"
+                )
                 rel = files.save_source_file(f, "ACT-WASH-1")
                 self.assertEqual(rel, "activity/ACT-WASH-1/ok.png")
                 self.assertTrue(storage.check(rel))

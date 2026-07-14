@@ -12,6 +12,12 @@ export const HOME_PAGE = {
 
 export const PAGE_SIZE = 10;
 
+export const ACTIVITY_STATUS = {
+  draft: 1,
+  active: 2,
+  archived: 3,
+};
+
 export const DROUGHT_CATEGORY_VALUE = {
   normal: 0,
   d0: 1,
@@ -537,3 +543,36 @@ export const IKS_INDICATOR_CATALOGUE = {
     meaning: "drought",
   },
 };
+
+export const ALLOWED_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".ppt",
+  ".pptx",
+  ".txt",
+  ".csv",
+];
+
+export const ALLOWED_MIMES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+];
