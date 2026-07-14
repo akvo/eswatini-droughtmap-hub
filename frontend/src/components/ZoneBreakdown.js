@@ -2,14 +2,12 @@
 
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
 import {
-  breakdownsData,
-  trendsData,
-  zonesData,
+  breakdownsData as defaultBreakdowns,
+  trendsData as defaultTrends,
+  zonesData as defaultZones,
 } from "@/static/mocks/national-overview/zones";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
-
-// Track1 "Breakdown by zones" section — 4 zone cards, each a badge + name + trend
-// chip + the reusable D-class doughnut.
+import classNames from "classnames";
 
 // readable badge text colour for a given background (luminance)
 const textOn = (hex) => {
@@ -23,9 +21,9 @@ const textOn = (hex) => {
 };
 
 const TREND = {
-  worsening: { arrow: "▼", label: "WORSENING", color: "#dc2626" },
-  improving: { arrow: "▲", label: "IMPROVING", color: "#069206" },
-  stable: { arrow: "–", label: "STABLE", color: "#606060" },
+  worsening: { arrow: "\u25BC", label: "WORSENING", color: "#dc2626" },
+  improving: { arrow: "\u25B2", label: "IMPROVING", color: "#069206" },
+  stable: { arrow: "\u2013", label: "STABLE", color: "#606060" },
 };
 
 const ZoneCard = ({ zone, breakdown, trend }) => {
@@ -36,13 +34,13 @@ const ZoneCard = ({ zone, breakdown, trend }) => {
   );
 
   return (
-    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-md border border-neutral-300 bg-white p-4">
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 bg-white p-4">
       <div className="flex min-w-0 flex-col gap-2">
         <span
           className="w-fit rounded px-1.5 py-0.5 text-xs font-medium"
           style={{ backgroundColor: badgeBg, color: textOn(badgeBg) }}
         >
-          D{zone.value - 1}
+          D{zone.value - 1 >= 0 ? zone.value - 1 : 0}
         </span>
         <span className="truncate text-xl font-medium text-neutral-800">
           {zone.label}
@@ -59,18 +57,33 @@ const ZoneCard = ({ zone, breakdown, trend }) => {
   );
 };
 
-const ZoneBreakdown = () => {
-  const zones = zonesData.data || [];
+const GRID_COLS = {
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+};
+
+const ZoneBreakdown = ({
+  zones = defaultZones,
+  trends = defaultTrends,
+  breakdowns = defaultBreakdowns,
+  columns = 4,
+}) => {
+  const zoneList = zones.data || [];
   const trendsByAdministration = Object.fromEntries(
-    (trendsData.data || []).map((item) => [item.administration_id, item]),
+    (trends.data || []).map((item) => [item.administration_id, item]),
   );
   const breakdownsByAdministration = Object.fromEntries(
-    (breakdownsData.data || []).map((item) => [item.administration_id, item]),
+    (breakdowns.data || []).map((item) => [item.administration_id, item]),
   );
 
   return (
-    <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {zones.map((zone) => (
+    <div
+      className={classNames(
+        "grid w-full grid-cols-1 md:grid-cols-2 [&>div]:border-b [&>div]:border-r [&>div]:border-neutral-200",
+        GRID_COLS[columns] || "lg:grid-cols-4",
+      )}
+    >
+      {zoneList.map((zone) => (
         <ZoneCard
           key={zone.id}
           zone={zone}

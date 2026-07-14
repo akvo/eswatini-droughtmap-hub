@@ -15,7 +15,7 @@ import { Flex, Spin } from "antd";
 import CDIMapLegend from "./CDIMapLegend";
 import GetCoordinates from "./GetCoordinates";
 
-const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
+const CDIGeoJSON = ({ geoData, onEachFeature, style, layerKey }) => {
   const map = useMap();
   const { refreshMap } = useAppContext();
 
@@ -29,7 +29,9 @@ const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
 
   return (
     <GeoJSON
-      key="geodata"
+      // react-leaflet styles the layers once on mount; changing layerKey
+      // remounts them so new feature colors actually apply.
+      key={layerKey}
       data={geoData}
       weight={1}
       onEachFeature={(feature, layer) => onEachFeature(feature, layer, map)}
@@ -43,6 +45,7 @@ const CDIMap = ({
   onFeature,
   onClick = () => {},
   style = {},
+  layerKey = "geodata",
   ...props
 }) => {
   const appContext = useAppContext();
@@ -87,7 +90,9 @@ const CDIMap = ({
         scrollWheelZoom={false}
         {...props}
       >
-        {() => <CDIGeoJSON {...{ geoData, onEachFeature }} style={style} />}
+        {() => (
+          <CDIGeoJSON {...{ geoData, onEachFeature, layerKey }} style={style} />
+        )}
       </Map>
     </div>
   );

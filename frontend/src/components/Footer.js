@@ -5,13 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import dayjs from "dayjs";
 import { APP_SETTINGS, FOOTER_LINK_COLUMNS } from "@/static/config";
-import { usePathname } from "next/navigation";
 
 const Footer = () => {
-  const pathname = usePathname();
-  if (pathname === "/iframe/map") {
-    return null;
-  }
   return (
     <footer className="w-full bg-white border-t border-t-neutral-300 flex flex-col items-center gap-16 pt-16">
       <div className="container w-full flex flex-col gap-10 lg:flex-row lg:justify-between">

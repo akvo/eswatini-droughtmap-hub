@@ -5,6 +5,7 @@ import { api } from "@/lib";
 import { Skeleton } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import FeatureInfoCard from "@/components/Map/FeatureInfoCard";
 
 const CDIMap = dynamic(() => import("@/components/Map/CDIMap"), { ssr: false });
 
@@ -14,11 +15,13 @@ const IframeMapPage = ({ searchParams }) => {
   const [currentID, setCurrentID] = useState(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
+  const [selectedFeature, setSelectedFeature] = useState(null);
 
   const checkCurrentID = useCallback(() => {
     if (currentID && id && currentID !== id && !preload) {
       setCurrentID(id);
       setPreload(true);
+      setSelectedFeature(null);
     }
   }, [currentID, id, preload]);
 
@@ -41,13 +44,20 @@ const IframeMapPage = ({ searchParams }) => {
     }
   }, [id, preload]);
 
-  const onFeature = (feature) => {
-    const findAdm = data?.find(
+  const findAdm = (feature) =>
+    data?.find(
       (d) => d?.administration_id === feature?.properties?.administration_id,
     );
-    return {
-      fillColor: DROUGHT_CATEGORY_COLOR?.[findAdm?.category] || "white",
-    };
+
+  const onFeature = (feature) => ({
+    fillColor: DROUGHT_CATEGORY_COLOR?.[findAdm(feature)?.category] || "white",
+  });
+
+  const onClick = (feature) => {
+    setSelectedFeature({
+      name: feature?.properties?.name,
+      category: findAdm(feature)?.category,
+    });
   };
 
   useEffect(() => {
@@ -66,7 +76,18 @@ const IframeMapPage = ({ searchParams }) => {
 
   return (
     <div className="w-full">
-      <CDIMap onFeature={onFeature} dragging={false} isFullHeight />
+      <CDIMap
+        layerKey={data.map((d) => d?.category).join("-")}
+        onFeature={onFeature}
+        onClick={onClick}
+        dragging={false}
+        isFullHeight
+      >
+        <FeatureInfoCard
+          feature={selectedFeature}
+          onClose={() => setSelectedFeature(null)}
+        />
+      </CDIMap>
     </div>
   );
 };

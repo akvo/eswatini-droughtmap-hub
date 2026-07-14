@@ -183,6 +183,12 @@ h5 {
 .ant-select-single .ant-select-clear {
   inset-inline-end: var(--select-padding-x);
 }
+.select-styled .ant-select-selector {
+  border-radius: 8px !important;
+  border-color: #e2e4e9 !important;
+  background: #fff !important;
+}
+
 .ant-btn-primary:disabled,
 .ant-btn-primary.ant-btn-disabled {
   background-color: var(--btn-disabled-bg);
