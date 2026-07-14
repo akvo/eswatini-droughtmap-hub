@@ -1,10 +1,12 @@
 import React from "react";
 import { Tag } from "antd";
 
+import { ACTIVITY_STATUS } from "@/static/config";
+
 const STATUS_CONFIG = {
-  1: { label: "Draft", color: "default" },
-  2: { label: "Active", color: "green" },
-  3: { label: "Archived", color: "orange" },
+  [ACTIVITY_STATUS.draft]: { label: "Draft", color: "default" },
+  [ACTIVITY_STATUS.active]: { label: "Active", color: "green" },
+  [ACTIVITY_STATUS.archived]: { label: "Archived", color: "orange" },
 };
 
 export default function ActivityStatusTag({ status }) {

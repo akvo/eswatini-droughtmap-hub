@@ -548,6 +548,8 @@ await api("POST", "/activities", fd);
 
 ## 9. Security Considerations
 
+- [x] CASL rules wrapped on UI: `<Can I="create" a="Activity">` blocks unauthorized creation actions.
+- [x] Sector filtering enforced inside Step 1 Identify dropdown based on reviewer `$own` conditions mapping.
 - [ ] `CanManageActivity` enforced server-side (admin or matching-sector reviewer)
 - [ ] Sector restriction enforced in `ActivityWriteSerializer.create()` — surfaced as field error
 - [ ] File upload validated by `files.validate_source_file()`

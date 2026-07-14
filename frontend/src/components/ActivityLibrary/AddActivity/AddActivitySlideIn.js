@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { Button, message } from "antd";
 import { api } from "@/lib/api";
+import { useUserContext } from "@/context/UserContextProvider";
+import { USER_ROLES, ACTIVITY_STATUS } from "@/static/config";
 import Step1Identify from "./Step1Identify";
 import Step2Trigger from "./Step2Trigger";
 import Step3Ownership from "./Step3Ownership";
 import Step4Signoff from "./Step4Signoff";
+import Can from "@/components/Can";
 
 export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
+  const userContext = useUserContext();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -59,11 +63,11 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
   };
 
   const handleSaveAsDraft = async () => {
-    await submitForm(1); // 1 = Draft status
+    await submitForm(ACTIVITY_STATUS.draft);
   };
 
   const handlePublish = async () => {
-    await submitForm(2); // 2 = Active/Published status
+    await submitForm(ACTIVITY_STATUS.active);
   };
 
   const submitForm = async (statusVal) => {
@@ -118,10 +122,10 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
       if (res && res.id) {
         let warningSubtitle = "";
         // If status is Publish (2), call transition API to transition draft to active
-        if (statusVal === 2) {
+        if (statusVal === ACTIVITY_STATUS.active) {
           try {
             await api("POST", `/activity/${res.id}/transition`, {
-              to_status: 2,
+              to_status: ACTIVITY_STATUS.active,
             });
           } catch (transErr) {
             console.warn(
@@ -253,6 +257,7 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
                 formData={formData}
                 setFormData={setFormData}
                 errors={errors}
+                userContext={userContext}
               />
             )}
             {currentStep === 2 && (
@@ -298,14 +303,30 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
                 Next
               </Button>
             ) : (
-              <Button
-                type="primary"
-                onClick={handlePublish}
-                loading={submitting}
-                className="bg-blue-600 border-blue-600"
-              >
-                Publish
-              </Button>
+              <>
+                <Can I="update" a="Activity">
+                  <Button
+                    type="primary"
+                    onClick={handlePublish}
+                    loading={submitting}
+                    className="bg-blue-600 border-blue-600"
+                  >
+                    Publish
+                  </Button>
+                </Can>
+                {/* Fallback to Submit for Review if the user is not authorized to update (i.e. transition) */}
+                {userContext?.role !== "admin" &&
+                  userContext?.role !== USER_ROLES.admin && (
+                    <Button
+                      type="primary"
+                      onClick={handlePublish}
+                      loading={submitting}
+                      className="bg-blue-600 border-blue-600"
+                    >
+                      Submit for Review
+                    </Button>
+                  )}
+              </>
             )}
           </div>
         </div>

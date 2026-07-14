@@ -2,11 +2,36 @@ import React from "react";
 import { Select, Input } from "antd";
 import { ACTIVITY_SECTOR_OPTIONS } from "@/static/config";
 
-export default function Step1Identify({ formData, setFormData, errors }) {
+export default function Step1Identify({
+  formData,
+  setFormData,
+  errors,
+  userContext,
+}) {
   // Exclude "All Sectors" from options
-  const sectorOptions = ACTIVITY_SECTOR_OPTIONS.filter(
+  let sectorOptions = ACTIVITY_SECTOR_OPTIONS.filter(
     (opt) => opt.value !== "all",
   );
+
+  // If reviewer, restrict sector choices to their own assigned sector
+  const isReviewer =
+    userContext?.role === "reviewer" || userContext?.role === 1;
+  if (isReviewer && userContext?.abilities) {
+    const updateAbility = userContext.abilities.find(
+      (ab) => ab.subject === "Activity" && ab.action === "update",
+    );
+    // Use the sector conditions matched by backend seeder (e.g. { sector: x })
+    const ownSector = updateAbility?.conditions?.sector;
+    if (ownSector && ownSector !== "$own") {
+      sectorOptions = sectorOptions.filter(
+        (opt) => opt.value === Number(ownSector),
+      );
+    } else if (userContext?.sector) {
+      sectorOptions = sectorOptions.filter(
+        (opt) => opt.value === Number(userContext.sector),
+      );
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5 w-full">

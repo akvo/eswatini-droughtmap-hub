@@ -12,6 +12,12 @@ export const HOME_PAGE = {
 
 export const PAGE_SIZE = 10;
 
+export const ACTIVITY_STATUS = {
+  draft: 1,
+  active: 2,
+  archived: 3,
+};
+
 export const DROUGHT_CATEGORY_VALUE = {
   normal: 0,
   d0: 1,

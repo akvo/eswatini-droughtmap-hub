@@ -10,6 +10,7 @@ import ActivityTableFilters from "./ActivityTableFilters";
 import ActivityTable from "./ActivityTable";
 import AddActivitySlideIn from "./AddActivity/AddActivitySlideIn";
 import ActivityAddedModal from "../Modals/ActivityAddedModal";
+import Can from "@/components/Can";
 
 export default function ActivityLibraryPage() {
   const [activities, setActivities] = useState([]);
@@ -144,13 +145,15 @@ export default function ActivityLibraryPage() {
         description="Standard Operating Procedures | Click any row to view details"
         date={formattedDate}
         actions={
-          <Button
-            type="primary"
-            className="font-semibold bg-blue-600 border-blue-600 hover:bg-blue-700"
-            onClick={() => setShowSlideIn(true)}
-          >
-            Add new library
-          </Button>
+          <Can I="create" a="Activity">
+            <Button
+              type="primary"
+              className="font-semibold bg-blue-600 border-blue-600 hover:bg-blue-700"
+              onClick={() => setShowSlideIn(true)}
+            >
+              Add new library
+            </Button>
+          </Can>
         }
       />
 
