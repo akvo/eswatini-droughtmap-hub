@@ -42,16 +42,39 @@ def _review_status(reviewed_count, total_reviewers):
     return "partially_reviewed"
 
 
-def build_rows(publication):
-    """One dict per Inkhundla in ``initial_values`` (shared core)."""
+def _my_suggestions(publication, user):
+    """The requesting reviewer's own suggestion, keyed by administration."""
+    if user is None or not user.is_authenticated:
+        return {}
+    review = publication.reviews.filter(user_id=user.id).first()
+    if not review:
+        return {}
+    return {
+        s["administration_id"]: s
+        for s in (review.suggestion_values or [])
+        if s.get("administration_id") is not None
+    }
+
+
+def build_rows(publication, user=None):
+    """One dict per Inkhundla in ``initial_values`` (shared core).
+
+    ``user`` is the requesting reviewer: their own suggestion rides on the row
+    as ``my_suggestion``, so the queue can show what *they* approved or
+    suggested — not the same thing as the validated ``assigned_score``.
+    """
     initial = _category_map(publication.initial_values)
     validated = _category_map(publication.validated_values)
     total_reviewers = publication.reviews.count()
     admins = Administration.objects.in_bulk(list(initial.keys()))
+    mine = _my_suggestions(publication, user)
 
-    # categories submitted per administration across completed reviews
+    # Categories reviewed per administration, across every review — including
+    # reviews still in progress. A reviewer marks Tinkhundla one by one and only
+    # submits the review once all of them are done, so waiting for is_completed
+    # would leave the queue showing "not started" for work already done.
     reviewed = {}
-    for review in publication.completed_reviews:
+    for review in publication.reviews.all():
         for s in (review.suggestion_values or []):
             if s.get("reviewed"):
                 reviewed.setdefault(
@@ -64,6 +87,7 @@ def build_rows(publication):
         reviewed_count = len(categories)
         status = _review_status(reviewed_count, total_reviewers)
         admin = admins.get(administration_id)
+        my_suggestion = mine.get(administration_id)
         rows.append({
             "administration_id": administration_id,
             "name": admin.name if admin else None,
@@ -76,6 +100,11 @@ def build_rows(publication):
                 "completed": reviewed_count,
                 "total": total_reviewers,
             },
+            "my_suggestion": {
+                "category": my_suggestion.get("category"),
+                "reviewed": bool(my_suggestion.get("reviewed")),
+                "comment": my_suggestion.get("comment") or "",
+            } if my_suggestion else None,
             "assigned_score": validated.get(administration_id),
             "review_status": status,
             "disputed": (
@@ -104,6 +133,11 @@ def filter_rows(rows, search=None, confidence=None,
     return [row for row in rows if keep(row)]
 
 
+def is_mine_reviewed(row):
+    """The requesting reviewer has already reviewed this Inkhundla."""
+    return bool((row.get("my_suggestion") or {}).get("reviewed"))
+
+
 def _tally(rows):
     """Raw counters behind the summary — for this month and the previous."""
     counts = {"fully_reviewed": 0, "partially_reviewed": 0, "not_started": 0}
@@ -117,7 +151,10 @@ def _tally(rows):
         counts[row["review_status"]] += 1
         if row["disputed"]:
             tally["disputed"] += 1
-        if row["confidence"]["band"] == "high":
+        # "ready to bulk-accept" — high confidence AND not yet reviewed by the
+        # requesting reviewer, so the count (and the banner) drop to zero once
+        # they have been accepted.
+        if row["confidence"]["band"] == "high" and not is_mine_reviewed(row):
             tally["high_confidence"] += 1
         if row["assigned_score"] is not None:
             tally["validated"] += 1
