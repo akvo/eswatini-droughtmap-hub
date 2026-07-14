@@ -12,12 +12,7 @@ const AboutSection = ({
   return (
     <section className={classNames("w-full py-16", textAlign, className)}>
       {title && (
-        <h2
-          className={classNames(
-            "font-bold text-[#333333] mb-4",
-            titleSize
-          )}
-        >
+        <h2 className={classNames("font-bold text-[#333333] mb-4", titleSize)}>
           {title}
         </h2>
       )}
@@ -30,13 +25,11 @@ const AboutSection = ({
           {descriptions.map((text, i) => (
             <p
               key={i}
-              className={classNames(
-                "text-base leading-7 text-[#606060]",
-                {
-                  "max-w-3xl": descriptions.length === 1,
-                  "mx-auto": textAlign === "text-center" && descriptions.length === 1,
-                }
-              )}
+              className={classNames("text-base leading-7 text-[#606060]", {
+                "max-w-3xl": descriptions.length === 1,
+                "mx-auto":
+                  textAlign === "text-center" && descriptions.length === 1,
+              })}
             >
               {text}
             </p>

@@ -200,8 +200,9 @@ export default function ActivityTable({
     {
       title: "Actions",
       key: "actions",
+      align: "right",
       render: () => (
-        <Button type="link" size="small" className="p-0">
+        <Button type="link" className="edm-reviews-action">
           View
         </Button>
       ),
@@ -213,14 +214,18 @@ export default function ActivityTable({
       columns={columns}
       dataSource={activities.map((a) => ({ ...a, key: a.id }))}
       loading={loading}
+      scroll={{ x: 900 }}
       pagination={{
         current: page,
         total: total,
         pageSize: 10,
         onChange: onPageChange,
         showSizeChanger: false,
+        responsive: true,
+        align: "center",
+        position: ["bottomCenter"],
       }}
-      className="border border-neutral-200 overflow-hidden bg-white shadow-sm"
+      className="edm-reviews-table"
     />
   );
 }

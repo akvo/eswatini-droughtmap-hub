@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Radio, Select, Input, Button } from "antd";
+import { Select, Input, Button } from "antd";
+import TabButtons from "@/components/TabButtons";
 import { ACTIVITY_SECTOR_OPTIONS } from "@/static/config";
+
+const STATUS_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Active", value: 2 },
+  { label: "Draft", value: 1 },
+  { label: "Archived", value: 3 },
+];
 
 export default function ActivityTableFilters({
   statusFilter = "all",
@@ -18,21 +26,21 @@ export default function ActivityTableFilters({
       onSearchChange(searchVal);
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchVal]);
+  }, [searchVal, onSearchChange]);
 
   return (
-    <div className="bg-white p-4 border border-neutral-200">
-      {/* Title + Action controls row */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-        <h3 className="text-base font-bold text-neutral-800 m-0">
+    <>
+      {/* Title + search + export row */}
+      <div className="flex flex-col gap-4 border-b border-[#eaecf0] px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <h2 className="m-0 text-xl font-semibold leading-7 text-[#333333]">
           Operation procedures
-        </h3>
-        <div className="flex w-full md:w-auto items-center gap-3">
+        </h2>
+        <div className="flex w-full items-center gap-3 lg:w-auto">
           <Input.Search
-            placeholder="Search by title or code..."
+            placeholder="Search"
             value={searchVal}
             onChange={(e) => setSearchVal(e.target.value)}
-            className="w-full md:w-64"
+            className="w-full lg:w-80"
             allowClear
           />
           <Button onClick={onExport} type="default">
@@ -42,25 +50,19 @@ export default function ActivityTableFilters({
       </div>
 
       {/* Filter controls row */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-neutral-100 pt-4">
-        <Radio.Group
+      <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+        <TabButtons
+          options={STATUS_FILTERS}
           value={statusFilter}
-          onChange={(e) => onStatusChange(e.target.value)}
-          buttonStyle="solid"
-        >
-          <Radio.Button value="all">All</Radio.Button>
-          <Radio.Button value={2}>Active</Radio.Button>
-          <Radio.Button value={1}>Draft</Radio.Button>
-          <Radio.Button value={3}>Archived</Radio.Button>
-        </Radio.Group>
-
+          onChange={onStatusChange}
+        />
         <Select
           value={sectorFilter}
           onChange={onSectorChange}
-          className="w-full md:w-48"
+          className="w-full lg:w-48"
           options={ACTIVITY_SECTOR_OPTIONS}
         />
       </div>
-    </div>
+    </>
   );
 }
