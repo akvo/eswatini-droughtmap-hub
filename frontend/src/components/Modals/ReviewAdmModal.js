@@ -24,6 +24,12 @@ import { api } from "@/lib";
 const { TextArea } = Input;
 const { useForm } = Form;
 
+/** A computed class exists. Note category 0 (normal) is a value, not "missing". */
+const isComputed = (category) =>
+  category !== undefined &&
+  category !== null &&
+  category !== DROUGHT_CATEGORY_VALUE.none;
+
 /**
  * Individual Inkhundla review (design D-7 — a modal for this iteration).
  *
@@ -48,10 +54,7 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
   const isReviewed = Boolean(suggestion?.reviewed);
   const isCompleted = Boolean(review?.is_completed);
   const computed = row?.cdi_class;
-  const hasComputed =
-    computed !== undefined &&
-    computed !== null &&
-    computed !== DROUGHT_CATEGORY_VALUE.none;
+  const hasComputed = isComputed(computed);
 
   const loadDetail = useCallback(async () => {
     if (!administrationId || !publicationId) {
@@ -65,7 +68,10 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
       );
       setDetail(data);
       const own = data?.my_review?.suggestion;
-      setShowSuggestion(!own?.reviewed && !data?.administration?.cdi_class);
+      // Nothing to approve when there is no computed class -> open in suggest mode.
+      setShowSuggestion(
+        !own?.reviewed && !isComputed(data?.administration?.cdi_class),
+      );
       form.setFieldsValue({
         suggestedCategory: own?.category,
         comment: own?.comment || "",
@@ -120,39 +126,42 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
   };
 
   return (
-    <Form form={form} onFinish={onFinish}>
-      <Modal
-        title="Inkhundla status"
-        open={isOpen}
-        onCancel={onClose}
-        maskClosable={false}
-        width={768}
-        destroyOnClose
-        footer={
-          <Flex align="center" justify="space-between">
-            {!isCompleted && (
-              <Button
-                type="primary"
-                ghost
-                disabled={loading}
-                onClick={() => setShowSuggestion(!showSuggestion)}
-              >
-                {showSuggestion ? "Cancel" : "Suggest new value"}
-              </Button>
-            )}
+    <Modal
+      title="Inkhundla status"
+      open={isOpen}
+      onCancel={onClose}
+      maskClosable={false}
+      width={768}
+      destroyOnClose
+      footer={
+        <Flex align="center" justify="space-between">
+          {!isCompleted && (
             <Button
               type="primary"
-              loading={saving}
-              disabled={
-                loading || isCompleted || (!showSuggestion && !hasComputed) // nothing to approve
-              }
-              onClick={() => form.submit()}
+              ghost
+              disabled={loading}
+              onClick={() => setShowSuggestion(!showSuggestion)}
             >
-              {showSuggestion ? "Suggest new value" : "Approve computed value"}
+              {showSuggestion ? "Cancel" : "Suggest new value"}
             </Button>
-          </Flex>
-        }
-      >
+          )}
+          <Button
+            type="primary"
+            loading={saving}
+            disabled={
+              loading || isCompleted || (!showSuggestion && !hasComputed) // nothing to approve
+            }
+            onClick={() => form.submit()}
+          >
+            {showSuggestion ? "Suggest new value" : "Approve computed value"}
+          </Button>
+        </Flex>
+      }
+    >
+      {/* The Form must live INSIDE the Modal: the Modal renders through a
+          portal, so a Form wrapped around it leaves the fields in a different
+          tree from the <form> element and form.submit() silently does nothing. */}
+      <Form form={form} onFinish={onFinish} layout="vertical">
         {loading || !row ? (
           <Flex align="center" justify="center" className="py-12">
             <Spin />
@@ -240,8 +249,8 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
             </Form.Item>
           </div>
         )}
-      </Modal>
-    </Form>
+      </Form>
+    </Modal>
   );
 };
 
