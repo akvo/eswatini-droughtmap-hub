@@ -5,19 +5,22 @@ from rest_framework.exceptions import ValidationError
 
 from utils import storage
 
-ALLOWED_EXT = {"svg", "png", "jpg", "jpeg", "gif", "pdf", "docx"}
+from api.v1.v1_activity.constants import ALLOWED_EXTENSIONS, ALLOWED_MIMES
+
 RASTER_IMAGE_EXT = {
-    "png",
-    "jpg",
-    "jpeg",
-    "gif",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
 }  # SVG has no raster dimensions
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_IMAGE_W, MAX_IMAGE_H = 800, 400
 
 
 def _ext(name):
-    return name.rsplit(".", 1)[-1].lower() if "." in (name or "") else ""
+    ext_part = name.rsplit(".", 1)[-1].lower() if "." in (name or "") else ""
+    return f".{ext_part}" if ext_part else ""
 
 
 def sanitize_filename(name):
@@ -27,12 +30,18 @@ def sanitize_filename(name):
 
 
 def validate_source_file(f, validate_dimensions=True):
-    """Extension + size + (for raster images) max-dimension check."""
+    """Extension + mime + size + (for raster images) max-dimension check."""
     ext = _ext(getattr(f, "name", ""))
-    if ext not in ALLOWED_EXT:
+    if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
-            f"Unsupported file type '.{ext}'. Allowed: {sorted(ALLOWED_EXT)}."
+            f"Unsupported file type '{ext}'. Allowed: {sorted(ALLOWED_EXTENSIONS)}."
         )
+
+    # MIME check
+    mime = getattr(f, "content_type", "")
+    if mime and mime not in ALLOWED_MIMES:
+        raise ValidationError(f"Unsupported MIME type '{mime}'.")
+
     if f.size > MAX_FILE_SIZE:
         raise ValidationError("File too large (max 10 MB).")
     if validate_dimensions and ext in RASTER_IMAGE_EXT:

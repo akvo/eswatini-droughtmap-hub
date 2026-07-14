@@ -90,6 +90,43 @@ VULN_PHASE_MIN, VULN_PHASE_MAX = 1, 4
 # Dimensions with no honest per-administration source yet. Conditions on
 # these are treated as satisfied (never block firing) and reported in
 # `matched_on` with source "unavailable". Removed once PA-2 lands.
-# TODO(PA-2): supply water (litres), a true IPC phase (1..4), and drought
-# duration history for months, then drop this set.
 UNAVAILABLE = {"months", "ipc_phase", "water"}
+
+
+ALLOWED_EXTENSIONS = {
+    # Images
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    # Documents
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".csv",
+}
+
+ALLOWED_MIMES = {
+    # Images
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    # Documents
+    "application/pdf",
+    "text/plain",
+    "text/csv",
+    # Microsoft Office (Legacy and Modern)
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}

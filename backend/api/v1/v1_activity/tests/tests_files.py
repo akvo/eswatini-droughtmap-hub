@@ -43,6 +43,13 @@ class FilesTestCase(TestCase):
         )
         files.validate_source_file(f)  # no raise
 
+    def test_reject_invalid_mime_type(self):
+        f = SimpleUploadedFile(
+            "doc.pdf", b"data", content_type="application/x-msdownload"
+        )
+        with self.assertRaises(ValidationError):
+            files.validate_source_file(f)
+
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
 class SaveSourceFileTestCase(TestCase):

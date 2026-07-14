@@ -1,11 +1,36 @@
-import React, { useRef } from "react";
-import { Input } from "antd";
+import React, { useRef, useState } from "react";
+import { Input, message } from "antd";
+import { ALLOWED_EXTENSIONS, ALLOWED_MIMES } from "@/static/config";
 
 export default function Step4Signoff({ formData, setFormData }) {
   const fileInputRef = useRef(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleFileChange = (e) => {
+    setErrorMsg("");
     const file = e.target.files?.[0] || null;
+    if (!file) {
+      setFormData({ ...formData, source_file: null });
+      return;
+    }
+
+    // Validation checks
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    const isValidExt = ALLOWED_EXTENSIONS.includes(ext);
+    const isValidMime = !file.type || ALLOWED_MIMES.includes(file.type);
+
+    if (!isValidExt || !isValidMime) {
+      setErrorMsg(
+        `Unsupported file format. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      );
+      message.error("Selected file is not in an approved format.");
+      setFormData({ ...formData, source_file: null });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setFormData({ ...formData, source_file: file });
   };
 
@@ -45,14 +70,16 @@ export default function Step4Signoff({ formData, setFormData }) {
       <div className="flex flex-col gap-1.5">
         <input
           type="file"
-          accept=".svg,.png,.jpg,.gif,.pdf,.docx"
+          accept={ALLOWED_EXTENSIONS.join(",")}
           ref={fileInputRef}
           onChange={handleFileChange}
           className="hidden"
         />
         <div
           onClick={triggerFileSelect}
-          className="flex flex-col items-center justify-center p-6 border border-dashed border-neutral-300 rounded-lg cursor-pointer bg-white hover:bg-neutral-50 transition-all text-center gap-3"
+          className={`flex flex-col items-center justify-center p-6 border border-dashed rounded-lg cursor-pointer bg-white hover:bg-neutral-50 transition-all text-center gap-3 ${
+            errorMsg ? "border-red-500 bg-red-50/20" : "border-neutral-300"
+          }`}
         >
           {/* Cloud Upload Icon */}
           <div className="size-12 rounded-lg border border-neutral-300 flex items-center justify-center bg-white shadow-sm">
@@ -67,9 +94,16 @@ export default function Step4Signoff({ formData, setFormData }) {
               or drag and drop
             </span>
             <span className="text-xs text-neutral-500">
-              PDF, DOCX, SVG, PNG, JPG or GIF (max. 10MB)
+              PDF, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, PNG, JPG, GIF or WEBP
+              (max. 10MB)
             </span>
           </div>
+
+          {errorMsg && (
+            <div className="text-xs text-red-500 mt-1 font-medium">
+              {errorMsg}
+            </div>
+          )}
 
           {formData.source_file && (
             <div className="bg-blue-50 text-blue-800 text-xs px-3 py-1.5 rounded border border-blue-200 mt-2 font-medium">
