@@ -64,18 +64,45 @@ export const DROUGHT_CATEGORY_CODE = {
   [DROUGHT_CATEGORY_VALUE.none]: "No data",
 };
 
-// Confidence bands and review status — the two colourings of the queue map.
+// Confidence bands — the chip (color = ink, bg) and the map (fill = polygon,
+// dot = legend key / polygon stroke). Values read off Figma 3324-52326.
 // Mock until the confidence formula lands (backend flags them is_mock).
 export const CONFIDENCE_STYLE = {
-  low: { color: "#B10D0B", bg: "#FEF3F2", label: "Low" },
-  medium: { color: "#B54708", bg: "#FFFAEB", label: "Medium" },
-  high: { color: "#027A48", bg: "#ECFDF3", label: "High" },
+  low: {
+    color: "#B10D0B",
+    bg: "#FEF3F2",
+    fill: "#E50602",
+    dot: "#B10D0B",
+    label: "Low",
+  },
+  medium: {
+    color: "#B54708",
+    bg: "#FFFAEB",
+    fill: "#FEA90B",
+    dot: "#F39C12",
+    label: "Medium",
+  },
+  high: {
+    color: "#027A48",
+    bg: "#ECFDF3",
+    fill: "#B5F5CC",
+    dot: "#12B76A",
+    label: "High",
+  },
 };
 
-export const REVIEW_STATUS_STYLE = {
-  fully_reviewed: { color: "#12B76A", label: "Fully reviewed" },
-  partially_reviewed: { color: "#FAAD14", label: "Partially reviewed" },
-  not_started: { color: "#D2D2D2", label: "Not started" },
+// Legend order on the map: High -> Medium -> Low (Figma 3324-52326).
+export const CONFIDENCE_LEGEND = ["high", "medium", "low"];
+
+// Review-progress map: reviews collected out of the total reviewers, ramped
+// none -> all. Five buckets whatever the reviewer count — `most` absorbs
+// everything between 3 and all-but-one (0/5, 1/5, 2/5, 3-4/5, 5/5).
+export const REVIEW_PROGRESS_STYLE = {
+  none: { color: "#FECDCA", stroke: "#F04438" },
+  one: { color: "#FEDBB4", stroke: "#F79009" },
+  two: { color: "#FDE68A", stroke: "#EAB308" },
+  most: { color: "#A7F3D0", stroke: "#12B76A" },
+  all: { color: "#12B76A", stroke: "#027A48" },
 };
 
 export const REVIEW_MAP_MODE = [
