@@ -8,7 +8,9 @@ describe("ActivityAddedModal Component", () => {
     render(<ActivityAddedModal open={true} onClose={handleClose} />);
 
     expect(screen.getByText("Response activity added!")).toBeInTheDocument();
-    expect(screen.getByText("Your activity has been added to the system.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Your activity has been added to the system."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /ok/i })).toBeInTheDocument();
   });
 });

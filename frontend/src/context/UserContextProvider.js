@@ -28,9 +28,10 @@ const userReducer = (state, action) => {
   }
 };
 
-const UserContextProvider = ({ children, abilities = [] }) => {
+const UserContextProvider = ({ children, abilities = [], ...sessionProps }) => {
   const [user, dispatch] = useReducer(userReducer, {
     ...initialValues,
+    ...sessionProps,
     abilities,
   });
 

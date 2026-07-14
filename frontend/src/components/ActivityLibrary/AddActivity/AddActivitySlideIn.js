@@ -314,7 +314,6 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
                     Publish
                   </Button>
                 </Can>
-                {/* Fallback to Submit for Review if the user is not authorized to update (i.e. transition) */}
                 {userContext?.role !== "admin" &&
                   userContext?.role !== USER_ROLES.admin && (
                     <Button

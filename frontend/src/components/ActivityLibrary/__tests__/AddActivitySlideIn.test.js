@@ -28,7 +28,7 @@ describe("AddActivitySlideIn Component", () => {
         visible={true}
         onClose={handleClose}
         onSuccess={handleSuccess}
-      />
+      />,
     );
 
     // Assert using getByText queries to avoid the nwsapi role compilation bug
