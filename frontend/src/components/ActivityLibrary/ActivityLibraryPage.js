@@ -19,6 +19,7 @@ export default function ActivityLibraryPage() {
   // Slide-in and Success modal states
   const [showSlideIn, setShowSlideIn] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successSubtitle, setSuccessSubtitle] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Filters state
@@ -46,7 +47,8 @@ export default function ActivityLibraryPage() {
     }
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (subtitleText = "") => {
+    setSuccessSubtitle(subtitleText || "");
     setShowSlideIn(false);
     setShowSuccessModal(true);
     // Auto close modal after 4 seconds
@@ -57,6 +59,7 @@ export default function ActivityLibraryPage() {
 
   const handleModalClose = () => {
     setShowSuccessModal(false);
+    setSuccessSubtitle("");
     setRefreshKey((prev) => prev + 1);
   };
 
@@ -196,7 +199,11 @@ export default function ActivityLibraryPage() {
       />
 
       {/* Success Modal */}
-      <ActivityAddedModal open={showSuccessModal} onClose={handleModalClose} />
+      <ActivityAddedModal
+        open={showSuccessModal}
+        onClose={handleModalClose}
+        subtitle={successSubtitle}
+      />
     </div>
   );
 }

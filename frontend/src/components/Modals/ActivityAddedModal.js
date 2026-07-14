@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, Button } from "antd";
 
-export default function ActivityAddedModal({ open, onClose }) {
+export default function ActivityAddedModal({ open, onClose, subtitle }) {
   return (
     <Modal
       open={open}
@@ -14,14 +14,18 @@ export default function ActivityAddedModal({ open, onClose }) {
         body: {
           padding: 24,
           borderRadius: 8,
-          overflow: "hidden"
-        }
+          overflow: "hidden",
+          position: "relative",
+        },
       }}
     >
       <div className="flex flex-col items-center gap-6 text-center">
-        {/* Decorative Map Contour Bg Pattern Mock */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#3e5eb9_1px,transparent_1px)] [background-size:16px_16px] rounded-lg" />
-        
+        {/* Decorative Map Contour Bg Pattern matching PageHeader */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-dhi-pattern bg-[length:200%_auto] bg-center bg-no-repeat opacity-[0.12] pointer-events-none rounded-lg"
+        />
+
         {/* Featured Icon Circle */}
         <div className="size-12 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 z-10">
           <span className="text-blue-600 text-lg font-bold">✓</span>
@@ -32,7 +36,7 @@ export default function ActivityAddedModal({ open, onClose }) {
             Response activity added!
           </h4>
           <p className="text-sm text-neutral-600 leading-relaxed m-0">
-            Your activity has been added to the system.
+            {subtitle || "Your activity has been added to the system."}
           </p>
         </div>
 

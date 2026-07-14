@@ -116,7 +116,46 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
       // Call API
       const res = await api("POST", "/activities", fd);
       if (res && res.id) {
-        onSuccess();
+        let warningSubtitle = "";
+        // If status is Publish (2), call transition API to transition draft to active
+        if (statusVal === 2) {
+          try {
+            await api("POST", `/activity/${res.id}/transition`, {
+              to_status: 2,
+            });
+          } catch (transErr) {
+            console.warn(
+              "Could not transition activity automatically:",
+              transErr,
+            );
+            // Non-blocking warning: pass subtitle message to modal
+            warningSubtitle =
+              "Activity created as Draft. Only Admins can publish directly.";
+          }
+        }
+
+        // Reset state
+        setCurrentStep(1);
+        setFormData({
+          sector: null,
+          protocol_id: "",
+          title: "",
+          description: "",
+          triggers: {
+            dclass: null,
+            vuln: null,
+            exp: [],
+            other: null,
+          },
+          owner: "",
+          coord_with: "",
+          response_type: null,
+          source_doc: "",
+          source_file: null,
+          notes: "",
+        });
+        setErrors({});
+        onSuccess(warningSubtitle);
       } else {
         // Fallback for API error messages
         const errMsg = res?.message || "Failed to submit response activity";
