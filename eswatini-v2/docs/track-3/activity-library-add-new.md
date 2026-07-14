@@ -536,12 +536,15 @@ await api("POST", "/activities", fd);
 
 ### Exposure Indicators (Step 2 exp rows)
 
+Indicator names match backend `EXPOSURE_INDICATORS`
+(`backend/api/v1/v1_activity/constants.py`) — no frontend mapping.
+
 | Label | Indicator Name |
 |---|---|
 | Water demand indicator | `"water"` |
-| Susceptibility to drought threshold | `"susceptibility"` |
+| Susceptibility to drought threshold | `vuln: { op, value }` (IPC phase 1–4, not an `exp` row) |
 | Cattle count | `"cattle"` |
-| Land use share | `"land_use"` |
+| Land use share | `"cropland"` |
 | Population | `"population"` |
 
 ---

@@ -80,35 +80,9 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
 
       if (formData.description) fd.append("description", formData.description);
 
-      // Map exposure indicators to backend-approved EXPOSURE_INDICATORS
-      const mappedExp = [];
-      if (formData.triggers?.exp) {
-        formData.triggers.exp.forEach((expCond) => {
-          let indicator = expCond.indicator;
-          if (indicator === "land_use") {
-            indicator = "cropland";
-          }
-          // Only append valid backend exposure indicators
-          if (
-            ["population", "cropland", "water", "cattle"].includes(indicator)
-          ) {
-            mappedExp.push({
-              indicator,
-              op: expCond.op,
-              value: expCond.value,
-            });
-          }
-        });
-      }
-
-      // Serialize triggers to JSON string
-      const triggerEnvelope = {
-        dclass: formData.triggers?.dclass || null,
-        vuln: formData.triggers?.vuln || null,
-        exp: mappedExp,
-        other: formData.triggers?.other || null,
-      };
-      fd.append("triggers", JSON.stringify(triggerEnvelope));
+      // Serialize triggers to JSON string; the wizard only writes
+      // backend-valid keys, so no transformation is needed.
+      fd.append("triggers", JSON.stringify(formData.triggers));
 
       if (formData.owner) fd.append("owner", formData.owner);
       if (formData.coord_with) fd.append("coord_with", formData.coord_with);
