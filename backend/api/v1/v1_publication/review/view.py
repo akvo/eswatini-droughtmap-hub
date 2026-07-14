@@ -70,7 +70,16 @@ _COMMON_FILTER_PARAMS = [
 def _filtered_rows(publication, request):
     serializer = ReviewQueueFilterSerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
-    return filter_rows(build_rows(publication), **serializer.filters())
+    rows = build_rows(publication, user=request.user)
+    return filter_rows(rows, **serializer.filters())
+
+
+def _previous_rows(publication, user=None):
+    """Rows of the preceding publication month, or None if this is the first."""
+    previous = Publication.objects.filter(
+        year_month__lt=publication.year_month
+    ).order_by("-year_month").first()
+    return build_rows(previous, user=user) if previous else None
 
 
 class ReviewStatsAPI(APIView):
@@ -92,12 +101,15 @@ class ReviewStatsAPI(APIView):
     )
     def get(self, request, version, pk):
         publication = get_object_or_404(Publication, pk=pk)
-        rows = build_rows(publication)
+        rows = build_rows(publication, user=request.user)
         meta = ReviewMetaSerializer(
             publication, context={"total": len(rows)}
         ).data
+        summary = build_stats(
+            rows, _previous_rows(publication, user=request.user)
+        )
         return Response(
-            {"meta": meta, "summary": build_stats(rows)},
+            {"meta": meta, "summary": summary},
             status=status.HTTP_200_OK,
         )
 
@@ -152,7 +164,7 @@ class ReviewAdministrationDetailAPI(APIView):
         administration_id = int(administration_id)
         row = next(
             (
-                r for r in build_rows(publication)
+                r for r in build_rows(publication, user=request.user)
                 if r["administration_id"] == administration_id
             ),
             None,
