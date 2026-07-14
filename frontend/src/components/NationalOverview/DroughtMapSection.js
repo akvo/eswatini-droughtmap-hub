@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Select } from "antd";
 import {
@@ -10,26 +10,64 @@ import {
 } from "@ant-design/icons";
 import TabButtons from "@/components/TabButtons";
 import MetricCard from "./MetricCard";
+import { api } from "@/lib";
 import { metricsData } from "@/static/mocks/national-overview/metrics";
-import { mapData, mockValidatedValues } from "@/static/mocks/national-overview/map-data";
+import {
+  mapData,
+  mockValidatedValues,
+} from "@/static/mocks/national-overview/map-data";
 
 const OverviewMap = dynamic(() => import("./OverviewMap"), { ssr: false });
 
-const DroughtMapSection = ({ validatedValues = [] }) => {
-  const values = validatedValues.length > 0 ? validatedValues : mockValidatedValues;
+const NO_COMPARE = 0;
+
+const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
   const [activeLayer, setActiveLayer] = useState(mapData.activeLayer);
+  const [currentID, setCurrentID] = useState(mapId ?? null);
+  const [compareID, setCompareID] = useState(NO_COMPARE);
+  const [values, setValues] = useState(
+    validatedValues.length > 0 ? validatedValues : mockValidatedValues,
+  );
+  const [compareValues, setCompareValues] = useState([]);
 
   const layerOptions = mapData.layers.map((l) => ({
     value: l.key,
     label: l.label,
   }));
 
+  const fetchValues = useCallback(async (id) => {
+    try {
+      const { validated_values: vv } = await api("GET", `/map/${id}`);
+      return vv || [];
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentID || currentID === mapId) {
+      return;
+    }
+    fetchValues(currentID).then(setValues);
+  }, [currentID, mapId, fetchValues]);
+
+  useEffect(() => {
+    if (compareID === NO_COMPARE) {
+      setCompareValues([]);
+      return;
+    }
+    fetchValues(compareID).then(setCompareValues);
+  }, [compareID, fetchValues]);
+
   return (
     <section className="w-full mb-4">
       <div className="border border-neutral-200 bg-white">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b border-neutral-200">
-          <h2 className="text-lg font-semibold text-neutral-800">Drought Map</h2>
+          <h2 className="text-lg font-semibold text-neutral-800">
+            Drought Map
+          </h2>
           <div className="overflow-x-auto">
             <TabButtons
               options={layerOptions}
@@ -79,26 +117,23 @@ const DroughtMapSection = ({ validatedValues = [] }) => {
             {/* Date controls */}
             <div className="flex flex-wrap items-center gap-4 p-4 border-b border-neutral-200">
               <Select
-                defaultValue="2026-02"
+                value={currentID}
+                onChange={setCurrentID}
                 className="min-w-[160px] select-styled"
                 prefix={<CalendarOutlined className="text-neutral-400" />}
                 variant="outlined"
-                options={[
-                  { value: "2026-02", label: "11 Feb 2026" },
-                  { value: "2026-01", label: "11 Jan 2026" },
-                  { value: "2025-12", label: "11 Dec 2025" },
-                ]}
+                options={dates.filter((d) => d.value !== compareID)}
               />
               <span className="text-sm text-neutral-500">Compare to</span>
               <Select
-                defaultValue="last-month"
+                value={compareID}
+                onChange={setCompareID}
                 className="min-w-[160px] select-styled"
                 prefix={<CalendarOutlined className="text-neutral-400" />}
                 variant="outlined"
                 options={[
-                  { value: "last-month", label: "Last month" },
-                  { value: "2026-01", label: "Jan 2026" },
-                  { value: "2025-12", label: "Dec 2025" },
+                  { value: NO_COMPARE, label: "No comparison" },
+                  ...dates.filter((d) => d.value !== currentID),
                 ]}
               />
             </div>
@@ -106,10 +141,14 @@ const DroughtMapSection = ({ validatedValues = [] }) => {
             {/* Map */}
             <div className="flex-1">
               {activeLayer === "drought-class" ? (
-                <OverviewMap validatedValues={values} />
+                <OverviewMap
+                  validatedValues={values}
+                  compareValues={compareValues}
+                />
               ) : (
                 <div className="w-full h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
-                  {mapData.layers.find((l) => l.key === activeLayer)?.label} layer - coming soon
+                  {mapData.layers.find((l) => l.key === activeLayer)?.label}{" "}
+                  layer - coming soon
                 </div>
               )}
             </div>

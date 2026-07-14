@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { AppContextProvider } from "@/context";
 import { inter, roboto, robotoMono } from "./fonts";
 import classNames from "classnames";
-import { Footer, LogoSection, Navbar } from "@/components";
+import AppShell from "@/components/AppShell";
 import antTheme from "@/static/ant-theme";
 import { auth } from "@/lib";
 
@@ -35,14 +35,7 @@ const RootLayout = async ({ children }) => {
         <AppContextProvider>
           <AntdRegistry>
             <ConfigProvider theme={antTheme}>
-              <div className="w-full min-h-screen bg-white flex flex-col overflow-x-hidden">
-                <Navbar session={session} />
-                <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 pb-9 bg-white">
-                  {children}
-                </div>
-                <LogoSection />
-              </div>
-              <Footer />
+              <AppShell session={session}>{children}</AppShell>
             </ConfigProvider>
           </AntdRegistry>
           <div suppressHydrationWarning>

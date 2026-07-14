@@ -5,7 +5,24 @@ import "leaflet/dist/leaflet.css";
 
 import styles from "./Map.module.scss";
 
-const { MapContainer } = ReactLeaflet;
+const { MapContainer, useMap } = ReactLeaflet;
+
+// Leaflet caches its container size at init. Inside a clipped/absolutely
+// positioned parent (e.g. the compare slider) that size is wrong, so the map
+// paints offset or blank until it re-measures.
+const ResizeHandler = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    const invalidate = () => map.invalidateSize();
+    invalidate();
+    const observer = new ResizeObserver(invalidate);
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+};
 
 const Map = ({ children, className, width, height, ...rest }) => {
   let mapClassName = styles.map;
@@ -27,6 +44,7 @@ const Map = ({ children, className, width, height, ...rest }) => {
 
   return (
     <MapContainer className={mapClassName} attributionControl={false} {...rest}>
+      <ResizeHandler />
       {children(ReactLeaflet, Leaflet)}
     </MapContainer>
   );
