@@ -1,0 +1,71 @@
+"use client";
+
+import { Button } from "antd";
+import {
+  CalendarOutlined,
+  DownloadOutlined,
+} from "@ant-design/icons";
+import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import { heroData } from "@/static/mocks/national-overview/hero";
+
+const textOn = (hex) => {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
+    ? "#333333"
+    : "#ffffff";
+};
+
+const HeroSection = () => {
+  const { status, published, nextUpdate, headline, summary } = heroData;
+  const badgeBg = DROUGHT_CATEGORY_COLOR[status.category];
+
+  return (
+    <section className="relative w-full flex flex-col items-center text-center py-12 gap-6">
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
+      />
+      <div className="relative flex flex-col items-center gap-6">
+        <div className="flex items-center gap-4">
+          <span
+            className="inline-block rounded px-2.5 py-1 text-xs font-semibold"
+            style={{ backgroundColor: badgeBg, color: textOn(badgeBg) }}
+          >
+            National Status: D{status.category - 1}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-neutral-500">
+          <span className="flex items-center gap-1.5">
+            <CalendarOutlined /> Published: <strong className="text-neutral-700">{published}</strong>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <CalendarOutlined /> Next update: <strong className="text-neutral-700">{nextUpdate}</strong>
+          </span>
+        </div>
+
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-neutral-800 max-w-2xl leading-tight">
+          {headline}
+        </h1>
+
+        <p className="text-base text-neutral-600 max-w-2xl leading-7">
+          {summary}
+        </p>
+
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
+          size="large"
+          className="mt-2 mb-32"
+        >
+          Download National Overview (PDF)
+        </Button>
+      </div>
+    </section>
+  );
+};
+
+export default HeroSection;
