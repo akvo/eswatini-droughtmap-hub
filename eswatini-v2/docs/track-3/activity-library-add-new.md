@@ -2,10 +2,10 @@
 
 ## Feature: Activity Library — Add New Response Activity (4-Step Slide-In)
 
-**Task ID**: TBD
+**Task ID**: #105
 **Author**: Galih Pratama
 **Date**: 2026-07-14
-**Status**: Draft — updated after Figma review (node 4139-141841)
+**Status**: Approved
 
 ---
 
