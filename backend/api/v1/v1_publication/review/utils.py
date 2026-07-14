@@ -42,16 +42,39 @@ def _review_status(reviewed_count, total_reviewers):
     return "partially_reviewed"
 
 
-def build_rows(publication):
-    """One dict per Inkhundla in ``initial_values`` (shared core)."""
+def _my_suggestions(publication, user):
+    """The requesting reviewer's own suggestion, keyed by administration."""
+    if user is None or not user.is_authenticated:
+        return {}
+    review = publication.reviews.filter(user_id=user.id).first()
+    if not review:
+        return {}
+    return {
+        s["administration_id"]: s
+        for s in (review.suggestion_values or [])
+        if s.get("administration_id") is not None
+    }
+
+
+def build_rows(publication, user=None):
+    """One dict per Inkhundla in ``initial_values`` (shared core).
+
+    ``user`` is the requesting reviewer: their own suggestion rides on the row
+    as ``my_suggestion``, so the queue can show what *they* approved or
+    suggested — not the same thing as the validated ``assigned_score``.
+    """
     initial = _category_map(publication.initial_values)
     validated = _category_map(publication.validated_values)
     total_reviewers = publication.reviews.count()
     admins = Administration.objects.in_bulk(list(initial.keys()))
+    mine = _my_suggestions(publication, user)
 
-    # categories submitted per administration across completed reviews
+    # Categories reviewed per administration, across every review — including
+    # reviews still in progress. A reviewer marks Tinkhundla one by one and only
+    # submits the review once all of them are done, so waiting for is_completed
+    # would leave the queue showing "not started" for work already done.
     reviewed = {}
-    for review in publication.completed_reviews:
+    for review in publication.reviews.all():
         for s in (review.suggestion_values or []):
             if s.get("reviewed"):
                 reviewed.setdefault(
@@ -64,6 +87,7 @@ def build_rows(publication):
         reviewed_count = len(categories)
         status = _review_status(reviewed_count, total_reviewers)
         admin = admins.get(administration_id)
+        my_suggestion = mine.get(administration_id)
         rows.append({
             "administration_id": administration_id,
             "name": admin.name if admin else None,
@@ -76,6 +100,11 @@ def build_rows(publication):
                 "completed": reviewed_count,
                 "total": total_reviewers,
             },
+            "my_suggestion": {
+                "category": my_suggestion.get("category"),
+                "reviewed": bool(my_suggestion.get("reviewed")),
+                "comment": my_suggestion.get("comment") or "",
+            } if my_suggestion else None,
             "assigned_score": validated.get(administration_id),
             "review_status": status,
             "disputed": (
@@ -104,64 +133,115 @@ def filter_rows(rows, search=None, confidence=None,
     return [row for row in rows if keep(row)]
 
 
-def build_stats(rows):
-    """Cards + half-doughnut summary derived from ``build_rows`` output."""
-    total = len(rows)
+def is_mine_reviewed(row):
+    """The requesting reviewer has already reviewed this Inkhundla."""
+    return bool((row.get("my_suggestion") or {}).get("reviewed"))
+
+
+def _tally(rows):
+    """Raw counters behind the summary — for this month and the previous."""
     counts = {"fully_reviewed": 0, "partially_reviewed": 0, "not_started": 0}
-    disputed = 0
-    high_confidence = 0
-    validated_count = 0
+    tally = {
+        "total": len(rows),
+        "disputed": 0,
+        "high_confidence": 0,
+        "validated": 0,
+    }
     for row in rows:
         counts[row["review_status"]] += 1
         if row["disputed"]:
-            disputed += 1
-        if row["confidence"]["band"] == "high":
-            high_confidence += 1
+            tally["disputed"] += 1
+        # "ready to bulk-accept" — high confidence AND not yet reviewed by the
+        # requesting reviewer, so the count (and the banner) drop to zero once
+        # they have been accepted.
+        if row["confidence"]["band"] == "high" and not is_mine_reviewed(row):
+            tally["high_confidence"] += 1
         if row["assigned_score"] is not None:
-            validated_count += 1
-
-    reviews_collected = (
+            tally["validated"] += 1
+    tally.update(counts)
+    tally["reviews_collected"] = (
         counts["fully_reviewed"] + counts["partially_reviewed"]
     )
+    return tally
+
+
+def _pct(value, total):
+    return round(value / total * 100) if total else 0
+
+
+def _delta(current, previous):
+    """Change vs the previous publication. ``None`` when there is no previous
+    publication to compare against — the card then renders no arrow."""
+    if previous is None:
+        return None
+    change = current - previous
+    direction = "flat"
+    if change > 0:
+        direction = "up"
+    elif change < 0:
+        direction = "down"
+    return {"value": change, "direction": direction}
+
+
+def build_stats(rows, previous_rows=None):
+    """Cards + half-doughnut summary derived from ``build_rows`` output.
+
+    ``previous_rows`` are the rows of the preceding publication month; when
+    given, every card carries a ``delta`` against it (percentage points for
+    ``tinkhundla_reviewed``, absolute counts elsewhere).
+    """
+    now = _tally(rows)
+    was = _tally(previous_rows) if previous_rows is not None else None
+
+    def delta(key):
+        return _delta(now[key], was[key] if was else None)
+
     return {
         "pending_review": {
-            "value": disputed,
+            "value": now["disputed"],
             "label": "disagreement detected / sign-off needed",
+            "delta": delta("disputed"),
         },
         "high_confidence": {
-            "value": high_confidence,
+            "value": now["high_confidence"],
             "label": "ready to bulk-accept",
             "is_mock": True,
+            "delta": delta("high_confidence"),
         },
         "tinkhundla_reviewed": {
-            "value": validated_count,
-            "total": total,
+            "value": now["validated"],
+            "total": now["total"],
+            "delta": _delta(
+                _pct(now["validated"], now["total"]),
+                _pct(was["validated"], was["total"]) if was else None,
+            ),
         },
-        "overall_readiness": (
-            round(reviews_collected / total * 100) if total else 0
-        ),
+        "overall_readiness": _pct(now["reviews_collected"], now["total"]),
         "reviews_collected": {
-            "value": reviews_collected,
-            "total": total,
+            "value": now["reviews_collected"],
+            "total": now["total"],
         },
         "status_breakdown": [
             {
                 "key": "fully_reviewed",
                 "label": "Fully reviewed",
-                "value": counts["fully_reviewed"],
+                "value": now["fully_reviewed"],
                 "note": "ready to validate",
+                "delta": delta("fully_reviewed"),
             },
             {
                 "key": "partially_reviewed",
                 "label": "Partially reviewed",
-                "value": counts["partially_reviewed"],
+                "value": now["partially_reviewed"],
                 "note": "in progress",
+                "delta": delta("partially_reviewed"),
             },
             {
                 "key": "not_started",
                 "label": "Not started",
-                "value": counts["not_started"],
+                "value": now["not_started"],
                 "note": "awaiting first review",
+                "delta": delta("not_started"),
             },
         ],
     }

@@ -39,6 +39,77 @@ export const REGION_COLOR = {
   Shiselweni: "#9B59B6",
 };
 
+export const REGION_OPTIONS = Object.keys(REGION_COLOR).map((r) => ({
+  value: r,
+  label: r,
+}));
+
+// Climatic zones — values must match backend AdministrationZones.
+export const ZONE_OPTIONS = [
+  { value: "highveld", label: "Highveld" },
+  { value: "middleveld", label: "Middleveld" },
+  { value: "lowveld", label: "Lowveld" },
+  { value: "lubombo_plateau", label: "Lubombo Plateau" },
+];
+
+// Short D-code for the review-queue badges. The long-form drought copy lives in
+// DROUGHT_CATEGORY_LABEL; these are the chips (Figma 3117-42637).
+export const DROUGHT_CATEGORY_CODE = {
+  [DROUGHT_CATEGORY_VALUE.normal]: "Normal",
+  [DROUGHT_CATEGORY_VALUE.d0]: "D0",
+  [DROUGHT_CATEGORY_VALUE.d1]: "D1",
+  [DROUGHT_CATEGORY_VALUE.d2]: "D2",
+  [DROUGHT_CATEGORY_VALUE.d3]: "D3",
+  [DROUGHT_CATEGORY_VALUE.d4]: "D4",
+  [DROUGHT_CATEGORY_VALUE.none]: "No data",
+};
+
+// Confidence bands — the chip (color = ink, bg) and the map (fill = polygon,
+// dot = legend key / polygon stroke). Values read off Figma 3324-52326.
+// Mock until the confidence formula lands (backend flags them is_mock).
+export const CONFIDENCE_STYLE = {
+  low: {
+    color: "#B10D0B",
+    bg: "#FEF3F2",
+    fill: "#E50602",
+    dot: "#B10D0B",
+    label: "Low",
+  },
+  medium: {
+    color: "#B54708",
+    bg: "#FFFAEB",
+    fill: "#FEA90B",
+    dot: "#F39C12",
+    label: "Medium",
+  },
+  high: {
+    color: "#027A48",
+    bg: "#ECFDF3",
+    fill: "#B5F5CC",
+    dot: "#12B76A",
+    label: "High",
+  },
+};
+
+// Legend order on the map: High -> Medium -> Low (Figma 3324-52326).
+export const CONFIDENCE_LEGEND = ["high", "medium", "low"];
+
+// Review-progress map: reviews collected out of the total reviewers, ramped
+// none -> all. Five buckets whatever the reviewer count — `most` absorbs
+// everything between 3 and all-but-one (0/5, 1/5, 2/5, 3-4/5, 5/5).
+export const REVIEW_PROGRESS_STYLE = {
+  none: { color: "#FECDCA", stroke: "#F04438" },
+  one: { color: "#FEDBB4", stroke: "#F79009" },
+  two: { color: "#FDE68A", stroke: "#EAB308" },
+  most: { color: "#A7F3D0", stroke: "#12B76A" },
+  all: { color: "#12B76A", stroke: "#027A48" },
+};
+
+export const REVIEW_MAP_MODE = [
+  { value: "confidence", label: "Confidence score" },
+  { value: "progress", label: "Review progress" },
+];
+
 export const DROUGHT_CATEGORY_LABEL = {
   [DROUGHT_CATEGORY_VALUE.normal]: "Wet/normal conditions",
   [DROUGHT_CATEGORY_VALUE.d0]: "D0 Abnormally Dry",
