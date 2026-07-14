@@ -85,9 +85,12 @@ export const api = (method, url, payload = {}) =>
     }
 
     const _session = await getSession();
-    const headers = {
-      "Content-Type": "application/json",
-    };
+    const isFormData =
+      typeof FormData !== "undefined" && payload instanceof FormData;
+    const headers = {};
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
     if (_session) {
       const { token: authToken } = _session;
       headers["Authorization"] = `Bearer ${authToken}`;
@@ -96,7 +99,9 @@ export const api = (method, url, payload = {}) =>
       method,
       headers,
     };
-    if (typeof payload === "object" && Object.keys(payload).length) {
+    if (isFormData) {
+      fetchProps["body"] = payload;
+    } else if (typeof payload === "object" && Object.keys(payload).length) {
       fetchProps["body"] = JSON.stringify(payload);
     }
     try {

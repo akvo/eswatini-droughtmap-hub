@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { Button } from "antd";
 import { api, apiText } from "@/lib/api";
@@ -6,11 +8,18 @@ import FeedbackSection from "@/components/FeedbackSection";
 import ActivityMetricCards from "./ActivityMetricCards";
 import ActivityTableFilters from "./ActivityTableFilters";
 import ActivityTable from "./ActivityTable";
+import AddActivitySlideIn from "./AddActivity/AddActivitySlideIn";
+import ActivityAddedModal from "../Modals/ActivityAddedModal";
 
 export default function ActivityLibraryPage() {
   const [activities, setActivities] = useState([]);
   const [counts, setCounts] = useState({ active: 0, draft: 0, archived: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Slide-in and Success modal states
+  const [showSlideIn, setShowSlideIn] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Filters state
   const [statusFilter, setStatusFilter] = useState("all");
@@ -19,26 +28,42 @@ export default function ActivityLibraryPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // Fetch metrics once on mount
-  useEffect(() => {
-    async function fetchCounts() {
-      try {
-        const [draftRes, activeRes, archivedRes] = await Promise.all([
-          api("GET", "/activities?status=1"),
-          api("GET", "/activities?status=2"),
-          api("GET", "/activities?status=3"),
-        ]);
-        setCounts({
-          draft: draftRes?.total || 0,
-          active: activeRes?.total || 0,
-          archived: archivedRes?.total || 0,
-        });
-      } catch (err) {
-        console.error("Failed to fetch activity counts", err);
-      }
+  // Fetch counts function helper
+  const fetchCounts = async () => {
+    try {
+      const [draftRes, activeRes, archivedRes] = await Promise.all([
+        api("GET", "/activities?status=1"),
+        api("GET", "/activities?status=2"),
+        api("GET", "/activities?status=3"),
+      ]);
+      setCounts({
+        draft: draftRes?.total || 0,
+        active: activeRes?.total || 0,
+        archived: archivedRes?.total || 0,
+      });
+    } catch (err) {
+      console.error("Failed to fetch activity counts", err);
     }
+  };
+
+  const handleSuccess = () => {
+    setShowSlideIn(false);
+    setShowSuccessModal(true);
+    // Auto close modal after 4 seconds
+    setTimeout(() => {
+      handleModalClose();
+    }, 4000);
+  };
+
+  const handleModalClose = () => {
+    setShowSuccessModal(false);
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  // Fetch metrics once on mount and when refreshKey changes
+  useEffect(() => {
     fetchCounts();
-  }, []);
+  }, [refreshKey]);
 
   // Fetch list on changes
   useEffect(() => {
@@ -61,7 +86,7 @@ export default function ActivityLibraryPage() {
       }
     }
     fetchList();
-  }, [statusFilter, sectorFilter, searchQuery, page]);
+  }, [statusFilter, sectorFilter, searchQuery, page, refreshKey]);
 
   const handleExport = async () => {
     try {
@@ -119,6 +144,7 @@ export default function ActivityLibraryPage() {
           <Button
             type="primary"
             className="font-semibold bg-blue-600 border-blue-600 hover:bg-blue-700"
+            onClick={() => setShowSlideIn(true)}
           >
             Add new library
           </Button>
@@ -161,6 +187,16 @@ export default function ActivityLibraryPage() {
       <div className="mt-12">
         <FeedbackSection />
       </div>
+
+      {/* Slide-In Wizard */}
+      <AddActivitySlideIn
+        visible={showSlideIn}
+        onClose={() => setShowSlideIn(false)}
+        onSuccess={handleSuccess}
+      />
+
+      {/* Success Modal */}
+      <ActivityAddedModal open={showSuccessModal} onClose={handleModalClose} />
     </div>
   );
 }
