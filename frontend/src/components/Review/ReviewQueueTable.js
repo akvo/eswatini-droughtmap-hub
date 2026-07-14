@@ -116,19 +116,38 @@ const ReviewQueueTable = ({
     },
     {
       title: "D-CLASS",
-      dataIndex: "assigned_score",
-      key: "assigned_score",
+      dataIndex: "my_suggestion",
+      key: "my_suggestion",
       width: 110,
       align: "right",
-      // Validated (published) class — empty until a validator signs the month off.
-      render: (level) =>
-        level === null || level === undefined ? (
-          <span title="Not yet validated" className="text-[#a4a4a4]">
-            &mdash;
+      // The reviewer's own class — what they approved or suggested. NOT
+      // assigned_score, which stays empty until a validator signs the month off.
+      render: (mine, { cdi_class }) => {
+        if (!mine?.reviewed) {
+          return (
+            <span
+              title="You have not reviewed this Inkhundla"
+              className="text-[#a4a4a4]"
+            >
+              &mdash;
+            </span>
+          );
+        }
+        const suggested = mine.category !== cdi_class;
+        return (
+          <span
+            className="inline-flex items-center gap-1"
+            title={
+              suggested
+                ? `You suggested a different class${mine.comment ? `: ${mine.comment}` : ""}`
+                : "You approved the computed class"
+            }
+          >
+            <DroughtScore level={mine.category} />
+            {suggested && <span className="text-[#B54708]">*</span>}
           </span>
-        ) : (
-          <DroughtScore level={level} />
-        ),
+        );
+      },
     },
   ];
 

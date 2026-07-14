@@ -67,7 +67,9 @@ const BulkAcceptModal = ({
         "GET",
         `/reviewer/${publicationId}/administrations?confidence=high&page_size=100`,
       );
-      setRows(data);
+      // Only what is still pending: bulk accept must never overwrite a class
+      // this reviewer already approved or suggested by hand.
+      setRows(data.filter((row) => !row?.my_suggestion?.reviewed));
     } catch (err) {
       console.error(err);
       message.error("Could not load the high-confidence Tinkhundla.");

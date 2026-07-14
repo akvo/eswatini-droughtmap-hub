@@ -169,7 +169,7 @@ const ReviewQueue = ({
             {/* ponytail: no methodology page exists yet — button is inert by decision. */}
             <Button>Methodology</Button>
             {!isCompleted && remaining === 0 && (
-              <SubmitReviewButton review={review} />
+              <SubmitReviewButton review={review} onSubmitted={refreshAll} />
             )}
           </>
         }
