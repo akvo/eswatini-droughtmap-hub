@@ -1,49 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import { Form, Button, Modal } from "antd";
+import { Button, Modal, message } from "antd";
 import { api } from "@/lib";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 
-const { useForm } = Form;
-
-const SubmitReviewButton = ({ review = {} }) => {
+/**
+ * Submits the whole review (every Inkhundla done).
+ *
+ * `onSubmitted` lets the caller refresh its own copy of the review. A
+ * router.refresh() alone re-renders the server component but cannot overwrite
+ * state a client container already seeded from its props, so the page would go
+ * on rendering the review as still open.
+ */
+const SubmitReviewButton = ({ review = {}, onSubmitted }) => {
   const [loading, setLoading] = useState(false);
-  const [form] = useForm();
   const router = useRouter();
 
-  const onFinish = async () => {
+  const onSubmit = async () => {
     setLoading(true);
     try {
       await api("PUT", `/reviewer/review/${review?.id}`, {
         is_completed: true,
         completed_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
       });
-      setLoading(false);
-      router.refresh(`//reviews/${review?.id}`);
+      if (typeof onSubmitted === "function") {
+        await onSubmitted();
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       console.error(err);
+      message.error("Could not submit the review, please try again.");
+    } finally {
       setLoading(false);
     }
   };
+
   return (
-    <Form initialValues={review} form={form} onFinish={onFinish}>
-      <Button
-        type="primary"
-        loading={loading}
-        onClick={() => {
-          Modal.confirm({
-            content: "Are you sure?",
-            onOk: () => {
-              form.submit();
-            },
-          });
-        }}
-      >
-        Submit Review
-      </Button>
-    </Form>
+    <Button
+      type="primary"
+      loading={loading}
+      onClick={() =>
+        Modal.confirm({
+          title: "Submit review",
+          content: "Are you sure? The review cannot be changed afterwards.",
+          onOk: onSubmit,
+        })
+      }
+    >
+      Submit review
+    </Button>
   );
 };
 

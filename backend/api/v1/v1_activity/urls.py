@@ -7,9 +7,15 @@ from api.v1.v1_activity.views import (
     ActivitySourceFileAPI,
     ActivityTriggerPreviewAPI,
     RecommendedActionsAPI,
+    ActivityExportAPI,
 )
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/activities/export$",
+        ActivityExportAPI.as_view(),
+        name="activity-export",
+    ),
     re_path(
         r"^(?P<version>(v1))/activities/trigger-preview$",
         ActivityTriggerPreviewAPI.as_view(),
@@ -32,12 +38,14 @@ urlpatterns = [
     ),
     re_path(
         r"^(?P<version>(v1))/activity/(?P<pk>[0-9]+)$",
-        ResponseActivityViewSet.as_view({
-            "get": "retrieve",
-            "put": "update",
-            "patch": "partial_update",
-            "delete": "destroy",
-        }),
+        ResponseActivityViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
         name="activity-detail",
     ),
     re_path(

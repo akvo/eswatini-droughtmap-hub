@@ -1,5 +1,5 @@
 import os
-
+from django.db.models import Q
 from django.http import FileResponse, Http404
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -53,10 +53,15 @@ class ResponseActivityViewSet(viewsets.ModelViewSet):
         queryset = ResponseActivity.objects.all().order_by("-created_at")
         sector = self.request.query_params.get("sector")
         status_param = self.request.query_params.get("status")
+        search = self.request.query_params.get("search")
         if sector:
             queryset = queryset.filter(sector=sector)
         if status_param:
             queryset = queryset.filter(status=status_param)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(code__icontains=search)
+            )
         return queryset
 
     def get_serializer_class(self):
@@ -69,13 +74,19 @@ class ResponseActivityViewSet(viewsets.ModelViewSet):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                name="sector", required=False, type=OpenApiTypes.INT,
+                name="sector",
+                required=False,
+                type=OpenApiTypes.INT,
                 enum=list(ActivitySector.FieldStr.keys()),
-                location=OpenApiParameter.QUERY),
+                location=OpenApiParameter.QUERY,
+            ),
             OpenApiParameter(
-                name="status", required=False, type=OpenApiTypes.INT,
+                name="status",
+                required=False,
+                type=OpenApiTypes.INT,
                 enum=list(ActivityStatus.FieldStr.keys()),
-                location=OpenApiParameter.QUERY),
+                location=OpenApiParameter.QUERY,
+            ),
         ],
         responses={200: ActivityListSerializer(many=True)},
     )
@@ -90,7 +101,8 @@ class ResponseActivityViewSet(viewsets.ModelViewSet):
         if instance.status in blocked:
             return Response(
                 {"message": "Cannot edit an active or archived activity."},
-                status=status.HTTP_400_BAD_REQUEST)
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return super().update(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
@@ -105,7 +117,8 @@ class ActivityTransitionAPI(APIView):
         summary="Activate or archive an activity (admin only)",
         request=inline_serializer(
             "ActivityTransitionRequest",
-            fields={"to_status": drf_serializers.IntegerField()}),
+            fields={"to_status": drf_serializers.IntegerField()},
+        ),
         responses={200: ActivityDetailSerializer},
     )
     def post(self, request, version, pk):
@@ -135,7 +148,8 @@ class ActivitySignOffAPI(APIView):
         signoff = serializer.save(activity=activity, recorded_by=request.user)
         return Response(
             ActivitySignOffSerializer(signoff).data,
-            status=status.HTTP_201_CREATED)
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ActivitySignOffListAPI(APIView):
@@ -149,8 +163,8 @@ class ActivitySignOffListAPI(APIView):
     def get(self, request, version, pk):
         activity = get_object_or_404(ResponseActivity, pk=pk)
         return Response(
-            ActivitySignOffSerializer(
-                activity.signoffs.all(), many=True).data)
+            ActivitySignOffSerializer(activity.signoffs.all(), many=True).data
+        )
 
 
 class ActivitySourceFileAPI(APIView):
@@ -161,8 +175,10 @@ class ActivitySourceFileAPI(APIView):
             return False
         if user.role == UserRoleTypes.admin:
             return True
-        return (user.role == UserRoleTypes.reviewer
-                and user.activity_sector == activity.sector)
+        return (
+            user.role == UserRoleTypes.reviewer
+            and user.activity_sector == activity.sector
+        )
 
     @extend_schema(
         tags=["Activity"],
@@ -171,6 +187,7 @@ class ActivitySourceFileAPI(APIView):
     )
     def get(self, request, version, pk):
         from utils import storage
+
         activity = get_object_or_404(ResponseActivity, pk=pk)
         if not activity.source_file or not storage.check(activity.source_file):
             raise Http404("No source file.")
@@ -178,7 +195,8 @@ class ActivitySourceFileAPI(APIView):
         return FileResponse(
             open(path, "rb"),
             as_attachment=True,
-            filename=os.path.basename(activity.source_file))
+            filename=os.path.basename(activity.source_file),
+        )
 
     @extend_schema(
         tags=["Activity"],
@@ -193,7 +211,8 @@ class ActivitySourceFileAPI(APIView):
         upload = request.data.get("source_file")
         if not upload:
             raise drf_serializers.ValidationError(
-                {"source_file": "No file submitted."})
+                {"source_file": "No file submitted."}
+            )
         files.validate_source_file(upload)
         activity.source_file = files.save_source_file(upload, activity.code)
         activity.save(update_fields=["source_file"])
@@ -207,18 +226,22 @@ class ActivityTriggerPreviewAPI(APIView):
         tags=["Activity"],
         summary="Preview how many Tinkhundla a draft trigger would fire for",
         request=TriggerPreviewSerializer,
-        responses={200: inline_serializer(
-            "TriggerPreviewResponse",
-            fields={
-                "matched": drf_serializers.IntegerField(),
-                "total": drf_serializers.IntegerField(),
-            })},
+        responses={
+            200: inline_serializer(
+                "TriggerPreviewResponse",
+                fields={
+                    "matched": drf_serializers.IntegerField(),
+                    "total": drf_serializers.IntegerField(),
+                },
+            )
+        },
     )
     def post(self, request, version):
         serializer = TriggerPreviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(
-            services.preview_trigger(serializer.validated_data["triggers"]))
+            services.preview_trigger(serializer.validated_data["triggers"])
+        )
 
 
 def _matched_on(triggers, row):
@@ -276,14 +299,18 @@ class RecommendedActionsAPI(APIView):
     see public activities only; authenticated callers (brief creation, risk
     overview) see public and institutional.
     """
+
     permission_classes = [AllowAny]
 
     @extend_schema(
         summary="Recommended response activities for an administration",
         parameters=[
             OpenApiParameter(
-                name="administration_id", required=True,
-                type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
+                name="administration_id",
+                required=True,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -291,58 +318,150 @@ class RecommendedActionsAPI(APIView):
         raw = request.query_params.get("administration_id")
         if raw is None:
             return Response(
-                {"detail":
-                    "Query parameter 'administration_id' is required."},
-                status=status.HTTP_400_BAD_REQUEST)
+                {"detail": "Query parameter 'administration_id' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             administration_id = int(raw)
         except (TypeError, ValueError):
             return Response(
                 {"detail": "administration_id must be an integer."},
-                status=status.HTTP_400_BAD_REQUEST)
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         administration = Administration.objects.filter(
-            pk=administration_id).first()
+            pk=administration_id
+        ).first()
         if administration is None:
             return Response(
                 {"detail": f"Administration {administration_id} not found."},
-                status=status.HTTP_404_NOT_FOUND)
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         row = build_dataset().get(administration_id, {})
 
         activities = ResponseActivity.objects.filter(
-            status=ActivityStatus.active)
+            status=ActivityStatus.active
+        )
         # Never expose institutional activities to anonymous callers.
         if not request.user.is_authenticated:
             activities = activities.filter(
-                response_type=ActivityResponseType.public)
+                response_type=ActivityResponseType.public
+            )
 
         recommended = []
         for activity in activities:
             if not activity_passes(activity.triggers, row):
                 continue
-            recommended.append({
-                "code": activity.code,
-                "title": activity.title,
-                "sector": activity.sector,
-                "sector_label": ActivitySector.FieldStr.get(activity.sector),
-                "description": activity.description,
-                "response_type": activity.response_type,
-                "response_type_label": ActivityResponseType.FieldStr.get(
-                    activity.response_type),
-                "owner": activity.owner,
-                "trigger_summary": services.trigger_summary(
-                    activity.triggers),
-                "matched_on": _matched_on(activity.triggers or {}, row),
-            })
+            recommended.append(
+                {
+                    "code": activity.code,
+                    "title": activity.title,
+                    "sector": activity.sector,
+                    "sector_label": ActivitySector.FieldStr.get(
+                        activity.sector
+                    ),
+                    "description": activity.description,
+                    "response_type": activity.response_type,
+                    "response_type_label": ActivityResponseType.FieldStr.get(
+                        activity.response_type
+                    ),
+                    "owner": activity.owner,
+                    "trigger_summary": services.trigger_summary(
+                        activity.triggers
+                    ),
+                    "matched_on": _matched_on(activity.triggers or {}, row),
+                }
+            )
 
         category = row.get("category")
-        return Response({
-            "administration_id": administration_id,
-            "administration_name": administration.name,
-            "drought_category": category,
-            "drought_category_label": DroughtCategory.FieldStr.get(
-                category),
-            "evaluated": len(activities),
-            "recommended": recommended,
-        })
+        return Response(
+            {
+                "administration_id": administration_id,
+                "administration_name": administration.name,
+                "drought_category": category,
+                "drought_category_label": DroughtCategory.FieldStr.get(
+                    category
+                ),
+                "evaluated": len(activities),
+                "recommended": recommended,
+            }
+        )
+
+
+class ActivityExportAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Activity"],
+        summary="Export response activities to CSV",
+        parameters=[
+            OpenApiParameter(
+                name="sector",
+                required=False,
+                type=OpenApiTypes.INT,
+                enum=list(ActivitySector.FieldStr.keys()),
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="status",
+                required=False,
+                type=OpenApiTypes.INT,
+                enum=list(ActivityStatus.FieldStr.keys()),
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="search",
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses={200: OpenApiTypes.BINARY},
+    )
+    def get(self, request, version):
+        queryset = ResponseActivity.objects.all().order_by("-created_at")
+        sector = request.query_params.get("sector")
+        status_param = request.query_params.get("status")
+        search = request.query_params.get("search")
+        if sector:
+            queryset = queryset.filter(sector=sector)
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(code__icontains=search)
+            )
+
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = (
+            'attachment; filename="activities.csv"'
+        )
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "Protocol ID",
+                "Title",
+                "Sector",
+                "Owner",
+                "Version",
+                "Status",
+                "Last Updated",
+            ]
+        )
+        for a in queryset:
+            writer.writerow(
+                [
+                    a.code,
+                    a.title,
+                    ActivitySector.FieldStr.get(a.sector, ""),
+                    a.owner or "",
+                    a.version,
+                    ActivityStatus.FieldStr.get(a.status, ""),
+                    a.updated_at.strftime("%Y-%m-%d") if a.updated_at else "",
+                ]
+            )
+        return response

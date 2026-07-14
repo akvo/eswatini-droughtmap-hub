@@ -119,3 +119,30 @@ export const api = (method, url, payload = {}) =>
       return reject(err);
     }
   });
+
+export const apiText = (method, url, payload = {}) =>
+  new Promise(async (resolve, reject) => {
+    const _session = await getSession();
+    const headers = {};
+    if (_session) {
+      const { token: authToken } = _session;
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    const fetchProps = {
+      method,
+      headers,
+    };
+    if (typeof payload === "object" && Object.keys(payload).length) {
+      fetchProps["body"] = JSON.stringify(payload);
+    }
+    try {
+      const res = await fetch(`${backendBaseURL}/api/v1${url}`, fetchProps);
+      const raw = await res.text();
+      if (!res.ok) {
+        return reject(new Error(`HTTP ${res.status}: ${raw.slice(0, 200)}`));
+      }
+      return resolve(raw);
+    } catch (err) {
+      return reject(err);
+    }
+  });

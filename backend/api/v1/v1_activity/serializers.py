@@ -27,8 +27,15 @@ class ActivityHistorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ActivityHistory
-        fields = ["id", "from_status", "to_status", "action_label",
-                  "user", "note", "created_at"]
+        fields = [
+            "id",
+            "from_status",
+            "to_status",
+            "action_label",
+            "user",
+            "note",
+            "created_at",
+        ]
 
 
 class ActivitySignOffSerializer(serializers.ModelSerializer):
@@ -40,13 +47,20 @@ class ActivitySignOffSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ActivitySignOff
-        fields = ["id", "signed_by", "signed_by_name", "note",
-                  "recorded_by", "created_at"]
+        fields = [
+            "id",
+            "signed_by",
+            "signed_by_name",
+            "note",
+            "recorded_by",
+            "created_at",
+        ]
 
 
 class ActivitySignOffCreateSerializer(serializers.ModelSerializer):
     signed_by = serializers.PrimaryKeyRelatedField(
-        queryset=SystemUser.objects.all())
+        queryset=SystemUser.objects.all()
+    )
 
     class Meta:
         model = ActivitySignOff
@@ -72,9 +86,20 @@ class ActivityListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ResponseActivity
-        fields = ["id", "code", "title", "sector", "sector_label",
-                  "status", "status_label", "version", "trigger_summary",
-                  "response_type", "updated_at"]
+        fields = [
+            "id",
+            "code",
+            "title",
+            "sector",
+            "sector_label",
+            "status",
+            "status_label",
+            "version",
+            "trigger_summary",
+            "response_type",
+            "owner",
+            "updated_at",
+        ]
 
 
 class ActivityDetailSerializer(ActivityListSerializer):
@@ -88,24 +113,53 @@ class ActivityDetailSerializer(ActivityListSerializer):
 
     class Meta:
         model = ResponseActivity
-        fields = ["id", "code", "title", "description", "sector",
-                  "sector_label", "triggers", "trigger_summary", "owner",
-                  "coord_with", "response_type", "response_type_label",
-                  "source_doc", "source_file", "version", "status",
-                  "status_label", "verified_at", "activated_at",
-                  "created_at", "updated_at", "signoffs", "history"]
+        fields = [
+            "id",
+            "code",
+            "title",
+            "description",
+            "sector",
+            "sector_label",
+            "triggers",
+            "trigger_summary",
+            "owner",
+            "coord_with",
+            "response_type",
+            "response_type_label",
+            "source_doc",
+            "source_file",
+            "version",
+            "status",
+            "status_label",
+            "verified_at",
+            "activated_at",
+            "created_at",
+            "updated_at",
+            "signoffs",
+            "history",
+        ]
 
 
 class ActivityWriteSerializer(serializers.ModelSerializer):
     # Accept the uploaded file; the model column stores its storage path.
     source_file = serializers.FileField(
-        write_only=True, required=False, allow_null=True)
+        write_only=True, required=False, allow_null=True
+    )
     triggers = serializers.JSONField(required=False, allow_null=True)
 
     class Meta:
         model = ResponseActivity
-        fields = ["sector", "title", "description", "triggers", "owner",
-                  "coord_with", "response_type", "source_doc", "source_file"]
+        fields = [
+            "sector",
+            "title",
+            "description",
+            "triggers",
+            "owner",
+            "coord_with",
+            "response_type",
+            "source_doc",
+            "source_file",
+        ]
 
     def validate_triggers(self, value):
         try:
@@ -126,11 +180,17 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         sector = validated_data["sector"]
 
         # Sector leads (reviewers) may only author in their own sector.
-        if (user.role == UserRoleTypes.reviewer
-                and user.activity_sector != sector):
-            raise serializers.ValidationError({
-                "sector": ("You can only create activities in your own "
-                           "sector.")})
+        if (
+            user.role == UserRoleTypes.reviewer
+            and user.activity_sector != sector
+        ):
+            raise serializers.ValidationError(
+                {
+                    "sector": (
+                        "You can only create activities in your own " "sector."
+                    )
+                }
+            )
 
         # Generate a unique code inside the insert; retry on the rare race.
         activity = None
@@ -148,15 +208,21 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
                 continue
         if activity is None:
             raise serializers.ValidationError(
-                {"code": "Could not allocate a unique Protocol ID; try again."})
+                {"code": "Could not allocate a unique Protocol ID; try again."}
+            )
 
         if upload:
-            activity.source_file = files.save_source_file(upload, activity.code)
+            activity.source_file = files.save_source_file(
+                upload, activity.code
+            )
             activity.save(update_fields=["source_file"])
 
         ActivityHistory.objects.create(
-            activity=activity, from_status=None,
-            to_status=ActivityStatus.draft, user=user)
+            activity=activity,
+            from_status=None,
+            to_status=ActivityStatus.draft,
+            user=user,
+        )
         return activity
 
     def update(self, instance, validated_data):
@@ -168,11 +234,16 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         for field, value in validated_data.items():
             setattr(instance, field, value)
         if upload:
-            instance.source_file = files.save_source_file(upload, instance.code)
+            instance.source_file = files.save_source_file(
+                upload, instance.code
+            )
         instance.save()
         ActivityHistory.objects.create(
-            activity=instance, from_status=instance.status,
-            to_status=instance.status, user=request.user)
+            activity=instance,
+            from_status=instance.status,
+            to_status=instance.status,
+            user=request.user,
+        )
         return instance
 
     def to_representation(self, instance):
