@@ -51,6 +51,7 @@ API_APPS = [
     "api.v1.v1_activity",
     "api.v1.v1_rundeck",
     "api.v1.v1_iks",
+    "api.v1.v1_weather",
 ]
 
 # Add third party apps below
@@ -213,6 +214,9 @@ GEONODE_ADMIN_USERNAME = environ.get("GEONODE_ADMIN_USERNAME")
 GEONODE_ADMIN_PASSWORD = environ.get("GEONODE_ADMIN_PASSWORD")
 RUNDECK_API_URL = environ.get("RUNDECK_API_URL")
 RUNDECK_API_TOKEN = environ.get("RUNDECK_API_TOKEN")
+# WIS2 (wis2box) weather-station source; seeds the default WeatherSource row
+WIS2_BASE_URL = environ.get("WIS2_BASE_URL")
+WIS2_COLLECTION_ID = environ.get("WIS2_COLLECTION_ID")
 # Override the default user model
 AUTH_USER_MODEL = "v1_users.SystemUser"
 # MAIL SETUP
