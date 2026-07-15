@@ -22,11 +22,12 @@ The Figma design for "Detailed insights - IKS Explorer" (node 3509-116956) was u
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] KPI section: **2 cards only** — Reporting consistency (left) + Form completion (right).
-- [ ] Soil moisture & Vegetation greenness: **refined Monthly/Weekly status grids** styled like Figma Month components (badge card + label below it) stacked vertically at full width (`md={24}`).
-- [ ] Above line chart: **two checkboxes** — Rain-leaning ✓, Drought-leaning ✓ — toggling series visibility.
-- [ ] Section B and C: **collapsible accordion groups** matching the updated Figma visual hierarchy.
-- [ ] Subtitle copy aligned to Figma:
+- [x] KPI section: **2 cards only** — Reporting consistency (left) + Form completion (right).
+- [x] Soil moisture & Vegetation greenness: **refined Monthly/Weekly status grids** styled like Figma Month components (badge card + label below it) stacked vertically at full width (`md={24}`).
+- [x] Above line chart: **two checkboxes** — Rain-leaning ✓, Drought-leaning ✓ — toggling series visibility.
+- [x] Below line chart: **interactive legend indicators** matching figma series colors with custom opacity transitions based on checkbox state.
+- [x] Section B and C: **collapsible accordion groups** matching the updated Figma visual hierarchy.
+- [x] Subtitle copy aligned to Figma:
   - Soil moisture: `"one answer per monthly report"`
   - Vegetation: `"one answer per monthly report"`
   - Section B: `"One strip per indicator · each cell = one monthly report"`
@@ -74,6 +75,20 @@ Add state above the component return:
 ```jsx
 const [showRain, setShowRain] = useState(true);
 const [showDrought, setShowDrought] = useState(true);
+```
+
+Wrap both checkboxes in `ConfigProvider` themes with custom `colorPrimary` tokens matching the corresponding chart line colors:
+```jsx
+<ConfigProvider theme={{ token: { colorPrimary: "#3E5EB9" } }}>
+  <Checkbox checked={showRain} onChange={(e) => setShowRain(e.target.checked)}>
+    <span className="text-xs font-semibold text-neutral-600">Rain-leaning</span>
+  </Checkbox>
+</ConfigProvider>
+<ConfigProvider theme={{ token: { colorPrimary: "#E60000" } }}>
+  <Checkbox checked={showDrought} onChange={(e) => setShowDrought(e.target.checked)}>
+    <span className="text-xs font-semibold text-neutral-600">Drought-leaning</span>
+  </Checkbox>
+</ConfigProvider>
 ```
 
 Filter `activityOptions.series` to only include enabled series:
