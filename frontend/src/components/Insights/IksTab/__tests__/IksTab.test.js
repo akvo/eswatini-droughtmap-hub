@@ -80,10 +80,42 @@ describe("IksTab Component Redesigned Mockup", () => {
         return Promise.resolve(mockNetSignal);
       if (url === "/iks/aggregations/soil-trend")
         return Promise.resolve(mockSoilTrend);
+      if (url === "/iks/1/stats")
+        return Promise.resolve({
+          total_reports_received: 10,
+          total_months_drought: 3,
+          reporting_consistency_percentage: 95.5,
+          validation_rate_percentage: 88.0,
+          average_validation_time_days: 1.2,
+          form_completion_percentage: 82.0,
+          zone: "highveld",
+          indicator_activity: {
+            months: ["2025-08", "2025-09"],
+            rain_leaning: [2, 3],
+            extreme_weather: [1, 0],
+          },
+        });
+      if (url === "/iks/1/series?bulk=true")
+        return Promise.resolve({
+          months: ["2025-08", "2025-09"],
+          indicators: {
+            "1__bs___blue_swallows_appearance__tinkon": [true, false],
+          },
+        });
+      if (url === "/iks/1/photos")
+        return Promise.resolve({
+          photos: [
+            {
+              title: "Test Photo",
+              date: "Aug 25",
+              url: "http://example.com/test.jpg",
+            },
+          ],
+        });
       return Promise.resolve(null);
     });
 
-    render(<IksTab />);
+    render(<IksTab administrationId={1} selectedInkhundla="Mhlangatane" />);
 
     // 1. Verify Header
     await waitFor(() => {
@@ -92,9 +124,13 @@ describe("IksTab Component Redesigned Mockup", () => {
 
     // 2. Verify KPI Panels
     expect(screen.getByText("Reporting consistency")).toBeInTheDocument();
+    expect(screen.getByText("95.5%")).toBeInTheDocument();
     expect(screen.getByText("Validation rate")).toBeInTheDocument();
+    expect(screen.getByText("88%")).toBeInTheDocument();
     expect(screen.getByText("Avg. validation time")).toBeInTheDocument();
+    expect(screen.getByText("1.2 d")).toBeInTheDocument();
     expect(screen.getByText("Form completion")).toBeInTheDocument();
+    expect(screen.getByText("82%")).toBeInTheDocument();
 
     // 3. Verify Soil grids and Accordions
     expect(
@@ -111,5 +147,62 @@ describe("IksTab Component Redesigned Mockup", () => {
 
     // 4. Verify Photo attachments block
     expect(screen.getByText("Submitted photos")).toBeInTheDocument();
+    expect(screen.getByText("Test Photo")).toBeInTheDocument();
+  });
+
+  it("handles null administrationId without calling admin endpoints", async () => {
+    api.mockImplementation((method, url) => {
+      if (url === "/iks/indicators") return Promise.resolve(mockIndicators);
+      if (url === "/iks/aggregations/net-signal")
+        return Promise.resolve(mockNetSignal);
+      if (url === "/iks/aggregations/soil-trend")
+        return Promise.resolve(mockSoilTrend);
+      return Promise.resolve(null);
+    });
+
+    render(<IksTab administrationId={null} selectedInkhundla="Mhlangatane" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Mhlangatane Inkhundla")).toBeInTheDocument();
+    });
+
+    // Verify admin stats/series calls were not triggered, but page still rendered
+    expect(api).not.toHaveBeenCalledWith("GET", "/iks/null/stats");
+    expect(api).not.toHaveBeenCalledWith("GET", "/iks/null/series?bulk=true");
+  });
+
+  it("renders empty fallback when photos are empty", async () => {
+    api.mockImplementation((method, url) => {
+      if (url === "/iks/indicators") return Promise.resolve(mockIndicators);
+      if (url === "/iks/aggregations/net-signal")
+        return Promise.resolve(mockNetSignal);
+      if (url === "/iks/aggregations/soil-trend")
+        return Promise.resolve(mockSoilTrend);
+      if (url === "/iks/1/stats")
+        return Promise.resolve({
+          total_reports_received: 0,
+          total_months_drought: 0,
+          reporting_consistency_percentage: 0.0,
+          validation_rate_percentage: 0.0,
+          average_validation_time_days: 0.0,
+          form_completion_percentage: 0.0,
+          zone: "highveld",
+          indicator_activity: {
+            months: [],
+            rain_leaning: [],
+            extreme_weather: [],
+          },
+        });
+      if (url === "/iks/1/series?bulk=true")
+        return Promise.resolve({ months: [], indicators: {} });
+      if (url === "/iks/1/photos") return Promise.resolve({ photos: [] });
+      return Promise.resolve(null);
+    });
+
+    render(<IksTab administrationId={1} selectedInkhundla="Mhlangatane" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No photos submitted")).toBeInTheDocument();
+    });
   });
 });

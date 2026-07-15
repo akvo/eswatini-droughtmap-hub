@@ -75,6 +75,13 @@ const nextConfig = {
         pathname: "/uploaded/**",
         search: "",
       },
+      {
+        protocol: "https",
+        hostname: "kf.kobotoolbox.org",
+        port: "",
+        pathname: "/**",
+        search: "",
+      },
     ],
   },
 };

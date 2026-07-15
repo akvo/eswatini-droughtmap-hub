@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Spin, Select, Button } from "antd";
 import { api } from "@/lib/api";
 import FeedbackSection from "@/components/FeedbackSection";
+import PageHeader from "@/components/PageHeader";
 
 const { Option } = Select;
 
@@ -42,9 +43,31 @@ const DetailedInsightsContent = () => {
 
   // Selected Inkhundla state managed at the shell level to be shared across tabs
   const [selectedInkhundla, setSelectedInkhundla] = useState("Mhlangatane");
+  const [administrations, setAdministrations] = useState([]);
 
   // Resolve the current tab from URL parameters, defaulting to "iks" as requested
   const currentTab = searchParams.get("tab") || "iks";
+
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const res = await api("GET", "/iks/administrations");
+        if (res && Array.isArray(res)) {
+          setAdministrations(res);
+        }
+      } catch (err) {
+        console.error("Failed to fetch administrations:", err);
+      }
+    };
+    fetchAdmins();
+  }, []);
+
+  const currentAdmin = administrations.find(
+    (a) => a.name.toLowerCase() === selectedInkhundla.toLowerCase(),
+  );
+  const administrationId = currentAdmin ? currentAdmin.id : null;
+  const region = currentAdmin ? currentAdmin.region : "";
+  const zone = currentAdmin ? currentAdmin.zone : "";
 
   const tabOptions = [
     { label: "CDI Explorer", value: "cdi" },
@@ -66,7 +89,14 @@ const DetailedInsightsContent = () => {
   const renderTabContent = () => {
     switch (currentTab) {
       case "iks":
-        return <IksTab selectedInkhundla={selectedInkhundla} />;
+        return (
+          <IksTab
+            selectedInkhundla={selectedInkhundla}
+            administrationId={administrationId}
+            region={region}
+            zone={zone}
+          />
+        );
       case "cdi":
         return (
           <div className="p-8 text-center bg-white rounded-b-lg">
@@ -94,7 +124,14 @@ const DetailedInsightsContent = () => {
           </div>
         );
       default:
-        return <IksTab selectedInkhundla={selectedInkhundla} />;
+        return (
+          <IksTab
+            selectedInkhundla={selectedInkhundla}
+            administrationId={administrationId}
+            region={region}
+            zone={zone}
+          />
+        );
     }
   };
 
@@ -136,44 +173,23 @@ const DetailedInsightsContent = () => {
   }, []);
 
   return (
-    <div className="w-full space-y-6 pt-6">
-      {/* Page header with last updated date, title, and subtitle */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-semibold">
-          <svg
-            className="w-3.5 h-3.5 text-neutral-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <span>Last updated</span>
-          <span className="text-neutral-500">{lastUpdatedDate}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl xl:text-3xl font-extrabold text-neutral-800">
-            Detailed insights
-          </h1>
+    <div className="w-full">
+      <PageHeader
+        title="Detailed insights"
+        description="Lorem ipsum dolor sit amet consectetur."
+        date={lastUpdatedDate}
+        actions={
           <a
             href="#methodology"
             className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
           >
             Methodology
           </a>
-        </div>
-        <p className="text-sm text-neutral-500">
-          Lorem ipsum dolor sit amet consectetur.
-        </p>
-      </div>
+        }
+      />
 
       {/* Shared Explore insights container card */}
-      <div className="bg-white border border-neutral-100 shadow-sm overflow-hidden">
+      <div className="relative z-10 bg-white border border-neutral-100 shadow-sm overflow-hidden -mt-12">
         {/* Card Header (Explore insights title + Inkhundla select + Export) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-neutral-100 gap-4 bg-white">
           <span className="text-neutral-800 font-extrabold text-base">
@@ -186,7 +202,10 @@ const DetailedInsightsContent = () => {
               className="w-48"
               placeholder="Select inkhundla"
             >
-              {constituenciesList.map((c) => (
+              {(administrations.length > 0
+                ? administrations.map((a) => a.name).sort()
+                : constituenciesList
+              ).map((c) => (
                 <Option key={c} value={c}>
                   {c}
                 </Option>
@@ -233,15 +252,17 @@ const DetailedInsightsContent = () => {
 
 const DetailedInsightsPage = () => {
   return (
-    <Suspense
-      fallback={
-        <div className="w-full h-96 flex items-center justify-center">
-          <Spin size="large" />
-        </div>
-      }
-    >
-      <DetailedInsightsContent />
-    </Suspense>
+    <div className="w-full max-w-[1280px] mx-auto">
+      <Suspense
+        fallback={
+          <div className="w-full h-96 flex items-center justify-center">
+            <Spin size="large" />
+          </div>
+        }
+      >
+        <DetailedInsightsContent />
+      </Suspense>
+    </div>
   );
 };
 

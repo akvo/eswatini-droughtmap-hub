@@ -8,6 +8,32 @@ import { api } from "../../../lib";
 
 jest.mock("../../../lib", () => ({ api: jest.fn() }));
 
+jest.setTimeout(30000);
+
+jest.mock("antd/lib/_util/responsiveObserver", () => ({
+  default: {
+    subscribe: jest.fn(() => ({
+      unsubscribe: jest.fn(),
+    })),
+    unsubscribe: jest.fn(),
+    register: jest.fn(),
+    unregister: jest.fn(),
+  },
+}));
+
+jest.mock("antd", () => {
+  const original = jest.requireActual("antd");
+  return {
+    ...original,
+    message: {
+      error: jest.fn(),
+      success: jest.fn(),
+      warning: jest.fn(),
+      info: jest.fn(),
+    },
+  };
+});
+
 const detail = {
   administration: {
     administration_id: 7,

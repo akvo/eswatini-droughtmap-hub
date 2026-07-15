@@ -16,7 +16,7 @@ import {
 } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
-import { REGION_COLOR, IKS_INDICATOR_CATALOGUE } from "@/static/config";
+import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
 
 const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
 
@@ -37,94 +37,81 @@ const MONTHS = [
   "Dec",
 ];
 
-const SAMPLE_PHOTOS = [
-  {
-    title: "Patchy recovery after recent rain",
-    date: "May 26",
-    url: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&auto=format&fit=crop&q=60",
-  },
-  {
-    title: "Dry riverbed bed",
-    date: "May 26",
-    url: "https://images.unsplash.com/photo-1473081556163-2a17de81fc97?w=600&auto=format&fit=crop&q=60",
-  },
-  {
-    title: "Arid land",
-    date: "May 26",
-    url: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=600&auto=format&fit=crop&q=60",
-  },
-  {
-    title: "Soil erosion during drought",
-    date: "Jun 02",
-    url: "https://images.unsplash.com/photo-1488330870494-2e603a79df33?w=600&auto=format&fit=crop&q=60",
-  },
-  {
-    title: "Livestock seeking water source",
-    date: "Jun 10",
-    url: "https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?w=600&auto=format&fit=crop&q=60",
-  },
-];
+const getRainfallPredictors = () => {
+  const birds = [];
+  const insects = [];
+  const plants = [];
+  const sky = [];
 
-const RAINFALL_PREDICTORS = [
-  {
-    key: "b-birds",
-    header: "Birds (Tinyoni)",
-    indicators: [
-      {
-        name: "Blue Swallows appearance (Tinkonjane)",
-        isDroughtLeaning: false,
-      },
-      { name: "Southern Bald Ibis nesting", isDroughtLeaning: false },
-      { name: "Rainbird calls (Pezukomkhono)", isDroughtLeaning: false },
-    ],
-  },
-  {
-    key: "b-insects",
-    header: "Insects & animals",
-    indicators: [
-      { name: "Cicada singing intensity (Tinyendle)", isDroughtLeaning: false },
-      { name: "Termite mound rebuilding", isDroughtLeaning: false },
-      { name: "Migratory butterfly paths", isDroughtLeaning: false },
-    ],
-  },
-  {
-    key: "b-plants",
-    header: "Plants & fruits",
-    indicators: [
-      { name: "Peach tree early flowering", isDroughtLeaning: false },
-      { name: "Marula fruit abundance", isDroughtLeaning: false },
-      { name: "Acacia leaf flushing", isDroughtLeaning: false },
-    ],
-  },
-  {
-    key: "b-sky",
-    header: "Atmosphere & sky",
-    indicators: [
-      { name: "Red sky at sunset", isDroughtLeaning: false },
-      { name: "East wind patterns", isDroughtLeaning: false },
-      { name: "Lightning frequency", isDroughtLeaning: false },
-    ],
-  },
-];
+  Object.keys(IKS_INDICATOR_CATALOGUE).forEach((key) => {
+    const item = IKS_INDICATOR_CATALOGUE[key];
+    if (item.type === "rainfall") {
+      const num = parseInt(key.split("__")[0], 10);
+      const indicatorObj = {
+        dbKey: key,
+        name: item.label,
+        isDroughtLeaning: item.meaning === "drought",
+      };
+      if (num <= 9) birds.push(indicatorObj);
+      else if (num <= 12) insects.push(indicatorObj);
+      else if (num <= 16) plants.push(indicatorObj);
+      else sky.push(indicatorObj);
+    }
+  });
 
-const SEASONAL_PREDICTORS = [
-  {
-    key: "c-animals",
-    header: "Animals",
-    indicators: [
-      { name: "Livestock grazing changes", isDroughtLeaning: true },
-      { name: "Snake behavior warnings", isDroughtLeaning: true },
-    ],
-  },
-  {
-    key: "c-birds",
-    header: "Birds (Tinyoni)",
-    indicators: [
-      { name: "Vulture nesting levels", isDroughtLeaning: true },
-      { name: "Abdim's Stork departures", isDroughtLeaning: true },
-    ],
-  },
-];
+  return [
+    { key: "b-birds", header: "Birds (Tinyoni)", indicators: birds },
+    { key: "b-insects", header: "Insects & animals", indicators: insects },
+    { key: "b-plants", header: "Plants & fruits", indicators: plants },
+    { key: "b-sky", header: "Atmosphere & sky", indicators: sky },
+  ];
+};
+
+const getSeasonalPredictors = () => {
+  const animals = [];
+  const plants = [];
+
+  Object.keys(IKS_INDICATOR_CATALOGUE).forEach((key) => {
+    const item = IKS_INDICATOR_CATALOGUE[key];
+    if (item.type === "seasonal") {
+      const num = parseInt(key.split("__")[0], 10);
+      const indicatorObj = {
+        dbKey: key,
+        name: item.label,
+        isDroughtLeaning: item.meaning === "drought",
+      };
+      if (num <= 5) animals.push(indicatorObj);
+      else plants.push(indicatorObj);
+    }
+  });
+
+  return [
+    { key: "c-animals", header: "Birds & Animals", indicators: animals },
+    { key: "c-plants", header: "Plants", indicators: plants },
+  ];
+};
+
+const formatMonthLabel = (ymStr) => {
+  if (!ymStr) return "";
+  const parts = ymStr.split("-");
+  if (parts.length < 2) return ymStr;
+  const monthNum = parseInt(parts[1], 10);
+  const shortMonths = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return shortMonths[monthNum - 1] || "";
+};
 
 /**
  * Sub-component for individual KPI metric panel (Clean Code/DRY)
@@ -195,28 +182,31 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend }) => (
 /**
  * Sub-component for rendering indicator strips (Clean Code/DRY)
  */
-const IndicatorRow = ({ name, isDroughtLeaning = false }) => {
-  const charCodeSum = name
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+const IndicatorRow = ({
+  name,
+  isDroughtLeaning = false,
+  months = [],
+  checkedMonths = [],
+}) => {
   return (
     <div className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0 gap-4 bg-white px-4">
       <span className="text-xs text-neutral-700 font-medium truncate max-w-[280px]">
         {name}
       </span>
       <div className="flex gap-0.5">
-        {MONTHS.map((m, idx) => {
-          const observed = (charCodeSum + idx) % 3 === 0;
+        {(months.length > 0 ? months : Array(12).fill("")).map((m, idx) => {
+          const observed = checkedMonths[idx] || false;
           const color = observed
             ? isDroughtLeaning
               ? "bg-red-500"
               : "bg-blue-600"
             : "bg-neutral-100";
+          const label = m ? formatMonthLabel(m) : `Month ${idx + 1}`;
           return (
             <div
               key={idx}
-              title={`${m}: ${observed ? "Observed" : "Not observed"}`}
-              className={`w-3 h-3 rounded-[1px] ${color}`}
+              title={`${label}: ${observed ? "Observed" : "Not observed"}`}
+              className={`w-3.5 h-3.5 rounded-[1px] ${color}`}
             />
           );
         })}
@@ -225,7 +215,13 @@ const IndicatorRow = ({ name, isDroughtLeaning = false }) => {
   );
 };
 
-const PredictorAccordion = ({ title, subtitle, items }) => (
+const PredictorAccordion = ({
+  title,
+  subtitle,
+  items,
+  months = [],
+  indicatorsData = {},
+}) => (
   <div className="pb-6">
     <div className="px-4 mb-4">
       <h4 className="text-sm font-bold text-neutral-700">{title}</h4>
@@ -253,6 +249,8 @@ const PredictorAccordion = ({ title, subtitle, items }) => (
                   key={i}
                   name={ind.name}
                   isDroughtLeaning={ind.isDroughtLeaning}
+                  months={months}
+                  checkedMonths={indicatorsData[ind.dbKey] || []}
                 />
               ))}
             </div>
@@ -263,7 +261,12 @@ const PredictorAccordion = ({ title, subtitle, items }) => (
   </div>
 );
 
-const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
+const IksTab = ({
+  selectedInkhundla = "Mhlangatane",
+  administrationId = null,
+  region = "",
+  zone = "",
+}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [regionMap, setRegionMap] = useState({});
@@ -274,15 +277,45 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
   const [catalogueRows, setCatalogueRows] = useState([]);
   const [heatmapData, setHeatmapData] = useState({});
   const [startIndex, setStartIndex] = useState(0);
+  const [chartReady, setChartReady] = useState(false);
+
+  const [stats, setStats] = useState({
+    total_reports_received: 0,
+    total_months_drought: 0,
+    reporting_consistency_percentage: 0.0,
+    validation_rate_percentage: 0.0,
+    average_validation_time_days: 0.0,
+    form_completion_percentage: 0.0,
+    zone: zone,
+    indicator_activity: {
+      months: [],
+      rain_leaning: [],
+      extreme_weather: [],
+    },
+  });
+  const [bulkSeries, setBulkSeries] = useState({
+    months: [],
+    indicators: {},
+  });
+  const [photos, setPhotos] = useState([]);
+
+  useEffect(() => {
+    if (!loading) {
+      const handle = setTimeout(() => {
+        setChartReady(true);
+      }, 100);
+      return () => clearTimeout(handle);
+    } else {
+      setChartReady(false);
+    }
+  }, [loading, administrationId]);
 
   const handlePrev = () => {
     setStartIndex((prev) => Math.max(0, prev - 1));
   };
 
   const handleNext = () => {
-    setStartIndex((prev) =>
-      Math.max(0, Math.min(SAMPLE_PHOTOS.length - 3, prev + 1)),
-    );
+    setStartIndex((prev) => Math.max(0, Math.min(photos.length - 3, prev + 1)));
   };
 
   useEffect(() => {
@@ -303,15 +336,9 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         setRegionMap(soilTrend.region_map || {});
         setHeatmapData(heatmap || {});
 
-        // Build catalogue: join IKS_INDICATOR_CATALOGUE with indicator-counts +
-        // agreement data - no invented data, all sourced from mock DB
         const countMap = {};
         (indicatorCounts?.data || []).forEach((row) => {
           countMap[row.indicator] = row.submission_count;
-        });
-        const agreementCounts = { aligned: 0, watch: 0, contested: 0 };
-        (agreement?.agreement || []).forEach((r) => {
-          if (r.agreement in agreementCounts) agreementCounts[r.agreement]++;
         });
         const catalogue = Object.keys(IKS_INDICATOR_CATALOGUE).map(
           (key, i) => ({
@@ -326,6 +353,37 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
         setCatalogueRows(catalogue);
 
         setData({ netSignal, soilTrend });
+
+        if (administrationId) {
+          const [adminStats, adminSeries, adminPhotos] = await Promise.all([
+            api("GET", `/iks/${administrationId}/stats`),
+            api("GET", `/iks/${administrationId}/series?bulk=true`),
+            api("GET", `/iks/${administrationId}/photos`),
+          ]);
+          setStats(adminStats);
+          setBulkSeries(adminSeries);
+          setPhotos(adminPhotos?.photos || []);
+        } else {
+          setStats({
+            total_reports_received: 0,
+            total_months_drought: 0,
+            reporting_consistency_percentage: 0.0,
+            validation_rate_percentage: 0.0,
+            average_validation_time_days: 0.0,
+            form_completion_percentage: 0.0,
+            zone: zone,
+            indicator_activity: {
+              months: Array.from({ length: 12 }, (_, i) => `Month ${i + 1}`),
+              rain_leaning: Array(12).fill(0),
+              extreme_weather: Array(12).fill(0),
+            },
+          });
+          setBulkSeries({
+            months: Array.from({ length: 12 }, (_, i) => `Month ${i + 1}`),
+            indicators: {},
+          });
+          setPhotos([]);
+        }
       } catch (err) {
         console.error("Failed to load IKS data:", err);
         setError(err.message || "An error occurred while fetching IKS data.");
@@ -335,7 +393,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     };
 
     fetchData();
-  }, []);
+  }, [administrationId]);
 
   if (loading) {
     return (
@@ -359,16 +417,16 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     );
   }
 
-  const region = regionMap[selectedInkhundla] || "Hhohho";
-
-  // Derive metrics deterministically based on selected name for premium visuals
-  const selectedIdx = selectedInkhundla.charCodeAt(0) || 0;
-  const consistency = 90 + (selectedIdx % 11);
-  const validationRate = 85 + (selectedIdx % 15);
-  const validationTime = (1.0 + (selectedIdx % 9) * 0.2).toFixed(1);
-  const completionRate = 80 + (selectedIdx % 19);
+  const consistency = stats.reporting_consistency_percentage || 0;
+  const validationRate = stats.validation_rate_percentage || 0;
+  const validationTime = stats.average_validation_time_days || 0;
+  const completionRate = stats.form_completion_percentage || 0;
   const droughtLevel =
-    selectedIdx % 3 === 0 ? "D3" : selectedIdx % 3 === 1 ? "D2" : "D1";
+    stats.total_months_drought >= 8
+      ? "D3"
+      : stats.total_months_drought >= 4
+        ? "D2"
+        : "D1";
   const droughtBadgeColor =
     droughtLevel === "D3"
       ? "#e60000"
@@ -403,18 +461,41 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     return "M";
   };
 
-  // Spec: 4-region net-signal trend lines, one per region, using REGION_COLOR
-  const trendSeries = Object.entries(REGION_COLOR).map(
-    ([regionName, color]) => ({
-      name: regionName,
+  const getVegState = (idx) => {
+    const vt = data.soilTrend?.veg_trend;
+    if (!vt || !vt.green || !vt.some || !vt.brown) return "-";
+    const g = vt.green[idx] || 0;
+    const s = vt.some[idx] || 0;
+    const b = vt.brown[idx] || 0;
+    if (g >= s && g >= b) return "G";
+    if (s >= g && s >= b) return "S";
+    return "B";
+  };
+
+  const chartMonths = stats.indicator_activity?.months || [];
+  const rainLeaningData = stats.indicator_activity?.rain_leaning || [];
+  const extremeWeatherData = stats.indicator_activity?.extreme_weather || [];
+
+  const activitySeries = [
+    {
+      name: "Rainfall Predictors (Section B)",
       type: "line",
-      data: data.netSignal?.trend?.[regionName] || [],
-      itemStyle: { color },
+      data: rainLeaningData,
+      itemStyle: { color: "#3E5EB9" },
       lineStyle: { width: 2.5 },
-      symbol: "none",
+      symbol: "circle",
       smooth: true,
-    }),
-  );
+    },
+    {
+      name: "Extreme Weather (Section C)",
+      type: "line",
+      data: extremeWeatherData,
+      itemStyle: { color: "#E60000" },
+      lineStyle: { width: 2.5 },
+      symbol: "circle",
+      smooth: true,
+    },
+  ];
 
   const activityOptions = {
     tooltip: {
@@ -425,7 +506,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
       textStyle: { color: "#1f2937" },
     },
     legend: {
-      data: Object.keys(REGION_COLOR),
+      data: ["Rainfall Predictors (Section B)", "Extreme Weather (Section C)"],
       left: 0,
       top: 0,
       icon: "rect",
@@ -441,7 +522,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
     xAxis: {
       type: "category",
       boundaryGap: false,
-      data: dbWeeks,
+      data: chartMonths.map(formatMonthLabel),
       axisLine: { lineStyle: { color: "#e5e7eb" } },
       axisLabel: { color: "#6b7280", rotate: 30 },
     },
@@ -452,7 +533,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
       splitLine: { lineStyle: { color: "#f3f4f6" } },
       axisLabel: { color: "#6b7280" },
     },
-    series: trendSeries,
+    series: activitySeries,
   };
 
   // Catalogue table columns (spec section 6)
@@ -515,10 +596,10 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
   ];
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-6 w-full -mt-6">
       <div className="bg-white">
         {/* Inkhundla Header */}
-        <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-6">
+        <div className="flex items-center justify-between border-b border-neutral-100 px-4 pt-10 pb-6">
           <div>
             <h2 className="text-2xl font-bold text-neutral-800">
               {selectedInkhundla} Inkhundla
@@ -581,7 +662,13 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
             </span>
           </div>
           <div className="w-full h-80 border-t border-neutral-200 pt-4">
-            <Line rawConfig={activityOptions} />
+            {chartReady ? (
+              <Line rawConfig={activityOptions} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Spin tip="Rendering Chart..." />
+              </div>
+            )}
           </div>
         </div>
 
@@ -607,9 +694,7 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               <MonthlyStatusGrid
                 title="D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
                 subtitle="one answer per monthly report"
-                statesMap={(idx) =>
-                  idx < 3 ? "G" : idx < 7 ? "S" : idx < 9 ? "B" : "-"
-                }
+                statesMap={getVegState}
                 legend={[
                   { color: "bg-emerald-500", label: "G-Generally green" },
                   { color: "bg-amber-400", label: "S-Some green" },
@@ -625,12 +710,16 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
           <PredictorAccordion
             title="Section B: Rainfall predictors (21 indicators)"
             subtitle="One strip per indicator | each cell = one monthly report"
-            items={RAINFALL_PREDICTORS}
+            items={getRainfallPredictors()}
+            months={bulkSeries.months}
+            indicatorsData={bulkSeries.indicators}
           />
           <PredictorAccordion
             title="Section C: Seasonal & extreme-weather predictors (8 indicators)"
             subtitle="Signs of drought, floods, storms | one strip per indicator"
-            items={SEASONAL_PREDICTORS}
+            items={getSeasonalPredictors()}
+            months={bulkSeries.months}
+            indicatorsData={bulkSeries.indicators}
           />
         </div>
 
@@ -642,8 +731,8 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
                 Submitted photos
               </h4>
               <p className="text-xs text-neutral-400">
-                Photos uploaded with monthly Kobo reports | click to view full |
-                12 of 12 months had a photo
+                Photos uploaded with monthly Kobo reports | click to view full |{" "}
+                {photos.length} photos found
               </p>
             </div>
             <Button
@@ -653,72 +742,78 @@ const IksTab = ({ selectedInkhundla = "Mhlangatane" }) => {
               Add photo
             </Button>
           </div>
-          <Row gutter={[16, 16]}>
-            {SAMPLE_PHOTOS.slice(startIndex, startIndex + 3).map((photo, i) => (
-              <Col xs={24} sm={8} key={i}>
-                <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
-                  <Image
-                    src={photo.url}
-                    alt={photo.title}
-                    fill
-                    unoptimized
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4">
-                    <span className="text-white text-xs font-bold">
-                      {photo.title}
-                    </span>
-                    <span className="text-neutral-300 text-[10px] mt-1">
-                      {photo.date}
-                    </span>
-                  </div>
-                </div>
-              </Col>
-            ))}
-          </Row>
-          <div className="flex items-center gap-2 mt-4">
-            <Button
-              onClick={handlePrev}
-              disabled={startIndex === 0}
-              type="default"
-              className="text-neutral-600 font-semibold border-neutral-200 px-3 py-1 flex items-center justify-center rounded"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </Button>
-            <Button
-              onClick={handleNext}
-              disabled={startIndex >= SAMPLE_PHOTOS.length - 3}
-              type="default"
-              className="text-neutral-600 font-semibold border-neutral-200 px-3 py-1 flex items-center justify-center rounded"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Button>
-          </div>
+          {photos.length === 0 ? (
+            <Empty description="No photos submitted" />
+          ) : (
+            <>
+              <Row gutter={[16, 16]}>
+                {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
+                  <Col xs={24} sm={8} key={i}>
+                    <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
+                      <Image
+                        src={photo.url}
+                        alt={photo.title || "Observation Photo"}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4">
+                        <span className="text-white text-xs font-bold">
+                          {photo.title || "Observation Photo"}
+                        </span>
+                        <span className="text-neutral-300 text-[10px] mt-1">
+                          {photo.date || "Unknown Date"}
+                        </span>
+                      </div>
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+              <div className="flex items-center gap-2 mt-4">
+                <Button
+                  onClick={handlePrev}
+                  disabled={startIndex === 0}
+                  type="default"
+                  className="text-neutral-600 font-semibold border-neutral-200 px-3 py-1 flex items-center justify-center rounded"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={startIndex >= photos.length - 3}
+                  type="default"
+                  className="text-neutral-600 font-semibold border-neutral-200 px-3 py-1 flex items-center justify-center rounded"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Indicator Catalogue Table - spec UAC */}
