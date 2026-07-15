@@ -197,10 +197,17 @@ const DetailedInsightsContent = () => {
           </span>
           <div className="flex items-center gap-3">
             <Select
+              showSearch
               value={selectedInkhundla}
               onChange={(val) => setSelectedInkhundla(val)}
               className="w-48"
               placeholder="Select inkhundla"
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                (option?.value ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
             >
               {(administrations.length > 0
                 ? administrations.map((a) => a.name).sort()

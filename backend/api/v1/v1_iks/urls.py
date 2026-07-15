@@ -11,9 +11,15 @@ from api.v1.v1_iks.views import (
     IKSSoilTrendAggregationView,
     IKSAdministrationListView,
     IKSPhotosView,
+    IKSPhotoFileView,
 )
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/iks/photos/media/(?P<filename>[\w\.\-]+)$",
+        IKSPhotoFileView.as_view(),
+        name="iks-photo-file",
+    ),
     re_path(
         r"^(?P<version>(v1))/iks/(?P<administration_id>[0-9]+)/stats$",
         IKSStatsView.as_view(),

@@ -10,7 +10,6 @@ from rest_framework import status
 from rest_framework.permissions import (
     AllowAny,
     BasePermission,
-    IsAuthenticated,
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -945,11 +944,19 @@ class IKSPhotosView(APIView):
             attachments = data.raw_data.get("_attachments", [])
             for attach in attachments:
                 filename = attach.get("filename", "")
+                if not filename:
+                    continue
+                # Get the base filename
+                base_name = filename.split("/")[-1]
                 is_image = any(
-                    filename.lower().endswith(ext)
+                    base_name.lower().endswith(ext)
                     for ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]
                 )
                 if is_image or "image" in attach.get("mimetype", ""):
+                    # Provide local URL proxied by the Django backend
+                    # so that the browser doesn't hit Kobo directly
+                    # (which requires auth)
+                    photo_url = f"/api/v1/iks/photos/media/{base_name}"
                     photo_list.append(
                         {
                             "title": f"Submission {data.kobo_id}",
@@ -958,10 +965,39 @@ class IKSPhotosView(APIView):
                                 if data.submission_time
                                 else ""
                             ),
-                            "url": attach.get("download_url")
-                            or attach.get("url", ""),
+                            "url": photo_url,
                         }
                     )
 
         serializer = IKSPhotosSerializer({"photos": photo_list})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class IKSPhotoFileView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, version, filename):
+        import os
+        from django.http import FileResponse, Http404
+        from django.conf import settings
+
+        # Clean/sanitize filename
+        safe_filename = os.path.basename(filename)
+        file_path = os.path.abspath(
+            os.path.join(settings.STORAGE_PATH, safe_filename)
+        )
+
+        if not os.path.exists(file_path):
+            raise Http404("Photo file not found.")
+
+        # Guess MIME type based on file extension
+        ext = os.path.splitext(safe_filename)[1].lower()
+        content_type = "image/jpeg"
+        if ext == ".png":
+            content_type = "image/png"
+        elif ext == ".gif":
+            content_type = "image/gif"
+        elif ext == ".webp":
+            content_type = "image/webp"
+
+        return FileResponse(open(file_path, "rb"), content_type=content_type)

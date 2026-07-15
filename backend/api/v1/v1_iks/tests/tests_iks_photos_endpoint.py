@@ -1,3 +1,6 @@
+import os
+from tempfile import TemporaryDirectory
+from django.test import override_settings
 from rest_framework import status
 from api.v1.v1_iks.models import KoboData, IKSIndicator, IKSValue
 from .base import BaseIKSTestCase
@@ -43,5 +46,39 @@ class IKSPhotosEndpointTests(BaseIKSTestCase):
         photos = response.json()["photos"]
         self.assertEqual(len(photos), 1)
         self.assertEqual(
-            photos[0]["url"], "https://kobo.example/test_photo.jpg"
+            photos[0]["url"], "/api/v1/iks/photos/media/test_photo.jpg"
         )
+
+    def test_iks_photo_file_serve(self):
+        """
+        Test serving local files downloaded from Kobo via IKSPhotoFileView.
+        """
+        self.client.force_authenticate(user=None)
+
+        with TemporaryDirectory() as tmp_dir:
+            # Create a mock file in temporary folder
+            file_name = "test_photo_on_disk.jpg"
+            file_path = os.path.join(tmp_dir, file_name)
+            with open(file_path, "wb") as f:
+                f.write(b"mock_image_data")
+
+            # Override STORAGE_PATH setting so Django serves from tmp_dir
+            with override_settings(STORAGE_PATH=tmp_dir):
+                response = self.client.get(
+                    f"/api/v1/iks/photos/media/{file_name}"
+                )
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertEqual(
+                    response.headers["Content-Type"], "image/jpeg"
+                )
+                self.assertEqual(
+                    b"".join(response.streaming_content), b"mock_image_data"
+                )
+
+    def test_iks_photo_file_serve_not_found(self):
+        """Test serving non-existent photo returns 404."""
+        self.client.force_authenticate(user=None)
+        response = self.client.get(
+            "/api/v1/iks/photos/media/missing_photo.jpg"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

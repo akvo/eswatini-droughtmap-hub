@@ -26,17 +26,22 @@ from django_q.tasks import async_task
 logger = logging.getLogger(__name__)
 
 
-def download_attachment(download_url, save_path):
+def download_attachment(download_url, save_path, username=None, password=None):
     """Downloads an attachment from Kobo Toolbox."""
     try:
-        response = requests.get(download_url, timeout=30)
+        auth = (username, password) if username and password else None
+        response = requests.get(download_url, auth=auth, timeout=30)
         if response.status_code == 200:
             with open(save_path, "wb") as f:
                 f.write(response.content)
             logger.info(f"Successfully downloaded attachment to {save_path}")
             return True
+        else:
+            logger.error(
+                f"Kobo status {response.status_code} for {download_url}"
+            )
     except Exception as e:
-        logger.error(f"Failed to download attachment {download_url}: {str(e)}")
+        logger.error(f"Failed attachment {download_url}: {str(e)}")
     return False
 
 
@@ -107,7 +112,9 @@ class Command(BaseCommand):
                     break
 
                 for res in data.get("results", []):
-                    sub_time = self._process_submission(form, res, gdf)
+                    sub_time = self._process_submission(
+                        adapter, form, res, gdf
+                    )
                     if sub_time is None:
                         continue
                     sync_count += 1
@@ -142,7 +149,7 @@ class Command(BaseCommand):
             url += "&query=" + quote(json.dumps(query))
         return url
 
-    def _process_submission(self, form, res, gdf):
+    def _process_submission(self, adapter, form, res, gdf):
         """Upsert a single Kobo submission and its IKS values.
 
         Returns the submission_time on success, or None if skipped.
@@ -310,6 +317,8 @@ class Command(BaseCommand):
                     download_attachment,
                     download_url,
                     save_path,
+                    username=adapter.username,
+                    password=adapter.password,
                     group=f"iks-image-{kobo_id}",
                     hook="api.v1.v1_jobs.job.job_done_hook",  # noqa
                 )
