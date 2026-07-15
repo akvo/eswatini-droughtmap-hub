@@ -1,0 +1,30 @@
+{
+  "key": 3895892,
+  "label": "Piggs Peak",
+  "group": "Hhohho",
+  "data": [
+    {
+      "key": "min_temperature",
+      "label": "Min temperature",
+      "value": 8.0,
+      "units": "\u00b0C"
+    },
+    {
+      "key": "max_temperature",
+      "label": "Max temperature",
+      "value": 18.8,
+      "units": "\u00b0C"
+    },
+    {
+      "key": "precipitation",
+      "label": "Precipitation (monthly)",
+      "value": 0.8,
+      "units": "mm"
+    }
+  ],
+  "meta": {
+    "station": "Mbabane",
+    "network": "MET",
+    "period": "2026-07"
+  }
+}

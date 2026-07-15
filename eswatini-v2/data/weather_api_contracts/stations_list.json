@@ -1,0 +1,65 @@
+{
+  "data": [
+    {
+      "key": "0-748-0-68384",
+      "label": "Moti",
+      "group": "Shiselweni",
+      "value": {
+        "lat": -26.7042,
+        "lon": 31.4255,
+        "elevation": 341
+      },
+      "meta": {
+        "status": "online",
+        "last_reading": "2026-07-15"
+      }
+    },
+    {
+      "key": "0-20000-0-68394",
+      "label": "Lubovane",
+      "group": "Lubombo",
+      "value": {
+        "lat": -26.7358333333,
+        "lon": 31.7022222222,
+        "elevation": 265
+      },
+      "meta": {
+        "status": "online",
+        "last_reading": "2026-07-15"
+      }
+    },
+    {
+      "key": "0-20000-0-68391",
+      "label": "Mbabane",
+      "group": "Hhohho",
+      "value": {
+        "lat": -26.336,
+        "lon": 31.1427,
+        "elevation": 1221
+      },
+      "meta": {
+        "status": "online",
+        "last_reading": "2026-07-15"
+      }
+    },
+    {
+      "key": "0-20000-0-68399",
+      "label": "Big Bend",
+      "group": "Lubombo",
+      "value": {
+        "lat": -26.8626,
+        "lon": 31.933,
+        "elevation": 129
+      },
+      "meta": {
+        "status": "offline",
+        "last_reading": "2026-06-12"
+      }
+    }
+  ],
+  "meta": {
+    "source": "http://<WIS2_HOST>",
+    "network": "MET",
+    "total_planned": 8
+  }
+}
