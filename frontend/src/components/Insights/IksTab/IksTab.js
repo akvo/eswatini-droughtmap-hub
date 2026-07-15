@@ -131,53 +131,63 @@ const KpiMetricCard = ({ title, value, subtitle }) => (
 /**
  * Reusable Monthly Status Grids component (Clean Code/DRY)
  */
-const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend }) => (
-  <div className="p-4">
-    <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
-    <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
-    <div className="grid grid-cols-12 gap-0 border-y border-neutral-100 py-4">
-      {MONTHS.map((m, idx) => {
-        const state = statesMap(idx);
-        let colorClass = "bg-neutral-200 text-neutral-500";
-        if (state === "W" || state === "G")
-          colorClass = "bg-emerald-500 text-white";
-        else if (state === "D" || state === "B")
-          colorClass = "bg-red-600 text-white";
-        else if (state === "S") colorClass = "bg-amber-400 text-white";
+const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
+  const labels = weeks && weeks.length > 0 ? weeks : MONTHS;
+  return (
+    <div className="p-4">
+      <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
+      <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
+      <div
+        className="flex flex-wrap gap-0 border-y border-neutral-100 py-4"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {labels.map((m, idx) => {
+          const state = statesMap(idx);
+          let colorClass = "bg-neutral-200 text-neutral-500";
+          if (state === "W" || state === "G")
+            colorClass = "bg-emerald-500 text-white";
+          else if (state === "D" || state === "B")
+            colorClass = "bg-red-600 text-white";
+          else if (state === "M") colorClass = "bg-sky-200 text-sky-800";
+          else if (state === "S") colorClass = "bg-amber-400 text-white";
 
-        return (
-          <div
-            key={m}
-            className="flex flex-col items-center justify-center text-center"
-          >
+          return (
             <div
-              className={`w-8 h-8 p-2 rounded-sm text-center font-bold text-xs ${colorClass}`}
+              key={`${m}-${idx}`}
+              className="flex flex-col items-center justify-center text-center"
             >
-              <span>{state}</span>
+              <div
+                className={`w-8 h-8 p-2 rounded-sm text-center font-bold text-xs ${colorClass}`}
+              >
+                <span>{state}</span>
+              </div>
+              <span className="text-[9px] font-normal block uppercase opacity-85 mt-1">
+                {m}
+              </span>
             </div>
-            <span className="text-[9px] font-normal block uppercase opacity-85 mt-1">
-              {m}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-    <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
-      <span className="flex items-center gap-1">
-        <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
-        No submission
-      </span>
-      {legend.map((item, idx) => (
-        <span key={idx} className="flex items-center gap-1">
-          <span
-            className={`w-2.5 h-2.5 ${item.color} block rounded-full`}
-          ></span>{" "}
-          {item.label}
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
+          No submission
         </span>
-      ))}
+        {legend.map((item, idx) => (
+          <span key={idx} className="flex items-center gap-1">
+            <span
+              className={`w-2.5 h-2.5 ${item.color} block rounded-full`}
+            ></span>{" "}
+            {item.label}
+          </span>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Sub-component for rendering indicator strips (Clean Code/DRY)
@@ -678,8 +688,9 @@ const IksTab = ({
             <div className="border-t border-b border-r border-neutral-100">
               <MonthlyStatusGrid
                 title="Soil moisture (Womile / Ubutsile / Umanti)"
-                subtitle="one answer per monthly report"
+                subtitle="one answer per weekly report"
                 statesMap={getSoilState}
+                weeks={data.soilTrend?.weeks}
                 legend={[
                   { color: "bg-sky-200", label: "W-Wet" },
                   { color: "bg-amber-400", label: "M-Moist" },
@@ -693,8 +704,9 @@ const IksTab = ({
             <div className="border-t border-b border-l border-neutral-100">
               <MonthlyStatusGrid
                 title="D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
-                subtitle="one answer per monthly report"
+                subtitle="one answer per weekly report"
                 statesMap={getVegState}
+                weeks={data.soilTrend?.weeks}
                 legend={[
                   { color: "bg-emerald-500", label: "G-Generally green" },
                   { color: "bg-amber-400", label: "S-Some green" },

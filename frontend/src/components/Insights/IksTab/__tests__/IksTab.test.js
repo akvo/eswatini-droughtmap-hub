@@ -80,6 +80,11 @@ describe("IksTab Component Redesigned Mockup", () => {
         return Promise.resolve(mockNetSignal);
       if (url === "/iks/aggregations/soil-trend")
         return Promise.resolve(mockSoilTrend);
+      if (url === "/iks/aggregations/indicator-counts")
+        return Promise.resolve({ data: [] });
+      if (url === "/iks/aggregations/agreement")
+        return Promise.resolve({ weeks: [], regions: {} });
+      if (url === "/iks/aggregations/heatmap") return Promise.resolve({});
       if (url === "/iks/1/stats")
         return Promise.resolve({
           total_reports_received: 10,
@@ -157,6 +162,11 @@ describe("IksTab Component Redesigned Mockup", () => {
         return Promise.resolve(mockNetSignal);
       if (url === "/iks/aggregations/soil-trend")
         return Promise.resolve(mockSoilTrend);
+      if (url === "/iks/aggregations/indicator-counts")
+        return Promise.resolve({ data: [] });
+      if (url === "/iks/aggregations/agreement")
+        return Promise.resolve({ weeks: [], regions: {} });
+      if (url === "/iks/aggregations/heatmap") return Promise.resolve({});
       return Promise.resolve(null);
     });
 
@@ -178,6 +188,11 @@ describe("IksTab Component Redesigned Mockup", () => {
         return Promise.resolve(mockNetSignal);
       if (url === "/iks/aggregations/soil-trend")
         return Promise.resolve(mockSoilTrend);
+      if (url === "/iks/aggregations/indicator-counts")
+        return Promise.resolve({ data: [] });
+      if (url === "/iks/aggregations/agreement")
+        return Promise.resolve({ weeks: [], regions: {} });
+      if (url === "/iks/aggregations/heatmap") return Promise.resolve({});
       if (url === "/iks/1/stats")
         return Promise.resolve({
           total_reports_received: 0,
