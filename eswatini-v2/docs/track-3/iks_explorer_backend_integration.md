@@ -1,7 +1,7 @@
 # Feature Design: Track 3 Operational Response - IKS Explorer Backend Integration
 
 **Task ID**: IKS-Integration
-**Author**: Antigravity / Galih Pratama
+**Author**: Galih Pratama
 **Date**: 2026-07-14
 **Status**: Approved
 
@@ -272,5 +272,5 @@ cd frontend && yarn test src/components/Insights/IksTab
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Developer | Antigravity | 2026-07-14 | Approved |
+| Developer | Galih Pratama | 2026-07-14 | Approved |
 | Product | Galih Pratama | 2026-07-14 | Approved (via comments) |
