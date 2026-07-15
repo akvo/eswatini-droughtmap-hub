@@ -16,7 +16,12 @@ import {
 } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
-import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
+import {
+  IKS_INDICATOR_CATALOGUE,
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
 
 const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
 
@@ -431,25 +436,47 @@ const IksTab = ({
   const validationRate = stats.validation_rate_percentage || 0;
   const validationTime = stats.average_validation_time_days || 0;
   const completionRate = stats.form_completion_percentage || 0;
-  const droughtLevel =
+  const droughtCategoryVal =
     stats.total_months_drought >= 8
-      ? "D3"
+      ? DROUGHT_CATEGORY_VALUE.d3
       : stats.total_months_drought >= 4
+        ? DROUGHT_CATEGORY_VALUE.d2
+        : DROUGHT_CATEGORY_VALUE.d1;
+
+  const droughtLevel =
+    droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d3
+      ? "D3"
+      : droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d2
         ? "D2"
         : "D1";
-  const droughtBadgeColor =
-    droughtLevel === "D3"
-      ? "#e60000"
-      : droughtLevel === "D2"
-        ? "#ffaa00"
-        : "#fbd47f";
-  const droughtLabelText =
-    droughtLevel === "D3"
-      ? "Extreme drought"
-      : droughtLevel === "D2"
-        ? "Severe drought"
-        : "Moderate drought";
-  const droughtBadgeTextColor = droughtLevel === "D1" ? "#7c5a00" : "#ffffff";
+
+  const droughtBadgeColor = DROUGHT_CATEGORY_COLOR[droughtCategoryVal];
+  const droughtLabelText = DROUGHT_CATEGORY_LABEL[droughtCategoryVal];
+  const droughtBadgeTextColor =
+    droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d1 ? "#7c5a00" : "#ffffff";
+
+  const badgeParentBgMap = {
+    [DROUGHT_CATEGORY_VALUE.normal]: "#f0fdf4",
+    [DROUGHT_CATEGORY_VALUE.d0]: "#fefce8",
+    [DROUGHT_CATEGORY_VALUE.d1]: "#fef9c3",
+    [DROUGHT_CATEGORY_VALUE.d2]: "#ffedd5",
+    [DROUGHT_CATEGORY_VALUE.d3]: "#f7e7e7",
+    [DROUGHT_CATEGORY_VALUE.d4]: "#f7e7e7",
+    [DROUGHT_CATEGORY_VALUE.none]: "#f9fafb",
+  };
+  const parentBg = badgeParentBgMap[droughtCategoryVal] || "#f9fafb";
+
+  const zoneLabel = stats.zone
+    ? stats.zone
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    : zone
+      ? zone
+          .split("_")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ")
+      : "";
 
   // Derive date range from first and last weeks in the DB payload
   const dbWeeks = data.netSignal?.weeks || [];
@@ -615,20 +642,35 @@ const IksTab = ({
               {selectedInkhundla} Inkhundla
             </h2>
             <p className="text-sm text-neutral-400 font-medium">
-              {region} - Highveld
+              {region}
+              {zoneLabel ? ` - ${zoneLabel}` : ""}
             </p>
           </div>
-          <Tag
-            color={droughtBadgeColor}
+          {/* Badge Group matching Figma spec node-4116_96303 (compact version) */}
+          <div
             style={{
-              color: droughtBadgeTextColor,
-              fontWeight: 700,
-              border: "none",
+              backgroundColor: parentBg,
             }}
-            className="px-3 py-1 text-sm rounded"
+            className="flex gap-[8px] items-center pl-[2px] pr-[8px] py-[2px] rounded-[6px]"
           >
-            {droughtLevel} {droughtLabelText}
-          </Tag>
+            {/* Inner DroughtClassAndConfidence block */}
+            <div
+              style={{
+                backgroundColor: droughtBadgeColor,
+              }}
+              className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
+            >
+              <p className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center text-white whitespace-nowrap mb-0">
+                {droughtLevel}
+              </p>
+            </div>
+            {/* Label block */}
+            <div className="flex gap-[4px] items-center">
+              <span className="font-['Inter'] font-normal leading-[18px] text-[13px] text-[#333] whitespace-nowrap">
+                {droughtLabelText}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* 4 KPI metrics */}
