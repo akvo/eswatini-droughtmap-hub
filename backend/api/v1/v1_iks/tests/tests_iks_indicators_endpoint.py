@@ -14,3 +14,9 @@ class IKSIndicatorsEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.json()), 1)
         self.assertEqual(response.json()[0]["name"], "Indicator Frogs")
+
+    def test_iks_indicators_anonymous_allowed(self):
+        """Test GET /api/v1/iks/indicators anonymously."""
+        self.client.force_authenticate(user=None)
+        response = self.client.get("/api/v1/iks/indicators")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

@@ -43,11 +43,13 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
     def test_iks_stats_endpoint_anonymous(self):
         """
         Test GET /api/v1/iks/{administration_id}/stats
-        API guards authentication.
+        API allows anonymous access.
         """
         self.client.force_authenticate(user=None)
         response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("zone", response.json())
+        self.assertIn("indicator_activity", response.json())
 
     def test_iks_stats_date_filters(self):
         """Test GET /api/v1/iks/{administration_id}/stats date filtering."""
@@ -104,3 +106,38 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["total_reports_received"], 1)
         self.assertEqual(response.json()["total_months_drought"], 1)
+
+    def test_indicator_activity_classification(self):
+        """Test stats indicator activity B1/C1 classification logic."""
+        indicator_b = IKSIndicator.objects.create(
+            kobo_form=self.form, name="B1_peach_tree_flowering"
+        )
+        indicator_c = IKSIndicator.objects.create(
+            kobo_form=self.form, name="C1_vulture_nesting"
+        )
+
+        KoboData.objects.create(
+            form=self.form,
+            kobo_id=300,
+            submission_time=timezone.now(),
+        )
+
+        IKSValue.objects.create(
+            kobo_id=300,
+            administration=self.admin_area,
+            iks_indicator=indicator_b,
+            value="observed",
+        )
+        IKSValue.objects.create(
+            kobo_id=300,
+            administration=self.admin_area,
+            iks_indicator=indicator_c,
+            value="observed",
+        )
+
+        response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        activity = response.json()["indicator_activity"]
+        # The last month (index 11) should have 1 count for each
+        self.assertEqual(activity["rain_leaning"][-1], 1)
+        self.assertEqual(activity["extreme_weather"][-1], 1)

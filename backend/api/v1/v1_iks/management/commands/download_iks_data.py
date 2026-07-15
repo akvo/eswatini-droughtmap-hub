@@ -216,10 +216,8 @@ class Command(BaseCommand):
                         # Answers is a space separated string
                         # of selected indicators
                         for choice in answers.split():
-                            indicator, _ = (
-                                IKSIndicator.objects.get_or_create(
-                                    kobo_form=form, name=choice
-                                )
+                            indicator, _ = IKSIndicator.objects.get_or_create(
+                                kobo_form=form, name=choice
                             )
                             # Create or update Value
                             IKSValue.objects.update_or_create(
@@ -230,6 +228,43 @@ class Command(BaseCommand):
                                     "value": "observed",
                                 },
                             )
+
+                # Process Section D1: Soil moisture
+                soil_field = (
+                    "group_bx6rt12/D1_How_is_the_soil_atsi_endzaweni_yakho"
+                )
+                soil_val = res.get(soil_field)
+                if soil_val:
+                    indicator, _ = IKSIndicator.objects.get_or_create(
+                        kobo_form=form, name="soil_moisture"
+                    )
+                    IKSValue.objects.update_or_create(
+                        kobo_id=kobo_id,
+                        iks_indicator=indicator,
+                        defaults={
+                            "administration": admin_obj,
+                            "value": soil_val,
+                        },
+                    )
+
+                # Process Section D2: Vegetation greenness
+                veg_field = (
+                    "group_bx6rt12/D2_How_is_the_veget_ato_endzaweni_yakho"
+                )
+                veg_val = res.get(veg_field)
+                if veg_val:
+                    indicator, _ = IKSIndicator.objects.get_or_create(
+                        kobo_form=form, name="vegetation_greenness"
+                    )
+                    IKSValue.objects.update_or_create(
+                        kobo_id=kobo_id,
+                        iks_indicator=indicator,
+                        defaults={
+                            "administration": admin_obj,
+                            "value": veg_val,
+                        },
+                    )
+
             except Administration.DoesNotExist:
                 logger.warning(
                     f"Administration with ID {administration_id} not found in database."  # noqa

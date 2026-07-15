@@ -8,6 +8,9 @@ from api.v1.v1_iks.views import (
     IKSIndicatorCountsAggregationView,
     IKSAgreementAggregationView,
     IKSHeatmapAggregationView,
+    IKSSoilTrendAggregationView,
+    IKSAdministrationListView,
+    IKSPhotosView,
 )
 
 urlpatterns = [
@@ -50,5 +53,20 @@ urlpatterns = [
         r"^(?P<version>(v1))/iks/aggregations/heatmap$",
         IKSHeatmapAggregationView.as_view(),
         name="iks-heatmap-aggregation",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/aggregations/soil-trend$",
+        IKSSoilTrendAggregationView.as_view(),
+        name="iks-soil-trend-aggregation",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/administrations$",
+        IKSAdministrationListView.as_view(),
+        name="iks-administrations",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/(?P<administration_id>[0-9]+)/photos$",
+        IKSPhotosView.as_view(),
+        name="iks-photos",
     ),
 ]
