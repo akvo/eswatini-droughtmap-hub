@@ -8,11 +8,12 @@ import {
   Result,
   Row,
   Col,
-  Collapse,
   Button,
   Tag,
   Table,
   Empty,
+  Checkbox,
+  Collapse,
 } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
@@ -139,11 +140,11 @@ const KpiMetricCard = ({ title, value, subtitle }) => (
 const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
   const labels = weeks && weeks.length > 0 ? weeks : MONTHS;
   return (
-    <div className="p-4">
+    <div className="p-4 bg-white">
       <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
       <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
       <div
-        className="flex flex-wrap gap-0 border-y border-neutral-100 py-4"
+        className="flex flex-wrap gap-2 border-y border-neutral-100 py-4"
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))`,
@@ -153,9 +154,9 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
           const state = statesMap(idx);
           let colorClass = "bg-neutral-200 text-neutral-500";
           if (state === "W" || state === "G")
-            colorClass = "bg-emerald-500 text-white";
+            colorClass = "bg-[#12b76a] text-white"; // Green
           else if (state === "D" || state === "B")
-            colorClass = "bg-red-600 text-white";
+            colorClass = "bg-[#b10d0b] text-white"; // Red
           else if (state === "M") colorClass = "bg-sky-200 text-sky-800";
           else if (state === "S") colorClass = "bg-amber-400 text-white";
 
@@ -165,11 +166,11 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
               className="flex flex-col items-center justify-center text-center"
             >
               <div
-                className={`w-8 h-8 p-2 rounded-sm text-center font-bold text-xs ${colorClass}`}
+                className={`h-[34px] w-full flex items-center justify-center rounded-[4px] font-bold text-sm ${colorClass}`}
               >
                 <span>{state}</span>
               </div>
-              <span className="text-[9px] font-normal block uppercase opacity-85 mt-1">
+              <span className="text-[10px] font-medium text-neutral-500 block uppercase opacity-85 mt-2">
                 {m}
               </span>
             </div>
@@ -293,6 +294,8 @@ const IksTab = ({
   const [heatmapData, setHeatmapData] = useState({});
   const [startIndex, setStartIndex] = useState(0);
   const [chartReady, setChartReady] = useState(false);
+  const [showRain, setShowRain] = useState(true);
+  const [showDrought, setShowDrought] = useState(true);
 
   const [stats, setStats] = useState({
     total_reports_received: 0,
@@ -443,10 +446,10 @@ const IksTab = ({
         ? DROUGHT_CATEGORY_VALUE.d2
         : DROUGHT_CATEGORY_VALUE.d1;
 
-  const droughtLevel =
-    droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d3
+  const droughtLevel = (dCategoryVal) =>
+    dCategoryVal === DROUGHT_CATEGORY_VALUE.d3
       ? "D3"
-      : droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d2
+      : dCategoryVal === DROUGHT_CATEGORY_VALUE.d2
         ? "D2"
         : "D1";
 
@@ -543,14 +546,10 @@ const IksTab = ({
       textStyle: { color: "#1f2937" },
     },
     legend: {
-      data: ["Rainfall Predictors (Section B)", "Extreme Weather (Section C)"],
-      left: 0,
-      top: 0,
-      icon: "rect",
-      textStyle: { color: "#6b7280", fontWeight: "bold" },
+      show: false,
     },
     grid: {
-      top: 55,
+      top: 25,
       left: "3%",
       right: "4%",
       bottom: "10%",
@@ -570,7 +569,9 @@ const IksTab = ({
       splitLine: { lineStyle: { color: "#f3f4f6" } },
       axisLabel: { color: "#6b7280" },
     },
-    series: activitySeries,
+    series: activitySeries.filter(
+      (s, i) => (i === 0 && showRain) || (i === 1 && showDrought),
+    ),
   };
 
   // Catalogue table columns (spec section 6)
@@ -661,7 +662,7 @@ const IksTab = ({
               className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
             >
               <p className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center text-white whitespace-nowrap mb-0">
-                {droughtLevel}
+                {droughtLevel(droughtCategoryVal)}
               </p>
             </div>
             {/* Label block */}
@@ -673,22 +674,12 @@ const IksTab = ({
           </div>
         </div>
 
-        {/* 4 KPI metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 bg-white divide-y md:divide-y-0 md:divide-x divide-neutral-100 overflow-hidden shadow-sm">
+        {/* 2 KPI metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-neutral-100 overflow-hidden shadow-sm border-b border-neutral-100">
           <KpiMetricCard
             title="Reporting consistency"
             value={`${consistency}%`}
             subtitle="12 / 12 months reported"
-          />
-          <KpiMetricCard
-            title="Validation rate"
-            value={`${validationRate}%`}
-            subtitle="reports validated by TWG"
-          />
-          <KpiMetricCard
-            title="Avg. validation time"
-            value={`${validationTime} d`}
-            subtitle="submission / TWG sign-off"
           />
           <KpiMetricCard
             title="Form completion"
@@ -698,7 +689,7 @@ const IksTab = ({
         </div>
 
         {/* Line Chart Panel */}
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 border-b border-neutral-100">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-bold text-neutral-800">
@@ -713,7 +704,28 @@ const IksTab = ({
               {dateRange}
             </span>
           </div>
-          <div className="w-full h-80 border-t border-neutral-200 pt-4">
+
+          {/* Interactive Checkbox Filters */}
+          <div className="flex items-center gap-6 mb-4">
+            <Checkbox
+              checked={showRain}
+              onChange={(e) => setShowRain(e.target.checked)}
+            >
+              <span className="text-xs font-semibold text-neutral-600">
+                Rain-leaning
+              </span>
+            </Checkbox>
+            <Checkbox
+              checked={showDrought}
+              onChange={(e) => setShowDrought(e.target.checked)}
+            >
+              <span className="text-xs font-semibold text-neutral-600">
+                Drought-leaning
+              </span>
+            </Checkbox>
+          </div>
+
+          <div className="w-full h-80 pt-4">
             {chartReady ? (
               <Line rawConfig={activityOptions} />
             ) : (
@@ -725,52 +737,48 @@ const IksTab = ({
         </div>
 
         {/* Soil Moisture and Vegetation Grids (DRY) */}
-        <Row>
-          <Col xs={24} md={12}>
-            <div className="border-t border-b border-r border-neutral-100">
-              <MonthlyStatusGrid
-                title="Soil moisture (Womile / Ubutsile / Umanti)"
-                subtitle="one answer per weekly report"
-                statesMap={getSoilState}
-                weeks={data.soilTrend?.weeks}
-                legend={[
-                  { color: "bg-sky-200", label: "W-Wet" },
-                  { color: "bg-amber-400", label: "M-Moist" },
-                  { color: "bg-red-600", label: "D-Dry" },
-                ]}
-              />
-            </div>
+        <Row className="border-b border-neutral-100">
+          <Col md={24} className="border-r border-neutral-100">
+            <MonthlyStatusGrid
+              title="Soil moisture (Womile / Ubutsile / Umanti)"
+              subtitle="one answer per monthly report"
+              statesMap={getSoilState}
+              weeks={data.soilTrend?.weeks}
+              legend={[
+                { color: "bg-sky-200", label: "W-Wet" },
+                { color: "bg-amber-400", label: "M-Moist" },
+                { color: "bg-red-600", label: "D-Dry" },
+              ]}
+            />
           </Col>
 
-          <Col xs={24} md={12}>
-            <div className="border-t border-b border-l border-neutral-100">
-              <MonthlyStatusGrid
-                title="D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
-                subtitle="one answer per weekly report"
-                statesMap={getVegState}
-                weeks={data.soilTrend?.weeks}
-                legend={[
-                  { color: "bg-emerald-500", label: "G-Generally green" },
-                  { color: "bg-amber-400", label: "S-Some green" },
-                  { color: "bg-red-600", label: "B-Brown" },
-                ]}
-              />
-            </div>
+          <Col md={24}>
+            <MonthlyStatusGrid
+              title="D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
+              subtitle="one answer per monthly report"
+              statesMap={getVegState}
+              weeks={data.soilTrend?.weeks}
+              legend={[
+                { color: "bg-[#12b76a]", label: "G-Generally green" },
+                { color: "bg-amber-400", label: "S-Some green" },
+                { color: "bg-[#b10d0b]", label: "B-Brown" },
+              ]}
+            />
           </Col>
         </Row>
 
-        {/* Dynamic Collapse Lists (DRY) */}
-        <div className="space-y-0 py-6">
+        {/* Flat Indicator Lists */}
+        <div className="space-y-0 py-6 border-b border-neutral-100">
           <PredictorAccordion
             title="Section B: Rainfall predictors (21 indicators)"
-            subtitle="One strip per indicator | each cell = one monthly report"
+            subtitle="One strip per indicator · each cell = one monthly report"
             items={getRainfallPredictors()}
             months={bulkSeries.months}
             indicatorsData={bulkSeries.indicators}
           />
           <PredictorAccordion
             title="Section C: Seasonal & extreme-weather predictors (8 indicators)"
-            subtitle="Signs of drought, floods, storms | one strip per indicator"
+            subtitle="Signs of drought, floods, storms · one strip per indicator"
             items={getSeasonalPredictors()}
             months={bulkSeries.months}
             indicatorsData={bulkSeries.indicators}
@@ -778,7 +786,7 @@ const IksTab = ({
         </div>
 
         {/* Photos Grid Carousel */}
-        <div className="border-t border-neutral-100 px-4 py-6">
+        <div className="border-b border-neutral-100 px-4 py-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-bold text-neutral-800">
