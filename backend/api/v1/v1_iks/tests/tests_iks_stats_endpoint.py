@@ -108,12 +108,23 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.json()["total_months_drought"], 1)
 
     def test_indicator_activity_classification(self):
-        """Test stats indicator activity B1/C1 classification logic."""
+        """
+        Test stats indicator_activity correctly counts section B/C indicators.
+
+        IKSIndicator.name is a raw Kobo choice slug (e.g.
+        '1__bs___blue_swallows_appearance__tinkon'), never containing 'B1_'.
+        Classification now relies on the IKSIndicator.section field which is
+        populated by the download command.
+        """
         indicator_b = IKSIndicator.objects.create(
-            kobo_form=self.form, name="B1_peach_tree_flowering"
+            kobo_form=self.form,
+            name="1__bs___blue_swallows_appearance__tinkon",
+            section="B",
         )
         indicator_c = IKSIndicator.objects.create(
-            kobo_form=self.form, name="C1_vulture_nesting"
+            kobo_form=self.form,
+            name="1__wb___weaver_birds_build_their_nests_f",
+            section="C",
         )
 
         KoboData.objects.create(

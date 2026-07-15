@@ -43,10 +43,18 @@ class IKSNetSignalAggregationSerializer(serializers.Serializer):
     )
 
 
+class IndicatorCountItemSerializer(serializers.Serializer):
+    indicator = serializers.IntegerField()
+    submission_count = serializers.IntegerField()
+
+
 class IKSIndicatorCountsAggregationSerializer(serializers.Serializer):
     radar_labels = serializers.ListField(child=serializers.CharField())
     radar = serializers.DictField(
         child=serializers.ListField(child=serializers.FloatField())
+    )
+    data = IndicatorCountItemSerializer(
+        many=True, required=False, default=list
     )
 
 

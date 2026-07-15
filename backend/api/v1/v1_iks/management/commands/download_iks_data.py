@@ -202,23 +202,37 @@ class Command(BaseCommand):
         # Map Indicators and values
         # Scan common indicator group keys B1 and C1
         indicator_fields = [
-            "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho",
-            "group_mq8ds86/C1_Which_of_the_fol_lotivile_kulendzawo",
+            (
+                "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho",
+                "B",
+            ),
+            (
+                "group_mq8ds86/C1_Which_of_the_fol_lotivile_kulendzawo",
+                "C",
+            ),
         ]
 
         # If administration_id was matched, store mapped IKS values
         if administration_id:
             try:
                 admin_obj = Administration.objects.get(pk=administration_id)
-                for field_name in indicator_fields:
+                for field_name, section in indicator_fields:
                     answers = res.get(field_name, "")
                     if answers:
                         # Answers is a space separated string
                         # of selected indicators
                         for choice in answers.split():
-                            indicator, _ = IKSIndicator.objects.get_or_create(
-                                kobo_form=form, name=choice
+                            indicator, created = (
+                                IKSIndicator.objects.get_or_create(
+                                    kobo_form=form,
+                                    name=choice,
+                                    defaults={"section": section},
+                                )
                             )
+                            # Backfill section on pre-existing rows
+                            if not created and not indicator.section:
+                                indicator.section = section
+                                indicator.save(update_fields=["section"])
                             # Create or update Value
                             IKSValue.objects.update_or_create(
                                 kobo_id=kobo_id,
@@ -236,7 +250,9 @@ class Command(BaseCommand):
                 soil_val = res.get(soil_field)
                 if soil_val:
                     indicator, _ = IKSIndicator.objects.get_or_create(
-                        kobo_form=form, name="soil_moisture"
+                        kobo_form=form,
+                        name="soil_moisture",
+                        defaults={"section": "D"},
                     )
                     IKSValue.objects.update_or_create(
                         kobo_id=kobo_id,
@@ -254,7 +270,9 @@ class Command(BaseCommand):
                 veg_val = res.get(veg_field)
                 if veg_val:
                     indicator, _ = IKSIndicator.objects.get_or_create(
-                        kobo_form=form, name="vegetation_greenness"
+                        kobo_form=form,
+                        name="vegetation_greenness",
+                        defaults={"section": "D"},
                     )
                     IKSValue.objects.update_or_create(
                         kobo_id=kobo_id,

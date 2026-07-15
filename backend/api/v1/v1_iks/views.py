@@ -178,10 +178,10 @@ class IKSStatsView(APIView):
             period_str = sub_time.strftime("%Y-%m")
             if period_str in months_list:
                 idx = months_list.index(period_str)
-                name = val.iks_indicator.name
-                if "B1_" in name:
+                section = val.iks_indicator.section
+                if section == "B":
                     rain_leaning[idx] += 1
-                elif "C1_" in name:
+                elif section == "C":
                     extreme_weather[idx] += 1
 
         indicator_activity = {
@@ -527,7 +527,46 @@ class IKSIndicatorCountsAggregationView(APIView):
                     actual_radar[r][idx] += 1.0
             radar_data = actual_radar
 
-        response_data = {"radar_labels": indicators, "radar": radar_data}
+        # Build per-indicator submission counts for the catalogue table.
+        # The frontend IKS_INDICATOR_CATALOGUE keys are numbered 1..N;
+        # the Kobo indicator names are stored as raw choice slugs that start
+        # with that same number (e.g. "1__bs___blue_swallows_...").
+        # We count distinct submissions per numeric prefix.
+        from django.db.models import Count as DjCount
+
+        indicator_counts_qs = (
+            IKSValue.objects.exclude(
+                iks_indicator__name__in=[
+                    "soil_moisture",
+                    "vegetation_greenness",
+                ]
+            )
+            .values("iks_indicator__name")
+            .annotate(cnt=DjCount("id"))
+        )
+        indicator_count_map = {}
+        for row in indicator_counts_qs:
+            name = row["iks_indicator__name"]
+            # Extract the leading numeric prefix (e.g. "1" from "1__bs___...")
+            prefix = name.split("__")[0]
+            try:
+                num = int(prefix)
+                indicator_count_map[num] = (
+                    indicator_count_map.get(num, 0) + row["cnt"]
+                )
+            except (ValueError, AttributeError):
+                pass
+
+        data_list = [
+            {"indicator": num, "submission_count": cnt}
+            for num, cnt in sorted(indicator_count_map.items())
+        ]
+
+        response_data = {
+            "radar_labels": indicators,
+            "radar": radar_data,
+            "data": data_list,
+        }
         serializer = IKSIndicatorCountsAggregationSerializer(response_data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -751,8 +790,10 @@ class IKSSoilTrendAggregationView(APIView):
             wet_counts = [0] * len(weeks)
             total_counts = [0] * len(weeks)
 
+            # Kobo stores soil moisture as raw slugs like "1__dry__womile";
+            # use icontains so both cleaned and raw values match.
             values = IKSValue.objects.filter(
-                value__in=["womile", "ubutsile", "umanti"]
+                iks_indicator__name="soil_moisture"
             )
             if not values.exists():
                 values = IKSValue.objects.filter(
@@ -782,7 +823,11 @@ class IKSSoilTrendAggregationView(APIView):
 
                 val_str = val.value.lower()
                 total_counts[week_idx] += 1
-                if "womile" in val_str or "dry" in val_str:
+                # Match raw Kobo slugs: "1__dry__womile", "2__moist__ubutsile",
+                # "3__wet__umanti" as well as cleaned values.
+                if "womile" in val_str or (
+                    "dry" in val_str and "moist" not in val_str
+                ):
                     dry_counts[week_idx] += 1
                 elif "ubutsile" in val_str or "moist" in val_str:
                     moist_counts[week_idx] += 1
@@ -829,14 +874,20 @@ class IKSSoilTrendAggregationView(APIView):
 
                     val_str = val.value.lower()
                     total_veg_counts[week_idx] += 1
-                    if (
+                    # Match raw Kobo slugs:
+                    # "1__generally_green_almost_green_everywhe" → green
+                    # "2__some_green_tiluhlata" → some green
+                    # "3__brown_bushile" → brown
+                    # Check most-specific substrings first to avoid
+                    # "some_green" matching the bare "green" branch.
+                    if "some_green" in val_str or "some green" in val_str:
+                        some_counts[week_idx] += 1
+                    elif (
                         "generally_green" in val_str
                         or "generally green" in val_str
                         or "green" in val_str
-                    ):  # noqa
+                    ):
                         green_counts[week_idx] += 1
-                    elif "some_green" in val_str or "some green" in val_str:
-                        some_counts[week_idx] += 1
                     elif "brown" in val_str or "bushile" in val_str:
                         brown_counts[week_idx] += 1
 
