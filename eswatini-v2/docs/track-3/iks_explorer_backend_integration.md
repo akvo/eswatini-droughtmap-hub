@@ -60,10 +60,21 @@ Goal:
 
 ## 3. Data Model Changes
 
-No new models required. All new endpoints use existing tables:
+We added a new `section` CharField (`B` / `C` / `D`) to `IKSIndicator` to correctly group predictors without relying on fragile string-hacking of Kobo choice slugs.
+
+```python
+class IKSIndicator(models.Model):
+    SECTION_B = "B"
+    SECTION_C = "C"
+    SECTION_D = "D"
+    # ...
+    section = models.CharField(max_length=1, choices=SECTION_CHOICES, blank=True, default="", db_index=True)
+```
+
+Existing tables:
 - `Administration` — name, region, zone
 - `KoboData` — raw_data (contains `_attachments`)
-- `IKSIndicator` — name (Kobo field key, implies section B or C)
+- `IKSIndicator` — name (Kobo field key), section (B / C / D)
 - `IKSValue` — kobo_id, administration, iks_indicator, value
 
 ---
