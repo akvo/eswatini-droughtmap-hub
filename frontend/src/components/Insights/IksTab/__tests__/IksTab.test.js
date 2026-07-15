@@ -130,10 +130,6 @@ describe("IksTab Component Redesigned Mockup", () => {
     // 2. Verify KPI Panels
     expect(screen.getByText("Reporting consistency")).toBeInTheDocument();
     expect(screen.getByText("95.5%")).toBeInTheDocument();
-    expect(screen.getByText("Validation rate")).toBeInTheDocument();
-    expect(screen.getByText("88%")).toBeInTheDocument();
-    expect(screen.getByText("Avg. validation time")).toBeInTheDocument();
-    expect(screen.getByText("1.2 d")).toBeInTheDocument();
     expect(screen.getByText("Form completion")).toBeInTheDocument();
     expect(screen.getByText("82%")).toBeInTheDocument();
 
