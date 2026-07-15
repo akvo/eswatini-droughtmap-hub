@@ -14,6 +14,7 @@ import {
   Empty,
   Checkbox,
   Collapse,
+  ConfigProvider,
 } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
@@ -522,18 +523,46 @@ const IksTab = ({
       type: "line",
       data: rainLeaningData,
       itemStyle: { color: "#3E5EB9" },
-      lineStyle: { width: 2.5 },
+      lineStyle: { width: 2 },
       symbol: "circle",
+      symbolSize: 6,
       smooth: true,
+      areaStyle: {
+        color: {
+          type: "linear",
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: "rgba(62, 94, 185, 0.15)" },
+            { offset: 1, color: "rgba(62, 94, 185, 0.01)" },
+          ],
+        },
+      },
     },
     {
       name: "Extreme Weather (Section C)",
       type: "line",
       data: extremeWeatherData,
       itemStyle: { color: "#E60000" },
-      lineStyle: { width: 2.5 },
+      lineStyle: { width: 2 },
       symbol: "circle",
+      symbolSize: 6,
       smooth: true,
+      areaStyle: {
+        color: {
+          type: "linear",
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: "rgba(230, 0, 0, 0.15)" },
+            { offset: 1, color: "rgba(230, 0, 0, 0.01)" },
+          ],
+        },
+      },
     },
   ];
 
@@ -707,22 +736,26 @@ const IksTab = ({
 
           {/* Interactive Checkbox Filters */}
           <div className="flex items-center gap-6 mb-4">
-            <Checkbox
-              checked={showRain}
-              onChange={(e) => setShowRain(e.target.checked)}
-            >
-              <span className="text-xs font-semibold text-neutral-600">
-                Rain-leaning
-              </span>
-            </Checkbox>
-            <Checkbox
-              checked={showDrought}
-              onChange={(e) => setShowDrought(e.target.checked)}
-            >
-              <span className="text-xs font-semibold text-neutral-600">
-                Drought-leaning
-              </span>
-            </Checkbox>
+            <ConfigProvider theme={{ token: { colorPrimary: "#3E5EB9" } }}>
+              <Checkbox
+                checked={showRain}
+                onChange={(e) => setShowRain(e.target.checked)}
+              >
+                <span className="text-xs font-semibold text-neutral-600">
+                  Rain-leaning
+                </span>
+              </Checkbox>
+            </ConfigProvider>
+            <ConfigProvider theme={{ token: { colorPrimary: "#E60000" } }}>
+              <Checkbox
+                checked={showDrought}
+                onChange={(e) => setShowDrought(e.target.checked)}
+              >
+                <span className="text-xs font-semibold text-neutral-600">
+                  Drought-leaning
+                </span>
+              </Checkbox>
+            </ConfigProvider>
           </div>
 
           <div className="w-full h-80 pt-4">
@@ -734,6 +767,26 @@ const IksTab = ({
               </div>
             )}
           </div>
+          {chartReady && (
+            <div className="flex justify-center gap-6 mt-1 mb-4">
+              <div
+                className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showRain ? "opacity-100" : "opacity-35"}`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-[#3E5EB9] block" />
+                <span className="font-medium text-neutral-500">
+                  Rain-leaning
+                </span>
+              </div>
+              <div
+                className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showDrought ? "opacity-100" : "opacity-35"}`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-[#E60000] block" />
+                <span className="font-medium text-neutral-500">
+                  Drought-leaning
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Soil Moisture and Vegetation Grids (DRY) */}
