@@ -168,7 +168,7 @@ python manage.py check_overdue_reviews
 
 The `v1_weather` app ingests hourly SYNOP observations from a configurable
 **WIS2 (wis2box)** instance and stores **daily aggregates** per station and
-parameter (precipitation, tmin, tmax, tmean). Station health
+parameter (precipitation, tmin, tmax, tmean, humidity, wind_speed). Station health
 (online / degraded / offline) and data completeness are computed from the
 ingested data, never from the source's station metadata.
 

@@ -191,15 +191,25 @@ Validated drafts built from real data: `eswatini-v2/data/weather_api_contracts/*
 
 // GET /api/v1/weather/administrations/2042786/latest
 // (Kwaluseni — Manzini has no station → nearest-station fallback, D-5)
+// Row set follows the review-page design (Figma 3317-56561, extended
+// 2026-07-15): fixed rows, value null = the design's "— —" empty state,
+// soil temperature is a pending_sensor contract placeholder (source
+// publishes no soil params; soil moisture excluded by product decision).
+// meta.station_code = WIGOS id suffix (no SH-024-style codes exist in WIS2).
 {
   "key": 2042786, "label": "Kwaluseni", "group": "Manzini",
   "data": [
     {"key": "min_temperature", "label": "Min temperature", "value": 13.8, "units": "°C"},
     {"key": "max_temperature", "label": "Max temperature", "value": 23.7, "units": "°C"},
-    {"key": "precipitation", "label": "Precipitation (monthly)", "value": 109.0, "units": "mm"}
+    {"key": "precipitation", "label": "Precipitation (monthly)", "value": 109.0, "units": "mm"},
+    {"key": "air_temperature", "label": "Air temperature", "value": 17.9, "units": "°C"},
+    {"key": "relative_humidity", "label": "Relative humidity", "value": 62.0, "units": "%"},
+    {"key": "wind_speed", "label": "Wind speed", "value": 2.7, "units": "m/s"},
+    {"key": "soil_temperature", "label": "Soil temperature", "value": null,
+     "units": "°C", "meta": {"reason": "pending_sensor"}}
   ],
-  "meta": {"station": "Mbabane", "network": "MET", "period": "2026-04",
-           "resolution": "nearest_station_fallback",
+  "meta": {"station": "Mbabane", "station_code": "68391", "network": "MET",
+           "period": "2026-04", "resolution": "nearest_station_fallback",
            "station_region": "Hhohho", "distance_km": 28.4}
 }
 
@@ -349,6 +359,8 @@ WIS2 parameter names → internal parameters (ingester mapping, validated in not
 | `air_temperature` (instantaneous, hourly) | `tmean` | daily mean; also feeds tmax/tmin merge |
 | `maximum_temperature_at_height_and_over_period_specified` (24 h) | `tmax` | max(24 h report, hourly max) |
 | `minimum_temperature_at_height_and_over_period_specified` (24 h) | `tmin` | min(24 h report, hourly min) |
+| `relative_humidity` (instantaneous, hourly) | `humidity` | daily mean — added 2026-07-15 for the review-page design (3317-56561); the constants-only extension D-3 promised |
+| `wind_speed` (instantaneous, hourly) | `wind_speed` | daily mean — same |
 
 ---
 

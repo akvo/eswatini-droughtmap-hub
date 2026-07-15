@@ -1,0 +1,103 @@
+{
+  "key": 2042786,
+  "label": "Kwaluseni",
+  "group": "Manzini",
+  "data": [
+    {
+      "key": "precipitation_monthly",
+      "label": "Precipitation",
+      "units": "mm",
+      "data": [
+        {
+          "period": "2026-01",
+          "value": null
+        },
+        {
+          "period": "2026-02",
+          "value": null
+        },
+        {
+          "period": "2026-03",
+          "value": null
+        },
+        {
+          "period": "2026-04",
+          "value": 109.0
+        },
+        {
+          "period": "2026-05",
+          "value": 39.0
+        },
+        {
+          "period": "2026-06",
+          "value": 15.8
+        },
+        {
+          "period": "2026-07",
+          "value": 0.8
+        }
+      ]
+    },
+    {
+      "key": "temperature_monthly",
+      "label": "Temperature range",
+      "units": "\u00b0C",
+      "data": [
+        {
+          "period": "2026-01",
+          "value": null
+        },
+        {
+          "period": "2026-02",
+          "value": null
+        },
+        {
+          "period": "2026-03",
+          "value": null
+        },
+        {
+          "period": "2026-04",
+          "value": {
+            "tmax": 23.7,
+            "tmean": 17.9,
+            "tmin": 13.8
+          }
+        },
+        {
+          "period": "2026-05",
+          "value": {
+            "tmax": 21.4,
+            "tmean": 15.4,
+            "tmin": 3.6
+          }
+        },
+        {
+          "period": "2026-06",
+          "value": {
+            "tmax": 20.2,
+            "tmean": 14.0,
+            "tmin": 9.7
+          }
+        },
+        {
+          "period": "2026-07",
+          "value": {
+            "tmax": 19.0,
+            "tmean": 13.0,
+            "tmin": 8.0
+          }
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "station": "Mbabane",
+    "station_code": "68391",
+    "network": "MET",
+    "resolution": "nearest_station_fallback",
+    "station_region": "Hhohho",
+    "distance_km": 24.6,
+    "from": "2026-01",
+    "to": "2026-07"
+  }
+}
