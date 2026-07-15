@@ -123,16 +123,24 @@ def station_health(station, today=None) -> dict:
     }
 
 
-def monthly_series(station, parameter) -> list:
-    """[{period: 'YYYY-MM', value}] — sum for precipitation, mean otherwise."""
+def monthly_series(
+    station, parameter, from_period=None, to_period=None
+) -> list:
+    """[{period: 'YYYY-MM', value}] — sum for precipitation, mean otherwise.
+
+    `from_period`/`to_period` are inclusive 'YYYY-MM' bounds (lexicographic
+    comparison is safe for that format)."""
     rows = station.daily_values.filter(
         parameter=parameter, value__isnull=False
     ).values("date", "value")
     buckets = {}
     for row in rows:
-        buckets.setdefault(row["date"].strftime("%Y-%m"), []).append(
-            row["value"]
-        )
+        period = row["date"].strftime("%Y-%m")
+        if from_period and period < from_period:
+            continue
+        if to_period and period > to_period:
+            continue
+        buckets.setdefault(period, []).append(row["value"])
     aggregate = (
         sum if parameter == WeatherParameter.precipitation
         else lambda v: sum(v) / len(v)
@@ -159,6 +167,9 @@ def _latest_month_values(station):
         WeatherParameter.tmin,
         WeatherParameter.tmax,
         WeatherParameter.precipitation,
+        WeatherParameter.tmean,
+        WeatherParameter.humidity,
+        WeatherParameter.wind_speed,
     ):
         month_rows = [
             item["value"]
@@ -178,9 +189,9 @@ def _latest_month_values(station):
     return period, values
 
 
-def resolve_administration_latest(administration) -> dict:
-    """D-5 resolution ladder: own-region station -> nearest station
-    (labelled fallback) -> explicit no-data payload."""
+def _resolution_candidates(administration) -> list:
+    """D-5 ladder ordering: own-region stations (nearest first), then all
+    others by distance. Returns [(station, resolution, distance_km)]."""
     centroid = administration_centroids().get(administration.pk)
     stations = list(WeatherStation.objects.filter(is_active=True))
 
@@ -200,22 +211,34 @@ def resolve_administration_latest(administration) -> dict:
         (s for s in stations if s.region != administration.region),
         key=distance,
     )
-    candidates = [(s, "region_station") for s in own_region] + [
-        (s, "nearest_station_fallback") for s in others
+    return [
+        (s, "region_station", distance(s)) for s in own_region
+    ] + [
+        (s, "nearest_station_fallback", distance(s)) for s in others
     ]
-    for station, resolution in candidates:
+
+
+def resolve_administration_latest(administration) -> dict:
+    """D-5 resolution ladder: own-region station -> nearest station
+    (labelled fallback) -> explicit no-data payload."""
+    for station, resolution, distance_km in _resolution_candidates(
+        administration
+    ):
         period, values = _latest_month_values(station)
         if not values:
             continue
         meta = {
             "station": station.name.title(),
+            "station_code": _station_code(station),
             "network": NETWORK,
             "period": period,
             "resolution": resolution,
         }
         if resolution == "nearest_station_fallback":
             meta["station_region"] = station.region
-            meta["distance_km"] = round(distance(station), 1)
+            meta["distance_km"] = round(distance_km, 1)
+        # Fixed row set per the review-page design (Figma 3317-56561);
+        # value null renders as the design's "— —" empty state.
         data = []
         labels = [
             (WeatherParameter.tmin, "min_temperature", "Min temperature"),
@@ -225,17 +248,34 @@ def resolve_administration_latest(administration) -> dict:
                 "precipitation",
                 "Precipitation (monthly)",
             ),
+            (WeatherParameter.tmean, "air_temperature", "Air temperature"),
+            (
+                WeatherParameter.humidity,
+                "relative_humidity",
+                "Relative humidity",
+            ),
+            (WeatherParameter.wind_speed, "wind_speed", "Wind speed"),
         ]
         for parameter, key, label in labels:
-            if parameter in values:
-                data.append(
-                    {
-                        "key": key,
-                        "label": label,
-                        "value": values[parameter],
-                        "units": UNITS[parameter],
-                    }
-                )
+            data.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "value": values.get(parameter),
+                    "units": UNITS[parameter],
+                }
+            )
+        # Soil probes are not published by the source at all — the UI
+        # renders "pending sensor" from this contract state.
+        data.append(
+            {
+                "key": "soil_temperature",
+                "label": "Soil temperature",
+                "value": None,
+                "units": "°C",
+                "meta": {"reason": "pending_sensor"},
+            }
+        )
         return {
             "key": administration.pk,
             "label": administration.name,
@@ -250,3 +290,237 @@ def resolve_administration_latest(administration) -> dict:
         "data": None,
         "meta": {"reason": "no_station_data_for_period"},
     }
+
+
+def _current_dclass(administration):
+    """Drought class from the latest PUBLISHED publication's
+    validated_values; None when no published month covers this
+    administration. Labels/colors stay in frontend config (CLAUDE.md)."""
+    from api.v1.v1_publication.constants import PublicationStatus
+    from api.v1.v1_publication.models import Publication
+
+    publication = (
+        Publication.objects.filter(
+            status=PublicationStatus.published,
+            validated_values__isnull=False,
+        )
+        .order_by("-year_month")
+        .first()
+    )
+    if not publication:
+        return None
+    item = next(
+        (
+            i
+            for i in (publication.validated_values or [])
+            if i.get("administration_id") == administration.pk
+        ),
+        None,
+    )
+    if not item or item.get("category") is None:
+        return None
+    return {
+        "category": item["category"],
+        "period": publication.year_month.strftime("%Y-%m"),
+    }
+
+
+def _resolve_station_with_data(administration):
+    """First D-5 candidate that has any ingested data."""
+    for candidate, resolution, distance_km in _resolution_candidates(
+        administration
+    ):
+        if candidate.daily_values.filter(value__isnull=False).exists():
+            return candidate, resolution, distance_km
+    return None, None, None
+
+
+def _administration_base(administration, with_context=False) -> dict:
+    base = {
+        "key": administration.pk,
+        "label": administration.name,
+        "group": administration.region,
+    }
+    if with_context:
+        base["value"] = {
+            "zone": administration.zone,
+            "dclass": _current_dclass(administration),
+        }
+    return base
+
+
+def _station_code(station) -> str:
+    """Display code = WIGOS id suffix (partner decision — no SH-024-style
+    local codes exist in WIS2), e.g. 0-20000-0-68391 -> 68391."""
+    return station.wigos_id.rsplit("-", 1)[-1]
+
+
+def _resolution_meta(station, resolution, distance_km) -> dict:
+    meta = {
+        "station": station.name.title(),
+        "station_code": _station_code(station),
+        "network": NETWORK,
+        "resolution": resolution,
+    }
+    if resolution == "nearest_station_fallback":
+        meta["station_region"] = station.region
+        meta["distance_km"] = round(distance_km, 1)
+    return meta
+
+
+def administration_stats(administration, include_completeness=False) -> dict:
+    """Explorer stat cards (WX-4): last-month rain, 12-month rain,
+    completeness. Completeness is TWG-gated (product AC) — anonymous
+    callers get value null + meta.reason "twg_only" so the UI renders its
+    locked sign-in placeholder. The ops health view (status / 30-day
+    completeness / last reading) is never included here."""
+    base = _administration_base(administration, with_context=True)
+    station, resolution, distance_km = _resolve_station_with_data(
+        administration
+    )
+    if not station:
+        base["data"] = None
+        base["meta"] = {"reason": "no_station_data_for_period"}
+        return base
+
+    today = timezone.now().date()
+    first_record = (
+        station.daily_values.filter(value__isnull=False)
+        .order_by("date")
+        .values_list("date", flat=True)
+        .first()
+    )
+    window_start = max(first_record, today - timezone.timedelta(days=365))
+    window_days = (today - window_start).days + 1
+    dates_with_data = set(
+        station.daily_values.filter(
+            value__isnull=False, date__gte=window_start
+        ).values_list("date", flat=True)
+    )
+    completeness = (
+        round(len(dates_with_data) / window_days, 3) if window_days else None
+    )
+
+    precip_window = list(
+        station.daily_values.filter(
+            parameter=WeatherParameter.precipitation,
+            value__isnull=False,
+            date__gte=window_start,
+        ).values_list("date", "value")
+    )
+    precip_total = round(sum(v for _, v in precip_window), 1)
+    months_covered = len({d.strftime("%Y-%m") for d, _ in precip_window})
+
+    # "Total rain last month" = the latest calendar month with precip data
+    last_month_value = last_month_period = None
+    last_precip_date = (
+        station.daily_values.filter(
+            parameter=WeatherParameter.precipitation, value__isnull=False
+        )
+        .order_by("-date")
+        .values_list("date", flat=True)
+        .first()
+    )
+    if last_precip_date:
+        last_month_period = last_precip_date.strftime("%Y-%m")
+        series = monthly_series(
+            station,
+            WeatherParameter.precipitation,
+            last_month_period,
+            last_month_period,
+        )
+        last_month_value = series[0]["value"] if series else None
+
+    if include_completeness:
+        completeness_card = {
+            "key": "completeness_12m",
+            "label": "Data completeness",
+            "value": completeness,
+            "meta": {
+                "window_days": window_days,
+                "definition": "days_with_data / window_days",
+            },
+        }
+    else:  # anonymous -> the UI renders its locked sign-in placeholder
+        completeness_card = {
+            "key": "completeness_12m",
+            "label": "Data completeness",
+            "value": None,
+            "meta": {"reason": "twg_only"},
+        }
+
+    base["data"] = [
+        {
+            "key": "precipitation_last_month",
+            "label": "Total precipitation last month",
+            "value": last_month_value,
+            "units": "mm",
+            "meta": {"period": last_month_period},
+        },
+        {
+            "key": "precipitation_12m",
+            "label": "12-month total precipitation",
+            "value": precip_total,
+            "units": "mm",
+            "meta": {
+                "from": first_record.isoformat(),
+                "months_covered": months_covered,
+            },
+        },
+        completeness_card,
+    ]
+    base["meta"] = _resolution_meta(station, resolution, distance_km)
+    return base
+
+
+def administration_series(
+    administration, from_period=None, to_period=None
+) -> dict:
+    """Explorer chart series (WX-4): monthly precipitation and combined
+    Tmax/Tmean/Tmin, range-filterable. Fully public — no gated fields."""
+    base = _administration_base(administration)
+    station, resolution, distance_km = _resolve_station_with_data(
+        administration
+    )
+    if not station:
+        base["data"] = None
+        base["meta"] = {"reason": "no_station_data_for_period"}
+        return base
+
+    temperature_buckets = {}
+    for parameter in (
+        WeatherParameter.tmax,
+        WeatherParameter.tmean,
+        WeatherParameter.tmin,
+    ):
+        for item in monthly_series(
+            station, parameter, from_period, to_period
+        ):
+            temperature_buckets.setdefault(item["period"], {})[
+                parameter
+            ] = item["value"]
+
+    base["data"] = [
+        {
+            "key": "precipitation_monthly",
+            "label": "Precipitation",
+            "units": "mm",
+            "data": monthly_series(
+                station,
+                WeatherParameter.precipitation,
+                from_period,
+                to_period,
+            ),
+        },
+        {
+            "key": "temperature_monthly",
+            "label": "Temperature range",
+            "units": "°C",
+            "data": [
+                {"period": period, "value": values}
+                for period, values in sorted(temperature_buckets.items())
+            ],
+        },
+    ]
+    base["meta"] = _resolution_meta(station, resolution, distance_km)
+    return base

@@ -78,3 +78,15 @@ class AggregationTests(TestCase):
     def test_none_values_are_skipped(self):
         feature = obs_feature(name=WIS2_AIR_TEMPERATURE, value=None)
         self.assertEqual(aggregate_daily([feature]), [])
+
+    def test_humidity_and_wind_daily_mean(self):
+        features = hourly_series(
+            MBABANE, "relative_humidity", DAY, [40.0, 60.0]
+        ) + hourly_series(MBABANE, "wind_speed", DAY, [2.0, 4.0, 6.0])
+        rows = rows_by_parameter(aggregate_daily(features))
+        self.assertEqual(rows[WeatherParameter.humidity]["value"], 50.0)
+        self.assertEqual(rows[WeatherParameter.humidity]["readings_count"], 2)
+        self.assertEqual(rows[WeatherParameter.wind_speed]["value"], 4.0)
+        self.assertEqual(
+            rows[WeatherParameter.wind_speed]["readings_count"], 3
+        )

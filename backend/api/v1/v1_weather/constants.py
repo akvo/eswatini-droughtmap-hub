@@ -3,12 +3,16 @@ class WeatherParameter:
     tmin = "tmin"
     tmax = "tmax"
     tmean = "tmean"
+    humidity = "humidity"
+    wind_speed = "wind_speed"
 
     FieldStr = {
         precipitation: "Precipitation",
         tmin: "Min temperature",
         tmax: "Max temperature",
         tmean: "Mean temperature",
+        humidity: "Relative humidity",
+        wind_speed: "Wind speed",
     }
 
     @classmethod
@@ -32,18 +36,29 @@ WIS2_MAX_TEMPERATURE = (
 WIS2_MIN_TEMPERATURE = (
     "minimum_temperature_at_height_and_over_period_specified"
 )
+WIS2_RELATIVE_HUMIDITY = "relative_humidity"
+WIS2_WIND_SPEED = "wind_speed"
 WIS2_PARAMETERS = [
     WIS2_PRECIPITATION,
     WIS2_AIR_TEMPERATURE,
     WIS2_MAX_TEMPERATURE,
     WIS2_MIN_TEMPERATURE,
+    WIS2_RELATIVE_HUMIDITY,
+    WIS2_WIND_SPEED,
 ]
+# Hourly-instantaneous params aggregated as a plain daily mean
+WIS2_MEAN_PARAMETERS = {
+    WIS2_RELATIVE_HUMIDITY: WeatherParameter.humidity,
+    WIS2_WIND_SPEED: WeatherParameter.wind_speed,
+}
 
 UNITS = {
     WeatherParameter.precipitation: "mm",
     WeatherParameter.tmin: "°C",
     WeatherParameter.tmax: "°C",
     WeatherParameter.tmean: "°C",
+    WeatherParameter.humidity: "%",
+    WeatherParameter.wind_speed: "m/s",
 }
 
 EXPECTED_READINGS_PER_DAY = 24

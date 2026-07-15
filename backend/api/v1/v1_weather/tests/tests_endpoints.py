@@ -133,7 +133,7 @@ class WeatherEndpointTests(APITestCase):
                 "weather-station-monthly",
                 kwargs={"version": "v1", "wigos_id": MBABANE},
             ),
-            {"parameter": "humidity"},
+            {"parameter": "soil_moisture"},
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -175,11 +175,23 @@ class WeatherEndpointTests(APITestCase):
         self.assertEqual(body["group"], "Hhohho")
         self.assertEqual(body["meta"]["resolution"], "region_station")
         self.assertEqual(body["meta"]["station"], "Mbabane")
+        self.assertEqual(body["meta"]["station_code"], "68391")
         self.assertEqual(body["meta"]["period"], "2026-04")
         values = {item["key"]: item["value"] for item in body["data"]}
         self.assertEqual(values["precipitation"], 30.0)
         self.assertEqual(values["min_temperature"], 14.5)
         self.assertEqual(values["max_temperature"], 24.5)
+        # design row set (Figma 3317-56561): rows exist even without data,
+        # value null renders as the "— —" empty state
+        self.assertIsNone(values["air_temperature"])
+        self.assertIsNone(values["relative_humidity"])
+        self.assertIsNone(values["wind_speed"])
+        soil = next(
+            item for item in body["data"]
+            if item["key"] == "soil_temperature"
+        )
+        self.assertIsNone(soil["value"])
+        self.assertEqual(soil["meta"]["reason"], "pending_sensor")
 
     def test_manzini_uses_nearest_station_fallback(self):
         self.client.force_authenticate(user=self.reviewer)

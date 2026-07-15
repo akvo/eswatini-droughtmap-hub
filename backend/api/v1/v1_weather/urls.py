@@ -2,12 +2,26 @@ from django.urls import re_path
 
 from api.v1.v1_weather.views import (
     AdministrationLatestAPI,
+    AdministrationSeriesAPI,
+    AdministrationStatsAPI,
     WeatherSourceAPI,
     WeatherStationListAPI,
     WeatherStationMonthlyAPI,
 )
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/weather/administrations/"
+        r"(?P<administration_id>[0-9]+)/stats",
+        AdministrationStatsAPI.as_view(),
+        name="weather-administration-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/administrations/"
+        r"(?P<administration_id>[0-9]+)/series",
+        AdministrationSeriesAPI.as_view(),
+        name="weather-administration-series",
+    ),
     re_path(
         r"^(?P<version>(v1))/weather/stations/"
         r"(?P<wigos_id>[0-9A-Za-z-]+)/monthly",

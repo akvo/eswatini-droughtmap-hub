@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from api.v1.v1_weather.constants import (
     WIS2_AIR_TEMPERATURE,
     WIS2_MAX_TEMPERATURE,
+    WIS2_MEAN_PARAMETERS,
     WIS2_MIN_TEMPERATURE,
     WIS2_PRECIPITATION,
     WeatherParameter,
@@ -45,6 +46,7 @@ def aggregate_daily(features: list) -> list:
     air_temps = defaultdict(list)
     tmax_reports = {}
     tmin_reports = {}
+    mean_values = defaultdict(list)  # (key, internal_param) -> hourly values
 
     for feature in features:
         props = feature.get("properties", {})
@@ -68,6 +70,8 @@ def aggregate_daily(features: list) -> list:
             tmax_reports[key] = max(value, tmax_reports.get(key, value))
         elif name == WIS2_MIN_TEMPERATURE:
             tmin_reports[key] = min(value, tmin_reports.get(key, value))
+        elif name in WIS2_MEAN_PARAMETERS:
+            mean_values[(key, WIS2_MEAN_PARAMETERS[name])].append(value)
 
     rows = []
     precip_keys = set(precip_hourly) | set(precip_daily_report)
@@ -103,6 +107,11 @@ def aggregate_daily(features: list) -> list:
             rows.append(
                 _row(key, WeatherParameter.tmin, min(tmin_candidates), count)
             )
+
+    for (key, parameter), values in mean_values.items():
+        rows.append(
+            _row(key, parameter, sum(values) / len(values), len(values))
+        )
     return rows
 
 
