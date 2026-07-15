@@ -25,21 +25,29 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         self.assertEqual(
             set(charts), {"precipitation_monthly", "temperature_monthly"}
         )
-        first = charts["temperature_monthly"]["data"][0]["value"]
-        self.assertEqual(set(first), {"tmax", "tmean", "tmin"})
-        self.assertEqual(first["tmax"], 24.0)
+        current = next(
+            i["value"]
+            for i in charts["temperature_monthly"]["data"]
+            if i["period"] == self.today.strftime("%Y-%m")
+        )
+        self.assertEqual(set(current), {"tmax", "tmean", "tmin"})
+        self.assertEqual(current["tmax"], 24.0)
         self.assertEqual(body["meta"]["station"], "Mbabane")
 
-    def test_periods_are_ascending(self):
-        charts = {
-            item["key"]: item
-            for item in self.get_administration(
-                "series", HHUKWINI_ADM
-            ).json()["data"]
-        }
-        for chart in charts.values():
+    def test_default_window_is_year_to_date_with_null_padding(self):
+        body = self.get_administration("series", HHUKWINI_ADM).json()
+        self.assertEqual(body["meta"]["from"], f"{self.today.year}-01")
+        self.assertEqual(body["meta"]["to"], self.today.strftime("%Y-%m"))
+        for chart in body["data"]:
             periods = [i["period"] for i in chart["data"]]
+            # January .. current month, every month present, ascending
+            self.assertEqual(len(periods), self.today.month)
+            self.assertEqual(periods[0], f"{self.today.year}-01")
             self.assertEqual(periods, sorted(periods))
+            # months before the archive exist with an honest null
+            # (skip in January, when the first month is the current one)
+            if self.today.month > 1:
+                self.assertIsNone(chart["data"][0]["value"])
 
     def test_period_range_filters(self):
         period = self.today.strftime("%Y-%m")
@@ -61,6 +69,14 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
             self.get_administration(
                 "series", HHUKWINI_ADM,
                 **{"from": "2026-06", "to": "2026-04"},
+            ).status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        # padded responses are bounded: > 120 months is rejected
+        self.assertEqual(
+            self.get_administration(
+                "series", HHUKWINI_ADM,
+                **{"from": "2000-01", "to": "2026-12"},
             ).status_code,
             status.HTTP_400_BAD_REQUEST,
         )

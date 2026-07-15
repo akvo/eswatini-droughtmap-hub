@@ -43,11 +43,20 @@ def _parse_period_range(request):
                 {"detail": f"Invalid period (expected YYYY-MM): {value}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-    if from_period and to_period and from_period > to_period:
-        return None, None, Response(
-            {"detail": "'from' must not be after 'to'"},
-            status=status.HTTP_400_BAD_REQUEST,
+    if from_period and to_period:
+        if from_period > to_period:
+            return None, None, Response(
+                {"detail": "'from' must not be after 'to'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        span = (int(to_period[:4]) - int(from_period[:4])) * 12 + (
+            int(to_period[5:]) - int(from_period[5:])
         )
+        if span > 120:  # responses are padded per month — bound them
+            return None, None, Response(
+                {"detail": "Range too large (max 120 months)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
     return from_period, to_period, None
 
 

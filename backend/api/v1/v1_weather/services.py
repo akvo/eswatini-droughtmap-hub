@@ -123,13 +123,27 @@ def station_health(station, today=None) -> dict:
     }
 
 
+def month_range(from_period: str, to_period: str) -> list:
+    """Inclusive list of 'YYYY-MM' periods."""
+    year, month = map(int, from_period.split("-"))
+    end_year, end_month = map(int, to_period.split("-"))
+    periods = []
+    while (year, month) <= (end_year, end_month):
+        periods.append(f"{year:04d}-{month:02d}")
+        year, month = (year, month + 1) if month < 12 else (year + 1, 1)
+    return periods
+
+
 def monthly_series(
     station, parameter, from_period=None, to_period=None
 ) -> list:
     """[{period: 'YYYY-MM', value}] — sum for precipitation, mean otherwise.
 
     `from_period`/`to_period` are inclusive 'YYYY-MM' bounds (lexicographic
-    comparison is safe for that format)."""
+    comparison is safe for that format). When BOTH bounds are given, every
+    month in the range is returned — months without data carry value null,
+    so charts can render a fixed axis with honest gaps (the WIS2 archive
+    starts 2026-04; earlier months simply have no upstream data)."""
     rows = station.daily_values.filter(
         parameter=parameter, value__isnull=False
     ).values("date", "value")
@@ -145,10 +159,15 @@ def monthly_series(
         sum if parameter == WeatherParameter.precipitation
         else lambda v: sum(v) / len(v)
     )
-    return [
-        {"period": period, "value": round(aggregate(values), 1)}
-        for period, values in sorted(buckets.items())
-    ]
+    values = {
+        period: round(aggregate(items), 1)
+        for period, items in buckets.items()
+    }
+    if from_period and to_period:
+        periods = month_range(from_period, to_period)
+    else:
+        periods = sorted(values)
+    return [{"period": period, "value": values.get(period)} for period in periods]
 
 
 def _latest_month_values(station):
@@ -477,7 +496,14 @@ def administration_series(
     administration, from_period=None, to_period=None
 ) -> dict:
     """Explorer chart series (WX-4): monthly precipitation and combined
-    Tmax/Tmean/Tmin, range-filterable. Fully public — no gated fields."""
+    Tmax/Tmean/Tmin, range-filterable. Fully public — no gated fields.
+
+    Default window = current calendar year to date (Jan..current month);
+    months without data carry value null so the chart axis stays complete."""
+    today = timezone.now().date()
+    from_period = from_period or f"{today.year:04d}-01"
+    to_period = to_period or today.strftime("%Y-%m")
+
     base = _administration_base(administration)
     station, resolution, distance_km = _resolve_station_with_data(
         administration
@@ -487,7 +513,7 @@ def administration_series(
         base["meta"] = {"reason": "no_station_data_for_period"}
         return base
 
-    temperature_buckets = {}
+    temperature_values = {}
     for parameter in (
         WeatherParameter.tmax,
         WeatherParameter.tmean,
@@ -496,9 +522,10 @@ def administration_series(
         for item in monthly_series(
             station, parameter, from_period, to_period
         ):
-            temperature_buckets.setdefault(item["period"], {})[
-                parameter
-            ] = item["value"]
+            if item["value"] is not None:
+                temperature_values.setdefault(item["period"], {})[
+                    parameter
+                ] = item["value"]
 
     base["data"] = [
         {
@@ -517,10 +544,16 @@ def administration_series(
             "label": "Temperature range",
             "units": "°C",
             "data": [
-                {"period": period, "value": values}
-                for period, values in sorted(temperature_buckets.items())
+                {
+                    "period": period,
+                    "value": temperature_values.get(period),
+                }
+                for period in month_range(from_period, to_period)
             ],
         },
     ]
-    base["meta"] = _resolution_meta(station, resolution, distance_km)
+    meta = _resolution_meta(station, resolution, distance_km)
+    meta["from"] = from_period
+    meta["to"] = to_period
+    base["meta"] = meta
     return base
