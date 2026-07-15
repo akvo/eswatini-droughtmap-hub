@@ -1,0 +1,27 @@
+{
+  "key": "0-20000-0-68391",
+  "label": "Mbabane",
+  "group": "precipitation",
+  "data": [
+    {
+      "period": "2026-04",
+      "value": 109.0
+    },
+    {
+      "period": "2026-05",
+      "value": 39.0
+    },
+    {
+      "period": "2026-06",
+      "value": 15.8
+    },
+    {
+      "period": "2026-07",
+      "value": 0.8
+    }
+  ],
+  "meta": {
+    "units": "mm",
+    "aggregation": "monthly_sum_of_daily"
+  }
+}

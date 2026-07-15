@@ -15,4 +15,5 @@ agent_docs/
 .vscode
 task.md
 
-storage
+storageeswatini-v2/data/wis2_obs_cache.csv
+.qodo/
