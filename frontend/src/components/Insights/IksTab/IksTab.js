@@ -13,7 +13,6 @@ import {
   Table,
   Empty,
   Checkbox,
-  Collapse,
   ConfigProvider,
 } from "antd";
 import { Line } from "akvo-charts";
@@ -24,259 +23,13 @@ import {
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
+import KpiMetricCard from "./KpiMetricCard";
+import MonthlyStatusGrid from "./MonthlyStatusGrid";
+import { formatMonthLabel } from "./IndicatorRow";
+import PredictorAccordion from "./PredictorAccordion";
+import { getRainfallPredictors, getSeasonalPredictors } from "./iksUtils";
 
 const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
-
-const { Panel } = Collapse;
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const getRainfallPredictors = () => {
-  const birds = [];
-  const insects = [];
-  const plants = [];
-  const sky = [];
-
-  Object.keys(IKS_INDICATOR_CATALOGUE).forEach((key) => {
-    const item = IKS_INDICATOR_CATALOGUE[key];
-    if (item.type === "rainfall") {
-      const num = parseInt(key.split("__")[0], 10);
-      const indicatorObj = {
-        dbKey: key,
-        name: item.label,
-        isDroughtLeaning: item.meaning === "drought",
-      };
-      if (num <= 9) birds.push(indicatorObj);
-      else if (num <= 12) insects.push(indicatorObj);
-      else if (num <= 16) plants.push(indicatorObj);
-      else sky.push(indicatorObj);
-    }
-  });
-
-  return [
-    { key: "b-birds", header: "Birds (Tinyoni)", indicators: birds },
-    { key: "b-insects", header: "Insects & animals", indicators: insects },
-    { key: "b-plants", header: "Plants & fruits", indicators: plants },
-    { key: "b-sky", header: "Atmosphere & sky", indicators: sky },
-  ];
-};
-
-const getSeasonalPredictors = () => {
-  const animals = [];
-  const plants = [];
-
-  Object.keys(IKS_INDICATOR_CATALOGUE).forEach((key) => {
-    const item = IKS_INDICATOR_CATALOGUE[key];
-    if (item.type === "seasonal") {
-      const num = parseInt(key.split("__")[0], 10);
-      const indicatorObj = {
-        dbKey: key,
-        name: item.label,
-        isDroughtLeaning: item.meaning === "drought",
-      };
-      if (num <= 5) animals.push(indicatorObj);
-      else plants.push(indicatorObj);
-    }
-  });
-
-  return [
-    { key: "c-animals", header: "Birds & Animals", indicators: animals },
-    { key: "c-plants", header: "Plants", indicators: plants },
-  ];
-};
-
-const formatMonthLabel = (ymStr) => {
-  if (!ymStr) return "";
-  const parts = ymStr.split("-");
-  if (parts.length < 2) return ymStr;
-  const monthNum = parseInt(parts[1], 10);
-  const shortMonths = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  return shortMonths[monthNum - 1] || "";
-};
-
-/**
- * Sub-component for individual KPI metric panel (Clean Code/DRY)
- */
-const KpiMetricCard = ({ title, value, subtitle }) => (
-  <div className="p-4 bg-white">
-    <span className="text-[10px] text-neutral-400 font-bold block uppercase tracking-wider">
-      {title}
-    </span>
-    <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
-      {value}
-    </span>
-    <span className="text-xs text-neutral-400 block mt-1">{subtitle}</span>
-  </div>
-);
-
-/**
- * Reusable Monthly Status Grids component (Clean Code/DRY)
- */
-const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
-  const labels = weeks && weeks.length > 0 ? weeks : MONTHS;
-  return (
-    <div className="p-4 bg-white">
-      <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
-      <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
-      <div
-        className="flex flex-wrap gap-2 border-y border-neutral-100 py-4"
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))`,
-        }}
-      >
-        {labels.map((m, idx) => {
-          const state = statesMap(idx);
-          let colorClass = "bg-neutral-200 text-neutral-500";
-          if (state === "W" || state === "G")
-            colorClass = "bg-[#12b76a] text-white"; // Green
-          else if (state === "D" || state === "B")
-            colorClass = "bg-[#b10d0b] text-white"; // Red
-          else if (state === "M") colorClass = "bg-sky-200 text-sky-800";
-          else if (state === "S") colorClass = "bg-amber-400 text-white";
-
-          return (
-            <div
-              key={`${m}-${idx}`}
-              className="flex flex-col items-center justify-center text-center"
-            >
-              <div
-                className={`h-[34px] w-full flex items-center justify-center rounded-[4px] font-bold text-sm ${colorClass}`}
-              >
-                <span>{state}</span>
-              </div>
-              <span className="text-[10px] font-medium text-neutral-500 block uppercase opacity-85 mt-2">
-                {m}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
-        <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
-          No submission
-        </span>
-        {legend.map((item, idx) => (
-          <span key={idx} className="flex items-center gap-1">
-            <span
-              className={`w-2.5 h-2.5 ${item.color} block rounded-full`}
-            ></span>{" "}
-            {item.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/**
- * Sub-component for rendering indicator strips (Clean Code/DRY)
- */
-const IndicatorRow = ({
-  name,
-  isDroughtLeaning = false,
-  months = [],
-  checkedMonths = [],
-}) => {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0 gap-4 bg-white px-4">
-      <span className="text-xs text-neutral-700 font-medium truncate max-w-[280px]">
-        {name}
-      </span>
-      <div className="flex gap-0.5">
-        {(months.length > 0 ? months : Array(12).fill("")).map((m, idx) => {
-          const observed = checkedMonths[idx] || false;
-          const color = observed
-            ? isDroughtLeaning
-              ? "bg-red-500"
-              : "bg-blue-600"
-            : "bg-neutral-100";
-          const label = m ? formatMonthLabel(m) : `Month ${idx + 1}`;
-          return (
-            <div
-              key={idx}
-              title={`${label}: ${observed ? "Observed" : "Not observed"}`}
-              className={`w-3.5 h-3.5 rounded-[1px] ${color}`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const PredictorAccordion = ({
-  title,
-  subtitle,
-  items,
-  months = [],
-  indicatorsData = {},
-}) => (
-  <div className="pb-6">
-    <div className="px-4 mb-4">
-      <h4 className="text-sm font-bold text-neutral-700">{title}</h4>
-      <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>
-    </div>
-    <div className="border-y border-neutral-200 bg-white">
-      <Collapse
-        bordered={false}
-        expandIconPosition="end"
-        className="bg-transparent"
-      >
-        {items.map((item) => (
-          <Panel
-            header={
-              <span className="text-sm font-medium text-neutral-600">
-                {item.header}
-              </span>
-            }
-            key={item.key}
-            className="border-b border-neutral-100 last:border-0 bg-white"
-          >
-            <div className="divide-y divide-neutral-100 bg-neutral-50 border-t border-neutral-100">
-              {item.indicators.map((ind, i) => (
-                <IndicatorRow
-                  key={i}
-                  name={ind.name}
-                  isDroughtLeaning={ind.isDroughtLeaning}
-                  months={months}
-                  checkedMonths={indicatorsData[ind.dbKey] || []}
-                />
-              ))}
-            </div>
-          </Panel>
-        ))}
-      </Collapse>
-    </div>
-  </div>
-);
 
 const IksTab = ({
   selectedInkhundla = "Mhlangatane",
@@ -412,7 +165,7 @@ const IksTab = ({
     };
 
     fetchData();
-  }, [administrationId]);
+  }, [administrationId, zone]);
 
   if (loading) {
     return (
