@@ -5,7 +5,10 @@
 **Task ID**: WX-1 (branch `feature/106--weather-station-backend-apis`)
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-07-15
-**Status**: Draft
+**Status**: Implemented (2026-07-15) — `backend/api/v1/v1_weather/`; 30 app
+tests + full backend suite green; verified live against the real instance
+(4 stations synced, ingestion + endpoints exercised). See §10 for the
+as-built notes.
 **Owner**: Engineer A — runs in parallel with [`publication-raster-extraction.md`](publication-raster-extraction.md) (WX-3, Engineer B)
 **Supersedes**: [`docs/specs/WX-1_v1_stations.md`](../specs/WX-1_v1_stations.md) (2026-06-12 draft) — that spec's `v1_stations` app and raw `HourlyObservation` table are replaced by the existing `v1_weather` scaffold and daily aggregates, per the partner-confirmed decisions below.
 
@@ -55,25 +58,29 @@ foundation is WX-3).
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] Admin can change the WIS2 base URL / collection in Django admin; the next sync
-      pulls from the new instance with no code change.
-- [ ] Explorer shows real monthly precipitation and Tmin/Tmax/Tmean series per station.
+- [x] Admin can change the WIS2 base URL / collection in Django admin (and via
+      `PUT /api/v1/weather/source`); the next sync pulls from the new instance with
+      no code change.
+- [ ] Explorer shows real monthly precipitation and Tmin/Tmax/Tmean series per
+      station. *(backend endpoint done; frontend consumption pending)*
 - [ ] Review page shows the Inkhundla's latest-month min/max temp and monthly precip
-      with station provenance, resolved per D-5: own-region station → nearest-station
-      fallback (visibly labelled, with distance) → "No data available" only when no
-      station has data for that month. Never fabricated data.
-- [ ] TWG-authenticated users see completeness % and status; anonymous users do not.
+      with station provenance, resolved per D-5. *(backend endpoint done incl. the
+      full ladder; frontend consumption pending)*
+- [x] TWG-authenticated users see completeness % and status; anonymous users do not
+      (station-list health meta is gated on authentication).
 
 ### Technical Acceptance Criteria
-- [ ] Daily ingestion is idempotent (day-level upsert) and self-healing (missed
-      nights backfill from the last ingested day; the archive is only ~99 days deep,
-      so ingestion lag must never exceed retention).
-- [ ] Ingester implements both pygeoapi defenses: offset pagination resending all
-      params, and client-side verification of returned features + dedupe (D-2).
-- [ ] Serving endpoints never call the WIS2 instance synchronously (DB reads only).
-- [ ] Response shapes follow the generic mock-contract keys
+- [x] Daily ingestion is idempotent (day-level upsert) and self-healing — the fetch
+      window starts at each station's last aggregated day (inclusive, so the partial
+      day is recomputed); `--from YYYY-MM-DD` backfills explicitly.
+- [x] Ingester implements both pygeoapi defenses: offset pagination resending all
+      params, and client-side verification of returned features + dedupe (D-2) —
+      regression-tested incl. a poisoned unfiltered page.
+- [x] Serving endpoints never call the WIS2 instance synchronously (DB reads only).
+- [x] Response shapes follow the generic mock-contract keys
       (`key`/`label`/`value`/`data`/`group`/`period`/`meta`) per CLAUDE.md.
-- [ ] Coverage in the CI `test.sh` run; tests run offline with recorded WIS2 fixtures.
+- [x] 30 tests in `api/v1/v1_weather/tests/`, offline with synthetic WIS2 fixtures;
+      full backend suite green.
 
 ---
 
@@ -97,12 +104,13 @@ class WeatherStation(models.Model):
     source = models.ForeignKey(WeatherSource, on_delete=models.CASCADE)
     wigos_id = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
-    region = models.CharField(max_length=50)   # spatial join at sync time;
-                                               # matches Administration.region values
+    # point-in-polygon at sync time; matches Administration.region values
+    region = models.CharField(max_length=50, null=True, blank=True)
     latitude = models.FloatField()
     longitude = models.FloatField()
     elevation_m = models.FloatField(null=True, blank=True)
-    metadata_status = models.CharField(max_length=30)  # informational ONLY (D-4)
+    # informational ONLY (D-4)
+    metadata_status = models.CharField(max_length=30, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     last_synced_at = models.DateTimeField(null=True, blank=True)
 
@@ -230,8 +238,14 @@ Validated drafts built from real data: `eswatini-v2/data/weather_api_contracts/*
 execution history, retry and manual re-run for free; the platform is not real-time so
 daily-at-midnight suffices (partner-confirmed).
 
-**Impact**: new `fetch_weather_observations` management command + a Rundeck job
-definition; station-status thresholds become day-granular (offline = silent ≥ 2 days).
+**Impact**: new `fetch_weather_observations` management command; station-status
+thresholds become day-granular (offline = silent ≥ 2 days).
+**As built**: instead of a second script, `backend/job.sh` became the single
+Rundeck entry point with a REQUIRED task argument — `./job.sh reviews` |
+`./job.sh weather [--from YYYY-MM-DD]`; no/unknown argument exits 1 with a
+usage message so a mis-configured job fails loudly. Deployment note: the
+existing Rundeck job calling bare `./job.sh` must be updated to
+`./job.sh reviews`.
 
 ### D-2: WIS2 client defenses are mandatory, not optional
 
@@ -347,9 +361,10 @@ WIS2 parameter names → internal parameters (ingester mapping, validated in not
 
 ### Seeder/CLI Compatibility
 - [x] Existing seeders work (no overlap)
-- [ ] New commands: `fetch_weather_observations [--from YYYY-MM-DD]` (ingest +
-      backfill) · `sync_weather_stations` (station registry + region spatial join;
-      also invoked at the start of each fetch run)
+- [x] New commands shipped: `fetch_weather_observations [--from YYYY-MM-DD]`
+      (ingest + backfill) · `sync_weather_stations` (station registry + region
+      assignment; also invoked at the start of each fetch run). Documented in the
+      repo README ("Weather Station Data (WIS2)").
 
 ---
 
@@ -376,25 +391,29 @@ WIS2 parameter names → internal parameters (ingester mapping, validated in not
 
 ---
 
-## 10. Work Plan (Engineer A)
+## 10. Work Plan (Engineer A) — ✅ all implemented 2026-07-15
 
-| # | Task | Depends on |
-|---|------|-----------|
-| A1 | App registration (`INSTALLED_APPS`, urls), models + migrations, admin, default-source data migration | — |
-| A2 | `Wis2Client` with D-2 defenses + recorded fixtures | A1 |
-| A3 | `sync_weather_stations` — station registry + region spatial join via `backend/source/eswatini.topojson` | A2 |
-| A4 | `fetch_weather_observations` — windowed fetch → in-flight daily aggregation → day-level upsert; backfill logic | A2, A3 |
-| A5 | Serving endpoints + serializers (stations, monthly series, per-administration latest, source config) against the contract fixtures | A1 |
-| A6 | Rundeck job definition (daily midnight, `job.sh` pattern) + runbook note | A4 |
+| # | Task | Status / as-built location |
+|---|------|---------------------------|
+| A1 | App registration, models + migrations, admin, default-source data migration | ✅ `models.py`, `admin.py`, `constants.py`, `migrations/0001` + `0002_seed_default_source` (seeds from `WIS2_BASE_URL`/`WIS2_COLLECTION_ID` env, skips when unset or a source exists) |
+| A2 | `Wis2Client` with D-2 defenses + fixtures | ✅ `client.py`; synthetic fixtures in `tests/fixtures.py` (incl. poisoned page) |
+| A3 | `sync_weather_stations` — registry + region assignment | ✅ `management/commands/sync_weather_stations.py` + `services.sync_stations`; region via **true point-in-polygon** (geopandas over `source/eswatini.topojson`, regions dissolved) with nearest-centroid fallback — nearest-centroid alone mis-assigned MOTI (region tripoint), caught in live verification. Centroids/haversine in `topo.py` (note: the topojson's `LAT` property holds longitude, `LONG_1` latitude) |
+| A4 | `fetch_weather_observations` — windowed fetch → in-flight aggregation → upsert; backfill | ✅ command + `services.ingest_station_observations` + `aggregation.py`; retention probe + >30-day lag email (D-6) in the command |
+| A5 | Serving endpoints + serializers | ✅ `views.py`/`urls.py`/`serializers.py` — stations list (health meta auth-gated), monthly series (`?parameter=`, default precipitation; mean-aggregation for temps as `monthly_mean_of_daily`), per-administration latest with the D-5 ladder in `services.resolve_administration_latest`, source GET/PUT (PUT creates when none active) |
+| A6 | Rundeck job entry + runbook | ✅ `backend/job.sh` single entry, REQUIRED task arg (`reviews` \| `weather`); README section "Weather Station Data (WIS2)" is the runbook |
 
-**Cross-feature sync points** (with Engineer B on WX-3):
-1. **Day 1–2**: A1 lands first and is pair-reviewed (schema review is the only shared
-   moment; the two features share no tables or migrations).
-2. **Mid-feature**: A4 ↔ A5 integration — swap contract fixtures for DB-backed tests;
-   Engineer B reviews the endpoint PRs.
-3. **End**: joint staging run — full ingest against the live instance + Rundeck dry-run.
+**Verification**: 30 tests in `api/v1/v1_weather/tests/` (client defenses,
+aggregation rules, health formula incl. the BIG BEND scenario, endpoint
+contracts incl. the Manzini fallback and TWG gating, command idempotency +
+resume + `--from`); full backend suite green; live smoke against the real
+instance — 4 stations synced with correct regions (MOTI→Shiselweni,
+MBABANE→Hhohho, LUBOVANE/BIG BEND→Lubombo), ingestion + endpoints exercised,
+BIG BEND correctly yields 0 rows (silent since 2026-06-12).
 
-**Estimate**: ~2 sprints.
+**Remaining (ops / follow-up)**: create the actual Rundeck jobs
+(`./job.sh reviews`, `./job.sh weather` at midnight) and update the existing
+job that calls bare `./job.sh`; frontend consumption of the endpoints; partner
+OQ-1 below.
 
 ---
 
