@@ -47,10 +47,26 @@ class KoboData(models.Model):
 
 
 class IKSIndicator(models.Model):
+    SECTION_B = "B"
+    SECTION_C = "C"
+    SECTION_D = "D"
+    SECTION_CHOICES = [
+        (SECTION_B, "Section B – Rainfall Predictors"),
+        (SECTION_C, "Section C – Seasonal/Extreme Weather"),
+        (SECTION_D, "Section D – Soil/Vegetation"),
+    ]
+
     kobo_form = models.ForeignKey(
         KoboForm, on_delete=models.CASCADE, related_name="indicators"
     )
     name = models.CharField(max_length=255)
+    section = models.CharField(
+        max_length=1,
+        choices=SECTION_CHOICES,
+        blank=True,
+        default="",
+        db_index=True,
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

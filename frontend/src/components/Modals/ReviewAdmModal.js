@@ -133,6 +133,8 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
       maskClosable={false}
       width={768}
       destroyOnClose
+      transitionName=""
+      maskTransitionName=""
       footer={
         <Flex align="center" justify="space-between">
           {!isCompleted && (

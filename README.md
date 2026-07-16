@@ -220,3 +220,19 @@ Cron example (daily at midnight):
 ```bash
 0 0 * * * cd /backend && ./job.sh weather >> /home/user/logs/weather_ingest.log 2>&1
 ```
+
+### **Seed and Sync Kobo IKS data: `kobo_seeder` and `download_iks_data`**
+
+The `kobo_seeder` and `download_iks_data` commands register your Kobo adapter credentials and sync the Indigenous Knowledge Systems (IKS) submissions into the local database:
+
+#### **1. Seed Kobo adapter credentials**
+```bash
+docker compose exec backend python manage.py kobo_seeder --username <user> --password <pass>
+```
+
+#### **2. Sync and download submissions**
+```bash
+docker compose exec backend python manage.py download_iks_data
+```
+
+*(Note: to reset the sync state and force download of all submissions from the beginning, run: `docker compose exec backend python manage.py shell -c "from api.v1.v1_iks.models import KoboAdapter; KoboAdapter.objects.update(last_sync_timestamp=None)"` before running the downloader command).*
