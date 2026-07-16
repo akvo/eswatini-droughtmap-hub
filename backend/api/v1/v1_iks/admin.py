@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib import admin
-from .models import KoboAdapter
+from .models import KoboAdapter, KoboForm
 
 
 class KoboAdapterForm(forms.ModelForm):
@@ -135,4 +135,81 @@ class KoboAdapterAdmin(admin.ModelAdmin):
             request,
             f"{adapter.server_url} is now the active adapter. "
             "Sync cursor has been reset.",
+        )
+
+
+@admin.register(KoboForm)
+class KoboFormAdmin(admin.ModelAdmin):
+    """
+    Admin panel for managing Kobo Forms (IKS).
+
+    Operators can register multiple forms (e.g. a dummy/testing form and the
+    real/production form). The download_iks_data command iterates ALL
+    registered forms, so adding or removing a form here controls which data
+    is pulled on the next sync — no code deploy required.
+    """
+
+    list_display = (
+        "uuid",
+        "name",
+        "active",
+        "description",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("active",)
+    search_fields = ("uuid", "name")
+    readonly_fields = (
+        "questions",
+        "options",
+        "languages",
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-created_at",)
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("uuid", "name", "active", "description"),
+            },
+        ),
+        (
+            "Sync Metadata (read-only)",
+            {
+                "fields": (
+                    "questions",
+                    "options",
+                    "languages",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        """
+        `uuid` is editable on add (so operators can self-serve without CLI).
+        On change it becomes readonly to prevent breaking existing
+        KoboData FK references.
+        """
+        if obj:  # editing an existing record
+            return ("uuid",) + self.readonly_fields
+        return self.readonly_fields
+
+    def delete_model(self, request, obj):
+        """
+        Cascade-aware delete: count related KoboData rows before deletion and
+        surface a warning so the operator understands the data impact.
+        """
+        count = obj.data.count()
+        super().delete_model(request, obj)
+        self.message_user(
+            request,
+            f"Form '{obj.name}' deleted. "
+            f"{count} KoboData row(s) were also removed.",
+            level="warning" if count > 0 else "success",
         )

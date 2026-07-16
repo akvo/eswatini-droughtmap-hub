@@ -46,6 +46,7 @@ class KoboForm(models.Model):
     questions = models.JSONField(default=dict)
     options = models.JSONField(default=dict)
     languages = models.JSONField(default=list)
+    active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

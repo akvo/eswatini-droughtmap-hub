@@ -386,6 +386,25 @@ Tests live under `api/v1/v1_iks/tests/`.
 - Admin house style: `backend/api/v1/v1_users/admin.py`
 - Sibling IKS design doc: `eswatini-v2/docs/track-3/iks_explorer_backend_integration.md`
 
+## 12. Amendment: Django Admin — Manage Kobo Forms
+
+### Context & Requirements
+
+- Operators must be able to add, edit, and delete `KoboForm` registrations directly from the admin panel to switch between dummy/testing forms and real/production forms without CLI or database access.
+- Operators can check/uncheck the `active` field on any Kobo Form to enable or disable it. Only active forms are processed by the `download_iks_data` sync command.
+- The form `uuid` must be editable on creation (Add view) but readonly on update (Change view) to prevent breaking existing data associations.
+- Question, option, and language metadata fields are synced from Kobo and must be readonly.
+- Deletion is cascade-aware: it shows a warning/information message with the count of deleted related `KoboData` records.
+
+### Implementation
+
+- Added `active` field to `KoboForm` model and generated migration `0004_koboform_active.py`.
+- Registered `KoboForm` with `KoboFormAdmin` in `admin.py`, including `active` in the list display and filters.
+- Filtered `KoboForm.objects.filter(active=True)` in `download_iks_data.py`.
+- Overrode `get_readonly_fields` to dynamic-gating on the `uuid` field.
+- Overrode `delete_model` to print cascade counts.
+- Covered with unit tests in `tests_kobo_form_admin.py` and `tests_download_iks_data_command.py`.
+
 ---
 
 ## Approval

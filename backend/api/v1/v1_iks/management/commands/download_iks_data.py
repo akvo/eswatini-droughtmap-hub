@@ -61,10 +61,12 @@ class Command(BaseCommand):
             )
             return
 
-        # 2. Load all forms
-        forms = KoboForm.objects.all()
+        # 2. Load active forms
+        forms = KoboForm.objects.filter(active=True)
         if not forms.exists():
-            self.stdout.write(self.style.WARNING("No KoboForm registered."))
+            self.stdout.write(
+                self.style.WARNING("No active KoboForm registered.")
+            )
             return
 
         # Load TopoJSON using geopandas
