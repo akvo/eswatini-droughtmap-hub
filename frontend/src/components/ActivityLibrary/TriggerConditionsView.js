@@ -111,7 +111,7 @@ export default function TriggerConditionsView({ triggers }) {
               Other condition
             </span>
             <p className="text-neutral-700 italic m-0 bg-neutral-100/50 p-2.5 rounded border border-dashed border-neutral-200">
-              "{other}"
+              &quot;{other}&quot;
             </p>
           </div>
         )}

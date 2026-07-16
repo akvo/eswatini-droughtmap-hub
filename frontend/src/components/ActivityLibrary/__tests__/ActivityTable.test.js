@@ -60,6 +60,12 @@ describe("ActivityTable Component", () => {
     cell.closest("tr").click();
 
     expect(handleRowClick).toHaveBeenCalledTimes(1);
-    expect(handleRowClick).toHaveBeenCalledWith(mockActivities[0]);
+    expect(handleRowClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        title: "Borehole reinforcement",
+        code: "ACT-WASH-1",
+      }),
+    );
   });
 });

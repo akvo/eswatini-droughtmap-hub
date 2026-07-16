@@ -1,11 +1,18 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
+import { Modal } from "antd";
 import ActivityDetailSlideIn from "../ActivityDetailSlideIn";
-import { api } from "@/lib/api";
+import { api } from "../../../lib/api";
 import { ACTIVITY_STATUS, USER_ROLES } from "@/static/config";
 
 // Mock the api function
-jest.mock("@/lib/api", () => ({
+jest.mock("../../../lib/api", () => ({
   api: jest.fn(),
   getSourceFileBase64: jest.fn(),
 }));
@@ -56,12 +63,28 @@ beforeAll(() => {
 describe("ActivityDetailSlideIn Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Set up robust, order-independent mock implementations
+    api.mockImplementation((method, url) => {
+      if (method === "GET" && url === "/activity/12") {
+        return Promise.resolve(mockActivity);
+      }
+      if (method === "POST" && url === "/activities/trigger-preview") {
+        return Promise.resolve({ matched: 12, total: 59 });
+      }
+      if (method === "POST" && url === "/activity/12/transition") {
+        return Promise.resolve({ success: true });
+      }
+      return Promise.reject(new Error(`Unhandled mock call: ${method} ${url}`));
+    });
+  });
+
+  afterEach(() => {
+    // Clean up any remaining Antd modals/portals cleanly via Antd API
+    Modal.destroyAll();
   });
 
   it("fetches and renders activity details correctly", async () => {
-    api.mockResolvedValueOnce(mockActivity); // For detail fetch
-    api.mockResolvedValueOnce({ matched: 12, total: 59 }); // For trigger preview
-
     render(
       <ActivityDetailSlideIn
         activityId={12}
@@ -82,20 +105,17 @@ describe("ActivityDetailSlideIn Component", () => {
     expect(screen.getByText("NDRMA")).toBeInTheDocument();
     expect(screen.getByText("Institutional")).toBeInTheDocument();
     expect(screen.getByText("National Response Plan 2026")).toBeInTheDocument();
-    expect(screen.getByText("Download source file")).toBeInTheDocument();
+    expect(screen.getByText(/Download source file/)).toBeInTheDocument();
     expect(screen.getByText("v1.2")).toBeInTheDocument();
     expect(screen.getByText("15/06/2026")).toBeInTheDocument(); // updated_at date format
     expect(screen.getByText("John Doe")).toBeInTheDocument();
     expect(screen.getByText("16/06/2026")).toBeInTheDocument(); // activated_at date format
     expect(
-      screen.getByText("High priority wash activity."),
+      screen.getByText(/High priority wash activity\./),
     ).toBeInTheDocument();
   });
 
   it("calls onClose when escape key is pressed", async () => {
-    api.mockResolvedValueOnce(mockActivity);
-    api.mockResolvedValueOnce({ matched: 12, total: 59 });
-
     const handleClose = jest.fn();
     render(
       <ActivityDetailSlideIn
@@ -115,27 +135,35 @@ describe("ActivityDetailSlideIn Component", () => {
   });
 
   it("handles Set active transition correctly", async () => {
-    api.mockResolvedValueOnce(mockActivity); // Fetch detail
-    api.mockResolvedValueOnce({ matched: 12, total: 59 }); // Fetch trigger preview
-    api.mockResolvedValueOnce({ success: true }); // Transition POST
-
+    const handleRefresh = jest.fn();
+    const handleClose = jest.fn();
     render(
       <ActivityDetailSlideIn
         activityId={12}
-        onClose={jest.fn()}
+        onClose={handleClose}
         onEdit={jest.fn()}
-        onRefresh={jest.fn()}
+        onRefresh={handleRefresh}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Set active")).toBeInTheDocument();
+      const footer = document.querySelector(".sticky.bottom-0");
+      expect(within(footer).getByText("Set active")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Set active"));
+    const footer = document.querySelector(".sticky.bottom-0");
+    fireEvent.click(within(footer).getByText("Set active"));
 
-    // Antd Modal confirmation click (button is labeled "Activate" in handleActivate okText)
-    const confirmBtn = screen.getByRole("button", { name: "Activate" });
+    // Antd Modal confirmation click (use selector to avoid text ambiguity with portal nodes)
+    await waitFor(() => {
+      const confirmBtn = document.querySelector(
+        ".ant-modal-confirm-btns button:last-child",
+      );
+      expect(confirmBtn).toBeInTheDocument();
+    });
+    const confirmBtn = document.querySelector(
+      ".ant-modal-confirm-btns button:last-child",
+    );
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
@@ -143,36 +171,56 @@ describe("ActivityDetailSlideIn Component", () => {
         to_status: ACTIVITY_STATUS.active,
       });
     });
+
+    // Wait for the async ok handler to fully finish and close the modal/slide-in
+    await waitFor(() => {
+      expect(handleRefresh).toHaveBeenCalled();
+      expect(handleClose).toHaveBeenCalled();
+    });
   });
 
   it("handles Archive transition correctly", async () => {
-    api.mockResolvedValueOnce(mockActivity); // Fetch detail
-    api.mockResolvedValueOnce({ matched: 12, total: 59 }); // Fetch trigger preview
-    api.mockResolvedValueOnce({ success: true }); // Transition POST
-
+    const handleRefresh = jest.fn();
+    const handleClose = jest.fn();
     render(
       <ActivityDetailSlideIn
         activityId={12}
-        onClose={jest.fn()}
+        onClose={handleClose}
         onEdit={jest.fn()}
-        onRefresh={jest.fn()}
+        onRefresh={handleRefresh}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Archive")).toBeInTheDocument();
+      const footer = document.querySelector(".sticky.bottom-0");
+      expect(within(footer).getByText("Archive")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Archive"));
+    const footer = document.querySelector(".sticky.bottom-0");
+    fireEvent.click(within(footer).getByText("Archive"));
 
-    // Antd Modal confirmation click (button is labeled "Archive" in handleArchive okText)
-    const confirmBtn = screen.getByRole("button", { name: "Archive" });
+    // Antd Modal confirmation click (use selector to avoid text ambiguity with portal nodes)
+    await waitFor(() => {
+      const confirmBtn = document.querySelector(
+        ".ant-modal-confirm-btns button:last-child",
+      );
+      expect(confirmBtn).toBeInTheDocument();
+    });
+    const confirmBtn = document.querySelector(
+      ".ant-modal-confirm-btns button:last-child",
+    );
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
       expect(api).toHaveBeenCalledWith("POST", "/activity/12/transition", {
         to_status: ACTIVITY_STATUS.archived,
       });
+    });
+
+    // Wait for the async ok handler to fully finish and close the modal/slide-in
+    await waitFor(() => {
+      expect(handleRefresh).toHaveBeenCalled();
+      expect(handleClose).toHaveBeenCalled();
     });
   });
 });

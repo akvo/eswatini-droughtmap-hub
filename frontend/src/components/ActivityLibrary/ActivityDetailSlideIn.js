@@ -211,7 +211,7 @@ export default function ActivityDetailSlideIn({
                       Notes
                     </div>
                     <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50/50 italic text-neutral-700 whitespace-pre-wrap">
-                      "{activity.notes}"
+                      &quot;{activity.notes}&quot;
                     </div>
                   </div>
                 </>
