@@ -209,20 +209,6 @@ export default function ActivityDetailSlideIn({
               <div className="py-4 border-b border-neutral-200 px-6">
                 <ContextSignoffView activity={activity} />
               </div>
-
-              {/* Section 5: Notes */}
-              {activity.notes && (
-                <div className="py-4 px-6">
-                  <div className="flex flex-col gap-2 text-sm text-neutral-800">
-                    <div className="text-neutral-500 font-semibold uppercase text-xs tracking-wider">
-                      Notes
-                    </div>
-                    <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50/50 italic text-neutral-700 whitespace-pre-wrap">
-                      &quot;{activity.notes}&quot;
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>

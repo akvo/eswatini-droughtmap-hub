@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button, message } from "antd";
 import { getSourceFileBase64 } from "@/lib/api";
+import ConditionItem from "./ConditionItem";
 
 export default function ContextSignoffView({ activity }) {
   const [downloading, setDownloading] = useState(false);
@@ -62,58 +63,64 @@ export default function ContextSignoffView({ activity }) {
   const activatedAt = formatDate(activity.activated_at);
 
   return (
-    <div className="flex flex-col gap-4 text-sm text-neutral-800">
-      <div className="text-neutral-500 font-semibold uppercase text-xs tracking-wider">
+    <div className="flex flex-col text-neutral-800">
+      {/* Title */}
+      <h3 className="text-[#333333] font-medium text-base m-0 pb-4 border-b border-neutral-200">
         Context & sign-off
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border border-neutral-200 rounded-lg p-4 bg-neutral-50/50">
-        <div className="flex flex-col gap-1">
-          <span className="text-neutral-500 text-xs font-medium">
-            Source document reference
-          </span>
-          <span className="text-neutral-800 font-semibold">{sourceDoc}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-neutral-500 text-xs font-medium">
-            Attached source file
-          </span>
-          {hasFile ? (
-            <Button
-              type="link"
-              onClick={handleDownload}
-              loading={downloading}
-              className="p-0 h-auto text-left font-semibold text-blue-600 hover:text-blue-700 w-max"
-            >
-              &#128190; Download source file
-            </Button>
-          ) : (
-            <span className="text-neutral-400 italic">
-              No source file attached
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col gap-1 border-t border-neutral-200/60 pt-3">
-          <span className="text-neutral-500 text-xs font-medium">Version</span>
-          <span className="text-neutral-800 font-semibold">{version}</span>
-        </div>
-        <div className="flex flex-col gap-1 border-t border-neutral-200/60 pt-3">
-          <span className="text-neutral-500 text-xs font-medium">
-            Last reviewed
-          </span>
-          <span className="text-neutral-800 font-semibold">{lastReviewed}</span>
-        </div>
-        <div className="flex flex-col gap-1 border-t border-neutral-200/60 pt-3">
-          <span className="text-neutral-500 text-xs font-medium">
-            Activated by
-          </span>
-          <span className="text-neutral-800 font-semibold">{activatedBy}</span>
-        </div>
-        <div className="flex flex-col gap-1 border-t border-neutral-200/60 pt-3">
-          <span className="text-neutral-500 text-xs font-medium">
-            Activation date
-          </span>
-          <span className="text-neutral-800 font-semibold">{activatedAt}</span>
-        </div>
+      </h3>
+
+      {/* Grid container */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 pt-4">
+        {/* Source document reference */}
+        <ConditionItem label="Source document reference" value={sourceDoc} />
+
+        {/* Attached source file */}
+        <ConditionItem
+          label="Attached source file"
+          value={
+            hasFile ? (
+              <Button
+                type="link"
+                onClick={handleDownload}
+                loading={downloading}
+                className="p-0 h-auto text-left font-medium text-[#3e5eb9] hover:text-[#2d468a] w-max"
+              >
+                &#128190; Download source file
+              </Button>
+            ) : (
+              <span className="text-neutral-400 font-normal italic">
+                No source file attached
+              </span>
+            )
+          }
+        />
+
+        {/* Version */}
+        <ConditionItem label="Version" value={version} />
+
+        {/* Last reviewed */}
+        <ConditionItem label="Last reviewed" value={lastReviewed} />
+
+        {/* Activated by */}
+        <ConditionItem label="Activated by" value={activatedBy} />
+
+        {/* Activation date */}
+        <ConditionItem label="Activation date" value={activatedAt} />
+
+        {/* Notes */}
+        <ConditionItem
+          label="Notes"
+          className="flex flex-col md:col-span-2 mt-12"
+          value={
+            activity.notes ? (
+              <span className="whitespace-pre-wrap font-normal text-sm leading-relaxed text-[#333333]">
+                {activity.notes}
+              </span>
+            ) : (
+              <span className="text-sm text-neutral-400 font-normal">-</span>
+            )
+          }
+        />
       </div>
     </div>
   );
