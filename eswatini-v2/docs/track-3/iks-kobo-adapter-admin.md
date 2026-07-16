@@ -2,10 +2,10 @@
 
 ## Feature: Django Admin — Manage & Switch the Active Kobo Adapter (IKS)
 
-**Task ID**: TBD (Github Issue)
+**Task ID**: #112
 **Author**: Iwan Firmawan
 **Date**: 2026-07-15
-**Status**: Draft
+**Status**: Implemented
 
 ---
 
@@ -351,6 +351,6 @@ Tests live under `api/v1/v1_iks/tests/`.
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Developer | Iwan Firmawan | 2026-07-15 | Draft |
-| Tech Lead | | | |
+| Developer | Galih Pratama | 2026-07-16 | Approved |
+| Tech Lead | Iwan Firmawan | 2026-07-16 | Approved |
 | Product | | | |

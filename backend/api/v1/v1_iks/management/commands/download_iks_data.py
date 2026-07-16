@@ -50,7 +50,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # 1. Load active KoboAdapter
-        adapter = KoboAdapter.objects.filter(active=True).first()
+        adapter = (
+            KoboAdapter.objects.filter(active=True)
+            .order_by("-updated_at")
+            .first()
+        )
         if not adapter:
             self.stdout.write(
                 self.style.WARNING("No active KoboAdapter found.")

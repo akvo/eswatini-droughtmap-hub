@@ -1,0 +1,138 @@
+from django import forms
+from django.contrib import admin
+from .models import KoboAdapter
+
+
+class KoboAdapterForm(forms.ModelForm):
+    """
+    Custom form that:
+    - Renders `password` as a masked PasswordInput (not readable text).
+    - On edit, leaves `password` blank by default; only overwrites when
+      a new value is typed.
+    """
+
+    password = forms.CharField(
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        help_text="Leave blank to keep the existing password.",
+    )
+
+    class Meta:
+        model = KoboAdapter
+        fields = "__all__"
+
+    def _post_clean(self):
+        super()._post_clean()
+        if self.cleaned_data.get("active"):
+            if hasattr(self, "_errors") and "__all__" in self._errors:
+                non_field_errors = self._errors["__all__"]
+                filtered_errors = []
+                for err in non_field_errors:
+                    err_msg = str(err)
+                    if (
+                        "one_active_kobo_adapter" not in err_msg
+                        and "already exists" not in err_msg
+                    ):
+                        filtered_errors.append(err)
+                if filtered_errors:
+                    self._errors["__all__"] = self.error_class(filtered_errors)
+                else:
+                    del self._errors["__all__"]
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        new_password = self.cleaned_data.get("password")
+        if not new_password:
+            # Reload the stored password from the DB (blank = unchanged)
+            if instance.pk:
+                instance.password = KoboAdapter.objects.get(
+                    pk=instance.pk
+                ).password
+        else:
+            instance.password = new_password
+        if commit:
+            instance.save()
+        return instance
+
+
+@admin.register(KoboAdapter)
+class KoboAdapterAdmin(admin.ModelAdmin):
+    form = KoboAdapterForm
+    list_display = (
+        "server_url",
+        "username",
+        "active",
+        "last_sync_timestamp",
+        "updated_at",
+    )
+    list_filter = ("active",)
+    search_fields = ("server_url", "username")
+    readonly_fields = ("last_sync_timestamp", "created_at", "updated_at")
+    ordering = ("-active", "-updated_at")
+    actions = ["activate_adapter"]
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("server_url", "username", "password", "active"),
+            },
+        ),
+        (
+            "Sync Metadata",
+            {
+                "fields": ("last_sync_timestamp", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def save_model(self, request, obj, form, change):
+        """
+        Detect False→True activation transition and reset last_sync_timestamp.
+        The demotion of other active adapters happens inside
+        obj.save() (model).
+        """
+        was_active = False
+        if obj.pk:
+            was_active = (
+                KoboAdapter.objects.filter(pk=obj.pk)
+                .values_list("active", flat=True)
+                .first()
+                or False
+            )
+
+        activating = obj.active and not was_active
+        if activating:
+            obj.last_sync_timestamp = None  # D-5: reset cursor on switch
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description="Set selected adapter as active")
+    def activate_adapter(self, request, queryset):
+        """
+        One-click switch from the list page.
+        Only acts on the first selected adapter; warns if multiple selected.
+        """
+        if queryset.count() != 1:
+            self.message_user(
+                request,
+                "Please select exactly one adapter to activate.",
+                level="warning",
+            )
+            return
+        adapter = queryset.first()
+        if adapter.active:
+            self.message_user(
+                request,
+                f"{adapter.server_url} is already active.",
+            )
+            return
+        # Reset cursor (D-5) before save(), which handles the demotion
+        adapter.last_sync_timestamp = None
+        adapter.active = True
+        adapter.save()  # triggers KoboAdapter.save() → atomic demotion
+        self.message_user(
+            request,
+            f"{adapter.server_url} is now the active adapter. "
+            "Sync cursor has been reset.",
+        )
