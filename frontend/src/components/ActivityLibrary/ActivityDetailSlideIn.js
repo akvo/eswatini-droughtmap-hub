@@ -181,7 +181,7 @@ export default function ActivityDetailSlideIn({
                   <h2 className="text-2xl font-bold text-neutral-900 leading-tight m-0">
                     {activity.title}
                   </h2>
-                  <span className="text-sm font-semibold text-neutral-500">
+                  <span className="text-sm font-semibold text-neutral-500 mt-2">
                     {activity.code}
                   </span>
                 </div>
