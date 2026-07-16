@@ -158,61 +158,61 @@ export default function ActivityDetailSlideIn({
         </div>
 
         {/* Details Body Area */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto flex flex-col">
           {loading || !activity ? (
-            <div className="flex-1 flex items-center justify-center h-full min-h-[200px]">
+            <div className="flex-1 flex items-center justify-center h-full min-h-[200px] py-6">
               <Spin size="large" tip="Loading activity details..." />
             </div>
           ) : (
             <>
-              {/* Badges / Tags */}
-              <div className="flex items-center gap-2">
-                <ActivityStatusTag status={activity.status} />
-                <Tag color={SECTOR_TAG_COLORS[activity.sector] || "default"}>
-                  {SECTOR_ICONS[activity.sector]}
-                  {activity.sector_label}
-                </Tag>
-              </div>
-
-              {/* Title & Protocol ID */}
-              <div className="flex flex-col gap-1">
-                <h2 className="text-2xl font-bold text-neutral-900 leading-tight m-0">
-                  {activity.title}
-                </h2>
-                <span className="text-sm font-semibold text-neutral-500">
-                  {activity.code}
-                </span>
-              </div>
-
-              {/* Description */}
-              {activity.description && (
-                <div className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
-                  {activity.description}
+              {/* Section 1: Identity & Description */}
+              <div className="flex flex-col gap-4 py-4 border-b border-neutral-200">
+                {/* Badges / Tags */}
+                <div className="flex items-center justify-between w-full px-6">
+                  <ActivityStatusTag status={activity.status} />
+                  <Tag color={SECTOR_TAG_COLORS[activity.sector] || "default"}>
+                    {SECTOR_ICONS[activity.sector]}
+                    {activity.sector_label}
+                  </Tag>
                 </div>
-              )}
 
-              <div className="h-px bg-neutral-200 w-full" />
+                {/* Title & Protocol ID */}
+                <div className="flex flex-col gap-1 px-6">
+                  <h2 className="text-2xl font-bold text-neutral-900 leading-tight m-0">
+                    {activity.title}
+                  </h2>
+                  <span className="text-sm font-semibold text-neutral-500">
+                    {activity.code}
+                  </span>
+                </div>
 
-              {/* Trigger Conditions */}
-              <TriggerConditionsView triggers={activity.triggers} />
+                {/* Description */}
+                {activity.description && (
+                  <div className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap px-6">
+                    {activity.description}
+                  </div>
+                )}
+              </div>
 
-              {/* Inkhundla banner */}
-              <InkhundlaBanner triggers={activity.triggers} />
+              {/* Section 2: Trigger Conditions */}
+              <div className="flex flex-col gap-4 py-4 border-b border-neutral-200 px-6">
+                <TriggerConditionsView triggers={activity.triggers} />
+                <InkhundlaBanner triggers={activity.triggers} />
+              </div>
 
-              <div className="h-px bg-neutral-200 w-full" />
+              {/* Section 3: Ownership */}
+              <div className="py-4 border-b border-neutral-200 px-6">
+                <OwnershipView activity={activity} />
+              </div>
 
-              {/* Ownership */}
-              <OwnershipView activity={activity} />
+              {/* Section 4: Context & Sign-off */}
+              <div className="py-4 border-b border-neutral-200 px-6">
+                <ContextSignoffView activity={activity} />
+              </div>
 
-              <div className="h-px bg-neutral-200 w-full" />
-
-              {/* Context & Sign-off */}
-              <ContextSignoffView activity={activity} />
-
-              {/* Notes */}
+              {/* Section 5: Notes */}
               {activity.notes && (
-                <>
-                  <div className="h-px bg-neutral-200 w-full" />
+                <div className="py-4 px-6">
                   <div className="flex flex-col gap-2 text-sm text-neutral-800">
                     <div className="text-neutral-500 font-semibold uppercase text-xs tracking-wider">
                       Notes
@@ -221,7 +221,7 @@ export default function ActivityDetailSlideIn({
                       &quot;{activity.notes}&quot;
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </>
           )}

@@ -33,7 +33,7 @@ export default function InkhundlaBanner({ triggers }) {
 
   if (loading) {
     return (
-      <div className="bg-[#eceff8] text-[#333] rounded-[8px] px-4 py-3 text-sm flex items-center justify-center gap-2 border border-blue-100">
+      <div className="bg-[#eceff8] text-[#333] rounded-[8px] px-3 py-2 text-sm flex items-center justify-center gap-2 border border-blue-100">
         <Spin size="small" />
         <span>Calculating Tinkhundla activation coverage...</span>
       </div>
@@ -44,7 +44,7 @@ export default function InkhundlaBanner({ triggers }) {
   const total = preview?.total ?? 59;
 
   return (
-    <div className="bg-[#eceff8] text-[#333] rounded-[8px] px-4 py-3.5 text-sm flex items-center gap-3 border border-blue-100/60 shadow-sm">
+    <div className="bg-[#eceff8] text-[#333] rounded-[8px] px-3 py-2 text-sm flex items-center gap-3 border border-blue-100/60 shadow-sm">
       <span className="text-[#3e5eb9] text-lg leading-none">&#9888;</span>
       <div className="flex-1 font-medium leading-relaxed">
         This response activity would currently be activated for{" "}
