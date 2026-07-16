@@ -22,11 +22,12 @@ export default function ActivityTableFilters({
   const [searchVal, setSearchVal] = useState(searchQuery);
 
   useEffect(() => {
+    if (searchVal === searchQuery) return;
     const timer = setTimeout(() => {
       onSearchChange(searchVal);
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchVal, onSearchChange]);
+  }, [searchVal, searchQuery, onSearchChange]);
 
   return (
     <>
