@@ -140,6 +140,7 @@ class ActivityDetailSerializer(ActivityListSerializer):
             "activated_at",
             "activated_by",
             "activated_by_name",
+            "notes",
             "created_at",
             "updated_at",
             "signoffs",
@@ -166,6 +167,7 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
             "response_type",
             "source_doc",
             "source_file",
+            "notes",
         ]
 
     def validate_triggers(self, value):

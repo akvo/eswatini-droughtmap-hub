@@ -23,13 +23,15 @@ class ResponseActivity(SoftDeletes):
     #                "op": <TriggerOperator>, "value": num}, ...],
     #    "other":  str | null}
     triggers = models.JSONField(
-        null=True, blank=True, validators=[validate_triggers])
+        null=True, blank=True, validators=[validate_triggers]
+    )
 
     # Ownership (Step 3). No timing / geographic_scope (dropped per spec D-4).
     owner = models.CharField(max_length=255, null=True, blank=True)
     coord_with = models.CharField(max_length=255, null=True, blank=True)
     response_type = models.IntegerField(
-        choices=ActivityResponseType.FieldStr.items(), null=True, blank=True)
+        choices=ActivityResponseType.FieldStr.items(), null=True, blank=True
+    )
 
     # Source (Step 4).
     source_doc = models.CharField(max_length=255, null=True, blank=True)
@@ -37,16 +39,26 @@ class ResponseActivity(SoftDeletes):
     source_file = models.CharField(max_length=255, null=True, blank=True)
     # auto-bumped on activate
     version = models.CharField(max_length=20, default="v1.0")
+    notes = models.TextField(null=True, blank=True)
 
     # Lifecycle.
     status = models.IntegerField(
-        choices=ActivityStatus.FieldStr.items(), default=ActivityStatus.draft)
+        choices=ActivityStatus.FieldStr.items(), default=ActivityStatus.draft
+    )
     created_by = models.ForeignKey(
-        SystemUser, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="created_activities")
+        SystemUser,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_activities",
+    )
     activated_by = models.ForeignKey(
-        SystemUser, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="activated_activities")
+        SystemUser,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="activated_activities",
+    )
     # informational; gates nothing
     verified_at = models.DateTimeField(null=True, blank=True)
     activated_at = models.DateTimeField(null=True, blank=True)
@@ -62,14 +74,22 @@ class ResponseActivity(SoftDeletes):
 
 class ActivitySignOff(models.Model):
     activity = models.ForeignKey(
-        ResponseActivity, on_delete=models.CASCADE, related_name="signoffs")
+        ResponseActivity, on_delete=models.CASCADE, related_name="signoffs"
+    )
     signed_by = models.ForeignKey(
-        SystemUser, on_delete=models.SET_NULL, null=True,
-        related_name="activity_signoffs")
+        SystemUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="activity_signoffs",
+    )
     note = models.CharField(max_length=255, null=True, blank=True)
     recorded_by = models.ForeignKey(
-        SystemUser, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="activity_signoffs_recorded")
+        SystemUser,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="activity_signoffs_recorded",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -79,14 +99,21 @@ class ActivitySignOff(models.Model):
 
 class ActivityHistory(models.Model):
     activity = models.ForeignKey(
-        ResponseActivity, on_delete=models.CASCADE, related_name="history")
+        ResponseActivity, on_delete=models.CASCADE, related_name="history"
+    )
     from_status = models.IntegerField(
-        choices=ActivityStatus.FieldStr.items(), null=True, blank=True)
+        choices=ActivityStatus.FieldStr.items(), null=True, blank=True
+    )
     to_status = models.IntegerField(
-        choices=ActivityStatus.FieldStr.items(), null=True, blank=True)
+        choices=ActivityStatus.FieldStr.items(), null=True, blank=True
+    )
     user = models.ForeignKey(
-        SystemUser, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="activity_history")
+        SystemUser,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="activity_history",
+    )
     note = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
