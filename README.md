@@ -171,12 +171,10 @@ python manage.py check_overdue_reviews
 
 The system supports registering multiple Kobo adapters and switching which one is active. The Indigenous Knowledge Systems (IKS) submissions will be synchronized using the active adapter:
 
-#### **1. Manage Kobo Adapters via Django Admin (Recommended)**
+#### **1. Manage Kobo Adapters & Forms via Django Admin (Recommended)**
 
-- Log in to Django Admin and navigate to **IKS** → **Kobo adapters**.
-- You can add/edit adapters (passwords are masked in the form).
-- Use the checkbox or the admin list action **Set selected adapter as active** to switch the active adapter. The system automatically deactivates all other adapters atomically.
-- **Sync Reset**: Activating an adapter (or switching to it) automatically resets its `last_sync_timestamp` to `None`, forcing a clean full synchronization on the next run.
+- **Kobo Adapters**: Log in to Django Admin and navigate to **IKS** → **Kobo adapters**. You can add/edit adapters (passwords are masked). Toggle the active checkbox or use the action **Set selected adapter as active** to switch. Activating an adapter resets its `last_sync_timestamp` to `None`, forcing a full sync on the next run.
+- **Kobo Forms**: Navigate to **IKS** → **Kobo forms**. You can register dummy/testing and production forms. Toggling the `Active` checkbox controls whether data is synced for that form. The form `uuid` is only editable during creation (Add view) to prevent data inconsistencies.
 
 #### **2. Seed Kobo adapter credentials via CLI**
 
@@ -185,6 +183,8 @@ docker compose exec backend python manage.py kobo_seeder --username <user> --pas
 ```
 
 #### **3. Sync and download submissions**
+
+Only active forms (`Active=True`) are synced from the Kobo API using the active adapter's credentials:
 
 ```bash
 docker compose exec backend python manage.py download_iks_data
