@@ -229,9 +229,10 @@ const isNotArchived = activity.status !== ACTIVITY_STATUS.archived;
 ```
 
 Footer buttons (right-aligned):
-- `Edit` — visible when `isNotArchived`; navigates to edit wizard
+
+- `Edit` — visible when `isDraft` (and user possesses update ability checked via `<Can I="update" a="Activity">`); navigates to edit wizard
 - `Archive` — visible when `canArchive`; calls transition API (admin only check via backend)
-- `Save changes as draft` — visible when `isDraft`; same action as Edit (opens wizard)
+- `Save changes as draft` — visible when `isDraft` (and user possesses update ability); same action as Edit (opens wizard)
 
 ---
 

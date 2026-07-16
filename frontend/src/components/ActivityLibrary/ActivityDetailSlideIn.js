@@ -9,6 +9,7 @@ import TriggerConditionsView from "./TriggerConditionsView";
 import InkhundlaBanner from "./InkhundlaBanner";
 import OwnershipView from "./OwnershipView";
 import ContextSignoffView from "./ContextSignoffView";
+import Can from "@/components/Can";
 
 export default function ActivityDetailSlideIn({
   activityId,
@@ -125,7 +126,11 @@ export default function ActivityDetailSlideIn({
   // Reviewer abilities check (only let review edit drafts in their own sector, admin can do everything)
   const isAdmin =
     userContext?.role === "admin" || userContext?.role === USER_ROLES.admin;
-  const canEdit = isNotArchived && (isAdmin || isDraft);
+  const canEdit =
+    isDraft &&
+    (isAdmin ||
+      (userContext?.role === "reviewer" &&
+        userContext?.activity_sector === activity.sector));
 
   if (!activityId) return null;
 
@@ -227,13 +232,15 @@ export default function ActivityDetailSlideIn({
           <div className="px-6 py-4 border-t border-neutral-200 flex justify-between items-center sticky bottom-0 bg-white z-10 w-full">
             <div>
               {isDraft && canEdit && (
-                <Button
-                  type="link"
-                  onClick={() => onEdit(activity)}
-                  className="text-blue-800 font-semibold p-0"
-                >
-                  Save changes as draft
-                </Button>
+                <Can I="update" a="Activity">
+                  <Button
+                    type="link"
+                    onClick={() => onEdit(activity)}
+                    className="text-blue-800 font-semibold p-0"
+                  >
+                    Save changes as draft
+                  </Button>
+                </Can>
               )}
             </div>
 
@@ -259,13 +266,15 @@ export default function ActivityDetailSlideIn({
               )}
 
               {canEdit && (
-                <Button
-                  type="primary"
-                  onClick={() => onEdit(activity)}
-                  className="bg-blue-600 border-blue-600"
-                >
-                  Edit
-                </Button>
+                <Can I="update" a="Activity">
+                  <Button
+                    type="primary"
+                    onClick={() => onEdit(activity)}
+                    className="bg-blue-600 border-blue-600"
+                  >
+                    Edit
+                  </Button>
+                </Can>
               )}
             </div>
           </div>

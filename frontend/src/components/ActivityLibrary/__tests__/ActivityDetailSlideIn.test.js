@@ -17,6 +17,16 @@ jest.mock("../../../lib/api", () => ({
   getSourceFileBase64: jest.fn(),
 }));
 
+jest.mock("@/context/UserContextProvider", () => ({
+  useUserContext: () => ({
+    role: "admin",
+    abilities: [
+      { action: "update", subject: "Activity" },
+      { action: "create", subject: "Activity" },
+    ],
+  }),
+}));
+
 const mockActivity = {
   id: 12,
   code: "ACT-WASH-12",
@@ -221,6 +231,54 @@ describe("ActivityDetailSlideIn Component", () => {
     await waitFor(() => {
       expect(handleRefresh).toHaveBeenCalled();
       expect(handleClose).toHaveBeenCalled();
+    });
+  });
+
+  it("renders Edit and Save changes as draft buttons for Draft activity", async () => {
+    render(
+      <ActivityDetailSlideIn
+        activityId={12}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      const footer = document.querySelector(".sticky.bottom-0");
+      expect(within(footer).getByText("Edit")).toBeInTheDocument();
+      expect(
+        within(footer).getByText("Save changes as draft"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("does NOT render Edit or Save changes as draft buttons for Active activity", async () => {
+    api.mockImplementation((method, url) => {
+      if (method === "GET" && url === "/activity/12") {
+        return Promise.resolve({
+          ...mockActivity,
+          status: ACTIVITY_STATUS.active,
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    render(
+      <ActivityDetailSlideIn
+        activityId={12}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      const footer = document.querySelector(".sticky.bottom-0");
+      expect(within(footer).queryByText("Edit")).not.toBeInTheDocument();
+      expect(
+        within(footer).queryByText("Save changes as draft"),
+      ).not.toBeInTheDocument();
     });
   });
 });
