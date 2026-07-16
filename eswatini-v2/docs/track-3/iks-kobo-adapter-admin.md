@@ -326,6 +326,47 @@ None — no enums introduced. `active` remains a boolean.
 
 Tests live under `api/v1/v1_iks/tests/`.
 
+### Manual Verification Steps
+
+1. **Generate Admin Credentials**:
+   If needed, create a superuser in the backend container:
+
+   ```bash
+   docker compose exec backend python manage.py generate_admin_seeder
+   ```
+
+   (Generates e.g., `admin1@mail.com` with password `###123`).
+
+2. **Access Django Admin**:
+   Navigate to the Django Admin page in the browser:
+   `http://localhost:8000/admin/v1_iks/koboadapter/` (log in with the admin credentials).
+
+3. **Verify Password Masking & Retention**:
+   - Add a Kobo adapter (URL, username, password). Save the record.
+   - Re-open the created adapter: verify the password input field is masked and blank.
+   - Edit another field (e.g. username) while leaving the password field blank, then save. Verify that the original password was preserved in the database.
+
+4. **Verify Single-Active Switch & Cursor Reset via Form**:
+   - Create a second Kobo adapter with `Active` unchecked.
+   - Edit the second Kobo adapter, check the `Active` checkbox, and save.
+   - Verify that the first adapter is automatically and atomically deactivated (`Active=False`).
+   - Verify that the newly activated second adapter has its `Last sync timestamp` reset to `None` (empty).
+
+5. **Verify Single-Active Switch & Cursor Reset via List Action**:
+   - Go to the Kobo Adapter list page in Django Admin.
+   - Select the checkbox for the inactive adapter, select the **Set selected adapter as active** action from the dropdown, and click **Go**.
+   - Verify that the target adapter becomes `Active=True`, the other is deactivated, and the target's `Last sync timestamp` is reset to `None`.
+
+6. **Verify Downloader Sync Preserves Cursor**:
+   - Run the sync command in the terminal:
+
+     ```bash
+     docker compose exec backend python manage.py download_iks_data
+     ```
+
+   - Refresh the admin list page: verify the active adapter's `Last sync timestamp` is updated.
+   - Edit the active adapter and save: verify that the sync cursor is **not** reset.
+
 ---
 
 ## 10. Open Questions
