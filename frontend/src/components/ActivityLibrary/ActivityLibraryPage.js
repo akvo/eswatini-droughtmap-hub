@@ -238,15 +238,17 @@ export default function ActivityLibraryPage() {
       />
 
       {/* Detail Slide-In */}
-      <ActivityDetailSlideIn
-        activityId={selectedActivityId}
-        onClose={() => {
-          setSelectedActivityId(null);
-          setShowDetailSlideIn(false);
-        }}
-        onEdit={handleEdit}
-        onRefresh={() => setRefreshKey((prev) => prev + 1)}
-      />
+      {showDetailSlideIn && (
+        <ActivityDetailSlideIn
+          activityId={selectedActivityId}
+          onClose={() => {
+            setSelectedActivityId(null);
+            setShowDetailSlideIn(false);
+          }}
+          onEdit={handleEdit}
+          onRefresh={() => setRefreshKey((prev) => prev + 1)}
+        />
+      )}
     </div>
   );
 }

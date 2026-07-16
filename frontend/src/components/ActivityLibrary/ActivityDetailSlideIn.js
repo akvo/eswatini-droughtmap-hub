@@ -127,6 +127,8 @@ export default function ActivityDetailSlideIn({
     userContext?.role === "admin" || userContext?.role === USER_ROLES.admin;
   const canEdit = isNotArchived && (isAdmin || isDraft);
 
+  if (!activityId) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
