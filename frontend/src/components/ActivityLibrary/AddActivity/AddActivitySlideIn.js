@@ -145,6 +145,7 @@ export default function AddActivitySlideIn({
         fd.append("response_type", formData.response_type);
       if (formData.source_doc) fd.append("source_doc", formData.source_doc);
       if (formData.source_file) fd.append("source_file", formData.source_file);
+      if (formData.notes) fd.append("notes", formData.notes);
 
       // Call API (PUT if editActivity is defined)
       const url = editActivity ? `/activity/${editActivity.id}` : "/activities";

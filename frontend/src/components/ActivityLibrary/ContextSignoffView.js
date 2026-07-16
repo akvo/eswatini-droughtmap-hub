@@ -83,7 +83,7 @@ export default function ContextSignoffView({ activity }) {
                 type="link"
                 onClick={handleDownload}
                 loading={downloading}
-                className="p-0 h-auto text-left font-medium text-[#3e5eb9] hover:text-[#2d468a] w-max"
+                className="p-0 h-auto text-left font-medium text-[#3e5eb9] hover:text-[#2d468a] w-max -ml-5"
               >
                 &#128190; Download source file
               </Button>
