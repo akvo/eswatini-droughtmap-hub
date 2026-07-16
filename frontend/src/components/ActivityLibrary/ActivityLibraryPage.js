@@ -11,6 +11,7 @@ import ActivityTable from "./ActivityTable";
 import AddActivitySlideIn from "./AddActivity/AddActivitySlideIn";
 import ActivityAddedModal from "../Modals/ActivityAddedModal";
 import Can from "@/components/Can";
+import { ACTIVITY_STATUS } from "@/static/config";
 
 export default function ActivityLibraryPage() {
   const [activities, setActivities] = useState([]);
@@ -34,9 +35,9 @@ export default function ActivityLibraryPage() {
   const fetchCounts = async () => {
     try {
       const [draftRes, activeRes, archivedRes] = await Promise.all([
-        api("GET", "/activities?status=1"),
-        api("GET", "/activities?status=2"),
-        api("GET", "/activities?status=3"),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.draft}`),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.archived}`),
       ]);
       setCounts({
         draft: draftRes?.total || 0,

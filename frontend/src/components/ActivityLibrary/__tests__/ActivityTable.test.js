@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import ActivityTable from "../ActivityTable";
+import { ACTIVITY_STATUS } from "@/static/config";
 
 const mockActivities = [
   {
@@ -9,7 +10,7 @@ const mockActivities = [
     title: "Borehole reinforcement",
     sector: 3,
     sector_label: "Water & Sanitation",
-    status: 2,
+    status: ACTIVITY_STATUS.active,
     owner: "Eswatini Red Cross",
     version: "v1.0",
     updated_at: "2026-05-26T06:12:00Z",
