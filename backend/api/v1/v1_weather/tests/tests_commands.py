@@ -56,6 +56,9 @@ def make_client_mock():
 @override_settings(USE_TZ=False, TEST_ENV=True)
 class WeatherCommandTests(TestCase):
     def setUp(self):
+        # the 0002 data migration seeds a source when WIS2_* env is set;
+        # tests own their fixtures
+        WeatherSource.objects.all().delete()
         self.source = WeatherSource.objects.create(
             base_url="http://wis2.test", collection_id="obs"
         )

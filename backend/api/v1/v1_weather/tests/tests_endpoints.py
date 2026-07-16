@@ -29,6 +29,9 @@ class WeatherEndpointTests(APITestCase):
         self.reviewer = User.objects._create_user(
             name="reviewer", email="reviewer@example.com", password="pass"
         )
+        # the 0002 data migration seeds a source when WIS2_* env is set;
+        # tests own their fixtures
+        WeatherSource.objects.all().delete()
         self.source = WeatherSource.objects.create(
             base_url="http://wis2.test", collection_id="obs"
         )

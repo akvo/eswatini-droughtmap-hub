@@ -30,6 +30,9 @@ class ExplorerDataMixin:
         self.reviewer = User.objects._create_user(
             name="reviewer", email="reviewer@example.com", password="pass"
         )
+        # the 0002 data migration seeds a source when WIS2_* env is set;
+        # tests own their fixtures
+        WeatherSource.objects.all().delete()
         source = WeatherSource.objects.create(
             base_url="http://wis2.test", collection_id="obs"
         )

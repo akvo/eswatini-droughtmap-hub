@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -111,12 +112,7 @@ class WeatherStationMonthlyAPI(APIView):
                 {"detail": f"Unknown parameter: {parameter}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        station = WeatherStation.objects.filter(wigos_id=wigos_id).first()
-        if not station:
-            return Response(
-                {"detail": "Station not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        station = get_object_or_404(WeatherStation, wigos_id=wigos_id)
         from_period, to_period, error = _parse_period_range(request)
         if error:
             return error
@@ -159,14 +155,9 @@ class AdministrationLatestAPI(APIView):
         tags=["Weather"], summary="Latest readings for an administration"
     )
     def get(self, request, version, administration_id):
-        administration = Administration.objects.filter(
-            pk=administration_id
-        ).first()
-        if not administration:
-            return Response(
-                {"detail": "Administration not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        administration = get_object_or_404(
+            Administration, pk=administration_id
+        )
         return Response(
             resolve_administration_latest(administration),
             status=status.HTTP_200_OK,
@@ -185,14 +176,9 @@ class AdministrationStatsAPI(APIView):
         summary="Explorer stat cards for an administration",
     )
     def get(self, request, version, administration_id):
-        administration = Administration.objects.filter(
-            pk=administration_id
-        ).first()
-        if not administration:
-            return Response(
-                {"detail": "Administration not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        administration = get_object_or_404(
+            Administration, pk=administration_id
+        )
         return Response(
             administration_stats(
                 administration,
@@ -213,14 +199,9 @@ class AdministrationSeriesAPI(APIView):
         summary="Explorer chart series for an administration",
     )
     def get(self, request, version, administration_id):
-        administration = Administration.objects.filter(
-            pk=administration_id
-        ).first()
-        if not administration:
-            return Response(
-                {"detail": "Administration not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        administration = get_object_or_404(
+            Administration, pk=administration_id
+        )
         from_period, to_period, error = _parse_period_range(request)
         if error:
             return error

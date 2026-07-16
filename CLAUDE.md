@@ -82,6 +82,14 @@ docker compose -f docker-compose.test.yml run --rm --no-deps frontend sh test.sh
 - **Async tasks**: Django-Q worker (`run_worker.sh`) for background processing
 - **API docs**: DRF Spectacular at `/api/docs/` (Swagger UI), schema at `/api/schema/`
 
+#### Django Code Style
+
+Prefer Django/DRF built-in shortcuts over hand-rolled equivalents — the short version is the house style:
+
+- Object lookup + 404: `get_object_or_404(Model, pk=...)` (or `get_list_or_404`), never `Model.objects.filter(...).first()` followed by a manual `if not obj: return Response(..., 404)`.
+- Let DRF exception handling produce the error response (`raise_exception=True` on serializers, `Http404`, `PermissionDenied`) instead of building error `Response` objects by hand.
+- Reach for ORM/framework helpers (`update_or_create`, `get_or_create`, `exists()`, `values_list(..., flat=True)`) before writing multi-step equivalents.
+
 ### Frontend
 
 - **Next.js App Router**: `frontend/src/app/` with route groups
