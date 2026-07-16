@@ -1,11 +1,9 @@
 import React from "react";
 import { Input } from "antd";
+import { ACTIVITY_IMPLEMENTER_TYPES } from "@/static/config";
 
 export default function Step3Ownership({ formData, setFormData }) {
-  const types = [
-    { value: 2, label: "Institutional" },
-    { value: 1, label: "Public" },
-  ];
+  const types = ACTIVITY_IMPLEMENTER_TYPES;
 
   return (
     <div className="flex flex-col gap-5 w-full">

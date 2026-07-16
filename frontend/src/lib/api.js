@@ -151,3 +151,35 @@ export const apiText = (method, url, payload = {}) =>
       return reject(err);
     }
   });
+
+export const getSourceFileBase64 = async (activityId) => {
+  const _session = await getSession();
+  const headers = {};
+  if (_session) {
+    const { token: authToken } = _session;
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  const res = await fetch(
+    `${backendBaseURL}/api/v1/activity/${activityId}/source-file`,
+    { headers },
+  );
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  const contentType =
+    res.headers.get("content-type") || "application/octet-stream";
+
+  // Extract filename from Content-Disposition header if present
+  const contentDisposition = res.headers.get("content-disposition");
+  let filename = "source_file";
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+
+  return { base64, contentType, filename };
+};
