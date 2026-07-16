@@ -84,6 +84,31 @@ export default function ActivityDetailSlideIn({
     });
   };
 
+  const handleActivate = () => {
+    Modal.confirm({
+      title: "Activate Response Activity?",
+      content: "Are you sure you want to set this response activity to active?",
+      okText: "Activate",
+      cancelText: "Cancel",
+      onOk: async () => {
+        setTransitioning(true);
+        try {
+          await api("POST", `/activity/${activity.id}/transition`, {
+            to_status: ACTIVITY_STATUS.active,
+          });
+          message.success("Response activity set to active.");
+          onRefresh();
+          onClose();
+        } catch (err) {
+          console.error("Failed to activate activity:", err);
+          message.error(err?.message || "Failed to activate activity.");
+        } finally {
+          setTransitioning(false);
+        }
+      },
+    });
+  };
+
   const TRANSITIONS = {
     [ACTIVITY_STATUS.draft]: [ACTIVITY_STATUS.active, ACTIVITY_STATUS.archived],
     [ACTIVITY_STATUS.active]: [ACTIVITY_STATUS.archived],
@@ -93,6 +118,7 @@ export default function ActivityDetailSlideIn({
   const status = activity?.status;
   const allowedTransitions = TRANSITIONS[status] || [];
   const canArchive = allowedTransitions.includes(ACTIVITY_STATUS.archived);
+  const canActivate = allowedTransitions.includes(ACTIVITY_STATUS.active);
   const isDraft = status === ACTIVITY_STATUS.draft;
   const isNotArchived = status !== ACTIVITY_STATUS.archived;
 
@@ -217,6 +243,16 @@ export default function ActivityDetailSlideIn({
                   className="hover:border-red-500 hover:text-red-500"
                 >
                   Archive
+                </Button>
+              )}
+
+              {canActivate && (
+                <Button
+                  onClick={handleActivate}
+                  loading={transitioning}
+                  className="bg-green-600 border-green-600 text-white hover:bg-green-700 hover:border-green-700 focus:bg-green-600 focus:border-green-600 focus:text-white"
+                >
+                  Set active
                 </Button>
               )}
 

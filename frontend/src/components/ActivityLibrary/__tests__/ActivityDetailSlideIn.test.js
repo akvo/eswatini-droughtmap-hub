@@ -113,4 +113,66 @@ describe("ActivityDetailSlideIn Component", () => {
     fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it("handles Set active transition correctly", async () => {
+    api.mockResolvedValueOnce(mockActivity); // Fetch detail
+    api.mockResolvedValueOnce({ matched: 12, total: 59 }); // Fetch trigger preview
+    api.mockResolvedValueOnce({ success: true }); // Transition POST
+
+    render(
+      <ActivityDetailSlideIn
+        activityId={12}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Set active")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Set active"));
+
+    // Antd Modal confirmation click (button is labeled "Activate" in handleActivate okText)
+    const confirmBtn = screen.getByRole("button", { name: "Activate" });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(api).toHaveBeenCalledWith("POST", "/activity/12/transition", {
+        to_status: ACTIVITY_STATUS.active,
+      });
+    });
+  });
+
+  it("handles Archive transition correctly", async () => {
+    api.mockResolvedValueOnce(mockActivity); // Fetch detail
+    api.mockResolvedValueOnce({ matched: 12, total: 59 }); // Fetch trigger preview
+    api.mockResolvedValueOnce({ success: true }); // Transition POST
+
+    render(
+      <ActivityDetailSlideIn
+        activityId={12}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Archive")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Archive"));
+
+    // Antd Modal confirmation click (button is labeled "Archive" in handleArchive okText)
+    const confirmBtn = screen.getByRole("button", { name: "Archive" });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(api).toHaveBeenCalledWith("POST", "/activity/12/transition", {
+        to_status: ACTIVITY_STATUS.archived,
+      });
+    });
+  });
 });
