@@ -24,6 +24,12 @@ export default function ActivityLibraryPage() {
   const [successSubtitle, setSuccessSubtitle] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // States for activity detail & edit views
+  const [selectedActivityId, setSelectedActivityId] = useState(null);
+  const [showDetailSlideIn, setShowDetailSlideIn] = useState(false);
+  const [editActivity, setEditActivity] = useState(null);
+  const [showEditSlideIn, setShowEditSlideIn] = useState(false);
+
   // Filters state
   const [statusFilter, setStatusFilter] = useState("all");
   const [sectorFilter, setSectorFilter] = useState("all");
@@ -194,6 +200,10 @@ export default function ActivityLibraryPage() {
             page={page}
             total={total}
             onPageChange={setPage}
+            onRowClick={(record) => {
+              setSelectedActivityId(record.id);
+              setShowDetailSlideIn(true);
+            }}
           />
         </section>
         <div className="mx-auto w-full max-w-[1280px] py-8">

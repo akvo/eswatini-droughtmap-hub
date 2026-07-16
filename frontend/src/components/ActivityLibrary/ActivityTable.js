@@ -142,6 +142,7 @@ export default function ActivityTable({
   page = 1,
   total = 0,
   onPageChange,
+  onRowClick,
 }) {
   const columns = [
     {
@@ -201,8 +202,15 @@ export default function ActivityTable({
       title: "Actions",
       key: "actions",
       align: "right",
-      render: () => (
-        <Button type="link" className="edm-reviews-action">
+      render: (_, record) => (
+        <Button
+          type="link"
+          className="edm-reviews-action"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onRowClick) onRowClick(record);
+          }}
+        >
           View
         </Button>
       ),
@@ -226,6 +234,12 @@ export default function ActivityTable({
         position: ["bottomCenter"],
       }}
       className="edm-reviews-table"
+      onRow={(record) => ({
+        onClick: () => {
+          if (onRowClick) onRowClick(record);
+        },
+        style: { cursor: "pointer" },
+      })}
     />
   );
 }
