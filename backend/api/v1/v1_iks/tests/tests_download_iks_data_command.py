@@ -239,3 +239,200 @@ class DownloadIKSDataCommandTests(BaseIKSTestCase):
         # Execute command -
         # should log error and return cleanly without throwing exceptions
         call_command("download_iks_data")
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_geolocation_priority_uses_geolocation_array(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Test that _geolocation array is prioritized when present,
+        even when start-geopoint and survey_start_gps also exist.
+        """
+        mock_geom = MagicMock()
+        mock_geom.contains.return_value = True
+        mock_geom.empty = False
+        mock_geom.iloc = [{"administration_id": 1621199}]
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_df.__getitem__.return_value = mock_geom
+        mock_read_file.return_value = mock_df
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {
+                    "_id": 100,
+                    "_geolocation": [-26.5, 31.5],
+                    "start-geopoint": "-26.0 31.0 100.0 5.0",
+                    "survey_start_gps": "-25.0 30.0 0 0",
+                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho": "1__bs___blue_swallows_appearance__tinkon",
+                    "_submission_time": "2026-07-16T08:00:00",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        call_command("download_iks_data")
+
+        kobo_data = KoboData.objects.get(kobo_id=100)
+        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
+        # Verify IKSValue mapped (coordinates matched admin area)
+        self.assertTrue(
+            IKSValue.objects.filter(kobo_id=100, value="observed").exists()
+        )
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_geolocation_priority_uses_start_geopoint_when_geolocation_null(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Test that start-geopoint is used when _geolocation is [null, null].
+        """
+        mock_geom = MagicMock()
+        mock_geom.contains.return_value = True
+        mock_geom.empty = False
+        mock_geom.iloc = [{"administration_id": 1621199}]
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_df.__getitem__.return_value = mock_geom
+        mock_read_file.return_value = mock_df
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {
+                    "_id": 101,
+                    "_geolocation": [None, None],
+                    "start-geopoint": "-26.5 31.5 100.0 5.0",
+                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho": "1__bs___blue_swallows_appearance__tinkon",
+                    "_submission_time": "2026-07-16T08:00:00",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        call_command("download_iks_data")
+
+        kobo_data = KoboData.objects.get(kobo_id=101)
+        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
+        self.assertTrue(
+            IKSValue.objects.filter(kobo_id=101, value="observed").exists()
+        )
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_geolocation_priority_uses_survey_start_gps_as_fallback(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Test that survey_start_gps is used when both _geolocation and
+        start-geopoint are missing/null.
+        """
+        mock_geom = MagicMock()
+        mock_geom.contains.return_value = True
+        mock_geom.empty = False
+        mock_geom.iloc = [{"administration_id": 1621199}]
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_df.__getitem__.return_value = mock_geom
+        mock_read_file.return_value = mock_df
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {
+                    "_id": 102,
+                    "survey_start_gps": "-26.5 31.5 0 0",
+                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho": "1__bs___blue_swallows_appearance__tinkon",
+                    "_submission_time": "2026-07-16T08:00:00",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        call_command("download_iks_data")
+
+        kobo_data = KoboData.objects.get(kobo_id=102)
+        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
+        self.assertTrue(
+            IKSValue.objects.filter(kobo_id=102, value="observed").exists()
+        )
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_geolocation_priority_fallback_to_second_field_on_partial_array(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Test that when _geolocation array has fewer than 2 elements,
+        the system falls back to start-geopoint.
+        """
+        mock_geom = MagicMock()
+        mock_geom.contains.return_value = True
+        mock_geom.empty = False
+        mock_geom.iloc = [{"administration_id": 1621199}]
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_df.__getitem__.return_value = mock_geom
+        mock_read_file.return_value = mock_df
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {
+                    "_id": 103,
+                    "_geolocation": [-26.5],
+                    "start-geopoint": "-26.5 31.5 100.0 5.0",
+                    "_submission_time": "2026-07-16T08:00:00",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        call_command("download_iks_data")
+
+        kobo_data = KoboData.objects.get(kobo_id=103)
+        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_geolocation_priority_all_fields_missing_sets_null_geo(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Test that when all geolocation fields are missing,
+        geo is set to None and KoboData is still created.
+        """
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_read_file.return_value = mock_df
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {
+                    "_id": 104,
+                    "_submission_time": "2026-07-16T08:00:00",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        call_command("download_iks_data")
+
+        kobo_data = KoboData.objects.get(kobo_id=104)
+        self.assertIsNone(kobo_data.geo)
+        # No IKSValue mapped due to missing coordinates
+        self.assertFalse(IKSValue.objects.filter(kobo_id=104).exists())

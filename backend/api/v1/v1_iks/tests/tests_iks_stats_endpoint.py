@@ -1,7 +1,12 @@
-from datetime import datetime
+from datetime import datetime, date
 from django.utils import timezone
 from rest_framework import status
 from api.v1.v1_iks.models import KoboData, IKSIndicator, IKSValue
+from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.constants import (
+    PublicationStatus,
+    DroughtCategory,
+)
 from .base import BaseIKSTestCase
 
 
@@ -43,11 +48,13 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
     def test_iks_stats_endpoint_anonymous(self):
         """
         Test GET /api/v1/iks/{administration_id}/stats
-        API guards authentication.
+        API allows anonymous access.
         """
         self.client.force_authenticate(user=None)
         response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("zone", response.json())
+        self.assertIn("indicator_activity", response.json())
 
     def test_iks_stats_date_filters(self):
         """Test GET /api/v1/iks/{administration_id}/stats date filtering."""
@@ -104,3 +111,86 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["total_reports_received"], 1)
         self.assertEqual(response.json()["total_months_drought"], 1)
+
+    def test_indicator_activity_classification(self):
+        """
+        Test stats indicator_activity correctly counts section B/C indicators.
+
+        IKSIndicator.name is a raw Kobo choice slug (e.g.
+        '1__bs___blue_swallows_appearance__tinkon'), never containing 'B1_'.
+        Classification now relies on the IKSIndicator.section field which is
+        populated by the download command.
+        """
+        indicator_b = IKSIndicator.objects.create(
+            kobo_form=self.form,
+            name="1__bs___blue_swallows_appearance__tinkon",
+            section="B",
+        )
+        indicator_c = IKSIndicator.objects.create(
+            kobo_form=self.form,
+            name="1__wb___weaver_birds_build_their_nests_f",
+            section="C",
+        )
+
+        KoboData.objects.create(
+            form=self.form,
+            kobo_id=300,
+            submission_time=timezone.now(),
+        )
+
+        IKSValue.objects.create(
+            kobo_id=300,
+            administration=self.admin_area,
+            iks_indicator=indicator_b,
+            value="observed",
+        )
+        IKSValue.objects.create(
+            kobo_id=300,
+            administration=self.admin_area,
+            iks_indicator=indicator_c,
+            value="observed",
+        )
+
+        response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        activity = response.json()["indicator_activity"]
+        # The last month (index 11) should have 1 count for each
+        self.assertEqual(activity["rain_leaning"][-1], 1)
+        self.assertEqual(activity["extreme_weather"][-1], 1)
+
+    def _make_publication(self, cdi_geonode_id, pub_status, category):
+        return Publication.objects.create(
+            year_month=date(2026, 4, 1),
+            cdi_geonode_id=cdi_geonode_id,
+            initial_values=[
+                {"administration_id": self.admin_area.id, "category": category}
+            ],
+            validated_values=[
+                {"administration_id": self.admin_area.id, "category": category}
+            ],
+            due_date=date(2026, 4, 15),
+            status=pub_status,
+        )
+
+    def test_cdi_d_class_from_published_publication(self):
+        """stats.cdi_d_class reflects the latest published publication's
+        validated category for this administration."""
+        self._make_publication(
+            9001, PublicationStatus.published, DroughtCategory.d3
+        )
+
+        response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["cdi_d_class"], DroughtCategory.d3)
+
+    def test_cdi_d_class_null_without_published_publication(self):
+        """Edge case: IKS data exists but no *published* publication covers
+        this administration — cdi_d_class must be null, not fabricated."""
+        # An unpublished publication must be ignored.
+        self._make_publication(
+            9002, PublicationStatus.in_review, DroughtCategory.d3
+        )
+
+        response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.json()["cdi_d_class"])
