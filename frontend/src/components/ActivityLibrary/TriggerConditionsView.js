@@ -4,13 +4,7 @@ import {
   ACTIVITY_INDICATORS,
   DROUGHT_CATEGORY_LEVELS,
 } from "@/static/config";
-
-const ConditionItem = ({ label, value, className = "flex flex-col" }) => (
-  <div className={className}>
-    <span className="text-neutral-500 text-sm">{label}</span>
-    <div className="text-[#333333] font-medium text-base mt-1">{value}</div>
-  </div>
-);
+import ConditionItem from "./ConditionItem";
 
 export default function TriggerConditionsView({ triggers }) {
   if (!triggers)

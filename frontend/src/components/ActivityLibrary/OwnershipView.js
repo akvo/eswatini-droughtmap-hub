@@ -1,5 +1,14 @@
 import React from "react";
 import { ACTIVITY_IMPLEMENTER_TYPES } from "@/static/config";
+import ConditionItem from "./ConditionItem";
+
+const getInitials = (name) => {
+  if (!name || name === "-") return "";
+  const parts = name.split(/[\s+&·•]+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+};
 
 export default function OwnershipView({ activity }) {
   if (!activity) return null;
@@ -14,30 +23,45 @@ export default function OwnershipView({ activity }) {
     activity.response_type_label ||
     (responseTypeObj ? responseTypeObj.label : "-");
 
+  const initials = getInitials(activity.owner);
+
   return (
-    <div className="flex flex-col gap-4 text-sm text-neutral-800">
-      <div className="text-neutral-500 font-semibold uppercase text-xs tracking-wider">
-        Overview of ownership
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border border-neutral-200 rounded-lg p-4 bg-neutral-50/50">
-        <div className="flex flex-col gap-1">
-          <span className="text-neutral-500 text-xs font-medium">Owner</span>
-          <span className="text-neutral-800 font-semibold">{owner}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-neutral-500 text-xs font-medium">
-            With whom to coordinate
-          </span>
-          <span className="text-neutral-800 font-semibold">{coordWith}</span>
-        </div>
-        <div className="flex flex-col gap-1 md:col-span-2 border-t border-neutral-200/60 pt-3">
-          <span className="text-neutral-500 text-xs font-medium">
-            Implementer type
-          </span>
-          <span className="text-neutral-800 font-semibold">
-            {responseTypeLabel}
-          </span>
-        </div>
+    <div className="flex flex-col text-neutral-800">
+      {/* Title */}
+      <h3 className="text-[#333333] font-medium text-base m-0 pb-4 border-b border-neutral-200">
+        Ownership
+      </h3>
+
+      {/* Grid container */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 pt-4">
+        {/* Owner */}
+        <ConditionItem
+          label="Owner"
+          value={
+            owner !== "-" ? (
+              <div className="flex items-center gap-2">
+                {initials && (
+                  <div className="w-8 h-8 rounded-full bg-[#e8eefc] text-[#3e5eb9] flex items-center justify-center font-bold text-xs shrink-0 border border-[#d3e0fa]">
+                    {initials}
+                  </div>
+                )}
+                <span>{owner}</span>
+              </div>
+            ) : (
+              "-"
+            )
+          }
+        />
+
+        {/* Coordinate with */}
+        <ConditionItem label="Coordinate with" value={coordWith} />
+
+        {/* Implementer */}
+        <ConditionItem
+          label="Implementer"
+          className="flex flex-col md:col-span-2"
+          value={responseTypeLabel}
+        />
       </div>
     </div>
   );
