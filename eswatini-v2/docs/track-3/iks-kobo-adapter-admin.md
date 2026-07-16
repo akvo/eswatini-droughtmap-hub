@@ -367,6 +367,20 @@ Tests live under `api/v1/v1_iks/tests/`.
    - Refresh the admin list page: verify the active adapter's `Last sync timestamp` is updated.
    - Edit the active adapter and save: verify that the sync cursor is **not** reset.
 
+7. **Verify Kobo Form Management & Active Form Sync Filtering**:
+    - Navigate to the Kobo Form admin page: `http://localhost:8000/admin/v1_iks/koboform/`
+    - Verify that you can list registered forms and see their `Active` state checkbox.
+    - Click **Add Kobo Form** and create a new form registration (e.g. `uuid="dummy_uuid"`, `name="Clone of CDI-E - Dummy"`). Ensure `Active` is checked, then save.
+    - Select the newly created form in the edit screen: verify that the `uuid` field is read-only.
+    - Open the form edit screen and uncheck the `Active` checkbox, then save.
+    - Run the sync command in the terminal:
+
+      ```bash
+      docker compose exec backend python manage.py download_iks_data
+      ```
+
+    - Check the terminal output: verify that the command skipped syncing data for the inactive form (you will see it only syncs the active forms).
+
 ---
 
 ## 10. Open Questions

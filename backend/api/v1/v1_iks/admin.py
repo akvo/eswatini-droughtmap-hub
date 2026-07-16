@@ -69,7 +69,7 @@ class KoboAdapterAdmin(admin.ModelAdmin):
     search_fields = ("server_url", "username")
     readonly_fields = ("last_sync_timestamp", "created_at", "updated_at")
     ordering = ("-active", "-updated_at")
-    actions = ["activate_adapter"]
+    actions = ["activate_adapter", "deactivate_adapter"]
 
     fieldsets = (
         (
@@ -135,6 +135,16 @@ class KoboAdapterAdmin(admin.ModelAdmin):
             request,
             f"{adapter.server_url} is now the active adapter. "
             "Sync cursor has been reset.",
+        )
+
+    @admin.action(description="Set selected adapters as inactive")
+    def deactivate_adapter(self, request, queryset):
+        """
+        Deactivate selected adapters.
+        """
+        count = queryset.update(active=False)
+        self.message_user(
+            request, f"Successfully deactivated {count} adapter(s)."
         )
 
 
@@ -212,4 +222,20 @@ class KoboFormAdmin(admin.ModelAdmin):
             f"Form '{obj.name}' deleted. "
             f"{count} KoboData row(s) were also removed.",
             level="warning" if count > 0 else "success",
+        )
+
+    actions = ["activate_forms", "deactivate_forms"]
+
+    @admin.action(description="Mark selected forms as active")
+    def activate_forms(self, request, queryset):
+        count = queryset.update(active=True)
+        self.message_user(
+            request, f"Successfully activated {count} Kobo Form(s)."
+        )
+
+    @admin.action(description="Mark selected forms as inactive")
+    def deactivate_forms(self, request, queryset):
+        count = queryset.update(active=False)
+        self.message_user(
+            request, f"Successfully deactivated {count} Kobo Form(s)."
         )

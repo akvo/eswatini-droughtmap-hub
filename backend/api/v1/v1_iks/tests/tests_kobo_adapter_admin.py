@@ -148,6 +148,21 @@ class KoboAdapterAdminTests(BaseIKSTestCase):
         self.assertTrue(second_adapter.active)
         self.assertIsNone(second_adapter.last_sync_timestamp)
 
+    def test_admin_action_deactivate_adapter(self):
+        """
+        Admin deactivate action successfully deactivates
+        selected active adapters.
+        """
+        site = AdminSite()
+        admin_inst = KoboAdapterAdmin(KoboAdapter, site)
+        admin_inst.message_user = lambda request, message, level=None: None
+        queryset = KoboAdapter.objects.filter(pk=self.adapter.pk)
+
+        self.assertTrue(self.adapter.active)
+        admin_inst.deactivate_adapter(MockRequest(self.user), queryset)
+        self.adapter.refresh_from_db()
+        self.assertFalse(self.adapter.active)
+
     def test_form_blank_password_unchanged(self):
         """
         Submitting form with empty password preserves current password.

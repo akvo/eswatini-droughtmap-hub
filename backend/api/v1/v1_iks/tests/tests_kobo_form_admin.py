@@ -162,3 +162,34 @@ class KoboFormAdminTests(BaseIKSTestCase):
         self.assertIn("a3ytas3GLhSewNTZByCCsd", uuids)
         self.assertIn("prodFormUID987654321", uuids)
         self.assertNotIn("inactiveFormUID98765", uuids)
+
+    def test_bulk_activate_and_deactivate_forms(self):
+        """
+        Verify that activate_forms and deactivate_forms bulk actions
+        correctly toggle the active field for selected forms.
+        """
+        form1 = KoboForm.objects.create(
+            uuid="form1", name="Form 1", active=False
+        )
+        form2 = KoboForm.objects.create(
+            uuid="form2", name="Form 2", active=False
+        )
+
+        queryset = KoboForm.objects.filter(uuid__in=["form1", "form2"])
+        self.admin_inst.message_user = (
+            lambda request, message, level=None: None
+        )
+
+        # Bulk Activate
+        self.admin_inst.activate_forms(MockRequest(self.user), queryset)
+        form1.refresh_from_db()
+        form2.refresh_from_db()
+        self.assertTrue(form1.active)
+        self.assertTrue(form2.active)
+
+        # Bulk Deactivate
+        self.admin_inst.deactivate_forms(MockRequest(self.user), queryset)
+        form1.refresh_from_db()
+        form2.refresh_from_db()
+        self.assertFalse(form1.active)
+        self.assertFalse(form2.active)
