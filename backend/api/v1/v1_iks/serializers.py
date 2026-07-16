@@ -10,6 +10,9 @@ class IKSStatsSerializer(serializers.Serializer):
     form_completion_percentage = serializers.FloatField()
     zone = serializers.CharField(required=False, allow_null=True)
     indicator_activity = serializers.DictField(required=False)
+    # Validated CDI drought category from the latest published publication for
+    # this administration. Null when no published publication covers it yet.
+    cdi_d_class = serializers.IntegerField(required=False, allow_null=True)
 
 
 class IKSSeriesItemSerializer(serializers.Serializer):

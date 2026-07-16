@@ -21,7 +21,8 @@ from drf_spectacular.utils import (
 )
 from drf_spectacular.types import OpenApiTypes
 
-from api.v1.v1_publication.models import Administration
+from api.v1.v1_publication.models import Administration, Publication
+from api.v1.v1_publication.constants import PublicationStatus
 from api.v1.v1_iks.models import KoboData, IKSIndicator, IKSValue
 from api.v1.v1_iks.serializers import (
     IKSStatsSerializer,
@@ -38,6 +39,36 @@ from api.v1.v1_iks.serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def latest_validated_d_class(administration_id):
+    """Return the validated CDI category for an administration.
+
+    Reads the most recent *published* publication and looks up this
+    administration's entry in its validated_values. Returns None when no
+    published publication covers this administration yet (e.g. only
+    in-review/in-validation publications exist, or IKS data exists but no
+    CDI publication does). The caller renders None as a "No data" badge.
+    """
+    pub = (
+        Publication.objects.filter(
+            status=PublicationStatus.published,
+            deleted_at__isnull=True,
+            validated_values__isnull=False,
+        )
+        .order_by("-year_month")
+        .first()
+    )
+    if not pub or not pub.validated_values:
+        return None
+    return next(
+        (
+            item.get("category")
+            for item in pub.validated_values
+            if str(item.get("administration_id")) == str(administration_id)
+        ),
+        None,
+    )
 
 
 class HasXApiKey(BasePermission):
@@ -198,6 +229,7 @@ class IKSStatsView(APIView):
             "form_completion_percentage": form_completion,
             "zone": admin.zone,
             "indicator_activity": indicator_activity,
+            "cdi_d_class": latest_validated_d_class(admin.id),
         }
 
         serializer = IKSStatsSerializer(stats_data)

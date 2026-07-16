@@ -200,9 +200,11 @@ Used by the frontend to map the selected inkhundla name to its DB `id` for per-a
 **Decision**: Section B/C is determined by checking `IKSIndicator.name` for `"B1_"` vs `"C1_"` substrings.
 **Rationale**: `download_iks_data` sets `IKSIndicator.name` to the full Kobo field key which encodes section.
 
-### D-5: D-class stays out of scope
-**Decision**: Validated D-class badge requires CDI satellite data (v1_publication). Out of scope for this IKS ticket.
-**Impact**: Header D-class badge keeps deterministic fallback until a separate CDI-IKS join ticket.
+### D-5: D-class sourced from the latest published CDI publication
+**Decision**: `IKSStatsView` returns `cdi_d_class` — the validated category for this administration from the most recent **published** `Publication.validated_values`. The frontend badge renders that value directly.
+**Rationale**: The originally-assumed "needs new satellite plumbing" was wrong: `v1_iks` already shares the `v1_publication.Administration` table, so `administration_id`, the integer category enum, and `validated_values` are all directly joinable. No new data source, no migration.
+**Edge cases**: When no published publication covers the administration (only in-review/in-validation publications exist, or IKS data exists without any CDI publication), `cdi_d_class` is `null` and the badge shows **"No data"** (`N/A` glyph) instead of a fabricated D-class. The previous `total_months_drought` heuristic (`≥8→D3, ≥4→D2, else D1`) is removed.
+**Response field**: `"cdi_d_class": <int 0–5 | null>` added to `GET /{admin_id}/stats`.
 
 ### D-6: Photo URL — no proxying
 **Decision**: Return raw `download_url` from `KoboData.raw_data['_attachments']`. No backend proxy.

@@ -94,6 +94,7 @@ describe("IksTab Component Redesigned Mockup", () => {
           average_validation_time_days: 1.2,
           form_completion_percentage: 82.0,
           zone: "highveld",
+          cdi_d_class: 4, // DroughtCategory.d3 (validated CDI category)
           indicator_activity: {
             months: ["2025-08", "2025-09"],
             rain_leaning: [2, 3],
@@ -126,6 +127,9 @@ describe("IksTab Component Redesigned Mockup", () => {
     await waitFor(() => {
       expect(screen.getByText("Mhlangatane Inkhundla")).toBeInTheDocument();
     });
+
+    // 1b. Verify validated CDI d-class badge (cdi_d_class: 4 → D3)
+    expect(screen.getByText("D3 Extreme Drought")).toBeInTheDocument();
 
     // 2. Verify KPI Panels
     expect(screen.getByText("Reporting consistency")).toBeInTheDocument();

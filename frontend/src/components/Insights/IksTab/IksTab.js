@@ -19,6 +19,7 @@ import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
 import {
   IKS_INDICATOR_CATALOGUE,
+  DROUGHT_CATEGORY_CODE,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_VALUE,
@@ -193,21 +194,23 @@ const IksTab = ({
   const validationRate = stats.validation_rate_percentage || 0;
   const validationTime = stats.average_validation_time_days || 0;
   const completionRate = stats.form_completion_percentage || 0;
+  // Validated CDI drought category from /stats (latest published publication).
+  // Null when no published publication covers this inkhundla yet — even though
+  // IKS data exists — so we fall back to the "No data" category.
   const droughtCategoryVal =
-    stats.total_months_drought >= 8
-      ? DROUGHT_CATEGORY_VALUE.d3
-      : stats.total_months_drought >= 4
-        ? DROUGHT_CATEGORY_VALUE.d2
-        : DROUGHT_CATEGORY_VALUE.d1;
+    stats.cdi_d_class != null ? stats.cdi_d_class : DROUGHT_CATEGORY_VALUE.none;
 
-  const droughtLevel = (dCategoryVal) =>
-    dCategoryVal === DROUGHT_CATEGORY_VALUE.d3
-      ? "D3"
-      : dCategoryVal === DROUGHT_CATEGORY_VALUE.d2
-        ? "D2"
-        : "D1";
+  const isNoData = droughtCategoryVal === DROUGHT_CATEGORY_VALUE.none;
+  // Short code for the fixed-width badge box. "No data" won't fit, so use N/A.
+  const droughtCode = isNoData
+    ? "N/A"
+    : DROUGHT_CATEGORY_CODE[droughtCategoryVal];
 
-  const droughtBadgeColor = DROUGHT_CATEGORY_COLOR[droughtCategoryVal];
+  // none's config color is white — invisible against the white glyph — so give
+  // the No-data badge a visible grey fill.
+  const droughtBadgeColor = isNoData
+    ? "#9ca3af"
+    : DROUGHT_CATEGORY_COLOR[droughtCategoryVal];
   const droughtLabelText = DROUGHT_CATEGORY_LABEL[droughtCategoryVal];
   const droughtBadgeTextColor =
     droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d1 ? "#7c5a00" : "#ffffff";
@@ -444,7 +447,7 @@ const IksTab = ({
               className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
             >
               <p className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center text-white whitespace-nowrap mb-0">
-                {droughtLevel(droughtCategoryVal)}
+                {droughtCode}
               </p>
             </div>
             {/* Label block */}
@@ -603,12 +606,6 @@ const IksTab = ({
                 {photos.length} photos found
               </p>
             </div>
-            <Button
-              type="default"
-              className="text-neutral-600 font-semibold border-neutral-200"
-            >
-              Add photo
-            </Button>
           </div>
           {photos.length === 0 ? (
             <Empty description="No photos submitted" />
