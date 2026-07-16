@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Spin,
@@ -14,6 +13,7 @@ import {
   Empty,
   Checkbox,
   ConfigProvider,
+  Image,
 } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
@@ -611,30 +611,48 @@ const IksTab = ({
             <Empty description="No photos submitted" />
           ) : (
             <>
-              <Row gutter={[16, 16]}>
-                {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
-                  <Col xs={24} sm={8} key={i}>
-                    <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
-                      <Image
-                        src={photo.url}
-                        alt={photo.title || "Observation Photo"}
-                        fill
-                        unoptimized
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4">
-                        <span className="text-white text-xs font-bold">
-                          {photo.title || "Observation Photo"}
-                        </span>
-                        <span className="text-neutral-300 text-[10px] mt-1">
-                          {photo.date || "Unknown Date"}
-                        </span>
+              <Image.PreviewGroup>
+                <Row gutter={[16, 16]}>
+                  {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
+                    <Col xs={24} sm={8} key={i}>
+                      <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
+                        <Image
+                          src={photo.url}
+                          alt={photo.title || "Observation Photo"}
+                          className="!w-full !h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          preview={{
+                            mask: (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg
+                                  className="w-8 h-8 text-white"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                                  />
+                                </svg>
+                              </div>
+                            ),
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4 pointer-events-none">
+                          <span className="text-white text-xs font-bold">
+                            {photo.title || "Observation Photo"}
+                          </span>
+                          <span className="text-neutral-300 text-[10px] mt-1">
+                            {photo.date || "Unknown Date"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Col>
-                ))}
-              </Row>
+                    </Col>
+                  ))}
+                </Row>
+              </Image.PreviewGroup>
               <div className="flex items-center gap-2 mt-4">
                 <Button
                   onClick={handlePrev}
