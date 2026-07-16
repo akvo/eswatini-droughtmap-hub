@@ -52,14 +52,27 @@ class IKSSeriesEndpointTests(BaseIKSTestCase):
     def test_iks_series_endpoint_anonymous(self):
         """
         Test GET /api/v1/iks/{administration_id}/series
-        API guards authentication.
+        API allows anonymous access.
         """
         self.client.force_authenticate(user=None)
         response = self.client.get(
             f"/api/v1/iks/{self.admin_area.id}/series",
             {"indicator_id": 999},
         )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        # Note: Indicator not found 404 is expected since 999 doesn't
+        # exist, but it bypasses the 401 guard
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_iks_series_bulk_mode(self):
+        """Test GET /api/v1/iks/{administration_id}/series?bulk=true."""
+        self.client.force_authenticate(user=None)
+        response = self.client.get(
+            f"/api/v1/iks/{self.admin_area.id}/series",
+            {"bulk": "true"},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("months", response.json())
+        self.assertIn("indicators", response.json())
 
     def test_iks_series_endpoint_validation(self):
         """

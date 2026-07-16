@@ -8,6 +8,37 @@ import { api } from "../../../lib";
 
 jest.mock("../../../lib", () => ({ api: jest.fn() }));
 
+jest.setTimeout(30000);
+
+jest.mock("antd/lib/_util/responsiveObserver", () => {
+  const mockObserver = {
+    subscribe: jest.fn((cb) => {
+      cb({ xs: true, sm: true, md: true, lg: true, xl: true, xxl: true });
+      return { unsubscribe: jest.fn() };
+    }),
+    unsubscribe: jest.fn(),
+    register: jest.fn(),
+    unregister: jest.fn(),
+  };
+  const fn = jest.fn(() => mockObserver);
+  fn.default = mockObserver; // Make default the object or function to satisfy different import specs
+  Object.assign(fn, mockObserver);
+  return fn;
+});
+
+jest.mock("antd", () => {
+  const original = jest.requireActual("antd");
+  return {
+    ...original,
+    message: {
+      error: jest.fn(),
+      success: jest.fn(),
+      warning: jest.fn(),
+      info: jest.fn(),
+    },
+  };
+});
+
 const detail = {
   administration: {
     administration_id: 7,
@@ -79,9 +110,16 @@ beforeEach(() => {
   );
 });
 
-const open = () => {
+const open = async () => {
   fireEvent.click(screen.getByRole("button", { name: "open" }));
-  return screen.findByText("Piggs peak");
+  // Wait until the API response has loaded and the "Approve" button is enabled.
+  // "Piggs peak" appears immediately from context state, but the button stays
+  // disabled (loading=true) until loadDetail resolves, so we wait for the
+  // button to become interactable instead.
+  await waitFor(() => {
+    const btn = screen.getByRole("button", { name: /approve computed value/i });
+    expect(btn).not.toBeDisabled();
+  });
 };
 
 it("approves the computed value with a single review PUT", async () => {

@@ -43,6 +43,8 @@ coverage report -m --rcfile=./.coveragerc
 # Management commands
 python manage.py check_overdue_reviews    # Email notifications for overdue reviews
 python manage.py dbml >> db.dbml          # Generate database schema docs
+python manage.py kobo_seeder --username <user> --password <pass>  # Seed Kobo adapter credentials
+python manage.py download_iks_data        # Fetch and sync IKS data from Kobo Toolbox
 ```
 
 ### Frontend (Next.js 14 / React 18 / Node 18)

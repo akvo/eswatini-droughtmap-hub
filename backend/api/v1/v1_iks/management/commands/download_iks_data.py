@@ -26,17 +26,22 @@ from django_q.tasks import async_task
 logger = logging.getLogger(__name__)
 
 
-def download_attachment(download_url, save_path):
+def download_attachment(download_url, save_path, username=None, password=None):
     """Downloads an attachment from Kobo Toolbox."""
     try:
-        response = requests.get(download_url, timeout=30)
+        auth = (username, password) if username and password else None
+        response = requests.get(download_url, auth=auth, timeout=30)
         if response.status_code == 200:
             with open(save_path, "wb") as f:
                 f.write(response.content)
             logger.info(f"Successfully downloaded attachment to {save_path}")
             return True
+        else:
+            logger.error(
+                f"Kobo status {response.status_code} for {download_url}"
+            )
     except Exception as e:
-        logger.error(f"Failed to download attachment {download_url}: {str(e)}")
+        logger.error(f"Failed attachment {download_url}: {str(e)}")
     return False
 
 
@@ -107,7 +112,9 @@ class Command(BaseCommand):
                     break
 
                 for res in data.get("results", []):
-                    sub_time = self._process_submission(form, res, gdf)
+                    sub_time = self._process_submission(
+                        adapter, form, res, gdf
+                    )
                     if sub_time is None:
                         continue
                     sync_count += 1
@@ -142,7 +149,7 @@ class Command(BaseCommand):
             url += "&query=" + quote(json.dumps(query))
         return url
 
-    def _process_submission(self, form, res, gdf):
+    def _process_submission(self, adapter, form, res, gdf):
         """Upsert a single Kobo submission and its IKS values.
 
         Returns the submission_time on success, or None if skipped.
@@ -151,25 +158,54 @@ class Command(BaseCommand):
         if not kobo_id:
             return None
 
-        # Parse geolocation
-        gps_str = res.get("survey_start_gps", "")
+        # Parse geolocation with priority:
+        # 1. _geolocation (array: [lat, lon])
+        # 2. start-geopoint (string: "lat lon altitude accuracy")
+        # 3. survey_start_gps (string: "lat lon ...")
         lat, lon = None, None
         administration_id = None
-        if gps_str:
+
+        # Priority 1: _geolocation array
+        geolocation = res.get("_geolocation")
+        if geolocation and isinstance(geolocation, list) and len(geolocation) >= 2:
+            lat = geolocation[0]
+            lon = geolocation[1]
+
+        # Priority 2: start-geopoint string
+        if lat is None or lon is None:
+            geopoint_str = res.get("start-geopoint", "")
+            if geopoint_str:
+                try:
+                    parts = geopoint_str.split()
+                    if len(parts) >= 2:
+                        lat = float(parts[0])
+                        lon = float(parts[1])
+                except Exception as ex:
+                    logger.error(f"Error parsing start-geopoint {geopoint_str}: {str(ex)}")
+
+        # Priority 3: survey_start_gps string
+        if lat is None or lon is None:
+            gps_str = res.get("survey_start_gps", "")
+            if gps_str:
+                try:
+                    parts = gps_str.split()
+                    if len(parts) >= 2:
+                        lat = float(parts[0])
+                        lon = float(parts[1])
+                except Exception as ex:
+                    logger.error(f"Error parsing survey_start_gps {gps_str}: {str(ex)}")
+
+        # Point in polygon check
+        if lat is not None and lon is not None:
             try:
-                parts = gps_str.split()
-                if len(parts) >= 2:
-                    lat = float(parts[0])
-                    lon = float(parts[1])
-                    # Point in polygon check
-                    point = Point(lon, lat)
-                    matched = gdf[gdf.geometry.contains(point)]
-                    if not matched.empty:
-                        administration_id = matched.iloc[0][
-                            "administration_id"
-                        ]
+                point = Point(lon, lat)
+                matched = gdf[gdf.geometry.contains(point)]
+                if not matched.empty:
+                    administration_id = matched.iloc[0][
+                        "administration_id"
+                    ]
             except Exception as ex:
-                logger.error(f"Error parsing GPS {gps_str}: {str(ex)}")
+                logger.error(f"Error checking point-in-polygon for ({lat}, {lon}): {str(ex)}")
 
         # Get or create KoboData
         sub_time_str = res.get("_submission_time", "")
@@ -202,25 +238,37 @@ class Command(BaseCommand):
         # Map Indicators and values
         # Scan common indicator group keys B1 and C1
         indicator_fields = [
-            "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho",
-            "group_mq8ds86/C1_Which_of_the_fol_lotivile_kulendzawo",
+            (
+                "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho",
+                "B",
+            ),
+            (
+                "group_mq8ds86/C1_Which_of_the_fol_lotivile_kulendzawo",
+                "C",
+            ),
         ]
 
         # If administration_id was matched, store mapped IKS values
         if administration_id:
             try:
                 admin_obj = Administration.objects.get(pk=administration_id)
-                for field_name in indicator_fields:
+                for field_name, section in indicator_fields:
                     answers = res.get(field_name, "")
                     if answers:
                         # Answers is a space separated string
                         # of selected indicators
                         for choice in answers.split():
-                            indicator, _ = (
+                            indicator, created = (
                                 IKSIndicator.objects.get_or_create(
-                                    kobo_form=form, name=choice
+                                    kobo_form=form,
+                                    name=choice,
+                                    defaults={"section": section},
                                 )
                             )
+                            # Backfill section on pre-existing rows
+                            if not created and not indicator.section:
+                                indicator.section = section
+                                indicator.save(update_fields=["section"])
                             # Create or update Value
                             IKSValue.objects.update_or_create(
                                 kobo_id=kobo_id,
@@ -230,6 +278,47 @@ class Command(BaseCommand):
                                     "value": "observed",
                                 },
                             )
+
+                # Process Section D1: Soil moisture
+                soil_field = (
+                    "group_bx6rt12/D1_How_is_the_soil_atsi_endzaweni_yakho"
+                )
+                soil_val = res.get(soil_field)
+                if soil_val:
+                    indicator, _ = IKSIndicator.objects.get_or_create(
+                        kobo_form=form,
+                        name="soil_moisture",
+                        defaults={"section": "D"},
+                    )
+                    IKSValue.objects.update_or_create(
+                        kobo_id=kobo_id,
+                        iks_indicator=indicator,
+                        defaults={
+                            "administration": admin_obj,
+                            "value": soil_val,
+                        },
+                    )
+
+                # Process Section D2: Vegetation greenness
+                veg_field = (
+                    "group_bx6rt12/D2_How_is_the_veget_ato_endzaweni_yakho"
+                )
+                veg_val = res.get(veg_field)
+                if veg_val:
+                    indicator, _ = IKSIndicator.objects.get_or_create(
+                        kobo_form=form,
+                        name="vegetation_greenness",
+                        defaults={"section": "D"},
+                    )
+                    IKSValue.objects.update_or_create(
+                        kobo_id=kobo_id,
+                        iks_indicator=indicator,
+                        defaults={
+                            "administration": admin_obj,
+                            "value": veg_val,
+                        },
+                    )
+
             except Administration.DoesNotExist:
                 logger.warning(
                     f"Administration with ID {administration_id} not found in database."  # noqa
@@ -257,6 +346,8 @@ class Command(BaseCommand):
                     download_attachment,
                     download_url,
                     save_path,
+                    username=adapter.username,
+                    password=adapter.password,
                     group=f"iks-image-{kobo_id}",
                     hook="api.v1.v1_jobs.job.job_done_hook",  # noqa
                 )

@@ -8,6 +8,11 @@ class IKSStatsSerializer(serializers.Serializer):
     validation_rate_percentage = serializers.FloatField()
     average_validation_time_days = serializers.FloatField()
     form_completion_percentage = serializers.FloatField()
+    zone = serializers.CharField(required=False, allow_null=True)
+    indicator_activity = serializers.DictField(required=False)
+    # Validated CDI drought category from the latest published publication for
+    # this administration. Null when no published publication covers it yet.
+    cdi_d_class = serializers.IntegerField(required=False, allow_null=True)
 
 
 class IKSSeriesItemSerializer(serializers.Serializer):
@@ -22,6 +27,13 @@ class IKSSeriesSerializer(serializers.Serializer):
     series = IKSSeriesItemSerializer(many=True)
 
 
+class IKSBulkSeriesSerializer(serializers.Serializer):
+    months = serializers.ListField(child=serializers.CharField())
+    indicators = serializers.DictField(
+        child=serializers.ListField(child=serializers.BooleanField())
+    )
+
+
 class IKSIndicatorSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
@@ -34,10 +46,18 @@ class IKSNetSignalAggregationSerializer(serializers.Serializer):
     )
 
 
+class IndicatorCountItemSerializer(serializers.Serializer):
+    indicator = serializers.IntegerField()
+    submission_count = serializers.IntegerField()
+
+
 class IKSIndicatorCountsAggregationSerializer(serializers.Serializer):
     radar_labels = serializers.ListField(child=serializers.CharField())
     radar = serializers.DictField(
         child=serializers.ListField(child=serializers.FloatField())
+    )
+    data = IndicatorCountItemSerializer(
+        many=True, required=False, default=list
     )
 
 
@@ -59,3 +79,32 @@ class IKSHeatmapAggregationSerializer(serializers.Serializer):
     heatmap = serializers.ListField(
         child=serializers.ListField(child=serializers.IntegerField())
     )
+
+
+class IKSSoilTrendAggregationSerializer(serializers.Serializer):
+    weeks = serializers.ListField(child=serializers.CharField())
+    soil_trend = serializers.DictField(
+        child=serializers.ListField(child=serializers.FloatField())
+    )
+    veg_trend = serializers.DictField(
+        child=serializers.ListField(child=serializers.FloatField()),
+        required=False,
+    )
+    region_map = serializers.DictField(child=serializers.CharField())
+
+
+class IKSAdministrationSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    region = serializers.CharField(required=False, allow_null=True)
+    zone = serializers.CharField(required=False, allow_null=True)
+
+
+class IKSPhotoItemSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    date = serializers.CharField()
+    url = serializers.CharField()
+
+
+class IKSPhotosSerializer(serializers.Serializer):
+    photos = IKSPhotoItemSerializer(many=True)

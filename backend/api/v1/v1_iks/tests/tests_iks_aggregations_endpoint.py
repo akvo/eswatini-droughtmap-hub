@@ -135,3 +135,16 @@ class IKSAggregationsEndpointTests(BaseIKSTestCase):
         idx = constituencies.index(self.admin_area.name)
         # Check that the heatmap row for self.admin_area contains the count
         self.assertEqual(response.json()["heatmap"][idx][0], 1)
+
+    def test_iks_aggregations_anonymous_allowed(self):
+        """Test that unauthenticated requests are allowed for aggregations."""
+        self.client.force_authenticate(user=None)
+        endpoints = [
+            "net-signal",
+            "indicator-counts",
+            "agreement",
+            "heatmap",
+        ]
+        for endpoint in endpoints:
+            response = self.client.get(f"/api/v1/iks/aggregations/{endpoint}")
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
