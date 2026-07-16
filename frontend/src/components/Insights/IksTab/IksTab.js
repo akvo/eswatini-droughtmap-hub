@@ -10,7 +10,7 @@ import {
   Col,
   Button,
   Tag,
-  Table,
+  // Table,
   Empty,
   Checkbox,
   ConfigProvider,
@@ -30,7 +30,7 @@ import { formatMonthLabel } from "./IndicatorRow";
 import PredictorAccordion from "./PredictorAccordion";
 import { getRainfallPredictors, getSeasonalPredictors } from "./iksUtils";
 
-const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
+// const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
 
 const IksTab = ({
   selectedInkhundla = "Mhlangatane",
@@ -682,7 +682,7 @@ const IksTab = ({
         </div>
 
         {/* Indicator Catalogue Table - spec UAC */}
-        <div className="border-t border-neutral-100 px-4 py-6">
+        {/* <div className="border-t border-neutral-100 px-4 py-6">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-neutral-800">
               Indicator catalogue
@@ -704,10 +704,10 @@ const IksTab = ({
               scroll={{ x: 600 }}
             />
           )}
-        </div>
+        </div> */}
 
         {/* Inkhundla x Week Heatmap - spec UAC (non-blocking via dynamic import) */}
-        <div className="border-t border-neutral-100 px-4 py-6">
+        {/* <div className="border-t border-neutral-100 px-4 py-6">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-neutral-800">
               Inkhundla x week submission heatmap
@@ -717,7 +717,7 @@ const IksTab = ({
             </p>
           </div>
           <IksHeatmap data={heatmapData} />
-        </div>
+        </div> */}
       </div>
     </div>
   );
