@@ -158,25 +158,54 @@ class Command(BaseCommand):
         if not kobo_id:
             return None
 
-        # Parse geolocation
-        gps_str = res.get("survey_start_gps", "")
+        # Parse geolocation with priority:
+        # 1. _geolocation (array: [lat, lon])
+        # 2. start-geopoint (string: "lat lon altitude accuracy")
+        # 3. survey_start_gps (string: "lat lon ...")
         lat, lon = None, None
         administration_id = None
-        if gps_str:
+
+        # Priority 1: _geolocation array
+        geolocation = res.get("_geolocation")
+        if geolocation and isinstance(geolocation, list) and len(geolocation) >= 2:
+            lat = geolocation[0]
+            lon = geolocation[1]
+
+        # Priority 2: start-geopoint string
+        if lat is None or lon is None:
+            geopoint_str = res.get("start-geopoint", "")
+            if geopoint_str:
+                try:
+                    parts = geopoint_str.split()
+                    if len(parts) >= 2:
+                        lat = float(parts[0])
+                        lon = float(parts[1])
+                except Exception as ex:
+                    logger.error(f"Error parsing start-geopoint {geopoint_str}: {str(ex)}")
+
+        # Priority 3: survey_start_gps string
+        if lat is None or lon is None:
+            gps_str = res.get("survey_start_gps", "")
+            if gps_str:
+                try:
+                    parts = gps_str.split()
+                    if len(parts) >= 2:
+                        lat = float(parts[0])
+                        lon = float(parts[1])
+                except Exception as ex:
+                    logger.error(f"Error parsing survey_start_gps {gps_str}: {str(ex)}")
+
+        # Point in polygon check
+        if lat is not None and lon is not None:
             try:
-                parts = gps_str.split()
-                if len(parts) >= 2:
-                    lat = float(parts[0])
-                    lon = float(parts[1])
-                    # Point in polygon check
-                    point = Point(lon, lat)
-                    matched = gdf[gdf.geometry.contains(point)]
-                    if not matched.empty:
-                        administration_id = matched.iloc[0][
-                            "administration_id"
-                        ]
+                point = Point(lon, lat)
+                matched = gdf[gdf.geometry.contains(point)]
+                if not matched.empty:
+                    administration_id = matched.iloc[0][
+                        "administration_id"
+                    ]
             except Exception as ex:
-                logger.error(f"Error parsing GPS {gps_str}: {str(ex)}")
+                logger.error(f"Error checking point-in-polygon for ({lat}, {lon}): {str(ex)}")
 
         # Get or create KoboData
         sub_time_str = res.get("_submission_time", "")
