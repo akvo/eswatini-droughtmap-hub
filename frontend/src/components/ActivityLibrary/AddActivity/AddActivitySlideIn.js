@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, message } from "antd";
 import { api } from "@/lib/api";
 import { useUserContext } from "@/context/UserContextProvider";
@@ -9,7 +9,12 @@ import Step3Ownership from "./Step3Ownership";
 import Step4Signoff from "./Step4Signoff";
 import Can from "@/components/Can";
 
-export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
+export default function AddActivitySlideIn({
+  visible,
+  onClose,
+  onSuccess,
+  editActivity,
+}) {
   const userContext = useUserContext();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +38,53 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
     source_file: null,
     notes: "",
   });
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (visible) {
+      if (editActivity) {
+        setFormData({
+          sector: editActivity.sector,
+          protocol_id: editActivity.code || "",
+          title: editActivity.title || "",
+          description: editActivity.description || "",
+          triggers: editActivity.triggers || {
+            dclass: null,
+            vuln: null,
+            exp: [],
+            other: null,
+          },
+          owner: editActivity.owner || "",
+          coord_with: editActivity.coord_with || "",
+          response_type: editActivity.response_type || null,
+          source_doc: editActivity.source_doc || "",
+          source_file: null, // Only populated if user uploads a new file
+          notes: editActivity.notes || "",
+        });
+      } else {
+        setFormData({
+          sector: null,
+          protocol_id: "",
+          title: "",
+          description: "",
+          triggers: {
+            dclass: null,
+            vuln: null,
+            exp: [],
+            other: null,
+          },
+          owner: "",
+          coord_with: "",
+          response_type: null,
+          source_doc: "",
+          source_file: null,
+          notes: "",
+        });
+      }
+      setCurrentStep(1);
+      setErrors({});
+    }
+  }, [editActivity, visible]);
 
   if (!visible) return null;
 
@@ -76,12 +128,15 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
       const fd = new FormData();
       fd.append("sector", formData.sector || "");
       fd.append("title", formData.title || "");
-      fd.append("status", statusVal);
+
+      // If we are updating an existing activity, we don't change the status
+      // unless transitioned. So we keep statusVal or pass the current one.
+      const targetStatus = editActivity ? editActivity.status : statusVal;
+      fd.append("status", targetStatus);
 
       if (formData.description) fd.append("description", formData.description);
 
-      // Serialize triggers to JSON string; the wizard only writes
-      // backend-valid keys, so no transformation is needed.
+      // Serialize triggers to JSON string
       fd.append("triggers", JSON.stringify(formData.triggers));
 
       if (formData.owner) fd.append("owner", formData.owner);
@@ -91,12 +146,16 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
       if (formData.source_doc) fd.append("source_doc", formData.source_doc);
       if (formData.source_file) fd.append("source_file", formData.source_file);
 
-      // Call API
-      const res = await api("POST", "/activities", fd);
+      // Call API (PUT if editActivity is defined)
+      const url = editActivity ? `/activity/${editActivity.id}` : "/activities";
+      const method = editActivity ? "PUT" : "POST";
+      const res = await api(method, url, fd);
+
       if (res && res.id) {
         let warningSubtitle = "";
-        // If status is Publish (2), call transition API to transition draft to active
-        if (statusVal === ACTIVITY_STATUS.active) {
+
+        // If not edit and status is Publish (2), call transition API
+        if (!editActivity && statusVal === ACTIVITY_STATUS.active) {
           try {
             await api("POST", `/activity/${res.id}/transition`, {
               to_status: ACTIVITY_STATUS.active,
@@ -106,36 +165,16 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
               "Could not transition activity automatically:",
               transErr,
             );
-            // Non-blocking warning: pass subtitle message to modal
             warningSubtitle =
               "Activity created as Draft. Only Admins can publish directly.";
           }
         }
 
-        // Reset state
+        // Reset state and call onSuccess
         setCurrentStep(1);
-        setFormData({
-          sector: null,
-          protocol_id: "",
-          title: "",
-          description: "",
-          triggers: {
-            dclass: null,
-            vuln: null,
-            exp: [],
-            other: null,
-          },
-          owner: "",
-          coord_with: "",
-          response_type: null,
-          source_doc: "",
-          source_file: null,
-          notes: "",
-        });
         setErrors({});
         onSuccess(warningSubtitle);
       } else {
-        // Fallback for API error messages
         const errMsg = res?.message || "Failed to submit response activity";
         message.error(errMsg);
       }
@@ -177,7 +216,9 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
         {/* Sticky Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 sticky top-0 bg-white z-10">
           <span className="text-base font-semibold text-neutral-800">
-            Add new response activity
+            {editActivity
+              ? "Edit response activity"
+              : "Add new response activity"}
           </span>
           <button
             onClick={onClose}

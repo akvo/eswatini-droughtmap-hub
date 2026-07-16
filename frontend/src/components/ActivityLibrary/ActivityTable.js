@@ -2,7 +2,7 @@ import React from "react";
 import { Table, Tag, Button } from "antd";
 import ActivityStatusTag from "./ActivityStatusTag";
 
-const SECTOR_TAG_COLORS = {
+export const SECTOR_TAG_COLORS = {
   1: "green",
   2: "red",
   3: "blue",
@@ -13,7 +13,7 @@ const SECTOR_TAG_COLORS = {
   8: "geekblue",
 };
 
-const SECTOR_ICONS = {
+export const SECTOR_ICONS = {
   1: (
     <svg
       className="w-3.5 h-3.5 inline mr-1 -mt-0.5"

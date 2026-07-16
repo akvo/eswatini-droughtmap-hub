@@ -9,6 +9,7 @@ import ActivityMetricCards from "./ActivityMetricCards";
 import ActivityTableFilters from "./ActivityTableFilters";
 import ActivityTable from "./ActivityTable";
 import AddActivitySlideIn from "./AddActivity/AddActivitySlideIn";
+import ActivityDetailSlideIn from "./ActivityDetailSlideIn";
 import ActivityAddedModal from "../Modals/ActivityAddedModal";
 import Can from "@/components/Can";
 import { ACTIVITY_STATUS } from "@/static/config";
@@ -58,11 +59,18 @@ export default function ActivityLibraryPage() {
   const handleSuccess = (subtitleText = "") => {
     setSuccessSubtitle(subtitleText || "");
     setShowSlideIn(false);
+    setEditActivity(null);
     setShowSuccessModal(true);
     // Auto close modal after 4 seconds
     setTimeout(() => {
       handleModalClose();
     }, 4000);
+  };
+
+  const handleEdit = (activityToEdit) => {
+    setEditActivity(activityToEdit);
+    setShowDetailSlideIn(false);
+    setShowSlideIn(true);
   };
 
   const handleModalClose = () => {
@@ -214,8 +222,12 @@ export default function ActivityLibraryPage() {
       {/* Slide-In Wizard */}
       <AddActivitySlideIn
         visible={showSlideIn}
-        onClose={() => setShowSlideIn(false)}
+        onClose={() => {
+          setShowSlideIn(false);
+          setEditActivity(null);
+        }}
         onSuccess={handleSuccess}
+        editActivity={editActivity}
       />
 
       {/* Success Modal */}
@@ -223,6 +235,17 @@ export default function ActivityLibraryPage() {
         open={showSuccessModal}
         onClose={handleModalClose}
         subtitle={successSubtitle}
+      />
+
+      {/* Detail Slide-In */}
+      <ActivityDetailSlideIn
+        activityId={selectedActivityId}
+        onClose={() => {
+          setSelectedActivityId(null);
+          setShowDetailSlideIn(false);
+        }}
+        onEdit={handleEdit}
+        onRefresh={() => setRefreshKey((prev) => prev + 1)}
       />
     </div>
   );

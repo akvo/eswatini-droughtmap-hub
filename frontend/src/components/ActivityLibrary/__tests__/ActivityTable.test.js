@@ -44,4 +44,22 @@ describe("ActivityTable Component", () => {
     expect(screen.getByText("26/05/2026")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
+
+  it("calls onRowClick when a row is clicked", () => {
+    const handleRowClick = jest.fn();
+    render(
+      <ActivityTable
+        activities={mockActivities}
+        total={1}
+        page={1}
+        onRowClick={handleRowClick}
+      />,
+    );
+
+    const cell = screen.getByText("Borehole reinforcement");
+    cell.closest("tr").click();
+
+    expect(handleRowClick).toHaveBeenCalledTimes(1);
+    expect(handleRowClick).toHaveBeenCalledWith(mockActivities[0]);
+  });
 });
