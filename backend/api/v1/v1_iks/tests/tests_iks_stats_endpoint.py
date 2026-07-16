@@ -1,7 +1,12 @@
-from datetime import datetime
+from datetime import datetime, date
 from django.utils import timezone
 from rest_framework import status
 from api.v1.v1_iks.models import KoboData, IKSIndicator, IKSValue
+from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.constants import (
+    PublicationStatus,
+    DroughtCategory,
+)
 from .base import BaseIKSTestCase
 
 
@@ -152,3 +157,40 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
         # The last month (index 11) should have 1 count for each
         self.assertEqual(activity["rain_leaning"][-1], 1)
         self.assertEqual(activity["extreme_weather"][-1], 1)
+
+    def _make_publication(self, cdi_geonode_id, pub_status, category):
+        return Publication.objects.create(
+            year_month=date(2026, 4, 1),
+            cdi_geonode_id=cdi_geonode_id,
+            initial_values=[
+                {"administration_id": self.admin_area.id, "category": category}
+            ],
+            validated_values=[
+                {"administration_id": self.admin_area.id, "category": category}
+            ],
+            due_date=date(2026, 4, 15),
+            status=pub_status,
+        )
+
+    def test_cdi_d_class_from_published_publication(self):
+        """stats.cdi_d_class reflects the latest published publication's
+        validated category for this administration."""
+        self._make_publication(
+            9001, PublicationStatus.published, DroughtCategory.d3
+        )
+
+        response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["cdi_d_class"], DroughtCategory.d3)
+
+    def test_cdi_d_class_null_without_published_publication(self):
+        """Edge case: IKS data exists but no *published* publication covers
+        this administration — cdi_d_class must be null, not fabricated."""
+        # An unpublished publication must be ignored.
+        self._make_publication(
+            9002, PublicationStatus.in_review, DroughtCategory.d3
+        )
+
+        response = self.client.get(f"/api/v1/iks/{self.admin_area.id}/stats")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.json()["cdi_d_class"])

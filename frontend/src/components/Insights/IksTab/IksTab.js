@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Spin,
@@ -10,15 +9,17 @@ import {
   Col,
   Button,
   Tag,
-  Table,
+  // Table,
   Empty,
   Checkbox,
   ConfigProvider,
+  Image,
 } from "antd";
 import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
 import {
   IKS_INDICATOR_CATALOGUE,
+  DROUGHT_CATEGORY_CODE,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_VALUE,
@@ -29,7 +30,7 @@ import { formatMonthLabel } from "./IndicatorRow";
 import PredictorAccordion from "./PredictorAccordion";
 import { getRainfallPredictors, getSeasonalPredictors } from "./iksUtils";
 
-const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
+// const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
 
 const IksTab = ({
   selectedInkhundla = "Mhlangatane",
@@ -193,21 +194,23 @@ const IksTab = ({
   const validationRate = stats.validation_rate_percentage || 0;
   const validationTime = stats.average_validation_time_days || 0;
   const completionRate = stats.form_completion_percentage || 0;
+  // Validated CDI drought category from /stats (latest published publication).
+  // Null when no published publication covers this inkhundla yet — even though
+  // IKS data exists — so we fall back to the "No data" category.
   const droughtCategoryVal =
-    stats.total_months_drought >= 8
-      ? DROUGHT_CATEGORY_VALUE.d3
-      : stats.total_months_drought >= 4
-        ? DROUGHT_CATEGORY_VALUE.d2
-        : DROUGHT_CATEGORY_VALUE.d1;
+    stats.cdi_d_class != null ? stats.cdi_d_class : DROUGHT_CATEGORY_VALUE.none;
 
-  const droughtLevel = (dCategoryVal) =>
-    dCategoryVal === DROUGHT_CATEGORY_VALUE.d3
-      ? "D3"
-      : dCategoryVal === DROUGHT_CATEGORY_VALUE.d2
-        ? "D2"
-        : "D1";
+  const isNoData = droughtCategoryVal === DROUGHT_CATEGORY_VALUE.none;
+  // Short code for the fixed-width badge box. "No data" won't fit, so use N/A.
+  const droughtCode = isNoData
+    ? "N/A"
+    : DROUGHT_CATEGORY_CODE[droughtCategoryVal];
 
-  const droughtBadgeColor = DROUGHT_CATEGORY_COLOR[droughtCategoryVal];
+  // none's config color is white — invisible against the white glyph — so give
+  // the No-data badge a visible grey fill.
+  const droughtBadgeColor = isNoData
+    ? "#9ca3af"
+    : DROUGHT_CATEGORY_COLOR[droughtCategoryVal];
   const droughtLabelText = DROUGHT_CATEGORY_LABEL[droughtCategoryVal];
   const droughtBadgeTextColor =
     droughtCategoryVal === DROUGHT_CATEGORY_VALUE.d1 ? "#7c5a00" : "#ffffff";
@@ -444,7 +447,7 @@ const IksTab = ({
               className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
             >
               <p className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center text-white whitespace-nowrap mb-0">
-                {droughtLevel(droughtCategoryVal)}
+                {droughtCode}
               </p>
             </div>
             {/* Label block */}
@@ -603,41 +606,53 @@ const IksTab = ({
                 {photos.length} photos found
               </p>
             </div>
-            <Button
-              type="default"
-              className="text-neutral-600 font-semibold border-neutral-200"
-            >
-              Add photo
-            </Button>
           </div>
           {photos.length === 0 ? (
             <Empty description="No photos submitted" />
           ) : (
             <>
-              <Row gutter={[16, 16]}>
-                {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
-                  <Col xs={24} sm={8} key={i}>
-                    <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
-                      <Image
-                        src={photo.url}
-                        alt={photo.title || "Observation Photo"}
-                        fill
-                        unoptimized
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4">
-                        <span className="text-white text-xs font-bold">
-                          {photo.title || "Observation Photo"}
-                        </span>
-                        <span className="text-neutral-300 text-[10px] mt-1">
-                          {photo.date || "Unknown Date"}
-                        </span>
+              <Image.PreviewGroup>
+                <Row gutter={[16, 16]}>
+                  {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
+                    <Col xs={24} sm={8} key={i}>
+                      <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
+                        <Image
+                          src={photo.url}
+                          alt={photo.title || "Observation Photo"}
+                          className="!w-full !h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          preview={{
+                            mask: (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg
+                                  className="w-8 h-8 text-white"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                                  />
+                                </svg>
+                              </div>
+                            ),
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-4 pointer-events-none">
+                          <span className="text-white text-xs font-bold">
+                            {photo.title || "Observation Photo"}
+                          </span>
+                          <span className="text-neutral-300 text-[10px] mt-1">
+                            {photo.date || "Unknown Date"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Col>
-                ))}
-              </Row>
+                    </Col>
+                  ))}
+                </Row>
+              </Image.PreviewGroup>
               <div className="flex items-center gap-2 mt-4">
                 <Button
                   onClick={handlePrev}
@@ -685,7 +700,7 @@ const IksTab = ({
         </div>
 
         {/* Indicator Catalogue Table - spec UAC */}
-        <div className="border-t border-neutral-100 px-4 py-6">
+        {/* <div className="border-t border-neutral-100 px-4 py-6">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-neutral-800">
               Indicator catalogue
@@ -707,10 +722,10 @@ const IksTab = ({
               scroll={{ x: 600 }}
             />
           )}
-        </div>
+        </div> */}
 
         {/* Inkhundla x Week Heatmap - spec UAC (non-blocking via dynamic import) */}
-        <div className="border-t border-neutral-100 px-4 py-6">
+        {/* <div className="border-t border-neutral-100 px-4 py-6">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-neutral-800">
               Inkhundla x week submission heatmap
@@ -720,7 +735,7 @@ const IksTab = ({
             </p>
           </div>
           <IksHeatmap data={heatmapData} />
-        </div>
+        </div> */}
       </div>
     </div>
   );
