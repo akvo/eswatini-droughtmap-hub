@@ -9,7 +9,7 @@ Both files are 12-band **climatology**: band N = the normal for month N
 
 | File | Variable | Period | Resolution | Eswatini px | Provenance |
 |---|---|---|---|---|---|
-| `ESW_CHIRPS_precip_mm_1991-2020.tif` | precipitation (mm) | 1991-2020 | **0.05°** (CHIRPS native) | 30 x 50 | rebuilt by `build_chirps_normals.py` (see below) |
+| `ESW_CHIRPS_precip_mm_1991-2020.tif` | precipitation (mm) | 1991-2020 | **0.05°** (CHIRPS native) | 30 x 50 | rebuilt by `manage.py build_chirps_normals` (see below) |
 | `ESW_AgERA5_tmean_c_1990-2020.tif` | mean temperature (°C) | 1990-2020 | 0.1° (AgERA5 native) | 15 x 18 | **unknown** — arrived without metadata tags |
 
 ## Why the CHIRPS file was rebuilt
@@ -17,8 +17,8 @@ Both files are 12-band **climatology**: band N = the normal for month N
 The original committed file was **0.25°** — pre-aggregated 5x from CHIRPS native,
 giving Eswatini only 6 x 10 pixels. At that grid **34 of 59 Tinkhundla contained no
 pixel centre**, so centre-based zonal masking returned null for 58 % of them,
-silently. `build_chirps_normals.py` re-derives the same climatology from CHIRPS
-`africa_monthly` at native 0.05° — 25x more pixels, 5-46 per Inkhundla.
+silently. `manage.py build_chirps_normals` re-derives the same climatology from
+CHIRPS `africa_monthly` at native 0.05° — 25x more pixels, 5-46 per Inkhundla.
 
 Cross-check that the rebuild reproduces the original's definition: the January
 country-wide mean is **133.0 mm** at 0.05° vs **132.98 mm** in the original 0.25°
@@ -27,9 +27,13 @@ file — the same climatology, with the min/max spread widening (50.6-309.9 vs
 
 ## Regenerating precipitation
 
+This directory holds data only — the rebuild lives with the app code, as
+`api/v1/v1_weather/management/commands/build_chirps_normals.py`, and writes back
+to the filename `constants.NORMALS_RASTERS` already owns.
+
 ```bash
 # ~1.6 GB transferred (360 monthly rasters), writes a 65 KB output. ~5 min.
-docker compose exec backend python source/30years/build_chirps_normals.py
+docker compose exec backend python manage.py build_chirps_normals
 docker compose exec backend python manage.py extract_weather_normals --parameter precipitation
 ```
 

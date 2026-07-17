@@ -43,7 +43,7 @@ Goal:
   (`v1_jobs/job.py::generate_initial_cdi_values`, which masks with rasterio defaults =
   pixel-**centre**-in-polygon) would silently return null normals for **58 % of Tinkhundla**.
 - **Resolved (OQ-3)**: the file was rebuilt from CHIRPS `africa_monthly` at native 0.05°
-  (`backend/source/30years/build_chirps_normals.py`), which removes the acute failure and
+  (`manage.py build_chirps_normals`), which removes the acute failure and
   makes per-Inkhundla normals genuinely resolved. Validation that the rebuild reproduces
   the original definition: January country-wide mean **133.0 mm** vs the original's
   **132.98 mm**, with min/max widening (50.6–309.9 vs 82.4–220.5) as expected at 5x finer
@@ -248,11 +248,12 @@ imply a cadence that does not exist.
 | # | Task | Location |
 |---|------|----------|
 | N1 | `AdministrationNormal` model + migration + admin | `models.py`, `migrations/0003_*`, `admin.py` |
-| N2 | Extraction (`all_touched=True` zonal mean over 12 bands) | `normals.py` |
+| N2 | Extraction (`all_touched=True` zonal mean over 12 bands) | `utils.py` |
 | N3 | `extract_weather_normals` command (idempotent upsert, coverage report, `--dry-run`) | `management/commands/` |
 | N4 | `administration_normals()` service + `AdministrationNormalsAPI` + url | `services.py`, `views.py`, `urls.py` |
 | N5 | Tests | `tests/tests_normals.py` |
 | N6 | Frontend: fetch `/normals`, drop the two normals mocks, drop the Tmax/Tmin 30-yr checkboxes | `WeatherTab/`, `hooks/` |
+| N7 | `build_chirps_normals` command — rebuild the raster at native 0.05° (OQ-3); writes to the filename `constants.NORMALS_RASTERS` owns | `management/commands/` |
 
 ---
 
@@ -268,7 +269,7 @@ imply a cadence that does not exist.
 - [x] ~~OQ-3: is the 0.25° grid intentional?~~ **RESOLVED 2026-07-17: no — it was pre-aggregated,
       and it has been rebuilt at native 0.05°.** CHIRPS v2.0 `africa_monthly` publishes 0.05°
       natively; the delivered file was 5x coarser. Rebuilt via
-      `backend/source/30years/build_chirps_normals.py` (360 monthly rasters → 12-band climatology),
+      `manage.py build_chirps_normals` (360 monthly rasters → 12-band climatology),
       giving 25x the pixels. As predicted, **no application code changed** — same filename, same
       band names; only `extract_weather_normals` was re-run. Validation: January country-wide mean
       133.0 mm vs the original's 132.98 mm.
