@@ -58,15 +58,15 @@ class IKSSoilTrendAggregationEndpointTests(BaseIKSTestCase):
 
         response = self.client.get("/api/v1/iks/aggregations/soil-trend")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # May 2026 → index 9 in the 12-month window
-        self.assertEqual(response.json()["soil_trend"]["dry"][9], 100.0)
-        self.assertEqual(response.json()["soil_trend"]["moist"][9], 0.0)
-        self.assertEqual(response.json()["soil_trend"]["wet"][9], 0.0)
+        body = response.json()
+        i = self.month_idx(body, datetime(2026, 5, 10))
+        self.assertEqual(body["soil_trend"]["dry"][i], 100.0)
+        self.assertEqual(body["soil_trend"]["moist"][i], 0.0)
+        self.assertEqual(body["soil_trend"]["wet"][i], 0.0)
 
-        # Should populate green percentage at index 9
-        self.assertEqual(response.json()["veg_trend"]["green"][9], 100.0)
-        self.assertEqual(response.json()["veg_trend"]["some"][9], 0.0)
-        self.assertEqual(response.json()["veg_trend"]["brown"][9], 0.0)
+        self.assertEqual(body["veg_trend"]["green"][i], 100.0)
+        self.assertEqual(body["veg_trend"]["some"][i], 0.0)
+        self.assertEqual(body["veg_trend"]["brown"][i], 0.0)
 
     def _veg_bucket_for(self, slug, kobo_id):
         """Post one vegetation answer and return its veg_trend split."""
@@ -92,11 +92,9 @@ class IKSSoilTrendAggregationEndpointTests(BaseIKSTestCase):
         )
         response = self.client.get("/api/v1/iks/aggregations/soil-trend")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Day 10 of May → week index 1
-        return {
-            k: response.json()["veg_trend"][k][1]
-            for k in ("green", "some", "brown")
-        }
+        body = response.json()
+        i = self.month_idx(body, datetime(2026, 5, 10))
+        return {k: body["veg_trend"][k][i] for k in ("green", "some", "brown")}
 
     def test_real_kobo_some_green_slug_is_not_counted_as_green(self):
         """The live 'some' slug ends in '_green', so the bare 'green' branch
@@ -147,10 +145,10 @@ class IKSSoilTrendAggregationEndpointTests(BaseIKSTestCase):
                 value=slug,
             )
 
-        soil = self.client.get(
-            "/api/v1/iks/aggregations/soil-trend"
-        ).json()["soil_trend"]
+        body = self.client.get("/api/v1/iks/aggregations/soil-trend").json()
+        i = self.month_idx(body, datetime(2026, 5, 10))
+        soil = body["soil_trend"]
         # One answer each → an even three-way split, no bucket swallowed.
-        self.assertEqual(soil["dry"][1], 33.3)
-        self.assertEqual(soil["moist"][1], 33.3)
-        self.assertEqual(soil["wet"][1], 33.3)
+        self.assertEqual(soil["dry"][i], 33.3)
+        self.assertEqual(soil["moist"][i], 33.3)
+        self.assertEqual(soil["wet"][i], 33.3)

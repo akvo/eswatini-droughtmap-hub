@@ -108,7 +108,6 @@ class IKSExplorerScenarioTests(BaseIKSTestCase):
             kobo_form=self.form, name="test_soil"
         )
 
-        # June 16 -> month=6 day=16 -> week_idx = 5 + 16//8 = 7
         KoboData.objects.create(
             form=self.form,
             kobo_id=500,
@@ -123,7 +122,6 @@ class IKSExplorerScenarioTests(BaseIKSTestCase):
             value="ubutsile",
         )
 
-        # July 24 -> month=7 day=24 -> week_idx = 9 + 24//8 = 12
         KoboData.objects.create(
             form=self.form,
             kobo_id=600,
@@ -140,7 +138,9 @@ class IKSExplorerScenarioTests(BaseIKSTestCase):
 
         response = self.client.get("/api/v1/iks/aggregations/soil-trend")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Verify ubutsile (moist) is bucketed under June index 10
-        self.assertEqual(response.json()["soil_trend"]["moist"][10], 100.0)
-        # Verify umanti (wet) is bucketed under July index 11
-        self.assertEqual(response.json()["soil_trend"]["wet"][11], 100.0)
+        body = response.json()
+        june = self.month_idx(body, datetime(2026, 6, 16))
+        july = self.month_idx(body, datetime(2026, 7, 24))
+        # Each month buckets on its own, with no bleed into its neighbour.
+        self.assertEqual(body["soil_trend"]["moist"][june], 100.0)
+        self.assertEqual(body["soil_trend"]["wet"][july], 100.0)
