@@ -37,6 +37,8 @@ from api.v1.v1_iks.serializers import (
     IKSAdministrationSerializer,
     IKSPhotosSerializer,
 )
+from dateutil.relativedelta import relativedelta
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -680,13 +682,14 @@ class IKSSoilTrendAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        from dateutil.relativedelta import relativedelta
-        from django.utils import timezone
-
         now = timezone.now()
         months_list = [
             now - relativedelta(months=i) for i in range(11, -1, -1)
         ]
+        weeks = [m.strftime("%b %Y") for m in months_list]
+        month_to_idx = {
+            (m.year, m.month): idx for idx, m in enumerate(months_list)
+        }
         # A week only gets a percentage if submissions landed in it. Weeks
         # with none stay 0/0/0, which the client renders as "no submission" —
         # never a prototype figure standing in for missing data.
