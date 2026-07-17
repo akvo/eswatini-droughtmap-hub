@@ -1,4 +1,5 @@
 from django.test import TestCase, override_settings
+from api.v1.v1_users.models import SystemUser
 from api.v1.v1_activity.models import ResponseActivity, ActivityHistory
 from api.v1.v1_activity.constants import ActivityStatus, ActivitySector
 from api.v1.v1_activity.serializers import (
@@ -10,6 +11,9 @@ from api.v1.v1_activity.serializers import (
 @override_settings(USE_TZ=False, TEST_ENV=True)
 class DetailSerializerTestCase(TestCase):
     def setUp(self):
+        self.user = SystemUser.objects.create(
+            email="test@example.com", name="Test User", role=1
+        )
         self.activity = ResponseActivity.objects.create(
             code="ACT-WASH-1",
             title="Tanker dispatch",
@@ -36,6 +40,13 @@ class DetailSerializerTestCase(TestCase):
             "D2+ for 4 mo · IPC >= Phase 2 · population >= 2000",
         )
         self.assertEqual(data["history"][0]["action_label"], "Created draft")
+        self.assertIsNone(data["activated_by_name"])
+
+    def test_detail_has_activated_by_name_when_set(self):
+        self.activity.activated_by = self.user
+        self.activity.save()
+        data = ActivityDetailSerializer(self.activity).data
+        self.assertEqual(data["activated_by_name"], "Test User")
 
     def test_list_is_light(self):
         data = ActivityListSerializer(self.activity).data

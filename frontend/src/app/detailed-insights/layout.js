@@ -80,9 +80,15 @@ const InsightsShell = ({ children }) => {
           const parts = lastWeek.split(" ");
           if (parts.length === 2) {
             const monthName = monthMap[parts[0]] || parts[0];
-            const day = parseInt(parts[1], 10);
-            const currentYear = new Date().getFullYear();
-            setLastUpdatedDate(`${day} ${monthName} ${currentYear}`);
+            const val = parseInt(parts[1], 10);
+            if (val > 1000) {
+              // It's a year
+              setLastUpdatedDate(`${monthName} ${val}`);
+            } else {
+              // It's a day of the month
+              const currentYear = new Date().getFullYear();
+              setLastUpdatedDate(`${val} ${monthName} ${currentYear}`);
+            }
           }
         }
       } catch (err) {
