@@ -140,7 +140,7 @@ class IKSExplorerScenarioTests(BaseIKSTestCase):
 
         response = self.client.get("/api/v1/iks/aggregations/soil-trend")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Verify ubutsile (moist) is bucketed under week index 7
-        self.assertEqual(response.json()["soil_trend"]["moist"][7], 100.0)
-        # Verify umanti (wet) is bucketed under week index 12
-        self.assertEqual(response.json()["soil_trend"]["wet"][12], 100.0)
+        # Verify ubutsile (moist) is bucketed under June index 10
+        self.assertEqual(response.json()["soil_trend"]["moist"][10], 100.0)
+        # Verify umanti (wet) is bucketed under July index 11
+        self.assertEqual(response.json()["soil_trend"]["wet"][11], 100.0)
