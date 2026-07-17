@@ -477,7 +477,23 @@ class PublicationViewSet(viewsets.ModelViewSet):
     pagination_class = Pagination
 
     def get_queryset(self):
-        return Publication.objects.all().order_by("-due_date")
+        queryset = Publication.objects.all().order_by("-due_date")
+        params = self.request.query_params
+        status_filter = params.get("status")
+        if status_filter == FilterStatus.pending:
+            queryset = queryset.filter(
+                status=PublicationStatus.in_validation
+            )
+        elif status_filter == FilterStatus.completed:
+            queryset = queryset.filter(
+                status=PublicationStatus.published
+            )
+        elif status_filter and status_filter != FilterStatus.all:
+            try:
+                queryset = queryset.filter(status=int(status_filter))
+            except (ValueError, TypeError):
+                pass
+        return queryset
 
     def get_serializer_class(self):
         if self.action == "list":
