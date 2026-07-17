@@ -55,6 +55,7 @@ export default function Step1Identify({
           className="w-full"
           options={sectorOptions}
           status={errors.sector ? "error" : ""}
+          disabled={!!formData.protocol_id}
         />
         {errors.sector && (
           <span className="text-xs text-red-500">{errors.sector}</span>

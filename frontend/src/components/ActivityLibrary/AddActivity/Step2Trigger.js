@@ -3,6 +3,8 @@ import { Input, InputNumber, Button } from "antd";
 import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_VALUE,
+  ACTIVITY_INDICATORS,
+  DROUGHT_CATEGORY_LEVELS,
 } from "@/static/config";
 import { api } from "@/lib/api";
 
@@ -24,55 +26,10 @@ export default function Step2Trigger({ formData, setFormData }) {
     }
   };
 
-  const dClasses = ["None", "D0", "D1", "D2", "D3", "D4"];
+  const dClasses = DROUGHT_CATEGORY_LEVELS;
 
-  // `target` routes the row into the trigger payload: "exp" rows become
-  // triggers.exp[] conditions, "vuln" writes triggers.vuln = { op, value }.
-  // All thresholds are whole numbers (litres, counts, hectares, IPC phase);
-  // InputNumber precision={0} rejects decimals and commas at input time.
-  const indicators = [
-    {
-      key: "water",
-      target: "exp",
-      label: "Water demand indicator",
-      help: "Litres of water demand in the Inkhundla — whole number.",
-      placeholder: "e.g. 2500",
-      min: 0,
-    },
-    {
-      key: "susceptibility",
-      target: "vuln",
-      label: "Susceptibility to drought threshold",
-      help: "Vulnerability condition — IPC food-security phase, whole number from 1 to 4.",
-      placeholder: "1-4",
-      min: 1,
-      max: 4,
-    },
-    {
-      key: "cattle",
-      target: "exp",
-      label: "Cattle count",
-      help: "Number of cattle exposed in the Inkhundla — whole number.",
-      placeholder: "e.g. 1500",
-      min: 0,
-    },
-    {
-      key: "cropland",
-      target: "exp",
-      label: "Land use share",
-      help: "Hectares of rain-fed cropland in the Inkhundla — whole number.",
-      placeholder: "e.g. 3000",
-      min: 0,
-    },
-    {
-      key: "population",
-      target: "exp",
-      label: "Population",
-      help: "Number of people exposed in the Inkhundla — whole number.",
-      placeholder: "e.g. 10000",
-      min: 0,
-    },
-  ];
+  // Use the shared indicator configuration
+  const indicators = ACTIVITY_INDICATORS;
 
   const handleDClassClick = (cls) => {
     const val = cls === "None" ? null : dClasses.indexOf(cls);

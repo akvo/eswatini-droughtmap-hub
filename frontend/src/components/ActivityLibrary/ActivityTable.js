@@ -2,7 +2,7 @@ import React from "react";
 import { Table, Tag, Button } from "antd";
 import ActivityStatusTag from "./ActivityStatusTag";
 
-const SECTOR_TAG_COLORS = {
+export const SECTOR_TAG_COLORS = {
   1: "green",
   2: "red",
   3: "blue",
@@ -13,7 +13,7 @@ const SECTOR_TAG_COLORS = {
   8: "geekblue",
 };
 
-const SECTOR_ICONS = {
+export const SECTOR_ICONS = {
   1: (
     <svg
       className="w-3.5 h-3.5 inline mr-1 -mt-0.5"
@@ -142,6 +142,7 @@ export default function ActivityTable({
   page = 1,
   total = 0,
   onPageChange,
+  onRowClick,
 }) {
   const columns = [
     {
@@ -201,8 +202,15 @@ export default function ActivityTable({
       title: "Actions",
       key: "actions",
       align: "right",
-      render: () => (
-        <Button type="link" className="edm-reviews-action">
+      render: (_, record) => (
+        <Button
+          type="link"
+          className="edm-reviews-action"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onRowClick) onRowClick(record);
+          }}
+        >
           View
         </Button>
       ),
@@ -226,6 +234,12 @@ export default function ActivityTable({
         position: ["bottomCenter"],
       }}
       className="edm-reviews-table"
+      onRow={(record) => ({
+        onClick: () => {
+          if (onRowClick) onRowClick(record);
+        },
+        style: { cursor: "pointer" },
+      })}
     />
   );
 }
