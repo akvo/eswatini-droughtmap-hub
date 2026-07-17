@@ -292,6 +292,59 @@ class DownloadIKSDataCommandTests(BaseIKSTestCase):
         self.form.refresh_from_db()
         self.assertEqual(self.form.last_sync_timestamp, january)
 
+    @patch("requests.get")
+    @patch("geopandas.read_file")
+    def test_reprocess_backfills_values_from_stored_raw_data(
+        self, mock_read_file, mock_get
+    ):
+        """
+        A question the extractor learns after a submission was already synced
+        must still reach that submission. The cursor only moves forward, so
+        Kobo will never resend it — the answer is replayed from raw_data.
+        """
+        mock_geom = MagicMock()
+        mock_geom.contains.return_value = True
+        mock_geom.empty = False
+        mock_geom.iloc = [{"administration_id": 1621199}]
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_df.__getitem__.return_value = mock_geom
+        mock_read_file.return_value = mock_df
+
+        # Synced back when the extractor only knew about section B.
+        KoboData.objects.create(
+            form=self.form,
+            kobo_id=777,
+            submission_time=timezone.make_aware(datetime(2026, 5, 10)),
+            raw_data={
+                "_id": 777,
+                "survey_start_gps": "-26.18750540704125 31.396586056044477 0 0",  # noqa
+                "group_bx6rt12/D1_How_is_the_soil_atsi_endzaweni_yakho": "1__dry__womile",  # noqa
+                "group_bx6rt12/D2_How_is_the_veget_ato_endzaweni_yakho": "3__brown__bushile",  # noqa
+            },
+        )
+        # The form is fully caught up: a normal run would fetch nothing.
+        self.form.last_sync_timestamp = timezone.make_aware(
+            datetime(2026, 7, 16)
+        )
+        self.form.save()
+
+        call_command("download_iks_data", "--reprocess")
+
+        mock_get.assert_not_called()
+        self.assertEqual(
+            IKSValue.objects.get(
+                kobo_id=777, iks_indicator__name="soil_moisture"
+            ).value,
+            "1__dry__womile",
+        )
+        self.assertEqual(
+            IKSValue.objects.get(
+                kobo_id=777, iks_indicator__name="vegetation_greenness"
+            ).value,
+            "3__brown__bushile",
+        )
+
     def test_download_iks_data_no_active_adapters(self):
         """
         Test download_iks_data command when no active Kobo adapters
