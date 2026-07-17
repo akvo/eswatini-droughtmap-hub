@@ -41,6 +41,22 @@ from api.v1.v1_iks.serializers import (
 logger = logging.getLogger(__name__)
 
 
+# Every IKS endpoint reads through these three helpers so that the KoboForm
+# `active` flag set in the admin panel is the single switch deciding which
+# form's data is public. Data from a deactivated form stays in the DB (for
+# re-activation and audit) but must never reach an API response.
+def active_indicators():
+    return IKSIndicator.objects.filter(kobo_form__active=True)
+
+
+def active_values():
+    return IKSValue.objects.filter(iks_indicator__kobo_form__active=True)
+
+
+def active_kobo_data():
+    return KoboData.objects.filter(form__active=True)
+
+
 def latest_validated_d_class(administration_id):
     """Return the validated CDI category for an administration.
 
@@ -116,10 +132,10 @@ class IKSStatsView(APIView):
             )
 
         # Base query for KoboData mapped to this administration
-        kobo_ids = IKSValue.objects.filter(
+        kobo_ids = active_values().filter(
             administration_id=administration_id
         ).values_list("kobo_id", flat=True)
-        queryset = KoboData.objects.filter(kobo_id__in=kobo_ids)
+        queryset = active_kobo_data().filter(kobo_id__in=kobo_ids)
 
         if start_date_str:
             start_date = parse_date(start_date_str)
@@ -159,7 +175,7 @@ class IKSStatsView(APIView):
         form_completion = 95.0 if total_reports > 0 else 0.0
 
         # Check values matching drought-related indicators
-        drought_values = IKSValue.objects.filter(
+        drought_values = active_values().filter(
             administration_id=administration_id,
             iks_indicator__name__icontains="drought",
         )
@@ -190,7 +206,7 @@ class IKSStatsView(APIView):
         extreme_weather = [0] * 12
 
         # Fetch all IKSValues for this administration to build monthly counts
-        values = IKSValue.objects.filter(
+        values = active_values().filter(
             administration_id=administration_id
         ).select_related("iks_indicator")
         kobo_val_ids = list(
@@ -198,7 +214,7 @@ class IKSStatsView(APIView):
         )
         kobo_map = {
             kd.kobo_id: kd.submission_time
-            for kd in KoboData.objects.filter(kobo_id__in=kobo_val_ids)
+            for kd in active_kobo_data().filter(kobo_id__in=kobo_val_ids)
         }
 
         for val in values:
@@ -285,8 +301,8 @@ class IKSSeriesView(APIView):
                     y -= 1
                 months_list.append(f"{y}-{m:02d}")
 
-            indicators = IKSIndicator.objects.all()
-            values = IKSValue.objects.filter(
+            indicators = active_indicators().all()
+            values = active_values().filter(
                 administration_id=administration_id
             ).select_related("iks_indicator")
             kobo_ids = list(
@@ -294,7 +310,7 @@ class IKSSeriesView(APIView):
             )
             kobo_map = {
                 kd.kobo_id: kd.submission_time
-                for kd in KoboData.objects.filter(kobo_id__in=kobo_ids)
+                for kd in active_kobo_data().filter(kobo_id__in=kobo_ids)
             }
 
             matrix = {}
@@ -322,7 +338,7 @@ class IKSSeriesView(APIView):
             )
 
         try:
-            indicator = IKSIndicator.objects.get(pk=indicator_id)
+            indicator = active_indicators().get(pk=indicator_id)
         except IKSIndicator.DoesNotExist:
             return Response(
                 {"error": "Indicator not found."},
@@ -330,13 +346,13 @@ class IKSSeriesView(APIView):
             )
 
         # Retrieve mapped values
-        values_qs = IKSValue.objects.filter(
+        values_qs = active_values().filter(
             administration_id=administration_id, iks_indicator=indicator
         )
 
         # Filter related KoboData to check submission time ranges
         kobo_ids = values_qs.values_list("kobo_id", flat=True)
-        kobo_qs = KoboData.objects.filter(kobo_id__in=kobo_ids)
+        kobo_qs = active_kobo_data().filter(kobo_id__in=kobo_ids)
 
         if start_date_str:
             start_date = parse_date(start_date_str)
@@ -389,7 +405,7 @@ class IKSIndicatorsListView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        indicators = IKSIndicator.objects.all()
+        indicators = active_indicators().all()
         serializer = IKSIndicatorSerializer(indicators, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -422,73 +438,13 @@ class IKSNetSignalAggregationView(APIView):
         ]
         regions = ["Hhohho", "Manzini", "Lubombo", "Shiselweni"]
 
-        # Default mock data from prototype contract
-        trend_data = {
-            "Hhohho": [
-                2.0,
-                1.4,
-                1.47,
-                1.8,
-                1.8,
-                4.07,
-                4.6,
-                3.93,
-                4.06,
-                4.57,
-                4.2,
-                4.47,
-                4.47,
-            ],
-            "Manzini": [
-                1.5,
-                1.22,
-                1.44,
-                1.84,
-                1.35,
-                4.44,
-                3.94,
-                3.83,
-                3.61,
-                3.94,
-                3.89,
-                3.28,
-                4.11,
-            ],
-            "Lubombo": [
-                1.82,
-                1.0,
-                2.09,
-                0.45,
-                1.45,
-                4.18,
-                3.55,
-                4.09,
-                3.18,
-                4.09,
-                4.64,
-                4.64,
-                3.64,
-            ],
-            "Shiselweni": [
-                2.07,
-                1.0,
-                1.6,
-                1.53,
-                2.4,
-                4.73,
-                3.93,
-                4.4,
-                4.4,
-                3.73,
-                4.0,
-                4.4,
-                3.67,
-            ],
-        }
+        # No submissions in a region-week means zero, not a prototype
+        # figure. The aggregation below fills only what data supports.
+        trend_data = {r: [0.0] * len(weeks) for r in regions}
 
-        if IKSValue.objects.exists():
+        if active_values().exists():
             actual_trend = {r: [0.0] * len(weeks) for r in regions}
-            values = IKSValue.objects.select_related(
+            values = active_values().select_related(
                 "administration", "iks_indicator"
             ).all()
             for val in values:
@@ -523,31 +479,20 @@ class IKSIndicatorCountsAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
+        # No indicators registered means the active form has never been
+        # synced — say so with an empty list rather than naming indicators
+        # that are not in the form.
         indicators = list(
-            IKSIndicator.objects.values_list("name", flat=True).distinct()[:5]
+            active_indicators().values_list("name", flat=True).distinct()[:5]
         )
-        if not indicators:
-            indicators = [
-                "Frogs",
-                "Umfuku",
-                "Lannea discolor",
-                "Crescent Moon",
-                "Butterflies",
-            ]
 
         regions = ["Hhohho", "Manzini", "Lubombo", "Shiselweni"]
 
-        # Default mock counts from prototype contract
-        radar_data = {
-            "Hhohho": [60.5, 57.9, 74.9, 60.5, 71.8],
-            "Manzini": [67.1, 67.5, 68.4, 56.8, 72.2],
-            "Lubombo": [66.4, 64.3, 79.7, 60.8, 73.4],
-            "Shiselweni": [61.0, 57.4, 75.9, 63.1, 70.3],
-        }
+        radar_data = {r: [0.0] * len(indicators) for r in regions}
 
-        if IKSValue.objects.exists():
+        if active_values().exists():
             actual_radar = {r: [0.0] * len(indicators) for r in regions}
-            values = IKSValue.objects.select_related(
+            values = active_values().select_related(
                 "administration", "iks_indicator"
             ).all()
             for val in values:
@@ -566,7 +511,7 @@ class IKSIndicatorCountsAggregationView(APIView):
         from django.db.models import Count as DjCount
 
         indicator_counts_qs = (
-            IKSValue.objects.exclude(
+            active_values().exclude(
                 iks_indicator__name__in=[
                     "soil_moisture",
                     "vegetation_greenness",
@@ -617,9 +562,18 @@ class IKSAgreementAggregationView(APIView):
         agreement_list = []
 
         for admin in constituencies:
-            iks_count = IKSValue.objects.filter(administration=admin).count()
+            iks_count = active_values().filter(administration=admin).count()
+            # Agreement compares IKS against satellite. With no IKS reports
+            # there is nothing to compare, and emitting a row would assert a
+            # verdict ("contested") that no observation supports.
+            if not iks_count:
+                continue
             iks_score = min(float(iks_count * 12.5), 100.0)
 
+            # ponytail: placeholder — a fixed score for every constituency,
+            # not a real satellite reading. Source it from the latest
+            # published CDI (see latest_validated_d_class) before this
+            # endpoint is put in front of anyone.
             sat_score = 66.7
             diff = abs(iks_score - sat_score)
             if diff < 15.0:
@@ -638,25 +592,6 @@ class IKSAgreementAggregationView(APIView):
                     "agreement": status_str,
                 }
             )
-
-        # Fallback if no constituencies exist in database
-        if not agreement_list:
-            agreement_list = [
-                {
-                    "name": "Nkwene",
-                    "region": "Shiselweni",
-                    "iks": 70.3,
-                    "sat": 83.3,
-                    "agreement": "aligned",
-                },
-                {
-                    "name": "Lobamba",
-                    "region": "Hhohho",
-                    "iks": 70.3,
-                    "sat": 16.7,
-                    "agreement": "contested",
-                },
-            ]
 
         serializer = IKSAgreementAggregationSerializer(
             {"agreement": agreement_list}
@@ -695,15 +630,15 @@ class IKSHeatmapAggregationView(APIView):
                 :20
             ]
         )
-        if not constituencies:
-            constituencies = ["Nkwene", "Lobamba"]
 
-        heatmap_matrix = [[1] * len(weeks) for _ in constituencies]
+        # Zero, not 1 — an unsubmitted constituency-week must not read as a
+        # submission.
+        heatmap_matrix = [[0] * len(weeks) for _ in constituencies]
 
-        if IKSValue.objects.exists():
+        if active_values().exists():
             for c_idx, c_name in enumerate(constituencies):
                 for w_idx in range(len(weeks)):
-                    count = IKSValue.objects.filter(
+                    count = active_values().filter(
                         administration__name=c_name, value="observed"
                     ).count()
                     heatmap_matrix[c_idx][w_idx] = count
@@ -760,62 +695,22 @@ class IKSSoilTrendAggregationView(APIView):
             "Jul 17",
             "Jul 24",
         ]
-        # Fallback prototype values
-        dry_vals = [
-            18.6,
-            22.0,
-            23.7,
-            20.0,
-            29.3,
-            39.0,
-            47.5,
-            39.0,
-            45.0,
-            65.5,
-            61.0,
-            52.5,
-            66.1,
-        ]
-        moist_vals = [
-            42.4,
-            47.5,
-            37.3,
-            46.7,
-            39.7,
-            42.4,
-            28.8,
-            39.0,
-            45.0,
-            20.7,
-            30.5,
-            27.1,
-            25.4,
-        ]
-        wet_vals = [
-            39.0,
-            30.5,
-            39.0,
-            33.3,
-            31.0,
-            18.6,
-            23.7,
-            22.0,
-            10.0,
-            13.8,
-            8.5,
-            20.3,
-            8.5,
-        ]
+        # A week only gets a percentage if submissions landed in it. Weeks
+        # with none stay 0/0/0, which the client renders as "no submission" —
+        # never a prototype figure standing in for missing data.
+        dry_vals = [0.0] * len(weeks)
+        moist_vals = [0.0] * len(weeks)
+        wet_vals = [0.0] * len(weeks)
 
         region_map = {}
         for admin in Administration.objects.all():
             region_map[admin.name] = admin.region or "Hhohho"
 
-        veg_green_vals = [65.0] * len(weeks)
-        veg_some_vals = [25.0] * len(weeks)
-        veg_brown_vals = [10.0] * len(weeks)
+        veg_green_vals = [0.0] * len(weeks)
+        veg_some_vals = [0.0] * len(weeks)
+        veg_brown_vals = [0.0] * len(weeks)
 
-        if IKSValue.objects.exists():
+        if active_values().exists():
             dry_counts = [0] * len(weeks)
             moist_counts = [0] * len(weeks)
             wet_counts = [0] * len(weeks)
@@ -823,11 +718,11 @@ class IKSSoilTrendAggregationView(APIView):
 
             # Kobo stores soil moisture as raw slugs like "1__dry__womile";
             # use icontains so both cleaned and raw values match.
-            values = IKSValue.objects.filter(
+            values = active_values().filter(
                 iks_indicator__name="soil_moisture"
             )
             if not values.exists():
-                values = IKSValue.objects.filter(
+                values = active_values().filter(
                     iks_indicator__name__icontains="soil"
                 )
 
@@ -836,7 +731,7 @@ class IKSSoilTrendAggregationView(APIView):
             )
             kobo_map = {
                 kd.kobo_id: kd.submission_time
-                for kd in KoboData.objects.filter(kobo_id__in=kobo_ids)
+                for kd in active_kobo_data().filter(kobo_id__in=kobo_ids)
             }
 
             for val in values:
@@ -854,8 +749,10 @@ class IKSSoilTrendAggregationView(APIView):
 
                 val_str = val.value.lower()
                 total_counts[week_idx] += 1
-                # Match raw Kobo slugs: "1__dry__womile", "2__moist__ubutsile",
-                # "3__wet__umanti" as well as cleaned values.
+                # Match raw Kobo slugs, verified against live submissions:
+                # "1__dry__womile", "3__moist__ubutsile", "2__wet__umanti"
+                # (the choice numbering is not in dry/moist/wet order, so
+                # match on the term, never the prefix) and cleaned values.
                 if "womile" in val_str or (
                     "dry" in val_str and "moist" not in val_str
                 ):
@@ -873,7 +770,7 @@ class IKSSoilTrendAggregationView(APIView):
                     wet_vals[i] = round((wet_counts[i] / t) * 100, 1)
 
             # Aggregate vegetation greenness values
-            veg_values = IKSValue.objects.filter(
+            veg_values = active_values().filter(
                 iks_indicator__name="vegetation_greenness"
             )
             if veg_values.exists():
@@ -887,7 +784,9 @@ class IKSSoilTrendAggregationView(APIView):
                 )
                 veg_kobo_map = {
                     kd.kobo_id: kd.submission_time
-                    for kd in KoboData.objects.filter(kobo_id__in=veg_kobo_ids)
+                    for kd in active_kobo_data().filter(
+                        kobo_id__in=veg_kobo_ids
+                    )
                 }
 
                 for val in veg_values:
@@ -905,13 +804,15 @@ class IKSSoilTrendAggregationView(APIView):
 
                     val_str = val.value.lower()
                     total_veg_counts[week_idx] += 1
-                    # Match raw Kobo slugs:
+                    # Match raw Kobo slugs, verified against live submissions:
                     # "1__generally_green_almost_green_everywhe" → green
-                    # "2__some_green_tiluhlata" → some green
-                    # "3__brown_bushile" → brown
-                    # Check most-specific substrings first to avoid
-                    # "some_green" matching the bare "green" branch.
-                    if "some_green" in val_str or "some green" in val_str:
+                    # "2__some_few_are_green__timbalwa_letiluhl" → some green
+                    # "3__brown__bushile" → brown
+                    # "some" must be tested first: its slug ends in "green",
+                    # so the bare "green" branch below would swallow it.
+                    # Match the siSwati term too — it survives an English
+                    # reword of the choice label.
+                    if "timbalwa" in val_str or "some" in val_str:
                         some_counts[week_idx] += 1
                     elif (
                         "generally_green" in val_str
@@ -965,11 +866,11 @@ class IKSPhotosView(APIView):
 
     def get(self, request, version, administration_id):
         kobo_ids = (
-            IKSValue.objects.filter(administration_id=administration_id)
+            active_values().filter(administration_id=administration_id)
             .values_list("kobo_id", flat=True)
             .distinct()
         )
-        queryset = KoboData.objects.filter(kobo_id__in=kobo_ids)
+        queryset = active_kobo_data().filter(kobo_id__in=kobo_ids)
 
         photo_list = []
         for data in queryset:
