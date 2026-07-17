@@ -247,12 +247,16 @@ const IksTab = ({
       ? `${firstWeek} - ${lastWeek} ${new Date().getFullYear()}`
       : "";
 
+  // A week with no submission comes back as 0/0/0. Fall through to "-"
+  // ("No submission") rather than letting the >= comparisons below pick a
+  // winner out of three zeroes.
   const getSoilState = (idx) => {
     const st = data.soilTrend?.soil_trend;
     if (!st || !st.dry || !st.moist || !st.wet) return "-";
     const d = st.dry[idx] || 0;
     const m = st.moist[idx] || 0;
     const w = st.wet[idx] || 0;
+    if (d + m + w === 0) return "-";
     if (w >= m && w >= d) return "W";
     if (d >= w && d >= m) return "D";
     return "M";
@@ -264,6 +268,7 @@ const IksTab = ({
     const g = vt.green[idx] || 0;
     const s = vt.some[idx] || 0;
     const b = vt.brown[idx] || 0;
+    if (g + s + b === 0) return "-";
     if (g >= s && g >= b) return "G";
     if (s >= g && s >= b) return "S";
     return "B";
