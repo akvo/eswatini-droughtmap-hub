@@ -16,6 +16,7 @@ from api.v1.v1_weather.constants import (
 from api.v1.v1_weather.models import WeatherSource, WeatherStation
 from api.v1.v1_weather.serializers import WeatherSourceSerializer
 from api.v1.v1_weather.services import (
+    administration_normals,
     administration_series,
     administration_stats,
     monthly_series,
@@ -207,6 +208,28 @@ class AdministrationSeriesAPI(APIView):
             return error
         return Response(
             administration_series(administration, from_period, to_period),
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdministrationNormalsAPI(APIView):
+    """30-year monthly normals for the explorer chart overlays (WX-5).
+
+    Public and DB-only: the rasters are read by `extract_weather_normals`,
+    never at request time. Range- and station-independent (design D-3)."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["Weather"],
+        summary="30-year monthly normals for an administration",
+    )
+    def get(self, request, version, administration_id):
+        administration = get_object_or_404(
+            Administration, pk=administration_id
+        )
+        return Response(
+            administration_normals(administration),
             status=status.HTTP_200_OK,
         )
 

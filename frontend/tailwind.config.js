@@ -24,6 +24,7 @@ module.exports = {
         successBg: tokens.semantic.successBg,
         tableBorder: tokens.border.table,
         inputBorder: tokens.border.input,
+        cardBorder: tokens.border.card,
         inputBorderActive: tokens.input.borderActive,
         focusRing: tokens.select.focusRing,
         status: tokens.status,
