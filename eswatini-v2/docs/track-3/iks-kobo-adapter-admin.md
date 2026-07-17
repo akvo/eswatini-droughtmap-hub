@@ -421,6 +421,77 @@ Tests live under `api/v1/v1_iks/tests/`.
 
 ---
 
+## 13. Amendment: Move the sync cursor from `KoboAdapter` to `KoboForm`
+
+**Date**: 2026-07-17 · **Supersedes**: parts of D-5 and §3.
+
+### Context
+
+`last_sync_timestamp` lived on `KoboAdapter`, but `download_iks_data` loops
+**per form** and advanced that single field to the newest submission seen
+across *all* forms. One cursor, N readers — so any form that lagged the pack
+had its window swallowed:
+
+- A form registered after the last run inherited a cursor from a form it has
+  nothing to do with, and skipped its own history permanently.
+- A form whose request failed (HTTP 500, timeout) still had the cursor
+  advanced by the forms that succeeded, silently losing that window. Verified
+  by test: with the cursor at Jan 1, form A pulling to May 7 and form B
+  returning 500 left B's Jan–May window behind the cursor.
+- Switching A → B → A resumed A from B's cursor, dropping A's dormant period.
+
+The last one is the documented dummy ↔ production switch workflow, so the
+cursor described the wrong thing: not "how far this adapter has read", but
+"how far this adapter has read *this form*".
+
+### Decision
+
+Move `last_sync_timestamp` to `KoboForm`. The cursor is per form because the
+pull is per form.
+
+D-5's *intent* is preserved: activating a different adapter still forces a
+full re-pull (its rationale — post-hoc edits to submissions that a `$gt`
+cursor would skip — is unchanged). Its *mechanism* changes, since the adapter
+no longer owns a cursor to reset:
+
+> **D-5 (amended)**: on the False→True adapter activation transition, reset
+> **every form's** cursor (`reset_form_cursors()` in `admin.py`), not one
+> field on the adapter.
+
+The caveat about not resetting inside `KoboAdapter.save()` still stands, and
+is now structural: the sync command writes `form.last_sync_timestamp` and
+never touches the adapter, so a sync can no longer clobber its own cursor.
+
+### Implementation
+
+- Migration `0005_move_sync_cursor_to_koboform.py` — adds the field to
+  `KoboForm`, seeds it, then drops it from `KoboAdapter`, in that order.
+  Seeding uses each form's **own** `max(submission_time)` rather than copying
+  the adapter value, which would drag quiet forms forward and re-introduce the
+  bug. On production data this reproduced the old cursor exactly
+  (`2026-05-11 06:21:16` for the synced form, `NULL` for the newly added one),
+  so no re-pull. Reversible.
+- `download_iks_data.py` — `newest`/`failed` tracked per form;
+  `_advance_cursor()` only advances a form whose whole window came back
+  cleanly. A partial failure (page 2 of 3) leaves the cursor alone: Kobo pages
+  are not ordered by submission time, so page 1's newest would skip the rest.
+  Re-pulling is harmless — every write is an `update_or_create`.
+- `_build_data_url` reads `form.last_sync_timestamp`; `NULL` means never
+  pulled, so the form is fetched in full.
+- `KoboFormAdmin` shows the cursor (readonly) and queues a sync via
+  `async_task` when an active form has none, so a newly added form is not
+  live-but-empty until the next scheduled run.
+- `KoboAdapterAdmin` drops the field from `list_display`/`fieldsets`.
+
+### Known gap
+
+`KoboForm` has no single-active constraint (unlike `one_active_kobo_adapter`),
+so several forms can be active at once and the IKS endpoints **merge** them —
+an active dummy form would put test data into the public API. Not addressed
+here; needs a product decision on whether multi-active is wanted.
+
+---
+
 ## Approval
 
 | Role | Name | Date | Status |
