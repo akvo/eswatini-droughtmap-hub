@@ -18,6 +18,11 @@ export const ACTIVITY_STATUS = {
   archived: 3,
 };
 
+export const ACTIVITY_IMPLEMENTER_TYPES = [
+  { value: 2, label: "Institutional" },
+  { value: 1, label: "Public" },
+];
+
 export const DROUGHT_CATEGORY_VALUE = {
   normal: 0,
   d0: 1,
@@ -27,6 +32,8 @@ export const DROUGHT_CATEGORY_VALUE = {
   d4: 5,
   none: -9999,
 };
+
+export const DROUGHT_CATEGORY_LEVELS = ["None", "D0", "D1", "D2", "D3", "D4"];
 
 export const DROUGHT_CATEGORY_COLOR = {
   [DROUGHT_CATEGORY_VALUE.normal]: "#b9f8cf",
@@ -323,6 +330,50 @@ export const ACTIVITY_SECTOR_OPTIONS = [
   { value: 6, label: "Coordination" },
   { value: 7, label: "Social Protection" },
   { value: 8, label: "Transport & Logistics" },
+];
+
+export const ACTIVITY_INDICATORS = [
+  {
+    key: "water",
+    target: "exp",
+    label: "Water demand indicator",
+    help: "Litres of water demand in the Inkhundla — whole number.",
+    placeholder: "e.g. 2500",
+    min: 0,
+  },
+  {
+    key: "susceptibility",
+    target: "vuln",
+    label: "Susceptibility to drought threshold",
+    help: "Vulnerability condition — IPC food-security phase, whole number from 1 to 4.",
+    placeholder: "1-4",
+    min: 1,
+    max: 4,
+  },
+  {
+    key: "cattle",
+    target: "exp",
+    label: "Cattle count",
+    help: "Number of cattle exposed in the Inkhundla — whole number.",
+    placeholder: "e.g. 1500",
+    min: 0,
+  },
+  {
+    key: "cropland",
+    target: "exp",
+    label: "Land use share",
+    help: "Hectares of rain-fed cropland in the Inkhundla — whole number.",
+    placeholder: "e.g. 3000",
+    min: 0,
+  },
+  {
+    key: "population",
+    target: "exp",
+    label: "Population",
+    help: "Number of people exposed in the Inkhundla — whole number.",
+    placeholder: "e.g. 10000",
+    min: 0,
+  },
 ];
 
 export const DEFAULT_MAP_HEIGHT = 48;

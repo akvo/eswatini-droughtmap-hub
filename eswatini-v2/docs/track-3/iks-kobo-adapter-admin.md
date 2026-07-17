@@ -2,10 +2,10 @@
 
 ## Feature: Django Admin — Manage & Switch the Active Kobo Adapter (IKS)
 
-**Task ID**: TBD (Github Issue)
+**Task ID**: #112
 **Author**: Iwan Firmawan
 **Date**: 2026-07-15
-**Status**: Draft
+**Status**: Implemented
 
 ---
 
@@ -326,6 +326,61 @@ None — no enums introduced. `active` remains a boolean.
 
 Tests live under `api/v1/v1_iks/tests/`.
 
+### Manual Verification Steps
+
+1. **Generate Admin Credentials**:
+   If needed, create a superuser in the backend container:
+
+   ```bash
+   docker compose exec backend python manage.py generate_admin_seeder
+   ```
+
+   (Generates e.g., `admin1@mail.com` with password `###123`).
+
+2. **Access Django Admin**:
+   Navigate to the Django Admin page in the browser:
+   `http://localhost:8000/admin/v1_iks/koboadapter/` (log in with the admin credentials).
+
+3. **Verify Password Masking & Retention**:
+   - Add a Kobo adapter (URL, username, password). Save the record.
+   - Re-open the created adapter: verify the password input field is masked and blank.
+   - Edit another field (e.g. username) while leaving the password field blank, then save. Verify that the original password was preserved in the database.
+
+4. **Verify Single-Active Switch & Cursor Reset via Form**:
+   - Create a second Kobo adapter with `Active` unchecked.
+   - Edit the second Kobo adapter, check the `Active` checkbox, and save.
+   - Verify that the first adapter is automatically and atomically deactivated (`Active=False`).
+   - Verify that the newly activated second adapter has its `Last sync timestamp` reset to `None` (empty).
+
+5. **Verify Single-Active Switch & Cursor Reset via List Action**:
+   - Go to the Kobo Adapter list page in Django Admin.
+   - Select the checkbox for the inactive adapter, select the **Set selected adapter as active** action from the dropdown, and click **Go**.
+   - Verify that the target adapter becomes `Active=True`, the other is deactivated, and the target's `Last sync timestamp` is reset to `None`.
+
+6. **Verify Downloader Sync Preserves Cursor**:
+   - Run the sync command in the terminal:
+
+     ```bash
+     docker compose exec backend python manage.py download_iks_data
+     ```
+
+   - Refresh the admin list page: verify the active adapter's `Last sync timestamp` is updated.
+   - Edit the active adapter and save: verify that the sync cursor is **not** reset.
+
+7. **Verify Kobo Form Management & Active Form Sync Filtering**:
+    - Navigate to the Kobo Form admin page: `http://localhost:8000/admin/v1_iks/koboform/`
+    - Verify that you can list registered forms and see their `Active` state checkbox.
+    - Click **Add Kobo Form** and create a new form registration (e.g. `uuid="dummy_uuid"`, `name="Clone of CDI-E - Dummy"`). Ensure `Active` is checked, then save.
+    - Select the newly created form in the edit screen: verify that the `uuid` field is read-only.
+    - Open the form edit screen and uncheck the `Active` checkbox, then save.
+    - Run the sync command in the terminal:
+
+      ```bash
+      docker compose exec backend python manage.py download_iks_data
+      ```
+
+    - Check the terminal output: verify that the command skipped syncing data for the inactive form (you will see it only syncs the active forms).
+
 ---
 
 ## 10. Open Questions
@@ -345,12 +400,102 @@ Tests live under `api/v1/v1_iks/tests/`.
 - Admin house style: `backend/api/v1/v1_users/admin.py`
 - Sibling IKS design doc: `eswatini-v2/docs/track-3/iks_explorer_backend_integration.md`
 
+## 12. Amendment: Django Admin — Manage Kobo Forms
+
+### Context & Requirements
+
+- Operators must be able to add, edit, and delete `KoboForm` registrations directly from the admin panel to switch between dummy/testing forms and real/production forms without CLI or database access.
+- Operators can check/uncheck the `active` field on any Kobo Form to enable or disable it. Only active forms are processed by the `download_iks_data` sync command.
+- The form `uuid` must be editable on creation (Add view) but readonly on update (Change view) to prevent breaking existing data associations.
+- Question, option, and language metadata fields are synced from Kobo and must be readonly.
+- Deletion is cascade-aware: it shows a warning/information message with the count of deleted related `KoboData` records.
+
+### Implementation
+
+- Added `active` field to `KoboForm` model and generated migration `0004_koboform_active.py`.
+- Registered `KoboForm` with `KoboFormAdmin` in `admin.py`, including `active` in the list display and filters.
+- Filtered `KoboForm.objects.filter(active=True)` in `download_iks_data.py`.
+- Overrode `get_readonly_fields` to dynamic-gating on the `uuid` field.
+- Overrode `delete_model` to print cascade counts.
+- Covered with unit tests in `tests_kobo_form_admin.py` and `tests_download_iks_data_command.py`.
+
+---
+
+## 13. Amendment: Move the sync cursor from `KoboAdapter` to `KoboForm`
+
+**Date**: 2026-07-17 · **Supersedes**: parts of D-5 and §3.
+
+### Context
+
+`last_sync_timestamp` lived on `KoboAdapter`, but `download_iks_data` loops
+**per form** and advanced that single field to the newest submission seen
+across *all* forms. One cursor, N readers — so any form that lagged the pack
+had its window swallowed:
+
+- A form registered after the last run inherited a cursor from a form it has
+  nothing to do with, and skipped its own history permanently.
+- A form whose request failed (HTTP 500, timeout) still had the cursor
+  advanced by the forms that succeeded, silently losing that window. Verified
+  by test: with the cursor at Jan 1, form A pulling to May 7 and form B
+  returning 500 left B's Jan–May window behind the cursor.
+- Switching A → B → A resumed A from B's cursor, dropping A's dormant period.
+
+The last one is the documented dummy ↔ production switch workflow, so the
+cursor described the wrong thing: not "how far this adapter has read", but
+"how far this adapter has read *this form*".
+
+### Decision
+
+Move `last_sync_timestamp` to `KoboForm`. The cursor is per form because the
+pull is per form.
+
+D-5's *intent* is preserved: activating a different adapter still forces a
+full re-pull (its rationale — post-hoc edits to submissions that a `$gt`
+cursor would skip — is unchanged). Its *mechanism* changes, since the adapter
+no longer owns a cursor to reset:
+
+> **D-5 (amended)**: on the False→True adapter activation transition, reset
+> **every form's** cursor (`reset_form_cursors()` in `admin.py`), not one
+> field on the adapter.
+
+The caveat about not resetting inside `KoboAdapter.save()` still stands, and
+is now structural: the sync command writes `form.last_sync_timestamp` and
+never touches the adapter, so a sync can no longer clobber its own cursor.
+
+### Implementation
+
+- Migration `0005_move_sync_cursor_to_koboform.py` — adds the field to
+  `KoboForm`, seeds it, then drops it from `KoboAdapter`, in that order.
+  Seeding uses each form's **own** `max(submission_time)` rather than copying
+  the adapter value, which would drag quiet forms forward and re-introduce the
+  bug. On production data this reproduced the old cursor exactly
+  (`2026-05-11 06:21:16` for the synced form, `NULL` for the newly added one),
+  so no re-pull. Reversible.
+- `download_iks_data.py` — `newest`/`failed` tracked per form;
+  `_advance_cursor()` only advances a form whose whole window came back
+  cleanly. A partial failure (page 2 of 3) leaves the cursor alone: Kobo pages
+  are not ordered by submission time, so page 1's newest would skip the rest.
+  Re-pulling is harmless — every write is an `update_or_create`.
+- `_build_data_url` reads `form.last_sync_timestamp`; `NULL` means never
+  pulled, so the form is fetched in full.
+- `KoboFormAdmin` shows the cursor (readonly) and queues a sync via
+  `async_task` when an active form has none, so a newly added form is not
+  live-but-empty until the next scheduled run.
+- `KoboAdapterAdmin` drops the field from `list_display`/`fieldsets`.
+
+### Known gap
+
+`KoboForm` has no single-active constraint (unlike `one_active_kobo_adapter`),
+so several forms can be active at once and the IKS endpoints **merge** them —
+an active dummy form would put test data into the public API. Not addressed
+here; needs a product decision on whether multi-active is wanted.
+
 ---
 
 ## Approval
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Developer | Iwan Firmawan | 2026-07-15 | Draft |
-| Tech Lead | | | |
+| Developer | Galih Pratama | 2026-07-16 | Approved |
+| Tech Lead | Iwan Firmawan | 2026-07-16 | Approved |
 | Product | | | |

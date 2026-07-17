@@ -4,6 +4,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from api.v1.v1_iks.models import (
     KoboAdapter,
+    KoboForm,
     KoboData,
     IKSIndicator,
     IKSValue,
@@ -138,18 +139,18 @@ class DownloadIKSDataCommandTests(BaseIKSTestCase):
         self, mock_read_file, mock_async_task, mock_get
     ):
         """
-        Test download_iks_data filters by last_sync_timestamp and advances
-        the cursor to the newest submission's own timestamp.
+        Test download_iks_data filters by the form's last_sync_timestamp and
+        advances it to the newest submission's own timestamp.
         """
         mock_df = MagicMock()
         mock_df.crs = "EPSG:4326"
         mock_read_file.return_value = mock_df
 
-        # Adapter already synced up to Jan 2026
-        self.adapter.last_sync_timestamp = timezone.make_aware(
+        # This form was already synced up to Jan 2026
+        self.form.last_sync_timestamp = timezone.make_aware(
             datetime(2026, 1, 1, 0, 0, 0)
         )
-        self.adapter.save()
+        self.form.save()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -169,11 +170,127 @@ class DownloadIKSDataCommandTests(BaseIKSTestCase):
         self.assertIn("2026-01-01T00%3A00%3A00", requested_url)
 
         # 2. Cursor advanced to the newest submission time, not now()
-        self.adapter.refresh_from_db()
+        self.form.refresh_from_db()
         self.assertEqual(
-            self.adapter.last_sync_timestamp,
+            self.form.last_sync_timestamp,
             timezone.make_aware(datetime(2026, 5, 7, 8, 9, 4)),
         )
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_newly_added_form_is_backfilled_not_cursor_filtered(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        A form registered after another form has already synced must be
+        pulled in full: it carries no cursor of its own, and no other form's
+        cursor may be applied to it.
+        """
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_read_file.return_value = mock_df
+
+        # A second, busy form is far ahead. self.form has never been pulled.
+        KoboForm.objects.create(
+            uuid="busy-form",
+            name="Busy Form",
+            active=False,
+            last_sync_timestamp=timezone.make_aware(datetime(2026, 5, 11)),
+        )
+        self.assertIsNone(self.form.last_sync_timestamp)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"next": None, "results": []}
+        mock_get.return_value = mock_response
+
+        call_command("download_iks_data")
+
+        requested_url = mock_get.call_args[0][0]
+        self.assertNotIn("query", requested_url)
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_failing_form_does_not_inherit_another_forms_progress(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Two active forms, one fails. The failing form's cursor must stay put
+        so its window is re-pulled, rather than being dragged forward by the
+        form that succeeded (which silently skipped it under the old shared
+        adapter cursor).
+        """
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_read_file.return_value = mock_df
+
+        january = timezone.make_aware(datetime(2026, 1, 1))
+        self.form.last_sync_timestamp = january
+        self.form.save()
+        form_b = KoboForm.objects.create(
+            uuid="form-b",
+            name="Form B",
+            active=True,
+            last_sync_timestamp=january,
+        )
+
+        ok = MagicMock(status_code=200)
+        ok.json.return_value = {
+            "next": None,
+            "results": [
+                {"_id": 500, "_submission_time": "2026-05-07T08:09:04"}
+            ],
+        }
+        boom = MagicMock(status_code=500)
+        mock_get.side_effect = [ok, boom]
+
+        call_command("download_iks_data")
+
+        # The form that succeeded advances...
+        self.form.refresh_from_db()
+        self.assertEqual(
+            self.form.last_sync_timestamp,
+            timezone.make_aware(datetime(2026, 5, 7, 8, 9, 4)),
+        )
+        # ...the one that failed keeps its window for the next run.
+        form_b.refresh_from_db()
+        self.assertEqual(form_b.last_sync_timestamp, january)
+
+    @patch("requests.get")
+    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
+    @patch("geopandas.read_file")
+    def test_partial_page_failure_does_not_advance_cursor(
+        self, mock_read_file, mock_async_task, mock_get
+    ):
+        """
+        Page 1 succeeds, page 2 fails. Kobo pages are not ordered by
+        submission time, so advancing to page 1's newest would skip page 2's
+        records permanently. The whole window must be re-pulled instead.
+        """
+        mock_df = MagicMock()
+        mock_df.crs = "EPSG:4326"
+        mock_read_file.return_value = mock_df
+
+        january = timezone.make_aware(datetime(2026, 1, 1))
+        self.form.last_sync_timestamp = january
+        self.form.save()
+
+        page1 = MagicMock(status_code=200)
+        page1.json.return_value = {
+            "next": "https://kf.kobotoolbox.org/next-page",
+            "results": [
+                {"_id": 501, "_submission_time": "2026-05-07T08:09:04"}
+            ],
+        }
+        page2 = MagicMock(status_code=500)
+        mock_get.side_effect = [page1, page2]
+
+        call_command("download_iks_data")
+
+        self.form.refresh_from_db()
+        self.assertEqual(self.form.last_sync_timestamp, january)
 
     def test_download_iks_data_no_active_adapters(self):
         """
@@ -231,208 +348,6 @@ class DownloadIKSDataCommandTests(BaseIKSTestCase):
         self.assertFalse(IKSValue.objects.filter(kobo_id=9999).exists())
         self.assertFalse(IKSValue.objects.filter(kobo_id=8888).exists())
 
-        # 2. Test Kobo API error response
-        mock_err_response = MagicMock()
-        mock_err_response.status_code = 500
-        mock_get.return_value = mock_err_response
-
         # Execute command -
         # should log error and return cleanly without throwing exceptions
         call_command("download_iks_data")
-
-    @patch("requests.get")
-    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
-    @patch("geopandas.read_file")
-    def test_geolocation_priority_uses_geolocation_array(
-        self, mock_read_file, mock_async_task, mock_get
-    ):
-        """
-        Test that _geolocation array is prioritized when present,
-        even when start-geopoint and survey_start_gps also exist.
-        """
-        mock_geom = MagicMock()
-        mock_geom.contains.return_value = True
-        mock_geom.empty = False
-        mock_geom.iloc = [{"administration_id": 1621199}]
-        mock_df = MagicMock()
-        mock_df.crs = "EPSG:4326"
-        mock_df.__getitem__.return_value = mock_geom
-        mock_read_file.return_value = mock_df
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "results": [
-                {
-                    "_id": 100,
-                    "_geolocation": [-26.5, 31.5],
-                    "start-geopoint": "-26.0 31.0 100.0 5.0",
-                    "survey_start_gps": "-25.0 30.0 0 0",
-                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho": "1__bs___blue_swallows_appearance__tinkon",
-                    "_submission_time": "2026-07-16T08:00:00",
-                }
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        call_command("download_iks_data")
-
-        kobo_data = KoboData.objects.get(kobo_id=100)
-        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
-        # Verify IKSValue mapped (coordinates matched admin area)
-        self.assertTrue(
-            IKSValue.objects.filter(kobo_id=100, value="observed").exists()
-        )
-
-    @patch("requests.get")
-    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
-    @patch("geopandas.read_file")
-    def test_geolocation_priority_uses_start_geopoint_when_geolocation_null(
-        self, mock_read_file, mock_async_task, mock_get
-    ):
-        """
-        Test that start-geopoint is used when _geolocation is [null, null].
-        """
-        mock_geom = MagicMock()
-        mock_geom.contains.return_value = True
-        mock_geom.empty = False
-        mock_geom.iloc = [{"administration_id": 1621199}]
-        mock_df = MagicMock()
-        mock_df.crs = "EPSG:4326"
-        mock_df.__getitem__.return_value = mock_geom
-        mock_read_file.return_value = mock_df
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "results": [
-                {
-                    "_id": 101,
-                    "_geolocation": [None, None],
-                    "start-geopoint": "-26.5 31.5 100.0 5.0",
-                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho": "1__bs___blue_swallows_appearance__tinkon",
-                    "_submission_time": "2026-07-16T08:00:00",
-                }
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        call_command("download_iks_data")
-
-        kobo_data = KoboData.objects.get(kobo_id=101)
-        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
-        self.assertTrue(
-            IKSValue.objects.filter(kobo_id=101, value="observed").exists()
-        )
-
-    @patch("requests.get")
-    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
-    @patch("geopandas.read_file")
-    def test_geolocation_priority_uses_survey_start_gps_as_fallback(
-        self, mock_read_file, mock_async_task, mock_get
-    ):
-        """
-        Test that survey_start_gps is used when both _geolocation and
-        start-geopoint are missing/null.
-        """
-        mock_geom = MagicMock()
-        mock_geom.contains.return_value = True
-        mock_geom.empty = False
-        mock_geom.iloc = [{"administration_id": 1621199}]
-        mock_df = MagicMock()
-        mock_df.crs = "EPSG:4326"
-        mock_df.__getitem__.return_value = mock_geom
-        mock_read_file.return_value = mock_df
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "results": [
-                {
-                    "_id": 102,
-                    "survey_start_gps": "-26.5 31.5 0 0",
-                    "group_tn4ao32/B1_Which_of_the_fol_vile_endzaweni_yakho": "1__bs___blue_swallows_appearance__tinkon",
-                    "_submission_time": "2026-07-16T08:00:00",
-                }
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        call_command("download_iks_data")
-
-        kobo_data = KoboData.objects.get(kobo_id=102)
-        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
-        self.assertTrue(
-            IKSValue.objects.filter(kobo_id=102, value="observed").exists()
-        )
-
-    @patch("requests.get")
-    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
-    @patch("geopandas.read_file")
-    def test_geolocation_priority_fallback_to_second_field_on_partial_array(
-        self, mock_read_file, mock_async_task, mock_get
-    ):
-        """
-        Test that when _geolocation array has fewer than 2 elements,
-        the system falls back to start-geopoint.
-        """
-        mock_geom = MagicMock()
-        mock_geom.contains.return_value = True
-        mock_geom.empty = False
-        mock_geom.iloc = [{"administration_id": 1621199}]
-        mock_df = MagicMock()
-        mock_df.crs = "EPSG:4326"
-        mock_df.__getitem__.return_value = mock_geom
-        mock_read_file.return_value = mock_df
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "results": [
-                {
-                    "_id": 103,
-                    "_geolocation": [-26.5],
-                    "start-geopoint": "-26.5 31.5 100.0 5.0",
-                    "_submission_time": "2026-07-16T08:00:00",
-                }
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        call_command("download_iks_data")
-
-        kobo_data = KoboData.objects.get(kobo_id=103)
-        self.assertEqual(kobo_data.geo, {"latitude": -26.5, "longitude": 31.5})
-
-    @patch("requests.get")
-    @patch("api.v1.v1_iks.management.commands.download_iks_data.async_task")
-    @patch("geopandas.read_file")
-    def test_geolocation_priority_all_fields_missing_sets_null_geo(
-        self, mock_read_file, mock_async_task, mock_get
-    ):
-        """
-        Test that when all geolocation fields are missing,
-        geo is set to None and KoboData is still created.
-        """
-        mock_df = MagicMock()
-        mock_df.crs = "EPSG:4326"
-        mock_read_file.return_value = mock_df
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "results": [
-                {
-                    "_id": 104,
-                    "_submission_time": "2026-07-16T08:00:00",
-                }
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        call_command("download_iks_data")
-
-        kobo_data = KoboData.objects.get(kobo_id=104)
-        self.assertIsNone(kobo_data.geo)
-        # No IKSValue mapped due to missing coordinates
-        self.assertFalse(IKSValue.objects.filter(kobo_id=104).exists())

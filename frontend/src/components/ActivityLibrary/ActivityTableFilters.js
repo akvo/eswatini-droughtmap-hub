@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Select, Input, Button } from "antd";
 import TabButtons from "@/components/TabButtons";
-import { ACTIVITY_SECTOR_OPTIONS } from "@/static/config";
+import { ACTIVITY_SECTOR_OPTIONS, ACTIVITY_STATUS } from "@/static/config";
 
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
-  { label: "Active", value: 2 },
-  { label: "Draft", value: 1 },
-  { label: "Archived", value: 3 },
+  { label: "Active", value: ACTIVITY_STATUS.active },
+  { label: "Draft", value: ACTIVITY_STATUS.draft },
+  { label: "Archived", value: ACTIVITY_STATUS.archived },
 ];
 
 export default function ActivityTableFilters({
@@ -22,11 +22,12 @@ export default function ActivityTableFilters({
   const [searchVal, setSearchVal] = useState(searchQuery);
 
   useEffect(() => {
+    if (searchVal === searchQuery) return;
     const timer = setTimeout(() => {
       onSearchChange(searchVal);
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchVal, onSearchChange]);
+  }, [searchVal, searchQuery, onSearchChange]);
 
   return (
     <>
