@@ -11,7 +11,7 @@ from pathlib import Path
 from matplotlib.patches import Patch
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework import viewsets, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -44,10 +44,13 @@ from api.v1.v1_publication.serializers import (
     ExportMapSerializer,
     PublishedMapSerializer,
     CompareMapSerializer,
+    AttachRasterSerializer,
+    PublicationRasterItemSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
     Publication,
+    PublicationRaster,
 )
 from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
@@ -553,6 +556,133 @@ class PublicationViewSet(viewsets.ModelViewSet):
         if instance.narrative and total_adms == total_validated:
             instance.published_at = timezone.now()
         instance.save()
+
+
+class PublicationRasterAPI(APIView):
+    # Class-level permission is JWT-only: GET (list) is available to any
+    # authenticated user (admin or reviewer), while POST/DELETE additionally
+    # gate on IsAdmin explicitly at the top of the method body, matching the
+    # house style used by the mutating endpoints above.
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Attach an indicator raster to a publication",
+        description=(
+            "Resolve the GeoNode download URL for geonode_id server-side, "
+            "create the PublicationRaster row, and queue the "
+            "download-then-extract job chain."
+        ),
+        tags=["Admin"],
+        request=AttachRasterSerializer,
+        responses={
+            201: AttachRasterSerializer,
+            400: DefaultResponseSerializer,
+            403: DefaultResponseSerializer,
+        },
+    )
+    def post(self, request, version, pk):
+        if not IsAdmin().has_permission(request, self):
+            raise PermissionDenied()
+        publication = get_object_or_404(Publication, pk=pk)
+
+        serializer = AttachRasterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        geonode_id = serializer.validated_data["geonode_id"]
+
+        # Resolve the download URL server-side rather than trusting the
+        # client with it, so a caller can only ever attach GeoNode
+        # resources the backend itself can see and authenticate against.
+        response = requests.get(
+            f"{settings.GEONODE_BASE_URL}/api/v2/resources/{geonode_id}",
+            auth=(
+                settings.GEONODE_ADMIN_USERNAME,
+                settings.GEONODE_ADMIN_PASSWORD,
+            ),
+            verify=GEONODE_SSL_VERIFY,
+            timeout=GEONODE_REQUEST_TIMEOUT,
+        )
+        resource = (
+            response.json().get("resource")
+            if response.status_code == 200 else None
+        ) or {}
+        download_url = resource.get("download_url")
+        if response.status_code != 200 or not download_url:
+            raise ValidationError({
+                "geonode_id": "Unable to resolve GeoNode resource."
+            })
+
+        try:
+            # Nested atomic() turns the uniqueness violation into a
+            # savepoint rollback instead of poisoning the whole request's
+            # transaction, so the 400 response can still be built normally.
+            with transaction.atomic():
+                raster = serializer.save(publication=publication)
+        except IntegrityError:
+            raise ValidationError({
+                "indicator": (
+                    "This indicator is already attached to the publication."
+                )
+            })
+
+        timestamp = int(time.time())
+        filename = "raster_{0}_{1}_{2}.tif".format(
+            publication.id, raster.indicator, timestamp
+        )
+        job = Jobs.objects.create(
+            type=JobTypes.download_geonode_dataset,
+            status=JobStatus.on_progress,
+            info={
+                "publication_raster_id": raster.id,
+                "filename": filename,
+            },
+        )
+        task_id = async_task(
+            "api.v1.v1_jobs.job.download_geonode_dataset",
+            download_url,
+            filename,
+            hook="api.v1.v1_jobs.job.download_indicator_dataset_results",
+        )
+        job.task_id = task_id
+        job.save()
+
+        return Response(
+            AttachRasterSerializer(raster).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        summary="List indicator rasters attached to a publication",
+        tags=["Admin"],
+        responses={200: PublicationRasterItemSerializer(many=True)},
+    )
+    def get(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        return Response(
+            {
+                "data": PublicationRasterItemSerializer(
+                    publication.rasters.all(), many=True
+                ).data,
+                "meta": {
+                    "publication": publication.id,
+                    "year_month": publication.year_month.strftime("%Y-%m"),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Detach an indicator raster from a publication",
+        tags=["Admin"],
+        responses={204: None, 403: DefaultResponseSerializer},
+    )
+    def delete(self, request, version, pk, raster_id):
+        if not IsAdmin().has_permission(request, self):
+            raise PermissionDenied()
+        raster = get_object_or_404(
+            PublicationRaster, pk=raster_id, publication_id=pk
+        )
+        raster.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PublicationReviewsAPI(APIView):

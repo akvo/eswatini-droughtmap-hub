@@ -6,6 +6,7 @@ from collections import defaultdict
 from .models import (
     Administration,
     Publication,
+    PublicationRaster,
     Review,
 )
 from utils.custom_serializer_fields import (
@@ -26,6 +27,7 @@ from api.v1.v1_publication.constants import (
     ExportMapTypes,
     CDIGeonodeCategory,
     PublicationStatus,
+    RasterIndicatorTypes,
 )
 
 
@@ -459,3 +461,38 @@ class CompareMapSerializer(serializers.Serializer):
             "left_date",
             "right_date"
         ]
+
+
+class AttachRasterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PublicationRaster
+        fields = ["id", "indicator", "geonode_id", "values", "extracted_at"]
+        read_only_fields = ["id", "values", "extracted_at"]
+
+    def validate_geonode_id(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("geonode_id must be positive.")
+        return value
+
+
+class PublicationRasterItemSerializer(serializers.ModelSerializer):
+    key = serializers.CharField(source="indicator")
+    label = serializers.SerializerMethodField()
+    value = serializers.SerializerMethodField()
+    data = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_label(self, obj):
+        return RasterIndicatorTypes.FieldStr.get(obj.indicator, obj.indicator)
+
+    @extend_schema_field(OpenApiTypes.ANY)
+    def get_value(self, obj):
+        return {"geonode_id": obj.geonode_id, "extracted_at": obj.extracted_at}
+
+    @extend_schema_field(OpenApiTypes.ANY)
+    def get_data(self, obj):
+        return obj.values or []
+
+    class Meta:
+        model = PublicationRaster
+        fields = ["key", "label", "value", "data"]
