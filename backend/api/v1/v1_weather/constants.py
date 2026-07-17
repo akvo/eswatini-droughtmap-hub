@@ -88,6 +88,10 @@ NORMALS_RASTERS = {
         "dataset": "AgERA5 1990-2020",
     },
 }
-# AgERA5 publishes no tmax/tmin, so those normals have no source (design D-4).
+# The AgERA5 export above covers tmean only, so tmax/tmin normals have no
+# source yet (design D-4). AgERA5 itself DOES publish Temperature-Air-2m-Max-24h
+# and Min-24h — they are just not in our file, so the fix is a re-export from
+# the same dataset, not a different one (design OQ-2). Adding them here plus a
+# NORMALS_RASTERS entry is the whole wiring.
 NORMALS_UNAVAILABLE = [WeatherParameter.tmax, WeatherParameter.tmin]
 NORMALS_DEFINITION = "monthly mean over the normals period"

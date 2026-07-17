@@ -5,6 +5,7 @@ import { Bar } from "akvo-charts";
 import { Checkbox, ConfigProvider } from "antd";
 import useWeatherSeries from "@/hooks/useWeatherSeries";
 import ChartCard from "./ChartCard";
+import { SERIES_COLOR } from "./seriesColors";
 import {
   findWeatherSeries,
   normalAt,
@@ -12,8 +13,9 @@ import {
   stationProvenance,
 } from "@/lib/helper";
 
-const STATION_COLOR = "#3E5EB9";
-const NORMAL_COLOR = "#E60000";
+// Figma 3509:116475 — the same two tokens the temperature chart uses.
+const STATION_COLOR = SERIES_COLOR.station;
+const NORMAL_COLOR = SERIES_COLOR.contrast;
 
 /**
  * Monthly precipitation bars (Figma 3509:110472): observed station totals

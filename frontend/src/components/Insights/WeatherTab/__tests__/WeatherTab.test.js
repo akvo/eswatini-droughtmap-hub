@@ -238,7 +238,7 @@ describe("WeatherTab", () => {
     const line = JSON.parse(
       screen.getByTestId("line-chart").getAttribute("data-config"),
     );
-    // AgERA5 publishes tmean only, so tmax/tmin get no dashed average line.
+    // Our AgERA5 export covers tmean only, so tmax/tmin get no dashed average.
     expect(line.series.map((s) => s.name)).toEqual([
       "T max",
       "T min",

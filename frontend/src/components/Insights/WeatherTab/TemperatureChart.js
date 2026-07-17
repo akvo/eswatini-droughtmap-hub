@@ -5,6 +5,7 @@ import { Line } from "akvo-charts";
 import { Checkbox, ConfigProvider, Switch, Tooltip } from "antd";
 import useWeatherSeries from "@/hooks/useWeatherSeries";
 import ChartCard from "./ChartCard";
+import { SERIES_COLOR } from "./seriesColors";
 import {
   findWeatherSeries,
   normalAt,
@@ -12,21 +13,22 @@ import {
   stationProvenance,
 } from "@/lib/helper";
 
-// Tmax red / Tmin blue is fixed by the design; Tmean takes the amber between.
+// Colours and order per the design's checkbox row (Figma 4133:91018).
 const TEMP_SERIES = [
-  { key: "tmax", label: "T max", color: "#E60000" },
-  { key: "tmin", label: "T min", color: "#3E5EB9" },
-  { key: "tmean", label: "T Mean", color: "#E8A33D" },
+  { key: "tmax", label: "T max", color: SERIES_COLOR.contrast },
+  { key: "tmin", label: "T min", color: SERIES_COLOR.station },
+  { key: "tmean", label: "T Mean", color: SERIES_COLOR.accent },
 ];
 
 /**
  * Monthly Tmax/Tmean/Tmin lines (Figma 4133:91008) with the 30-year average
  * behind a toggle.
  *
- * The frame offers a 30-yr average per series, but AgERA5 publishes tmean
- * only — `meta.unavailable` names the rest, and they are omitted rather than
- * faked. Adding them later is additive: the normals value is an object keyed
- * by parameter.
+ * The frame offers a 30-yr average per series, but the AgERA5 export we hold
+ * covers tmean only — `meta.unavailable` names the rest, and they are omitted
+ * rather than faked. (AgERA5 itself does publish daily Max/Min-24h; they are
+ * simply not in our file — see OQ-2 in the WX-5 design doc.) Adding them later
+ * is additive: the normals value is an object keyed by parameter.
  */
 const TemperatureChart = ({ administrationId, normals }) => {
   const [range, setRange] = useState({});
@@ -140,9 +142,9 @@ const TemperatureChart = ({ administrationId, normals }) => {
           <div className="flex items-center gap-2">
             {unavailable.length > 0 && (
               <Tooltip
-                title={`No 30-year source for ${unavailable.join(
+                title={`No 30-year average for ${unavailable.join(
                   " / ",
-                )} — AgERA5 publishes mean temperature only.`}
+                )} yet — our AgERA5 source covers mean temperature only.`}
               >
                 <span className="text-xs text-neutral-400 cursor-help">
                   {`${unavailable.join("/")} average unavailable`}

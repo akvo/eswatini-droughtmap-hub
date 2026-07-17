@@ -48,9 +48,9 @@ Goal:
   the original definition: January country-wide mean **133.0 mm** vs the original's
   **132.98 mm**, with min/max widening (50.6–309.9 vs 82.4–220.5) as expected at 5x finer
   resolution.
-- **AgERA5 publishes tmean only** in the delivered file. Max/Min-24h exist in the same CDS
-  dataset but need credentials and daily→normal aggregation, so tmax/tmin 30-yr averages
-  are still unavailable (§5 D-4, OQ-2).
+- **The delivered AgERA5 file carries tmean only** — this is a property of the export, not of
+  AgERA5: Max/Min-24h exist in the same CDS dataset, but need credentials and daily→normal
+  aggregation, so tmax/tmin 30-yr averages are still unavailable (§5 D-4, OQ-2).
 
 ---
 
