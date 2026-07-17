@@ -79,11 +79,16 @@ class IKSAggregationsEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.json()["radar"]["Shiselweni"][idx], 1.0)
 
     def test_iks_agreement_aggregation_endpoint(self):
-        """Test GET /api/v1/iks/aggregations/agreement API."""
+        """GET /api/v1/iks/aggregations/agreement with no IKS reports.
+
+        An administration with no observations yields no row: an agreement
+        verdict compares IKS against satellite, and there is nothing to
+        compare yet. See tests_iks_no_data_is_not_faked.
+        """
         response = self.client.get("/api/v1/iks/aggregations/agreement")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("agreement", response.json())
-        self.assertTrue(len(response.json()["agreement"]) > 0)
+        self.assertEqual(response.json()["agreement"], [])
 
     def test_iks_agreement_aggregation_endpoint_with_data(self):
         """Test GET /api/v1/iks/aggregations/agreement with database data."""

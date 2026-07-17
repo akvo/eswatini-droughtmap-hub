@@ -87,11 +87,13 @@ class Command(BaseCommand):
         auth = (adapter.username, adapter.password)
 
         sync_count = 0
-        # Track the newest submission actually processed so the next run
-        # only pulls records after it (incremental sync).
-        newest = adapter.last_sync_timestamp
         for form in forms:
             url = self._build_data_url(adapter, form)
+            # Newest submission processed for THIS form on THIS run. The
+            # cursor is per form, so a quiet or failing form is never dragged
+            # forward by a busy one.
+            newest = None
+            failed = False
 
             # Kobo paginates at 100 records per page; follow the "next"
             # link until it is null. Pages are processed and dropped as we
@@ -107,6 +109,7 @@ class Command(BaseCommand):
                                 f"Kobo API returned status {response.status_code} for form {form.uuid}"  # noqa
                             )
                         )
+                        failed = True
                         break
                     data = response.json()
                 except Exception as e:
@@ -115,6 +118,7 @@ class Command(BaseCommand):
                             f"Failed to fetch data for form {form.uuid}: {str(e)}"  # noqa
                         )
                     )
+                    failed = True
                     break
 
                 for res in data.get("results", []):
@@ -129,10 +133,7 @@ class Command(BaseCommand):
 
                 url = data.get("next")
 
-        # Advance the cursor to the newest submission seen (its own clock),
-        # which is safer than wall-clock now() against API/DB skew.
-        adapter.last_sync_timestamp = newest or timezone.now()
-        adapter.save()
+            self._advance_cursor(form, newest, failed)
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -140,15 +141,38 @@ class Command(BaseCommand):
             )
         )
 
+    def _advance_cursor(self, form, newest, failed):
+        """Move this form's cursor to the newest submission seen (its own
+        clock, safer than wall-clock now() against API/DB skew).
+
+        A form is only advanced when its whole window came back cleanly. On a
+        failure — including one that hits page 2 of 3 — the cursor is left
+        alone so the next run re-pulls the window; pages are not ordered by
+        submission time, so a partial run's newest would skip the rest.
+        Re-pulling is harmless: every write is an update_or_create.
+        """
+        if failed or newest is None:
+            return
+        if (
+            form.last_sync_timestamp is None
+            or newest > form.last_sync_timestamp
+        ):
+            form.last_sync_timestamp = newest
+            form.save(update_fields=["last_sync_timestamp"])
+
     def _build_data_url(self, adapter, form):
         """Build the Kobo data URL, filtering to new submissions when
-        the adapter has a last_sync_timestamp."""
+        the form has a last_sync_timestamp.
+
+        No cursor means the form has never been pulled (newly registered, or
+        reset by an adapter switch), so it is fetched in full.
+        """
         url = f"{adapter.server_url.rstrip('/')}/api/v2/assets"
         url += f"/{form.uuid}/data/?format=json"
-        if adapter.last_sync_timestamp:
+        if form.last_sync_timestamp:
             # ponytail: Kobo _submission_time is UTC; format the cursor in
             # UTC so the $gt comparison lines up.
-            cursor = adapter.last_sync_timestamp.astimezone(
+            cursor = form.last_sync_timestamp.astimezone(
                 dt_timezone.utc
             ).strftime("%Y-%m-%dT%H:%M:%S")
             query = {"_submission_time": {"$gt": cursor}}

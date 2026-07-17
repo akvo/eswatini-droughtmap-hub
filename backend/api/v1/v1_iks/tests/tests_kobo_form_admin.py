@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory
 from api.v1.v1_iks.models import KoboData, KoboForm
@@ -127,6 +128,68 @@ class KoboFormAdminTests(BaseIKSTestCase):
         # Warning message included cascade count
         self.assertTrue(len(messages) > 0)
         self.assertIn("1", messages[0])
+
+    # ------------------------------------------------------------------
+    # Adding an active form queues a sync so it is not live-but-empty
+    # ------------------------------------------------------------------
+    @patch("api.v1.v1_iks.admin.async_task")
+    def test_saving_active_form_without_data_queues_sync(self, mock_async):
+        new_form = KoboForm(
+            uuid="a6JCtffpjhSSDXcZuZrfTv", name="CDI-E - IKS", active=True
+        )
+        mock_request = MockRequest(self.user)
+        self.admin_inst.message_user = lambda req, msg, level=None: None
+
+        self.admin_inst.save_model(mock_request, new_form, None, change=False)
+
+        mock_async.assert_called_once()
+        self.assertEqual(mock_async.call_args[0][1], "download_iks_data")
+
+    @patch("api.v1.v1_iks.admin.async_task")
+    def test_saving_inactive_form_does_not_queue_sync(self, mock_async):
+        new_form = KoboForm(uuid="dormant-uid", name="Dormant", active=False)
+        mock_request = MockRequest(self.user)
+
+        self.admin_inst.save_model(mock_request, new_form, None, change=False)
+
+        mock_async.assert_not_called()
+
+    @patch("api.v1.v1_iks.admin.async_task")
+    def test_saving_already_synced_form_does_not_queue_sync(self, mock_async):
+        """Editing a form that carries a cursor must not re-trigger a pull."""
+        from django.utils import timezone
+
+        self.form.last_sync_timestamp = timezone.now()
+        self.form.save()
+        mock_request = MockRequest(self.user)
+
+        self.admin_inst.save_model(mock_request, self.form, None, change=True)
+
+        mock_async.assert_not_called()
+
+    @patch("api.v1.v1_iks.admin.async_task")
+    def test_saving_form_whose_cursor_was_reset_queues_sync(self, mock_async):
+        """
+        An adapter switch clears the cursors, so a form that still holds rows
+        from the old server must re-pull against the new one.
+        """
+        from django.utils import timezone
+
+        KoboData.objects.create(
+            form=self.form,
+            kobo_id=12345,
+            submission_time=timezone.now(),
+            raw_data={},
+        )
+        self.form.last_sync_timestamp = None
+        self.form.save()
+        self.admin_inst.message_user = lambda req, msg, level=None: None
+
+        self.admin_inst.save_model(
+            MockRequest(self.user), self.form, None, change=True
+        )
+
+        mock_async.assert_called_once()
 
     # ------------------------------------------------------------------
     # T6: Newly-added form is included in download_iks_data queryset

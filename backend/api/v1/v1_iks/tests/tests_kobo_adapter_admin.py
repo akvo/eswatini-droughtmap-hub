@@ -72,15 +72,18 @@ class KoboAdapterAdminTests(BaseIKSTestCase):
         with self.assertRaises(IntegrityError):
             KoboAdapter.objects.update(active=True)
 
-    def test_activation_resets_last_sync_timestamp(self):
+    def test_activation_resets_form_cursors(self):
         """
-        Activating an adapter via save_model() resets last_sync_timestamp.
+        D-5: activating a different adapter resets every form's cursor, so
+        the next sync re-pulls each form in full against the new server.
         """
+        self.form.last_sync_timestamp = timezone.now()
+        self.form.save()
+
         adapter = KoboAdapter.objects.create(
             server_url="https://second.kobotoolbox.org",
             username="second_user",
             password="second_password",
-            last_sync_timestamp=timezone.now(),
             active=False,
         )
 
@@ -105,32 +108,37 @@ class KoboAdapterAdminTests(BaseIKSTestCase):
             MockRequest(self.user), adapter, form, change=True
         )
 
-        adapter.refresh_from_db()
-        self.assertIsNone(adapter.last_sync_timestamp)
+        self.form.refresh_from_db()
+        self.assertIsNone(self.form.last_sync_timestamp)
 
-    def test_ordinary_save_preserves_last_sync_timestamp(self):
+    def test_ordinary_save_preserves_form_cursors(self):
         """
-        Ordinary saves of an already active adapter
-        do not reset last_sync_timestamp.
+        Ordinary saves of an already active adapter do not reset the
+        form cursors — only a switch to a different adapter does.
         """
         original_time = timezone.now()
-        self.adapter.last_sync_timestamp = original_time
-        self.adapter.save()
+        self.form.last_sync_timestamp = original_time
+        self.form.save()
 
-        # Perform save without changing active status
-        self.adapter.save()
-        self.adapter.refresh_from_db()
-        self.assertEqual(self.adapter.last_sync_timestamp, original_time)
+        admin_inst = KoboAdapterAdmin(KoboAdapter, AdminSite())
+        admin_inst.save_model(
+            MockRequest(self.user), self.adapter, None, change=True
+        )
+
+        self.form.refresh_from_db()
+        self.assertEqual(self.form.last_sync_timestamp, original_time)
 
     def test_admin_action_activate_adapter(self):
         """
         Admin activate action successfully activates target and demotes others.
         """
+        self.form.last_sync_timestamp = timezone.now()
+        self.form.save()
+
         second_adapter = KoboAdapter.objects.create(
             server_url="https://second.kobotoolbox.org",
             username="second_user",
             password="second_password",
-            last_sync_timestamp=timezone.now(),
             active=False,
         )
 
@@ -143,10 +151,12 @@ class KoboAdapterAdminTests(BaseIKSTestCase):
 
         self.adapter.refresh_from_db()
         second_adapter.refresh_from_db()
+        self.form.refresh_from_db()
 
         self.assertFalse(self.adapter.active)
         self.assertTrue(second_adapter.active)
-        self.assertIsNone(second_adapter.last_sync_timestamp)
+        # D-5: the switch reset the form cursors, not a field on the adapter
+        self.assertIsNone(self.form.last_sync_timestamp)
 
     def test_admin_action_deactivate_adapter(self):
         """

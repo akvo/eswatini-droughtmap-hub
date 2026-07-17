@@ -7,7 +7,6 @@ class KoboAdapter(models.Model):
     server_url = models.URLField(max_length=255)
     username = models.CharField(max_length=150)
     password = models.CharField(max_length=128)
-    last_sync_timestamp = models.DateTimeField(null=True, blank=True)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,6 +48,7 @@ class KoboForm(models.Model):
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_sync_timestamp = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "kobo_forms"

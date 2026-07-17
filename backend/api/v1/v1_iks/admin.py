@@ -1,6 +1,19 @@
 from django import forms
 from django.contrib import admin
+from django.core.management import call_command
+from django_q.tasks import async_task
 from .models import KoboAdapter, KoboForm
+
+
+def reset_form_cursors():
+    """D-5: a newly activated adapter is a different Kobo server, so what we
+    have already pulled says nothing about what it holds. Clearing every
+    form's cursor makes the next sync re-pull each form in full.
+
+    The cursor lives on KoboForm (the sync is per form), so an adapter switch
+    resets all of them rather than one field on the adapter.
+    """
+    return KoboForm.objects.update(last_sync_timestamp=None)
 
 
 class KoboAdapterForm(forms.ModelForm):
@@ -62,12 +75,11 @@ class KoboAdapterAdmin(admin.ModelAdmin):
         "server_url",
         "username",
         "active",
-        "last_sync_timestamp",
         "updated_at",
     )
     list_filter = ("active",)
     search_fields = ("server_url", "username")
-    readonly_fields = ("last_sync_timestamp", "created_at", "updated_at")
+    readonly_fields = ("created_at", "updated_at")
     ordering = ("-active", "-updated_at")
     actions = ["activate_adapter", "deactivate_adapter"]
 
@@ -81,7 +93,7 @@ class KoboAdapterAdmin(admin.ModelAdmin):
         (
             "Sync Metadata",
             {
-                "fields": ("last_sync_timestamp", "created_at", "updated_at"),
+                "fields": ("created_at", "updated_at"),
                 "classes": ("collapse",),
             },
         ),
@@ -89,7 +101,7 @@ class KoboAdapterAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         """
-        Detect False→True activation transition and reset last_sync_timestamp.
+        Detect False→True activation transition and reset the sync cursors.
         The demotion of other active adapters happens inside
         obj.save() (model).
         """
@@ -103,9 +115,9 @@ class KoboAdapterAdmin(admin.ModelAdmin):
             )
 
         activating = obj.active and not was_active
-        if activating:
-            obj.last_sync_timestamp = None  # D-5: reset cursor on switch
         super().save_model(request, obj, form, change)
+        if activating:
+            reset_form_cursors()
 
     @admin.action(description="Set selected adapter as active")
     def activate_adapter(self, request, queryset):
@@ -127,14 +139,14 @@ class KoboAdapterAdmin(admin.ModelAdmin):
                 f"{adapter.server_url} is already active.",
             )
             return
-        # Reset cursor (D-5) before save(), which handles the demotion
-        adapter.last_sync_timestamp = None
         adapter.active = True
         adapter.save()  # triggers KoboAdapter.save() → atomic demotion
+        reset_form_cursors()  # D-5: re-pull every form against the new server
         self.message_user(
             request,
             f"{adapter.server_url} is now the active adapter. "
-            "Sync cursor has been reset.",
+            "Sync cursors have been reset; every form will be re-pulled "
+            "on the next sync.",
         )
 
     @admin.action(description="Set selected adapters as inactive")
@@ -163,6 +175,7 @@ class KoboFormAdmin(admin.ModelAdmin):
         "uuid",
         "name",
         "active",
+        "last_sync_timestamp",
         "description",
         "created_at",
         "updated_at",
@@ -173,6 +186,7 @@ class KoboFormAdmin(admin.ModelAdmin):
         "questions",
         "options",
         "languages",
+        "last_sync_timestamp",
         "created_at",
         "updated_at",
     )
@@ -192,6 +206,7 @@ class KoboFormAdmin(admin.ModelAdmin):
                     "questions",
                     "options",
                     "languages",
+                    "last_sync_timestamp",
                     "created_at",
                     "updated_at",
                 ),
@@ -209,6 +224,21 @@ class KoboFormAdmin(admin.ModelAdmin):
         if obj:  # editing an existing record
             return ("uuid",) + self.readonly_fields
         return self.readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        """
+        Queue a sync as soon as an active form has never been pulled — on add,
+        and after an adapter switch clears the cursors. Without this the form
+        is live in the API but empty until the next scheduled run.
+        """
+        super().save_model(request, obj, form, change)
+        if obj.active and obj.last_sync_timestamp is None:
+            async_task(call_command, "download_iks_data")
+            self.message_user(
+                request,
+                f"Sync queued for '{obj.name}'. Data appears once the "
+                "worker finishes; reload this page to check.",
+            )
 
     def delete_model(self, request, obj):
         """
