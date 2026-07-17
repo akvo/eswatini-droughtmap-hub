@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Q, UniqueConstraint
 from api.v1.v1_publication.models import Administration
 
 
@@ -6,13 +7,35 @@ class KoboAdapter(models.Model):
     server_url = models.URLField(max_length=255)
     username = models.CharField(max_length=150)
     password = models.CharField(max_length=128)
-    last_sync_timestamp = models.DateTimeField(null=True, blank=True)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            if self.active:
+                KoboAdapter.objects.exclude(pk=self.pk).filter(
+                    active=True
+                ).update(active=False)
+            super().save(*args, **kwargs)
+
+    def validate_constraints(self, exclude=None):
+        if self.active:
+            exclude = exclude or []
+            if "one_active_kobo_adapter" not in exclude:
+                # Use list copy to avoid modifying external exclude parameter
+                exclude = list(exclude) + ["one_active_kobo_adapter"]
+        super().validate_constraints(exclude=exclude)
+
     class Meta:
         db_table = "kobo_adapters"
+        constraints = [
+            UniqueConstraint(
+                fields=["active"],
+                condition=Q(active=True),
+                name="one_active_kobo_adapter",
+            ),
+        ]
 
 
 class KoboForm(models.Model):
@@ -22,8 +45,10 @@ class KoboForm(models.Model):
     questions = models.JSONField(default=dict)
     options = models.JSONField(default=dict)
     languages = models.JSONField(default=list)
+    active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_sync_timestamp = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "kobo_forms"
