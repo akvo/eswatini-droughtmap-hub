@@ -37,6 +37,7 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
         choices=TechnicalWorkingGroup.FieldStr.items(),
         default=None,
         null=True,
+        blank=True,
     )
     # Marks a reviewer as a sector lead (create/edit own-sector drafts).
     activity_sector = models.IntegerField(
