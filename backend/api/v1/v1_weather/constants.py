@@ -73,3 +73,21 @@ INGESTION_LAG_ALERT_DAYS = 30
 
 TOTAL_PLANNED_STATIONS = 8
 NETWORK = "MET"
+
+# --- 30-year normals (WX-5) ---------------------------------------------
+# One band per month-of-year (climatology). Both rasters are EPSG:4326 and
+# live in the repo alongside eswatini.topojson.
+NORMALS_DIR = "./source/30years"
+NORMALS_RASTERS = {
+    WeatherParameter.precipitation: {
+        "filename": "ESW_CHIRPS_precip_mm_1991-2020.tif",
+        "dataset": "CHIRPS 1991-2020",
+    },
+    WeatherParameter.tmean: {
+        "filename": "ESW_AgERA5_tmean_c_1990-2020.tif",
+        "dataset": "AgERA5 1990-2020",
+    },
+}
+# AgERA5 publishes no tmax/tmin, so those normals have no source (design D-4).
+NORMALS_UNAVAILABLE = [WeatherParameter.tmax, WeatherParameter.tmin]
+NORMALS_DEFINITION = "monthly mean over the normals period"
