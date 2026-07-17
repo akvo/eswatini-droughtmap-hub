@@ -236,6 +236,45 @@ def download_geonode_dataset_results(task):
     job.save()
 
 
+def compute_zonal_values(input_file: str) -> list:
+    # Indicator-agnostic zonal stats: for each administration polygon, mask
+    # the raster to that geometry and reduce the valid, non-negative pixels
+    # to a single value via (min + mean) * 0.5. No category here — that is
+    # a CDI-specific concept layered on top by callers that need it.
+    topojson_file = "./source/eswatini.topojson"
+    gdf = gpd.read_file(topojson_file)
+    gdf.crs = "epsg:4326"
+    results = []
+    with rasterio.open(input_file) as src:
+        gdf_reprojected = gdf.to_crs(src.crs)
+        for _, row in gdf_reprojected.iterrows():
+            geom = row["geometry"]
+            admin_id = row["administration_id"]
+            if geom.is_empty:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            try:
+                masked_arr, _ = mask(dataset=src, shapes=[geom], crop=True,
+                                     nodata=src.nodata, filled=False)
+            except ValueError:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            masked_arr = masked_arr[0]
+            valid_data = masked_arr.compressed()
+            if valid_data.size == 0:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            positive_values = valid_data[np.where(valid_data >= 0)]
+            if positive_values.size == 0:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            min_val = np.min(positive_values)
+            mean_val = np.mean(positive_values)
+            final_value = (min_val + mean_val) * 0.5
+            results.append({"administration_id": admin_id, "value": float(final_value)})
+    return results
+
+
 def generate_initial_cdi_values(
     publication_id: int,
     input_file: str,
@@ -248,90 +287,13 @@ def generate_initial_cdi_values(
             f"Publication with ID {publication_id} does not exist."
         )
         return False
-    # Read the topojson file to load all Administrations
-    topojson_file = "./source/eswatini.topojson"
-    gdf = gpd.read_file(topojson_file)
 
-    gdf.crs = "epsg:4326"
-
-    # Ensure the CRS of the GeoDataFrame and the raster are the same
-    with rasterio.open(input_file) as src:
-        gdf = gdf.to_crs(src.crs)
-
-    # Custom zonal stats using rasterio and numpy
-    results = []
-
-    with rasterio.open(input_file) as src:
-        # Reproject GeoDataFrame to match raster CRS
-        gdf_reprojected = gdf.to_crs(src.crs)
-
-        for _, row in gdf_reprojected.iterrows():
-            geom = row["geometry"]
-            admin_id = row["administration_id"]
-
-            if geom.is_empty:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            try:
-                # Mask the raster using the geometry
-                masked_arr, _ = mask(
-                    dataset=src,
-                    shapes=[geom],
-                    crop=True,
-                    nodata=src.nodata,
-                    filled=False  # returns a masked array
-                )
-            except ValueError:
-                # Handle invalid geometry or no overlap
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            # Flatten and get valid (unmasked) data
-            masked_arr = masked_arr[0]  # first band
-            valid_data = masked_arr.compressed()  # Get only unmasked values
-
-            if valid_data.size == 0:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            # Use numpy.where to filter out missing data (-1 values)
-            positive_values = valid_data[np.where(valid_data >= 0)]
-
-            if positive_values.size == 0:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            min_val = np.min(positive_values)
-            mean_val = np.mean(positive_values)
-
-            # Apply the formula (min + mean) * 0.5
-            final_value = (min_val + mean_val) * 0.5
-
-            category = get_category(final_value)
-
-            results.append({
-                "administration_id": admin_id,
-                "value": float(final_value),
-                "category": category
-            })
-
+    raw = compute_zonal_values(input_file)
+    results = [
+        {**item, "category": get_category(item["value"])
+                  if item["value"] is not None else None}
+        for item in raw
+    ]
     publication.initial_values = results
     publication.save()
     return PublicationSerializer(publication).data
