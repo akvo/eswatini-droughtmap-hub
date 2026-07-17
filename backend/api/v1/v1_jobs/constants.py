@@ -8,6 +8,7 @@ class JobTypes:
     download_geonode_dataset = 7
     new_user_password_setup = 8
     send_feedback = 9
+    indicator_values = 10
 
     FieldStr = {
         test: "test",
@@ -19,6 +20,7 @@ class JobTypes:
         download_geonode_dataset: "download_geonode_dataset",
         new_user_password_setup: "new_user_password_setup",
         send_feedback: "send_feedback",
+        indicator_values: "indicator_values",
     }
 
 

@@ -100,6 +100,24 @@ class FilterStatus:
     }
 
 
+class RasterIndicatorTypes:
+    esi = "esi"
+    evi2 = "evi2"
+    sm = "sm"
+    spi = "spi"
+
+    FieldStr = {
+        esi: "ESI percentile rank",
+        evi2: "EVI2 percentile rank",
+        sm: "SM percentile rank",
+        spi: "SPI percentile rank",
+    }
+
+    @classmethod
+    def choices(cls):
+        return list(cls.FieldStr.items())
+
+
 class AdministrationZones(Enum):
     # Highveld, Middleveld, Lowveld, Lubombo Plateau
     HIGHVELD = "highveld"
