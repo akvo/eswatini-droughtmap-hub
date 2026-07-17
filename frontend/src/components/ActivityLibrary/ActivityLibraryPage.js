@@ -14,6 +14,23 @@ import ActivityAddedModal from "../Modals/ActivityAddedModal";
 import Can from "@/components/Can";
 import { ACTIVITY_STATUS } from "@/static/config";
 
+/**
+ * Name the CSV after the rows it holds, so exports taken minutes apart are
+ * told apart by more than their date.
+ *
+ * The status filter holds the id (ACTIVITY_STATUS maps name -> id), so read
+ * the name back off it. "all" matches nothing and stays unprefixed — the
+ * absence of a prefix reads as "everything".
+ */
+export const buildExportFilename = (statusFilter, date = new Date()) => {
+  const dateStr = date.toISOString().split("T")[0];
+  const statusName = Object.keys(ACTIVITY_STATUS).find(
+    (name) => ACTIVITY_STATUS[name] === statusFilter,
+  );
+  const prefix = statusName ? `${statusName}_` : "";
+  return `${prefix}drought_response_activities_${dateStr}.csv`;
+};
+
 export default function ActivityLibraryPage() {
   const [activities, setActivities] = useState([]);
   const [counts, setCounts] = useState({ active: 0, draft: 0, archived: 0 });
@@ -125,9 +142,7 @@ export default function ActivityLibraryPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const dateStr = new Date().toISOString().split("T")[0];
-      const filename = `drought_response_activities_${dateStr}.csv`;
-      link.download = filename;
+      link.download = buildExportFilename(statusFilter);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
