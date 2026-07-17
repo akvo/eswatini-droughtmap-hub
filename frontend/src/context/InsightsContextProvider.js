@@ -9,7 +9,9 @@ import { api } from "@/lib/api";
 const InsightsContext = createContext(null);
 
 const InsightsContextProvider = ({ children }) => {
-  const [selectedInkhundla, setSelectedInkhundla] = useState("Mhlangatane");
+  // No default selection: the page opens on the design's "Select inkhundla"
+  // empty state (Figma 4159:184659) rather than picking one for the user.
+  const [selectedInkhundla, setSelectedInkhundla] = useState(null);
   const [administrations, setAdministrations] = useState([]);
 
   useEffect(() => {
@@ -27,9 +29,11 @@ const InsightsContextProvider = ({ children }) => {
   }, []);
 
   const value = useMemo(() => {
-    const currentAdmin = administrations.find(
-      (a) => a.name.toLowerCase() === selectedInkhundla.toLowerCase(),
-    );
+    const currentAdmin = selectedInkhundla
+      ? administrations.find(
+          (a) => a.name.toLowerCase() === selectedInkhundla.toLowerCase(),
+        )
+      : null;
     return {
       selectedInkhundla,
       setSelectedInkhundla,

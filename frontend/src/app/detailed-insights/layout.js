@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Select, Button } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { api } from "@/lib/api";
 import FeedbackSection from "@/components/FeedbackSection";
 import PageHeader from "@/components/PageHeader";
@@ -60,14 +61,37 @@ const monthMap = {
   Dec: "December",
 };
 
+/**
+ * Shown in place of the active tab until an inkhundla is picked
+ * (Figma 4159:184659). It lives here rather than in each tab because it sits
+ * below the tab row and is identical whichever tab is active — and it keeps
+ * every tab from having to handle a null administrationId.
+ */
+const SelectInkhundlaEmptyState = () => (
+  <div className="flex min-h-[480px] w-full flex-col items-center justify-center gap-4 bg-brandTint px-4 text-center">
+    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-neutral-200 bg-white">
+      <InfoCircleOutlined className="text-xl text-primary" />
+    </div>
+    <div className="flex flex-col gap-1">
+      <h3 className="mb-0 text-2xl font-bold text-neutral-800">
+        Select inkhundla
+      </h3>
+      <p className="mb-0 text-base text-neutral-500">
+        Select inkhundla to see detailed insights
+      </p>
+    </div>
+  </div>
+);
+
 const InsightsShell = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { selectedInkhundla, setSelectedInkhundla, administrations } =
     useInsights();
 
-  // Active tab is the segment after /detailed-insights (default "iks").
-  const activeTab = pathname.split("/")[2] || "iks";
+  // Active tab is the segment after /detailed-insights; the bare path redirects
+  // to cdi, so this fallback only covers a direct hit on the layout.
+  const activeTab = pathname.split("/")[2] || "cdi";
 
   const [lastUpdatedDate, setLastUpdatedDate] = useState(null);
 
@@ -185,8 +209,12 @@ const InsightsShell = ({ children }) => {
               })}
             </div>
 
-            {/* Active tab page renders here */}
-            <div className="w-full">{children}</div>
+            {/* Active tab page renders here, once there is something to show */}
+            {selectedInkhundla ? (
+              <div className="w-full">{children}</div>
+            ) : (
+              <SelectInkhundlaEmptyState />
+            )}
           </div>
 
           <FeedbackSection />
