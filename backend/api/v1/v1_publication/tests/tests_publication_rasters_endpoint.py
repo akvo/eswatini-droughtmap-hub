@@ -272,6 +272,30 @@ class PublicationRasterAPITestCase(APITestCase):
             PublicationRaster.objects.filter(pk=raster.id).exists()
         )
 
+    def test_delete_on_list_route_returns_404(self):
+        # DELETE .../rasters (no raster_id) matches the list route, not
+        # the detail route delete() is written for. This must 404
+        # rather than 500 with a "missing raster_id" TypeError.
+        response = self.client.delete(self.rasters_url(), format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_on_detail_route_returns_404(self):
+        # GET .../rasters/<raster_id> matches the detail route, not the
+        # list route get() is written for. This must 404 rather than
+        # 500 with an "unexpected raster_id argument" TypeError.
+        raster = PublicationRaster.objects.create(
+            publication=self.publication,
+            indicator="evi2",
+            geonode_id=317,
+        )
+
+        response = self.client.get(
+            self.raster_detail_url(raster.id), format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     @patch("api.v1.v1_publication.views.async_task")
     @patch("api.v1.v1_publication.views.requests.get")
     def test_attach_requires_admin(self, mock_get, mock_async_task):

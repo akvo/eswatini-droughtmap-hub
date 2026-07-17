@@ -23,7 +23,7 @@ from drf_spectacular.utils import (
     OpenApiParameter
 )
 from django.core.management import call_command
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.conf import settings
 from django_q.tasks import async_task
 from django.db import IntegrityError, transaction
@@ -580,7 +580,14 @@ class PublicationRasterAPI(APIView):
             403: DefaultResponseSerializer,
         },
     )
-    def post(self, request, version, pk):
+    def post(self, request, version, pk, raster_id=None):
+        # This method is only reachable from the list route
+        # (.../rasters); the detail route (.../rasters/<raster_id>)
+        # supplies raster_id and should 404 here instead of hitting the
+        # "unexpected keyword argument" TypeError DRF would otherwise
+        # surface as a 500.
+        if raster_id is not None:
+            raise Http404
         if not IsAdmin().has_permission(request, self):
             raise PermissionDenied()
         publication = get_object_or_404(Publication, pk=pk)
@@ -655,7 +662,10 @@ class PublicationRasterAPI(APIView):
         tags=["Admin"],
         responses={200: PublicationRasterItemSerializer(many=True)},
     )
-    def get(self, request, version, pk):
+    def get(self, request, version, pk, raster_id=None):
+        # Same list-route-only guard as post() above.
+        if raster_id is not None:
+            raise Http404
         publication = get_object_or_404(Publication, pk=pk)
         return Response(
             {
@@ -675,7 +685,13 @@ class PublicationRasterAPI(APIView):
         tags=["Admin"],
         responses={204: None, 403: DefaultResponseSerializer},
     )
-    def delete(self, request, version, pk, raster_id):
+    def delete(self, request, version, pk, raster_id=None):
+        # Mirror image of the list-route guards above: this method only
+        # lives on the detail route (.../rasters/<raster_id>), so a
+        # DELETE against the list route (no raster_id) should 404
+        # instead of hitting a "missing positional argument" TypeError.
+        if raster_id is None:
+            raise Http404
         if not IsAdmin().has_permission(request, self):
             raise PermissionDenied()
         raster = get_object_or_404(
