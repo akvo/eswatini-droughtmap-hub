@@ -30,13 +30,14 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
       >
         {labels.map((m, idx) => {
           const state = statesMap(idx);
-          let colorClass = "bg-neutral-200 text-neutral-500";
-          if (state === "W" || state === "G")
-            colorClass = "bg-[#12b76a] text-white"; // Green
-          else if (state === "D" || state === "B")
-            colorClass = "bg-[#b10d0b] text-white"; // Red
-          else if (state === "M") colorClass = "bg-sky-200 text-sky-800";
-          else if (state === "S") colorClass = "bg-amber-400 text-white";
+          let colorClass = "bg-[#3e5eb9] text-white";
+          if (state === "W" || state === "G") {
+            colorClass = "bg-[#12b76a] text-white";
+          } else if (state === "M" || state === "S") {
+            colorClass = "bg-[#f39c12] text-white";
+          } else if (state === "D" || state === "B") {
+            colorClass = "bg-[#b10d0b] text-white";
+          }
 
           return (
             <div
@@ -57,7 +58,7 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
       </div>
       <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
         <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 bg-neutral-200 block rounded-full"></span>{" "}
+          <span className="w-2.5 h-2.5 bg-[#3e5eb9] block rounded-full"></span>{" "}
           No submission
         </span>
         {legend.map((item, idx) => (
