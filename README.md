@@ -164,6 +164,63 @@ python manage.py check_overdue_reviews
 - Sends email notifications to **all reviewers whose reviews are overdue**.
 - Logs the output to `/home/user/logs/check_overdue_reviews.log`.
 
+### **Weather Station Data (WIS2): `sync_weather_stations` & `fetch_weather_observations`**
+
+The `v1_weather` app ingests hourly SYNOP observations from a configurable
+**WIS2 (wis2box)** instance and stores **daily aggregates** per station and
+parameter (precipitation, tmin, tmax, tmean, humidity, wind_speed). Station health
+(online / degraded / offline) and data completeness are computed from the
+ingested data, never from the source's station metadata.
+
+#### **Environment Variables**
+
+```bash
+WIS2_BASE_URL="http://<your-wis2box-host>"
+WIS2_COLLECTION_ID="<your wis2box observation collection id>"
+```
+
+These seed the default `WeatherSource` row on first migration. After that the
+active source is editable in Django admin (or via
+`PUT /api/v1/weather/source` as admin) — switching instances needs no code
+change.
+
+#### **Commands**
+
+```bash
+# Sync the station registry (WIGOS id, coordinates, region assignment)
+docker compose exec backend python manage.py sync_weather_stations
+
+# Daily ingestion — resumes from each station's last aggregated day
+docker compose exec backend python manage.py fetch_weather_observations
+
+# Backfill a window explicitly
+docker compose exec backend python manage.py fetch_weather_observations --from 2026-07-01
+```
+
+Notes:
+- `fetch_weather_observations` runs the station sync first, is **idempotent**
+  (day-level upsert) and **self-healing** — a missed night backfills
+  automatically on the next run.
+- The WIS2 archive is shallow (~months); if ingestion lags more than 30 days,
+  admins are alerted by email.
+
+#### **Scheduled Jobs: `job.sh`**
+
+`backend/job.sh` is the single Rundeck/cron entry point. The task argument is
+**required** — a mis-configured job fails loudly with a usage message:
+
+```bash
+./job.sh reviews                      # overdue-review notifications
+./job.sh weather                      # daily WIS2 ingestion
+./job.sh weather --from 2026-07-01    # manual backfill
+```
+
+Cron example (daily at midnight):
+
+```bash
+0 0 * * * cd /backend && ./job.sh weather >> /home/user/logs/weather_ingest.log 2>&1
+```
+
 ### **Seed and Sync Kobo IKS data: `kobo_seeder` and `download_iks_data`**
 
 The `kobo_seeder` and `download_iks_data` commands register your Kobo adapter credentials and sync the Indigenous Knowledge Systems (IKS) submissions into the local database:
