@@ -17,10 +17,14 @@ class SystemUserAdmin(UserAdmin):
         "name",
         "role",
         "email_verified",
+        "activity_sector",
+        "technical_working_group",
     )
     list_filter = (
         "role",
         "email_verified",
+        "activity_sector",
+        "technical_working_group",
     )
     fieldsets = (
         (None, {"fields": ("email", "name", "password")}),
@@ -30,6 +34,8 @@ class SystemUserAdmin(UserAdmin):
                 "fields": (
                     "role",
                     "email_verified",
+                    "activity_sector",
+                    "technical_working_group",
                 )
             },
         ),
@@ -46,6 +52,7 @@ class SystemUserAdmin(UserAdmin):
                     "password2",
                     "role",
                     "technical_working_group",
+                    "activity_sector",
                 ),
             },
         ),
