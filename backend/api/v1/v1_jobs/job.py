@@ -15,7 +15,7 @@ from api.v1.v1_jobs.models import Jobs
 from api.v1.v1_jobs.constants import JobStatus, JobTypes
 from api.v1.v1_publication.constants import GEONODE_SSL_VERIFY
 from api.v1.v1_users.models import SystemUser
-from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     PublicationSerializer,
@@ -297,6 +297,58 @@ def generate_initial_cdi_values(
     publication.initial_values = results
     publication.save()
     return PublicationSerializer(publication).data
+
+
+def generate_indicator_values(publication_raster_id: int, input_file: str):
+    raster = PublicationRaster.objects.filter(pk=publication_raster_id).first()
+    if not raster:
+        logger.error(f"PublicationRaster {publication_raster_id} does not exist.")
+        return False
+    raster.values = compute_zonal_values(input_file)
+    raster.extracted_at = timezone.now()
+    raster.save()
+    return {"id": raster.id, "indicator": raster.indicator}
+
+
+def download_indicator_dataset_results(task):
+    job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    job_info = job.info
+    raster_id = job_info["publication_raster_id"]
+    filename = job_info["filename"]
+    input_file = os.path.join(tmp_dir, filename)
+    if task.success and os.path.exists(input_file):
+        job.status = JobStatus.done
+        job.available = timezone.now()
+        next_job = Jobs.objects.create(
+            type=JobTypes.indicator_values,
+            status=JobStatus.on_progress,
+            info={"publication_raster_id": raster_id},
+        )
+        task_id = async_task(
+            "api.v1.v1_jobs.job.generate_indicator_values",
+            raster_id,
+            input_file,
+            hook="api.v1.v1_jobs.job.generate_indicator_values_results",
+        )
+        next_job.task_id = task_id
+        next_job.save()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
+
+
+def generate_indicator_values_results(task):
+    job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    if task.success:
+        job.status = JobStatus.done
+        job.available = timezone.now()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
 
 
 def generate_initial_cdi_values_results(task):
