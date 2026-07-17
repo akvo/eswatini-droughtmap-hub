@@ -48,6 +48,8 @@ export default function AddActivitySlideIn({ visible, onClose, onSuccess }) {
       const step1Errors = {};
       if (!formData.sector) step1Errors.sector = "Sector is required.";
       if (!formData.title?.trim()) step1Errors.title = "Title is required.";
+      if (!formData.description?.trim())
+        step1Errors.description = "Description is required.";
 
       if (Object.keys(step1Errors).length > 0) {
         setErrors(step1Errors);

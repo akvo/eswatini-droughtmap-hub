@@ -35,6 +35,12 @@ describe("AddActivitySlideIn Component", () => {
     expect(screen.getByText("Identity")).toBeInTheDocument();
     expect(screen.getByText("Protocol ID")).toBeInTheDocument();
     expect(screen.getByText("Title *")).toBeInTheDocument();
+    expect(screen.getByText("Description *")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        "please write a description of the activity you are adding.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Next")).toBeInTheDocument();
   });
 });
