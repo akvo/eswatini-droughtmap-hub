@@ -83,3 +83,33 @@ class ZonalParityTestCase(TestCase):
         from api.v1.v1_jobs.job import compute_zonal_values
         for item in compute_zonal_values(self.fixture):
             self.assertEqual(set(item.keys()), {"administration_id", "value"})
+
+    def test_compute_zonal_values_returns_none_when_no_positive_overlap(self):
+        # The happy-path fixture above covers the whole of Eswatini with
+        # valid, non-negative pixels, so it never exercises either
+        # value=None branch in compute_zonal_values: the mask() ValueError
+        # for administrations that don't overlap the raster at all, and the
+        # positive_values.size == 0 branch for administrations whose only
+        # overlapping pixels are negative. Build a raster confined to a
+        # tiny (0.1x0.1 degree) box inside the Eswatini bbox, with every
+        # pixel negative, to force both branches.
+        from api.v1.v1_jobs.job import compute_zonal_values
+
+        width = height = 8
+        transform = from_bounds(30.9, -26.9, 31.0, -26.8, width, height)
+        data = np.full((height, width), -0.5, dtype="float32")
+        partial_negative_raster = os.path.join(self._tmp, "partial_negative.tif")
+        with rasterio.open(
+            partial_negative_raster, "w", driver="GTiff", height=height,
+            width=width, count=1, dtype="float32", crs="epsg:4326",
+            transform=transform, nodata=-9999.0,
+        ) as dst:
+            dst.write(data, 1)
+
+        results = compute_zonal_values(partial_negative_raster)
+
+        # Same administration set as the happy-path fixture, so this isn't
+        # trivially passing on an empty list.
+        self.assertEqual(len(results), len(compute_zonal_values(self.fixture)))
+        self.assertGreater(len(results), 0)
+        self.assertTrue(all(item["value"] is None for item in results))
