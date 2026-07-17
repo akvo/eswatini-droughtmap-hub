@@ -1,0 +1,269 @@
+import React, { useState, useEffect } from "react";
+import { Button, Tag, Spin, message, Modal } from "antd";
+import { api } from "@/lib/api";
+import { useUserContext } from "@/context/UserContextProvider";
+import { ACTIVITY_STATUS, USER_ROLES } from "@/static/config";
+import ActivityStatusTag from "./ActivityStatusTag";
+import { SECTOR_TAG_COLORS, SECTOR_ICONS } from "./ActivityTable";
+import TriggerConditionsView from "./TriggerConditionsView";
+import InkhundlaBanner from "./InkhundlaBanner";
+import OwnershipView from "./OwnershipView";
+import ContextSignoffView from "./ContextSignoffView";
+import Can from "@/components/Can";
+
+export default function ActivityDetailSlideIn({
+  activityId,
+  onClose,
+  onEdit,
+  onRefresh,
+}) {
+  const userContext = useUserContext();
+  const [activity, setActivity] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+
+  // Fetch activity details
+  useEffect(() => {
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const res = await api("GET", `/activity/${activityId}`);
+        setActivity(res);
+      } catch (err) {
+        console.error("Failed to fetch activity details:", err);
+        message.error("Failed to load activity details.");
+        onClose();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activityId) {
+      fetchDetail();
+    } else {
+      setActivity(null);
+    }
+  }, [activityId, onClose]);
+
+  // Handle Escape key to dismiss
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (activityId) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activityId, onClose]);
+
+  if (!activityId) return null;
+
+  const handleArchive = () => {
+    Modal.confirm({
+      title: "Archive Response Activity?",
+      content:
+        "Are you sure you want to archive this response activity? This action cannot be undone.",
+      okText: "Archive",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        setTransitioning(true);
+        try {
+          await api("POST", `/activity/${activity.id}/transition`, {
+            to_status: ACTIVITY_STATUS.archived,
+          });
+          message.success("Response activity archived.");
+          onRefresh();
+          onClose();
+        } catch (err) {
+          console.error("Failed to archive activity:", err);
+          message.error(err?.message || "Failed to archive activity.");
+        } finally {
+          setTransitioning(false);
+        }
+      },
+    });
+  };
+
+  const handleActivate = () => {
+    Modal.confirm({
+      title: "Activate Response Activity?",
+      content: "Are you sure you want to set this response activity to active?",
+      okText: "Activate",
+      cancelText: "Cancel",
+      onOk: async () => {
+        setTransitioning(true);
+        try {
+          await api("POST", `/activity/${activity.id}/transition`, {
+            to_status: ACTIVITY_STATUS.active,
+          });
+          message.success("Response activity set to active.");
+          onRefresh();
+          onClose();
+        } catch (err) {
+          console.error("Failed to activate activity:", err);
+          message.error(err?.message || "Failed to activate activity.");
+        } finally {
+          setTransitioning(false);
+        }
+      },
+    });
+  };
+
+  const TRANSITIONS = {
+    [ACTIVITY_STATUS.draft]: [ACTIVITY_STATUS.active, ACTIVITY_STATUS.archived],
+    [ACTIVITY_STATUS.active]: [ACTIVITY_STATUS.archived],
+    [ACTIVITY_STATUS.archived]: [],
+  };
+
+  const status = activity?.status;
+  const allowedTransitions = TRANSITIONS[status] || [];
+  const canArchive = allowedTransitions.includes(ACTIVITY_STATUS.archived);
+  const canActivate = allowedTransitions.includes(ACTIVITY_STATUS.active);
+  const isDraft = status === ACTIVITY_STATUS.draft;
+  const isNotArchived = status !== ACTIVITY_STATUS.archived;
+
+  // Reviewer abilities check (only let review edit drafts in their own sector, admin can do everything)
+  const isAdmin =
+    userContext?.role === "admin" || userContext?.role === USER_ROLES.admin;
+  const canEdit =
+    isDraft &&
+    (isAdmin ||
+      (userContext?.role === "reviewer" &&
+        userContext?.activity_sector === activity.sector));
+
+  if (!activityId) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Slide-in Container */}
+      <div className="relative w-[604px] h-screen bg-white flex flex-col shadow-2xl z-10 border-l border-neutral-300">
+        {/* Sticky Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 sticky top-0 bg-white z-10">
+          <span className="text-base font-semibold text-neutral-800">
+            Response activity details
+          </span>
+          <button
+            onClick={onClose}
+            className="text-neutral-500 hover:text-neutral-700 text-lg font-semibold"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Details Body Area */}
+        <div className="flex-1 overflow-y-auto flex flex-col">
+          {loading || !activity ? (
+            <div className="flex-1 flex items-center justify-center h-full min-h-[200px] py-6">
+              <Spin size="large" tip="Loading activity details..." />
+            </div>
+          ) : (
+            <>
+              {/* Section 1: Identity & Description */}
+              <div className="flex flex-col gap-4 py-4 border-b border-neutral-200">
+                {/* Badges / Tags */}
+                <div className="flex items-center justify-between w-full px-6">
+                  <ActivityStatusTag status={activity.status} />
+                  <Tag color={SECTOR_TAG_COLORS[activity.sector] || "default"}>
+                    {SECTOR_ICONS[activity.sector]}
+                    {activity.sector_label}
+                  </Tag>
+                </div>
+
+                {/* Title & Protocol ID */}
+                <div className="flex flex-col gap-1 px-6">
+                  <h2 className="text-2xl font-bold text-neutral-900 leading-tight m-0">
+                    {activity.title}
+                  </h2>
+                  <span className="text-sm font-semibold text-neutral-500 mt-2">
+                    {activity.code}
+                  </span>
+                </div>
+
+                {/* Description */}
+                {activity.description && (
+                  <div className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap px-6">
+                    {activity.description}
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Trigger Conditions */}
+              <div className="flex flex-col gap-4 py-4 border-b border-neutral-200 px-6">
+                <TriggerConditionsView triggers={activity.triggers} />
+                <InkhundlaBanner triggers={activity.triggers} />
+              </div>
+
+              {/* Section 3: Ownership */}
+              <div className="py-4 border-b border-neutral-200 px-6">
+                <OwnershipView activity={activity} />
+              </div>
+
+              {/* Section 4: Context & Sign-off */}
+              <div className="py-4 border-b border-neutral-200 px-6">
+                <ContextSignoffView activity={activity} />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Sticky Footer */}
+        {!loading && activity && (
+          <div className="px-6 py-4 border-t border-[#d2d2d2] flex justify-between items-center sticky bottom-0 bg-white z-10 w-full h-[76px]">
+            <div>
+              {canEdit && (
+                <Can I="update" a="Activity">
+                  <Button
+                    onClick={() => onEdit(activity)}
+                    className="h-11 px-6 border border-solid border-[#e2e8f0] bg-white text-[#001946] font-medium rounded-none hover:bg-neutral-50 hover:text-[#001946] focus:bg-white focus:text-[#001946] focus:border-[#e2e8f0]"
+                  >
+                    Edit
+                  </Button>
+                </Can>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {canArchive && (
+                <Button
+                  onClick={handleArchive}
+                  loading={transitioning}
+                  className="h-11 px-6 border border-solid border-[#e2e8f0] bg-white text-[#001946] font-medium rounded-none hover:bg-neutral-50 focus:bg-white focus:text-[#001946] focus:border-[#e2e8f0] hover:border-red-200 hover:text-red-600"
+                >
+                  Archive
+                </Button>
+              )}
+
+              {canActivate && (
+                <Button
+                  onClick={handleActivate}
+                  loading={transitioning}
+                  className="h-11 px-6 bg-[#3e5eb9] text-white font-medium rounded-none border-none hover:bg-[#2d468a] hover:text-white focus:bg-[#3e5eb9] focus:text-white"
+                >
+                  Set active
+                </Button>
+              )}
+
+              {isDraft && canEdit && (
+                <Can I="update" a="Activity">
+                  <Button
+                    onClick={() => onEdit(activity)}
+                    className="h-11 px-6 bg-[#3e5eb9] text-white font-medium rounded-none border-none hover:bg-[#2d468a] hover:text-white focus:bg-[#3e5eb9] focus:text-white"
+                  >
+                    Save changes as draft
+                  </Button>
+                </Can>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

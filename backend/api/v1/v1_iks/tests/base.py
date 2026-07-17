@@ -39,3 +39,12 @@ class BaseIKSTestCase(APITestCase):
             options={},
             languages=["en"],
         )
+
+    def month_idx(self, payload, when):
+        """Position of `when`'s month in a trend response's 12-month window.
+
+        The window is anchored on timezone.now(), so a literal index would
+        only be right during the month the test was written.  Raises
+        ValueError if `when` has aged out of the window entirely.
+        """
+        return payload["weeks"].index(when.strftime("%b %Y"))

@@ -453,11 +453,11 @@ cd frontend && yarn test
 ## 12. References
 
 - Figma: [Activity Library — node 3483-63179](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3483-63179&m=dev)
-- Backend app: [`backend/api/v1/v1_activity/`](file:///Users/galihpratama/Sites/eswatini-droughtmap-hub/backend/api/v1/v1_activity/)
-- Serializers: [`serializers.py`](file:///Users/galihpratama/Sites/eswatini-droughtmap-hub/backend/api/v1/v1_activity/serializers.py)
-- Views & URL routes: [`views.py`](file:///Users/galihpratama/Sites/eswatini-droughtmap-hub/backend/api/v1/v1_activity/views.py) · [`urls.py`](file:///Users/galihpratama/Sites/eswatini-droughtmap-hub/backend/api/v1/v1_activity/urls.py)
-- Constants: [`constants.py`](file:///Users/galihpratama/Sites/eswatini-droughtmap-hub/backend/api/v1/v1_activity/constants.py)
-- Track 3 docs folder: [`eswatini-v2/docs/track-3/`](file:///Users/galihpratama/Sites/eswatini-droughtmap-hub/eswatini-v2/docs/track-3/)
+- Backend app: [`backend/api/v1/v1_activity/`](backend/api/v1/v1_activity/)
+- Serializers: [`serializers.py`](backend/api/v1/v1_activity/serializers.py)
+- Views & URL routes: [`views.py`](backend/api/v1/v1_activity/views.py) · [`urls.py`](backend/api/v1/v1_activity/urls.py)
+- Constants: [`constants.py`](backend/api/v1/v1_activity/constants.py)
+- Track 3 docs folder: [`eswatini-v2/docs/track-3/`](eswatini-v2/docs/track-3/)
 
 ---
 

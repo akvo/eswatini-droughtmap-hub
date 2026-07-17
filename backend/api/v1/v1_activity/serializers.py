@@ -104,12 +104,17 @@ class ActivityListSerializer(serializers.ModelSerializer):
 
 class ActivityDetailSerializer(ActivityListSerializer):
     response_type_label = serializers.SerializerMethodField()
+    activated_by_name = serializers.SerializerMethodField()
     signoffs = ActivitySignOffSerializer(many=True, read_only=True)
     history = ActivityHistorySerializer(many=True, read_only=True)
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_response_type_label(self, obj):
         return ActivityResponseType.FieldStr.get(obj.response_type)
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_activated_by_name(self, obj):
+        return obj.activated_by.name if obj.activated_by else None
 
     class Meta:
         model = ResponseActivity
@@ -133,6 +138,9 @@ class ActivityDetailSerializer(ActivityListSerializer):
             "status_label",
             "verified_at",
             "activated_at",
+            "activated_by",
+            "activated_by_name",
+            "notes",
             "created_at",
             "updated_at",
             "signoffs",
@@ -159,6 +167,7 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
             "response_type",
             "source_doc",
             "source_file",
+            "notes",
         ]
 
     def validate_triggers(self, value):

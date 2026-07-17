@@ -104,6 +104,7 @@ const config = {
     "^next$": require.resolve("next"),
     "^next/navigation$": require.resolve("next/navigation"),
     "^jose": require.resolve("jose"),
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader

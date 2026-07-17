@@ -4,9 +4,9 @@ import AppContextProvider, {
   useAppDispatch,
 } from "../../../context/AppContextProvider";
 import ReviewAdmModal from "../ReviewAdmModal";
-import { api } from "../../../lib";
+import { api } from "@/lib";
 
-jest.mock("../../../lib", () => ({ api: jest.fn() }));
+jest.mock("@/lib", () => ({ api: jest.fn() }));
 
 jest.setTimeout(30000);
 

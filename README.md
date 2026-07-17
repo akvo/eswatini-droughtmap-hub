@@ -66,7 +66,7 @@ Eswatini Droughtmap Hub
 1. **Upload a Dataset to GeoNode**
 
    - Log in to GeoNode as an admin.
-   - Upload a raster (*.tif, *.tiff) dataset.
+   - Upload a raster (`*.tif`, `*.tiff`) dataset.
    - Set its category to `cdi-raster-map`.
 
 2. **Verify in Eswatini Droughtmap Hub**
@@ -133,6 +133,7 @@ code,title,description,sector,status,owner,coord_with,response_type,source_doc,t
 ```
 
 Field notes:
+
 - `sector` uses activity sector codes such as `WASH`, `FOOD`, `HEALTH`, and `COORD`.
 - `response_type` accepts `public` or `institutional`.
 - Trigger operators use `gte` or `lte`.
@@ -155,11 +156,13 @@ python manage.py check_overdue_reviews
 ```
 
 #### **Cron Example: Run Every Day at Midnight**
+
 ```bash
 0 0 * * * /usr/bin/python3 /backend/manage.py check_overdue_reviews >> /home/user/logs/check_overdue_reviews.log 2>&1
 ```
 
 **Explanation:**
+
 - Checks for overdue CDI Map reviews at **midnight** every day.
 - Sends email notifications to **all reviewers whose reviews are overdue**.
 - Logs the output to `/home/user/logs/check_overdue_reviews.log`.
@@ -223,16 +226,23 @@ Cron example (daily at midnight):
 
 ### **Seed and Sync Kobo IKS data: `kobo_seeder` and `download_iks_data`**
 
-The `kobo_seeder` and `download_iks_data` commands register your Kobo adapter credentials and sync the Indigenous Knowledge Systems (IKS) submissions into the local database:
+The system supports registering multiple Kobo adapters and switching which one is active. The Indigenous Knowledge Systems (IKS) submissions will be synchronized using the active adapter:
 
-#### **1. Seed Kobo adapter credentials**
+#### **1. Manage Kobo Adapters & Forms via Django Admin (Recommended)**
+
+- **Kobo Adapters**: Log in to Django Admin and navigate to **IKS** → **Kobo adapters**. You can add/edit adapters (passwords are masked). Toggle the active checkbox or use the action **Set selected adapter as active** to switch. Activating an adapter resets its `last_sync_timestamp` to `None`, forcing a full sync on the next run.
+- **Kobo Forms**: Navigate to **IKS** → **Kobo forms**. You can register dummy/testing and production forms. Toggling the `Active` checkbox controls whether data is synced for that form. The form `uuid` is only editable during creation (Add view) to prevent data inconsistencies.
+
+#### **2. Seed Kobo adapter credentials via CLI**
+
 ```bash
 docker compose exec backend python manage.py kobo_seeder --username <user> --password <pass>
 ```
 
-#### **2. Sync and download submissions**
+#### **3. Sync and download submissions**
+
+Only active forms (`Active=True`) are synced from the Kobo API using the active adapter's credentials:
+
 ```bash
 docker compose exec backend python manage.py download_iks_data
 ```
-
-*(Note: to reset the sync state and force download of all submissions from the beginning, run: `docker compose exec backend python manage.py shell -c "from api.v1.v1_iks.models import KoboAdapter; KoboAdapter.objects.update(last_sync_timestamp=None)"` before running the downloader command).*

@@ -9,8 +9,27 @@ import ActivityMetricCards from "./ActivityMetricCards";
 import ActivityTableFilters from "./ActivityTableFilters";
 import ActivityTable from "./ActivityTable";
 import AddActivitySlideIn from "./AddActivity/AddActivitySlideIn";
+import ActivityDetailSlideIn from "./ActivityDetailSlideIn";
 import ActivityAddedModal from "../Modals/ActivityAddedModal";
 import Can from "@/components/Can";
+import { ACTIVITY_STATUS } from "@/static/config";
+
+/**
+ * Name the CSV after the rows it holds, so exports taken minutes apart are
+ * told apart by more than their date.
+ *
+ * The status filter holds the id (ACTIVITY_STATUS maps name -> id), so read
+ * the name back off it. "all" matches nothing and stays unprefixed — the
+ * absence of a prefix reads as "everything".
+ */
+export const buildExportFilename = (statusFilter, date = new Date()) => {
+  const dateStr = date.toISOString().split("T")[0];
+  const statusName = Object.keys(ACTIVITY_STATUS).find(
+    (name) => ACTIVITY_STATUS[name] === statusFilter,
+  );
+  const prefix = statusName ? `${statusName}_` : "";
+  return `${prefix}drought_response_activities_${dateStr}.csv`;
+};
 
 export default function ActivityLibraryPage() {
   const [activities, setActivities] = useState([]);
@@ -23,6 +42,12 @@ export default function ActivityLibraryPage() {
   const [successSubtitle, setSuccessSubtitle] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // States for activity detail & edit views
+  const [selectedActivityId, setSelectedActivityId] = useState(null);
+  const [showDetailSlideIn, setShowDetailSlideIn] = useState(false);
+  const [editActivity, setEditActivity] = useState(null);
+  const [showEditSlideIn, setShowEditSlideIn] = useState(false);
+
   // Filters state
   const [statusFilter, setStatusFilter] = useState("all");
   const [sectorFilter, setSectorFilter] = useState("all");
@@ -34,9 +59,9 @@ export default function ActivityLibraryPage() {
   const fetchCounts = async () => {
     try {
       const [draftRes, activeRes, archivedRes] = await Promise.all([
-        api("GET", "/activities?status=1"),
-        api("GET", "/activities?status=2"),
-        api("GET", "/activities?status=3"),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.draft}`),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.archived}`),
       ]);
       setCounts({
         draft: draftRes?.total || 0,
@@ -51,11 +76,18 @@ export default function ActivityLibraryPage() {
   const handleSuccess = (subtitleText = "") => {
     setSuccessSubtitle(subtitleText || "");
     setShowSlideIn(false);
+    setEditActivity(null);
     setShowSuccessModal(true);
     // Auto close modal after 4 seconds
     setTimeout(() => {
       handleModalClose();
     }, 4000);
+  };
+
+  const handleEdit = (activityToEdit) => {
+    setEditActivity(activityToEdit);
+    setShowDetailSlideIn(false);
+    setShowSlideIn(true);
   };
 
   const handleModalClose = () => {
@@ -110,9 +142,7 @@ export default function ActivityLibraryPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const dateStr = new Date().toISOString().split("T")[0];
-      const filename = `drought_response_activities_${dateStr}.csv`;
-      link.download = filename;
+      link.download = buildExportFilename(statusFilter);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -193,6 +223,10 @@ export default function ActivityLibraryPage() {
             page={page}
             total={total}
             onPageChange={setPage}
+            onRowClick={(record) => {
+              setSelectedActivityId(record.id);
+              setShowDetailSlideIn(true);
+            }}
           />
         </section>
         <div className="mx-auto w-full max-w-[1280px] py-8">
@@ -203,8 +237,12 @@ export default function ActivityLibraryPage() {
       {/* Slide-In Wizard */}
       <AddActivitySlideIn
         visible={showSlideIn}
-        onClose={() => setShowSlideIn(false)}
+        onClose={() => {
+          setShowSlideIn(false);
+          setEditActivity(null);
+        }}
         onSuccess={handleSuccess}
+        editActivity={editActivity}
       />
 
       {/* Success Modal */}
@@ -213,6 +251,19 @@ export default function ActivityLibraryPage() {
         onClose={handleModalClose}
         subtitle={successSubtitle}
       />
+
+      {/* Detail Slide-In */}
+      {showDetailSlideIn && (
+        <ActivityDetailSlideIn
+          activityId={selectedActivityId}
+          onClose={() => {
+            setSelectedActivityId(null);
+            setShowDetailSlideIn(false);
+          }}
+          onEdit={handleEdit}
+          onRefresh={() => setRefreshKey((prev) => prev + 1)}
+        />
+      )}
     </div>
   );
 }
