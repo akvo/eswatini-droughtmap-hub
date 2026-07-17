@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.test.utils import override_settings
 from io import StringIO
 from datetime import datetime, timedelta
-from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.constants import (
     PublicationStatus,
     CDIGeonodeCategory,
@@ -190,8 +190,9 @@ class PublicationsSeederCommandTestCase(TestCase):
             status=PublicationStatus.in_review
         )
 
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = self.mock_response_data
+        mock_get.side_effect = self._route_by_category(
+            self.mock_response_data
+        )
         mock_async_task.side_effect = self.generate_task_id
 
         out = StringIO()
@@ -217,6 +218,11 @@ class PublicationsSeederCommandTestCase(TestCase):
         # Only 5 new publications should be created (excluding existing)
         total_publications = Publication.objects.count()
         self.assertEqual(total_publications, 6)
+
+        # Component-category queries are routed to an empty result, so
+        # this CDI-focused test stays isolated from component raster
+        # creation (covered separately in tests_publication_seeder_rasters).
+        self.assertEqual(PublicationRaster.objects.count(), 0)
 
     @patch("requests.get")
     def test_geonode_server_error_response(self, mock_get):
@@ -327,8 +333,7 @@ class PublicationsSeederCommandTestCase(TestCase):
             ]
         }
 
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = mock_response_data
+        mock_get.side_effect = self._route_by_category(mock_response_data)
         mock_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
@@ -356,6 +361,11 @@ class PublicationsSeederCommandTestCase(TestCase):
         base_date = datetime.strptime("2024-01-01", "%Y-%m-%d")
         expected_due_date = base_date + timedelta(days=30)
         self.assertEqual(pub_second_date.due_date, expected_due_date.date())
+
+        # Component-category queries are routed to an empty result, so
+        # this CDI-focused test stays isolated from component raster
+        # creation (covered separately in tests_publication_seeder_rasters).
+        self.assertEqual(PublicationRaster.objects.count(), 0)
 
     @patch("api.v1.v1_publication.management.commands.publications_seeder.async_task")
     @patch("requests.get")

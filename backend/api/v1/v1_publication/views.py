@@ -622,35 +622,43 @@ class PublicationRasterAPI(APIView):
             # Nested atomic() turns the uniqueness violation into a
             # savepoint rollback instead of poisoning the whole request's
             # transaction, so the 400 response can still be built normally.
+            # The job creation + async_task dispatch live inside this same
+            # block (matching PublicationViewSet.perform_create's pattern
+            # above) so that a failure there rolls the raster row back too,
+            # instead of leaving an orphaned PublicationRaster with no job
+            # that would then block re-attaching via the unique constraint.
             with transaction.atomic():
                 raster = serializer.save(publication=publication)
+
+                timestamp = int(time.time())
+                filename = "raster_{0}_{1}_{2}.tif".format(
+                    publication.id, raster.indicator, timestamp
+                )
+                job = Jobs.objects.create(
+                    type=JobTypes.download_geonode_dataset,
+                    status=JobStatus.on_progress,
+                    info={
+                        "publication_raster_id": raster.id,
+                        "filename": filename,
+                    },
+                )
+                task_id = async_task(
+                    "api.v1.v1_jobs.job.download_geonode_dataset",
+                    download_url,
+                    filename,
+                    hook=(
+                        "api.v1.v1_jobs.job."
+                        "download_indicator_dataset_results"
+                    ),
+                )
+                job.task_id = task_id
+                job.save()
         except IntegrityError:
             raise ValidationError({
                 "indicator": (
                     "This indicator is already attached to the publication."
                 )
             })
-
-        timestamp = int(time.time())
-        filename = "raster_{0}_{1}_{2}.tif".format(
-            publication.id, raster.indicator, timestamp
-        )
-        job = Jobs.objects.create(
-            type=JobTypes.download_geonode_dataset,
-            status=JobStatus.on_progress,
-            info={
-                "publication_raster_id": raster.id,
-                "filename": filename,
-            },
-        )
-        task_id = async_task(
-            "api.v1.v1_jobs.job.download_geonode_dataset",
-            download_url,
-            filename,
-            hook="api.v1.v1_jobs.job.download_indicator_dataset_results",
-        )
-        job.task_id = task_id
-        job.save()
 
         return Response(
             AttachRasterSerializer(raster).data,

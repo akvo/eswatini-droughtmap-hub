@@ -179,6 +179,19 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
         mock_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
+
+        # The first run has to walk GeoNode per component category to
+        # discover each matching resource.
+        component_calls_after_first_run = sum(
+            1
+            for call in mock_get.call_args_list
+            if any(
+                f"filter{{category.identifier}}={category}" in call[0][0]
+                for category in self.component_responses
+            )
+        )
+        self.assertGreater(component_calls_after_first_run, 0)
+
         call_command("publications_seeder")
 
         publication = Publication.objects.get(cdi_geonode_id=1)
@@ -193,4 +206,20 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
                 type=JobTypes.download_geonode_dataset
             ).count(),
             5,
+        )
+
+        # Every component raster is already attached with an active
+        # (non-failed) job, so the second run's short-circuit guard
+        # should skip the GeoNode walk entirely for all four categories
+        # -- the call count below must not have grown.
+        component_calls_after_second_run = sum(
+            1
+            for call in mock_get.call_args_list
+            if any(
+                f"filter{{category.identifier}}={category}" in call[0][0]
+                for category in self.component_responses
+            )
+        )
+        self.assertEqual(
+            component_calls_after_second_run, component_calls_after_first_run
         )

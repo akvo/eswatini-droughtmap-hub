@@ -166,10 +166,12 @@ class Command(BaseCommand):
         # one category each, separate from the CDI composite. For every
         # CDI publication we see (new or pre-existing), look up whichever
         # component resource matches the same year/month and queue it for
-        # extraction. Because this runs on every seeder pass and keys off
-        # `get_or_create`, it is naturally idempotent going forward *and*
-        # doubles as a one-time backfill for CDI publications that existed
-        # before component rasters were tracked.
+        # extraction. This runs on every seeder pass, so it doubles as a
+        # one-time backfill for CDI publications that existed before
+        # component rasters were tracked. Steady-state runs are the common
+        # case, though, so each indicator is checked against the database
+        # first and only walks the GeoNode catalogue over the network when
+        # there's actually work to do (see the guard below).
         username = settings.GEONODE_ADMIN_USERNAME
         password = settings.GEONODE_ADMIN_PASSWORD
         # A publication built in this same run still holds the raw
@@ -182,28 +184,34 @@ class Command(BaseCommand):
 
         for category in COMPONENT_RASTER_CATEGORIES:
             indicator = category.split("-")[0]
+
+            # Guard against the network walk before doing it: if this
+            # indicator already has a row that's either extracted or
+            # backed by a live/pending download job, there's nothing to
+            # do. A previously FAILED job does NOT count as active, so a
+            # failed download gets retried on the next pass instead of
+            # being stuck forever.
+            existing = PublicationRaster.objects.filter(
+                publication=publication, indicator=indicator
+            ).first()
+            has_active_job = existing and Jobs.objects.filter(
+                type=JobTypes.download_geonode_dataset,
+                info__publication_raster_id=existing.id,
+            ).exclude(status=JobStatus.failed).exists()
+            if existing and (existing.values is not None or has_active_job):
+                continue
+
             resource = self.find_component_resource(
                 category, target_month, username, password
             )
             if not resource:
                 continue
 
-            raster, created = PublicationRaster.objects.get_or_create(
+            raster, _ = PublicationRaster.objects.get_or_create(
                 publication=publication,
                 indicator=indicator,
-                defaults={"geonode_id": resource["pk"]},
+                defaults={"geonode_id": int(resource["pk"])},
             )
-            if not created:
-                if raster.values is not None:
-                    # Already extracted; nothing left to do.
-                    continue
-                if Jobs.objects.filter(
-                    type=JobTypes.download_geonode_dataset,
-                    info__publication_raster_id=raster.id,
-                ).exists():
-                    # A download is already queued/in flight for this
-                    # raster; avoid firing a duplicate job every run.
-                    continue
 
             timestamp = int(time.time())
             filename = "raster_{0}_{1}_{2}.tif".format(
