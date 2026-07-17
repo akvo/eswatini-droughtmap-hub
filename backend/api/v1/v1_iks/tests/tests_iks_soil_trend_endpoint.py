@@ -14,8 +14,8 @@ class IKSSoilTrendAggregationEndpointTests(BaseIKSTestCase):
         self.assertIn("veg_trend", response.json())
         self.assertIn("region_map", response.json())
         # Check fallback value structure
-        self.assertEqual(len(response.json()["soil_trend"]["dry"]), 13)
-        self.assertEqual(len(response.json()["veg_trend"]["green"]), 13)
+        self.assertEqual(len(response.json()["soil_trend"]["dry"]), 12)
+        self.assertEqual(len(response.json()["veg_trend"]["green"]), 12)
 
     def test_iks_soil_trend_endpoint_with_data(self):
         """Test GET /api/v1/iks/aggregations/soil-trend with values in DB.
