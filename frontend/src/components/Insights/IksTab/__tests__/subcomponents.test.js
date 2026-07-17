@@ -64,6 +64,24 @@ describe("IksTab Subcomponents", () => {
       expect(screen.getByText("Generally Green")).toBeInTheDocument();
       expect(screen.getByText("Brown")).toBeInTheDocument();
     });
+
+    it("greys out a month with no submission instead of using the brand blue", () => {
+      render(
+        <MonthlyStatusGrid
+          title="Soil moisture"
+          subtitle="One answer per month"
+          statesMap={() => "-"}
+          legend={[{ label: "Dry", color: "bg-[#b10d0b]" }]}
+          weeks={["Jan"]}
+        />,
+      );
+
+      // #3e5eb9 is --primary-color: an unreported month must not read as the
+      // most prominent thing on the row.
+      const cell = screen.getByText("-").parentElement;
+      expect(cell).toHaveClass("bg-[#9ca3af]");
+      expect(cell).not.toHaveClass("bg-[#3e5eb9]");
+    });
   });
 
   describe("IndicatorRow", () => {

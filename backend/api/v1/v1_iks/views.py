@@ -37,6 +37,8 @@ from api.v1.v1_iks.serializers import (
     IKSAdministrationSerializer,
     IKSPhotosSerializer,
 )
+from dateutil.relativedelta import relativedelta
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -680,21 +682,14 @@ class IKSSoilTrendAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        weeks = [
-            "May 01",
-            "May 08",
-            "May 15",
-            "May 22",
-            "May 29",
-            "Jun 05",
-            "Jun 12",
-            "Jun 19",
-            "Jun 26",
-            "Jul 03",
-            "Jul 10",
-            "Jul 17",
-            "Jul 24",
+        now = timezone.now()
+        months_list = [
+            now - relativedelta(months=i) for i in range(11, -1, -1)
         ]
+        weeks = [m.strftime("%b %Y") for m in months_list]
+        month_to_idx = {
+            (m.year, m.month): idx for idx, m in enumerate(months_list)
+        }
         # A week only gets a percentage if submissions landed in it. Weeks
         # with none stay 0/0/0, which the client renders as "no submission" —
         # never a prototype figure standing in for missing data.
@@ -739,13 +734,10 @@ class IKSSoilTrendAggregationView(APIView):
                 if not sub_time:
                     continue
                 created_date = localtime(sub_time).date()
-                week_idx = 0
-                if created_date.month == 5:
-                    week_idx = min(created_date.day // 7, 4)
-                elif created_date.month == 6:
-                    week_idx = 5 + min(created_date.day // 8, 3)
-                elif created_date.month >= 7:
-                    week_idx = 9 + min(created_date.day // 8, 3)
+                year_month = (created_date.year, created_date.month)
+                if year_month not in month_to_idx:
+                    continue
+                week_idx = month_to_idx[year_month]
 
                 val_str = val.value.lower()
                 total_counts[week_idx] += 1
@@ -794,13 +786,10 @@ class IKSSoilTrendAggregationView(APIView):
                     if not sub_time:
                         continue
                     created_date = localtime(sub_time).date()
-                    week_idx = 0
-                    if created_date.month == 5:
-                        week_idx = min(created_date.day // 7, 4)
-                    elif created_date.month == 6:
-                        week_idx = 5 + min(created_date.day // 8, 3)
-                    elif created_date.month >= 7:
-                        week_idx = 9 + min(created_date.day // 8, 3)
+                    year_month = (created_date.year, created_date.month)
+                    if year_month not in month_to_idx:
+                        continue
+                    week_idx = month_to_idx[year_month]
 
                     val_str = val.value.lower()
                     total_veg_counts[week_idx] += 1

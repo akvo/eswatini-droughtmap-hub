@@ -283,7 +283,7 @@ const IksTab = ({
       name: "Rainfall Predictors (Section B)",
       type: "line",
       data: rainLeaningData,
-      itemStyle: { color: "#3E5EB9" },
+      itemStyle: { color: "#4F679B" },
       lineStyle: { width: 2 },
       symbol: "circle",
       symbolSize: 6,
@@ -296,8 +296,8 @@ const IksTab = ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(62, 94, 185, 0.15)" },
-            { offset: 1, color: "rgba(62, 94, 185, 0.01)" },
+            { offset: 0, color: "rgba(79, 103, 155, 0.15)" },
+            { offset: 1, color: "rgba(79, 103, 155, 0.01)" },
           ],
         },
       },
@@ -306,7 +306,7 @@ const IksTab = ({
       name: "Extreme Weather (Section C)",
       type: "line",
       data: extremeWeatherData,
-      itemStyle: { color: "#E60000" },
+      itemStyle: { color: "#C05C5C" },
       lineStyle: { width: 2 },
       symbol: "circle",
       symbolSize: 6,
@@ -319,8 +319,8 @@ const IksTab = ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(230, 0, 0, 0.15)" },
-            { offset: 1, color: "rgba(230, 0, 0, 0.01)" },
+            { offset: 0, color: "rgba(192, 92, 92, 0.15)" },
+            { offset: 1, color: "rgba(192, 92, 92, 0.01)" },
           ],
         },
       },
@@ -333,7 +333,8 @@ const IksTab = ({
       backgroundColor: "#ffffff",
       borderColor: "#e5e7eb",
       borderWidth: 1,
-      textStyle: { color: "#1f2937" },
+      textStyle: { color: "#1f2937", fontSize: 13 },
+      padding: [8, 12],
     },
     legend: {
       show: false,
@@ -486,8 +487,8 @@ const IksTab = ({
                 Indicator activity per monthly report
               </h4>
               <p className="text-xs text-neutral-400">
-                How many rain-leaning vs drought-leaning indicators the citizen
-                scientist ticked each month
+                How many rain-leaning vs extreme weather-leaning indicators the
+                citizen scientist ticked each month
               </p>
             </div>
             <span className="text-xs text-neutral-400 font-medium border border-neutral-100 px-2 py-1 rounded bg-neutral-50">
@@ -497,7 +498,7 @@ const IksTab = ({
 
           {/* Interactive Checkbox Filters */}
           <div className="flex items-center gap-6 mb-4">
-            <ConfigProvider theme={{ token: { colorPrimary: "#3E5EB9" } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: "#4F679B" } }}>
               <Checkbox
                 checked={showRain}
                 onChange={(e) => setShowRain(e.target.checked)}
@@ -507,19 +508,19 @@ const IksTab = ({
                 </span>
               </Checkbox>
             </ConfigProvider>
-            <ConfigProvider theme={{ token: { colorPrimary: "#E60000" } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: "#C05C5C" } }}>
               <Checkbox
                 checked={showDrought}
                 onChange={(e) => setShowDrought(e.target.checked)}
               >
                 <span className="text-xs font-semibold text-neutral-600">
-                  Drought-leaning
+                  Extreme weather-leaning
                 </span>
               </Checkbox>
             </ConfigProvider>
           </div>
 
-          <div className="w-full h-80 pt-4">
+          <div className="w-full h-[380px] pt-4">
             {chartReady ? (
               <Line rawConfig={activityOptions} />
             ) : (
@@ -529,11 +530,11 @@ const IksTab = ({
             )}
           </div>
           {chartReady && (
-            <div className="flex justify-center gap-6 mt-1 mb-4">
+            <div className="flex justify-center gap-6 mt-2 mb-2">
               <div
                 className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showRain ? "opacity-100" : "opacity-35"}`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#3E5EB9] block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#4F679B] block" />
                 <span className="font-medium text-neutral-500">
                   Rain-leaning
                 </span>
@@ -541,9 +542,9 @@ const IksTab = ({
               <div
                 className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showDrought ? "opacity-100" : "opacity-35"}`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#E60000] block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#C05C5C] block" />
                 <span className="font-medium text-neutral-500">
-                  Drought-leaning
+                  Extreme weather-leaning
                 </span>
               </div>
             </div>
@@ -552,29 +553,29 @@ const IksTab = ({
 
         {/* Soil Moisture and Vegetation Grids (DRY) */}
         <Row className="border-b border-neutral-100">
-          <Col md={24} className="border-r border-neutral-100">
+          <Col md={24} className="border-b border-neutral-100">
             <MonthlyStatusGrid
               title="Soil moisture (Womile / Ubutsile / Umanti)"
               subtitle="one answer per monthly report"
               statesMap={getSoilState}
               weeks={data.soilTrend?.weeks}
               legend={[
-                { color: "bg-sky-200", label: "W-Wet" },
-                { color: "bg-amber-400", label: "M-Moist" },
-                { color: "bg-red-600", label: "D-Dry" },
+                { color: "bg-[#12b76a]", label: "W-Wet" },
+                { color: "bg-[#f39c12]", label: "M-Moist" },
+                { color: "bg-[#b10d0b]", label: "D-Dry" },
               ]}
             />
           </Col>
 
           <Col md={24}>
             <MonthlyStatusGrid
-              title="D2 vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
+              title="Vegetation greenness (Tiluhlata / Timbalwa letiluhlata / Bushile)"
               subtitle="one answer per monthly report"
               statesMap={getVegState}
               weeks={data.soilTrend?.weeks}
               legend={[
                 { color: "bg-[#12b76a]", label: "G-Generally green" },
-                { color: "bg-amber-400", label: "S-Some green" },
+                { color: "bg-[#f39c12]", label: "S-Some green" },
                 { color: "bg-[#b10d0b]", label: "B-Brown" },
               ]}
             />
@@ -606,7 +607,7 @@ const IksTab = ({
               <h4 className="text-sm font-bold text-neutral-800">
                 Submitted photos
               </h4>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-neutral-400 mb-0">
                 Photos uploaded with monthly Kobo reports | click to view full |{" "}
                 {photos.length} photos found
               </p>

@@ -80,9 +80,15 @@ const InsightsShell = ({ children }) => {
           const parts = lastWeek.split(" ");
           if (parts.length === 2) {
             const monthName = monthMap[parts[0]] || parts[0];
-            const day = parseInt(parts[1], 10);
-            const currentYear = new Date().getFullYear();
-            setLastUpdatedDate(`${day} ${monthName} ${currentYear}`);
+            const val = parseInt(parts[1], 10);
+            if (val > 1000) {
+              // It's a year
+              setLastUpdatedDate(`${monthName} ${val}`);
+            } else {
+              // It's a day of the month
+              const currentYear = new Date().getFullYear();
+              setLastUpdatedDate(`${val} ${monthName} ${currentYear}`);
+            }
           }
         }
       } catch (err) {
@@ -108,71 +114,80 @@ const InsightsShell = ({ children }) => {
         }
       />
 
-      {/* Shared Explore insights container card */}
-      <div className="relative z-10 bg-white border border-neutral-100 shadow-sm overflow-hidden -mt-12">
-        {/* Card Header (Explore insights title + Inkhundla select + Export) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-neutral-100 gap-4 bg-white">
-          <span className="text-neutral-800 font-extrabold text-base">
-            Explore insights
-          </span>
-          <div className="flex items-center gap-3">
-            <Select
-              showSearch
-              value={selectedInkhundla}
-              onChange={(val) => setSelectedInkhundla(val)}
-              className="w-48"
-              placeholder="Select inkhundla"
-              optionFilterProp="children"
-              filterOption={(input, option) =>
-                (option?.value ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-            >
-              {(administrations.length > 0
-                ? administrations.map((a) => a.name).sort()
-                : constituenciesList
-              ).map((c) => (
-                <Option key={c} value={c}>
-                  {c}
-                </Option>
-              ))}
-            </Select>
-            <Button
-              type="default"
-              className="text-neutral-600 font-semibold border-neutral-200"
-            >
-              Export CSV
-            </Button>
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+        />
+
+        <div className="relative z-10 mx-auto max-w-[1280px] w-full">
+          {/* Shared Explore insights container card */}
+          <div className="relative z-10 bg-white border border-neutral-100 shadow-sm overflow-hidden -mt-12">
+            {/* Card Header (Explore insights title + Inkhundla select + Export) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-neutral-100 gap-4 bg-white">
+              <span className="text-neutral-800 font-extrabold text-base">
+                Explore insights
+              </span>
+              <div className="flex items-center gap-3">
+                <Select
+                  showSearch
+                  value={selectedInkhundla}
+                  onChange={(val) => setSelectedInkhundla(val)}
+                  className="w-48"
+                  placeholder="Select inkhundla"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.value ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                >
+                  {(administrations.length > 0
+                    ? administrations.map((a) => a.name).sort()
+                    : constituenciesList
+                  ).map((c) => (
+                    <Option key={c} value={c}>
+                      {c}
+                    </Option>
+                  ))}
+                </Select>
+                <Button
+                  type="default"
+                  className="text-neutral-600 font-semibold border-neutral-200"
+                >
+                  Export CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* Tab row inside container */}
+            <div className="flex items-center gap-6 px-4 bg-white border-b border-neutral-100">
+              {tabOptions.map((opt) => {
+                const active = opt.value === activeTab;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => router.push(opt.href)}
+                    className={`py-3.5 text-sm font-bold relative transition-colors focus:outline-none -mb-px ${
+                      active
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-neutral-400 hover:text-neutral-600"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active tab page renders here */}
+            <div className="w-full">{children}</div>
           </div>
-        </div>
 
-        {/* Tab row inside container */}
-        <div className="flex items-center gap-6 px-4 bg-white border-b border-neutral-100">
-          {tabOptions.map((opt) => {
-            const active = opt.value === activeTab;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => router.push(opt.href)}
-                className={`py-3.5 text-sm font-bold relative transition-colors focus:outline-none -mb-px ${
-                  active
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-neutral-400 hover:text-neutral-600"
-                }`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
+          {/* Feedback Section */}
+          <FeedbackSection />
         </div>
-
-        {/* Active tab page renders here */}
-        <div className="w-full">{children}</div>
       </div>
-
-      {/* Feedback Section */}
-      <FeedbackSection />
     </div>
   );
 };
