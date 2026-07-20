@@ -8,6 +8,7 @@ import ChartCard from "./ChartCard";
 import { SERIES_COLOR } from "./seriesColors";
 import {
   findWeatherSeries,
+  lastNMonths,
   normalAt,
   periodLabels,
   stationProvenance,
@@ -22,16 +23,17 @@ const TEMP_SERIES = [
 
 /**
  * Monthly Tmax/Tmean/Tmin lines (Figma 4133:91008) with the 30-year average
- * behind a toggle.
+ * behind a toggle — all six of the frame's checkboxes, since the AgERA5 tmax
+ * and tmin normals landed (WX-5 OQ-2, closed 2026-07-17).
  *
- * The frame offers a 30-yr average per series, but the AgERA5 export we hold
- * covers tmean only — `meta.unavailable` names the rest, and they are omitted
- * rather than faked. (AgERA5 itself does publish daily Max/Min-24h; they are
- * simply not in our file — see OQ-2 in the WX-5 design doc.) Adding them later
- * is additive: the normals value is an object keyed by parameter.
+ * Which averages are offered still comes from `meta.unavailable` rather than a
+ * fixed list, so a parameter that loses or lacks a source is hidden instead of
+ * faked — and a new one appears without touching this file.
  */
 const TemperatureChart = ({ administrationId, normals }) => {
-  const [range, setRange] = useState({});
+  // Same trailing-12-month default as the precipitation chart, so the two
+  // stacked charts open on the same window.
+  const [range, setRange] = useState(() => lastNMonths(12));
   const [visible, setVisible] = useState({
     tmax: true,
     tmin: true,
@@ -142,9 +144,9 @@ const TemperatureChart = ({ administrationId, normals }) => {
           <div className="flex items-center gap-2">
             {unavailable.length > 0 && (
               <Tooltip
-                title={`No 30-year average for ${unavailable.join(
+                title={`No 30-year normals source for ${unavailable.join(
                   " / ",
-                )} yet — our AgERA5 source covers mean temperature only.`}
+                )} yet, so that average is omitted rather than estimated.`}
               >
                 <span className="text-xs text-neutral-400 cursor-help">
                   {`${unavailable.join("/")} average unavailable`}

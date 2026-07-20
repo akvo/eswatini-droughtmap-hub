@@ -11,28 +11,10 @@ import InsightsContextProvider, {
   useInsights,
 } from "@/context/InsightsContextProvider";
 
-const { Option } = Select;
-
-const constituenciesList = [
-  "Hhukwini",
-  "Lobamba",
-  "Madlangempisi",
-  "Maphalaleni",
-  "Mayiwane",
-  "Mbabane East",
-  "Mbabane West",
-  "Mhlangatane",
-  "Motshane",
-  "Ndzingeni",
-  "Nkhaba",
-  "Ntfonjeni",
-  "Piggs Peak",
-];
-
 // Each tab is its own child segment of /detailed-insights, rendered into the
 // shared shell below.
 const tabOptions = [
-  { label: "CDI Explorer", value: "cdi", href: "/detailed-insights/cdi" },
+  { label: "CDI Explorer", value: "cdi", href: "/detailed-insights" },
   {
     label: "Weather Stations Explorer",
     value: "weather",
@@ -86,11 +68,11 @@ const SelectInkhundlaEmptyState = () => (
 const InsightsShell = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { selectedInkhundla, setSelectedInkhundla, administrations } =
+  const { administrationId, setAdministrationId, administrations } =
     useInsights();
 
-  // Active tab is the segment after /detailed-insights; the bare path redirects
-  // to cdi, so this fallback only covers a direct hit on the layout.
+  // Active tab is the segment after /detailed-insights; the bare index route
+  // is the CDI tab, so it falls back to "cdi".
   const activeTab = pathname.split("/")[2] || "cdi";
 
   const [lastUpdatedDate, setLastUpdatedDate] = useState(null);
@@ -160,26 +142,19 @@ const InsightsShell = ({ children }) => {
               <div className="flex items-center gap-3">
                 <Select
                   showSearch
-                  value={selectedInkhundla}
-                  onChange={(val) => setSelectedInkhundla(val)}
+                  allowClear
+                  // Selects the id straight off; the name follows from it.
+                  value={administrationId}
+                  // allowClear hands back undefined — normalise so "nothing
+                  // selected" is always null, as the empty-state gate expects.
+                  onChange={(id) => setAdministrationId(id ?? null)}
                   className="w-48"
                   placeholder="Select inkhundla"
-                  optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    (option?.value ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                >
-                  {(administrations.length > 0
-                    ? administrations.map((a) => a.name).sort()
-                    : constituenciesList
-                  ).map((c) => (
-                    <Option key={c} value={c}>
-                      {c}
-                    </Option>
-                  ))}
-                </Select>
+                  optionFilterProp="label"
+                  options={administrations
+                    .map((a) => ({ value: a.id, label: a.name }))
+                    .sort((a, b) => a.label.localeCompare(b.label))}
+                />
                 <Button
                   type="default"
                   className="text-neutral-600 font-semibold border-neutral-200"
@@ -209,8 +184,10 @@ const InsightsShell = ({ children }) => {
               })}
             </div>
 
-            {/* Active tab page renders here, once there is something to show */}
-            {selectedInkhundla ? (
+            {/* Active tab page renders here, once there is something to show.
+                Gated on the id rather than the name: it is what the tabs
+                fetch with, so this is exactly "can the tabs load data?". */}
+            {administrationId ? (
               <div className="w-full">{children}</div>
             ) : (
               <SelectInkhundlaEmptyState />

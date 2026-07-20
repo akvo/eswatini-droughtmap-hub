@@ -8,6 +8,7 @@ import ChartCard from "./ChartCard";
 import { SERIES_COLOR } from "./seriesColors";
 import {
   findWeatherSeries,
+  lastNMonths,
   normalAt,
   periodLabels,
   stationProvenance,
@@ -25,7 +26,9 @@ const NORMAL_COLOR = SERIES_COLOR.contrast;
  * inkhundla by `extract_weather_normals`).
  */
 const PrecipitationChart = ({ administrationId, normals }) => {
-  const [range, setRange] = useState({});
+  // Default to the last 12 months (current month on the right) rather than the
+  // backend's calendar-year-to-date; the picker overrides it.
+  const [range, setRange] = useState(() => lastNMonths(12));
   const [showStation, setShowStation] = useState(true);
   const [showNormals, setShowNormals] = useState(true);
   const { data, loading } = useWeatherSeries(administrationId, range);
