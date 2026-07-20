@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, DatePicker, Table, Tag } from "antd";
+import { CalendarOutlined } from "@ant-design/icons";
 import { Can, FeedbackSection, PageHeader, TabButtons } from "@/components";
 import { api } from "@/lib";
 import { PAGE_SIZE } from "@/static/config";
@@ -36,14 +37,16 @@ const ReviewsPage = () => {
       width: "26%",
       defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.due_date) - new Date(b.due_date),
-      render: (value) => dayjs(value, "YYYY-MM-DD").format("MMMM Do, YYYY"),
+      render: (value) =>
+        value ? dayjs(value, "YYYY-MM-DD").format("DD/MM/YYYY") : "-",
     },
     {
       title: "MONTH",
       dataIndex: "year_month",
       key: "year_month",
       width: "26%",
-      render: (value) => dayjs(value, "YYYY-MM").format("MMMM YYYY"),
+      render: (value) =>
+        value ? dayjs(value, "YYYY-MM").format("MMMM YYYY") : "-",
     },
     {
       title: "REVIEWS",
@@ -124,7 +127,7 @@ const ReviewsPage = () => {
   const headerDate = useMemo(() => {
     const firstReview = reviews?.[0];
     if (firstReview?.last_updated) {
-      return dayjs(firstReview.last_updated).format("d MMMM YYYY");
+      return dayjs(firstReview.last_updated).format("D MMMM YYYY");
     }
     return null;
   }, [reviews]);
@@ -160,6 +163,8 @@ const ReviewsPage = () => {
               <RangePicker
                 className="edm-reviews-range-picker"
                 format="D MMM YYYY"
+                prefix={<CalendarOutlined style={{ marginRight: 8 }} />}
+                suffixIcon={null}
                 value={dateRange}
                 onChange={(value) => {
                   setDateRange(value);
