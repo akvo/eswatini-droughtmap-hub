@@ -3,21 +3,21 @@
     {
       "key": "evi2",
       "label": "EVI2 percentile rank",
-      "value": {"geonode_id": 317, "extracted_at": "2026-07-16T00:12:04Z"},
+      "value": { "geonode_id": 317, "extracted_at": "2026-07-16T00:12:04Z" },
       "data": [
-        {"administration_id": 4588078, "value": 0.846},
-        {"administration_id": 2042786, "value": 0.901}
+        { "administration_id": 4588078, "value": 0.846 },
+        { "administration_id": 2042786, "value": 0.901 }
       ]
     },
     {
       "key": "esi",
       "label": "ESI percentile rank",
-      "value": {"geonode_id": 401, "extracted_at": "2026-07-16T00:12:07Z"},
+      "value": { "geonode_id": 401, "extracted_at": "2026-07-16T00:12:07Z" },
       "data": [
-        {"administration_id": 4588078, "value": 0.512},
-        {"administration_id": 2042786, "value": 0.333}
+        { "administration_id": 4588078, "value": 0.512 },
+        { "administration_id": 2042786, "value": 0.333 }
       ]
     }
   ],
-  "meta": {"publication": 42, "year_month": "2026-04"}
+  "meta": { "publication": 42, "year_month": "2026-04" }
 }

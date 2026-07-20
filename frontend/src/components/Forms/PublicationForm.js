@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib";
 import { CREATE_PUBLICATION_MAIL } from "@/static/config";
 import { VerifiedIcon } from "../Icons";
+import ComponentRasterPreview from "../ComponentRasterPreview";
 
 const { Text } = Typography;
 const { useForm } = Form;
@@ -36,6 +37,8 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
   const [checkItems, setCheckItems] = useState([]);
   const [form] = useForm();
   const router = useRouter();
+
+  const yearMonth = Form.useWatch("year_month", form);
 
   const loadMoreReviewers =
     reviewer?.total_page > 1 && revPage < reviewer?.total_page;
@@ -273,6 +276,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                 picker="month"
               />
             </Form.Item>
+            <ComponentRasterPreview yearMonth={yearMonth} />
             <Form.Item
               label="Review Deadline"
               name="due_date"
