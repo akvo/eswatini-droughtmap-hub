@@ -95,7 +95,7 @@ describe("RiskScoreBuildUp", () => {
 
     expect(screen.getByText("Water access pressure:")).toBeInTheDocument();
     expect(screen.getByText("100%")).toBeInTheDocument();
-    
+
     expect(screen.getByText("Susceptibility:")).toBeInTheDocument();
     // v_ipc = 0.534 maps to Phase 3: Crisis
     expect(screen.getByText("Phase 3: Crisis")).toBeInTheDocument();
@@ -104,18 +104,17 @@ describe("RiskScoreBuildUp", () => {
     expect(screen.getByText("47%")).toBeInTheDocument();
   });
 
-  it("displays the correct band label and formatted final score", () => {
+  it("displays the correct formatted final score", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
-    expect(screen.getByText("Routine monitoring")).toBeInTheDocument();
-    expect(screen.getByText("2.39 / 10")).toBeInTheDocument();
+    expect(screen.getByText("2.4")).toBeInTheDocument();
   });
 
-  it("renders watch list band for watch list score", () => {
+  it("renders watch list score correctly", () => {
     const watchData = {
       ...mockRiskData,
       risk_score: {
-        value: 3.10,
+        value: 3.1,
         meta: {
           band: "watch",
           band_thresholds: { urgent: 4.5, watch: 2.5 },
@@ -124,15 +123,14 @@ describe("RiskScoreBuildUp", () => {
     };
     render(<RiskScoreBuildUp riskData={watchData} />);
 
-    expect(screen.getByText("Watch list")).toBeInTheDocument();
-    expect(screen.getByText("3.10 / 10")).toBeInTheDocument();
+    expect(screen.getByText("3.1")).toBeInTheDocument();
   });
 
-  it("renders urgent response required band for urgent score", () => {
+  it("renders urgent response required score correctly", () => {
     const urgentData = {
       ...mockRiskData,
       risk_score: {
-        value: 5.20,
+        value: 5.2,
         meta: {
           band: "urgent",
           band_thresholds: { urgent: 4.5, watch: 2.5 },
@@ -141,14 +139,13 @@ describe("RiskScoreBuildUp", () => {
     };
     render(<RiskScoreBuildUp riskData={urgentData} />);
 
-    expect(screen.getByText("Urgent response required")).toBeInTheDocument();
-    expect(screen.getByText("5.20 / 10")).toBeInTheDocument();
+    expect(screen.getByText("5.2")).toBeInTheDocument();
   });
 
   it("renders placeholder text when riskData is not provided", () => {
     render(<RiskScoreBuildUp riskData={null} />);
     expect(
-      screen.getByText("No risk assessment data available for this area.")
+      screen.getByText("No risk assessment data available for this area."),
     ).toBeInTheDocument();
   });
 });

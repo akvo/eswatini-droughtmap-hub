@@ -7,7 +7,11 @@ import {
   SlidersOutlined,
   DownOutlined,
 } from "@ant-design/icons";
-import { CONFIDENCE_STYLE } from "@/static/config";
+import {
+  CONFIDENCE_STYLE,
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
 
 const { Panel } = Collapse;
 
@@ -92,9 +96,18 @@ const RiskScoreBuildUp = ({ riskData }) => {
   const confidenceConf =
     CONFIDENCE_STYLE[drought.confidence] || CONFIDENCE_STYLE.medium;
 
+  const droughtKeyLower = (drought.key || "none").toLowerCase();
+  const dclass =
+    DROUGHT_CATEGORY_VALUE[droughtKeyLower] ?? DROUGHT_CATEGORY_VALUE.none;
+  const isNoData = dclass === DROUGHT_CATEGORY_VALUE.none;
+  const chipBg = isNoData ? "#9ca3af" : DROUGHT_CATEGORY_COLOR[dclass];
+
   // Format badges for the accordion headers
   const droughtBadge = (
-    <div className="bg-[#c23f01] text-white px-2 py-0.5 rounded text-xs font-semibold select-none">
+    <div
+      style={{ backgroundColor: chipBg }}
+      className="text-white px-2 py-0.5 rounded text-xs font-semibold select-none"
+    >
       {drought.key || "None"}
     </div>
   );

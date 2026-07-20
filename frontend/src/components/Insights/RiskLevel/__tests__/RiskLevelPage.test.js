@@ -154,9 +154,7 @@ describe("RiskLevelPage Integration", () => {
     expect(screen.getByText("D3 Extreme Drought")).toBeInTheDocument();
 
     // Verify recommended activities section and sector cards
-    expect(
-      screen.getByText("Recommended Response Activities"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("All response activities")).toBeInTheDocument();
     expect(screen.getByTestId("sector-Water & Sanitation")).toBeInTheDocument();
     expect(screen.getByTestId("sector-Food & Agriculture")).toBeInTheDocument();
 

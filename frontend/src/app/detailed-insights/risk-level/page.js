@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Spin, Alert } from "antd";
+import { Spin, Alert, Empty } from "antd";
 import { useInsights } from "@/context/InsightsContextProvider";
 import { api } from "@/lib/api";
 import {
   ACTIVITY_STATUS,
   ACTIVITY_SECTOR_OPTIONS,
   DROUGHT_CATEGORY_VALUE,
+  SECTOR_DESCRIPTIONS,
 } from "@/static/config";
 
 // Component imports
@@ -31,14 +32,17 @@ const SECTOR_KEY_MAP = {
   8: "trans",
 };
 
-// Dynamically generate SECTOR_LIST from the config source of truth
-const SECTOR_LIST = ACTIVITY_SECTOR_OPTIONS.filter(
-  (opt) => opt.value !== "all",
-).map((opt) => ({
-  id: opt.value,
-  key: SECTOR_KEY_MAP[opt.value],
-  name: opt.label,
-}));
+// Sector sequence matching the Figma design order: WASH, Food, Env, Coord, Health, Trans, Edu, Social
+const SECTOR_ORDER = [3, 1, 5, 6, 2, 8, 4, 7];
+
+// Dynamically generate SECTOR_LIST from the config source of truth and sort by Figma design order
+const SECTOR_LIST = ACTIVITY_SECTOR_OPTIONS.filter((opt) => opt.value !== "all")
+  .map((opt) => ({
+    id: opt.value,
+    key: SECTOR_KEY_MAP[opt.value],
+    name: opt.label,
+  }))
+  .sort((a, b) => SECTOR_ORDER.indexOf(a.id) - SECTOR_ORDER.indexOf(b.id));
 
 const RiskLevelPage = () => {
   const { selectedInkhundla, administrationId, region, zone } = useInsights();
@@ -154,25 +158,22 @@ const RiskLevelPage = () => {
       />
 
       {/* Page Layout Container */}
-      <div className="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
+      <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-x-4 bg-brandTint">
         {/* Left Panel: Risk Score Build-up */}
         <div className="w-full lg:w-[420px] flex flex-col gap-6">
           <RiskScoreBuildUp riskData={riskData} />
         </div>
 
         {/* Right Panel: Response Activities Groups */}
-        <div className="flex-1 flex flex-col gap-6">
-          <div>
-            <h2 className="text-lg font-bold text-neutral-800 m-0">
-              Recommended Response Activities
+        <div className="flex-1 border-l border-r border-b border-neutral-100 flex flex-col items-start relative w-full bg-white shadow-sm">
+          {/* Table Header Section */}
+          <div className="bg-white border-b border-neutral-100 flex h-[70px] items-center p-4 w-full">
+            <h2 className="font-['Inter'] font-semibold text-lg text-neutral-800 m-0">
+              All response activities
             </h2>
-            <p className="text-neutral-500 text-sm mt-1">
-              Suggested interventions categorized by sector, based on triggers
-              matching the current drought situation in {selectedInkhundla}.
-            </p>
           </div>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col w-full">
             {SECTOR_LIST.map((sector) => {
               // Filter active activities matching this sector ID
               const sectorActivities = activities.filter(
@@ -182,8 +183,10 @@ const RiskLevelPage = () => {
               return (
                 <SectorCard
                   key={sector.id}
-                  sectorKey={sector.key}
+                  sectorId={sector.id}
                   sectorName={sector.name}
+                  description={SECTOR_DESCRIPTIONS[sector.key]}
+                  inkhundlaName={selectedInkhundla}
                   activities={sectorActivities}
                   onActivityClick={(id) => setSelectedActivityId(id)}
                 />

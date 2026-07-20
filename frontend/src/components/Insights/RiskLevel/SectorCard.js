@@ -1,76 +1,98 @@
 "use client";
 
 import React from "react";
-import { Tag } from "antd";
-import {
-  SECTOR_TAG_COLORS,
-  SECTOR_ICONS,
-} from "../../ActivityLibrary/ActivityTable";
+import { FileTextOutlined } from "@ant-design/icons";
+import { SECTOR_ICONS } from "../../ActivityLibrary/ActivityTable";
 
 const SectorCard = ({
-  sectorKey,
+  sectorId,
   sectorName,
   description,
+  inkhundlaName = "this area",
   activities = [],
   onActivityClick,
 }) => {
+  const count = activities.length;
+
   return (
-    <div className="bg-white border border-neutral-150 rounded-lg p-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div className="bg-white border-b border-neutral-200 flex flex-col items-start p-4 relative w-full last:border-b-0">
       {/* Sector Header */}
-      <div className="flex flex-col gap-1 pb-3 border-b border-neutral-100">
+      <div className="flex items-center justify-between relative w-full">
         <div className="flex items-center gap-2">
-          {SECTOR_ICONS[sectorKey] && (
+          {SECTOR_ICONS[sectorId] && (
             <span className="text-neutral-600 scale-110 flex items-center">
-              {SECTOR_ICONS[sectorKey]}
+              {SECTOR_ICONS[sectorId]}
             </span>
           )}
-          <h3 className="text-lg font-bold text-neutral-800 m-0">
+          <span className="font-[family-name:var(--text\/font\/body,'Inter:Regular')] font-normal text-[16px] text-neutral-800">
             {sectorName}
-          </h3>
+          </span>
         </div>
-        {description && (
-          <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-            {description}
-          </p>
-        )}
+        <div className="flex gap-[4px] items-center text-[12px] text-neutral-500 font-medium select-none">
+          <span>Activities:</span>
+          <span
+            className={
+              count > 0
+                ? "text-[#3e5eb9] font-bold"
+                : "text-neutral-400 font-bold"
+            }
+          >
+            {count}
+          </span>
+        </div>
       </div>
 
-      {/* Activities Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {activities.length > 0 ? (
-          activities.map((act) => (
-            <div
+      {/* Divider */}
+      <div className="h-px bg-neutral-200 w-full my-3" />
+
+      {/* Sector Description or Fallback */}
+      <p className="text-[12px] text-neutral-600 leading-[18px] m-0 w-full">
+        {count > 0
+          ? description
+          : `No Response activities triggered for ${inkhundlaName} in this sector — routine monitoring only.`}
+      </p>
+
+      {/* Triggered Activities Buttons */}
+      {count > 0 && (
+        <div className="flex flex-col gap-2 w-full mt-3">
+          {activities.map((act) => (
+            <button
               key={act.id}
               onClick={() => onActivityClick && onActivityClick(act.id)}
-              className="group border border-neutral-200 hover:border-neutral-350 rounded-lg p-4 flex flex-col justify-between gap-3 cursor-pointer bg-neutral-50 hover:bg-white transition-all duration-300 transform hover:-translate-y-0.5"
+              className="bg-white border border-neutral-200 hover:border-neutral-350 flex gap-3 items-center p-2 relative w-full text-left transition-all duration-200 cursor-pointer"
             >
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-neutral-400 group-hover:text-neutral-500 transition-colors">
-                  {act.code}
-                </span>
-                <h4 className="text-sm font-bold text-neutral-850 group-hover:text-primary leading-snug m-0 transition-colors">
+              {/* Left Indicator Box (Featured Icon) */}
+              <div className="border border-neutral-200 flex-shrink-0 size-8 flex items-center justify-center bg-neutral-50 rounded text-[#3e5eb9]">
+                <FileTextOutlined className="text-sm" />
+              </div>
+              {/* Text content */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-[family-name:var(--text\/font\/body,'Inter:Regular')] font-normal text-neutral-800 truncate m-0">
+                  {act.code && (
+                    <span className="text-xs text-neutral-400 font-semibold mr-1.5">
+                      {act.code}
+                    </span>
+                  )}
                   {act.title}
-                </h4>
+                </p>
+                {(act.description ||
+                  act.summary ||
+                  act.owner_label ||
+                  act.owner) && (
+                  <p className="text-[12px] text-neutral-500 truncate m-0 mt-0.5">
+                    {act.description ||
+                      act.summary ||
+                      act.owner_label ||
+                      act.owner}
+                  </p>
+                )}
               </div>
-              <div className="flex items-center justify-between mt-1 pt-2 border-t border-neutral-100/50">
-                <span className="text-xs text-neutral-500 font-medium truncate max-w-[150px]">
-                  {act.owner_label || act.owner || "No owner"}
-                </span>
-                <Tag
-                  color={SECTOR_TAG_COLORS[sectorKey] || "default"}
-                  className="rounded-[4px] border px-1.5 py-0 m-0 text-[10px] font-semibold uppercase"
-                >
-                  {sectorName.split(" ")[0]}
-                </Tag>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full py-6 text-center text-xs text-neutral-400 font-medium bg-neutral-50/50 rounded-lg border border-dashed border-neutral-200">
-            No active activities currently defined in this sector.
-          </div>
-        )}
-      </div>
+              {/* Right Link Icon */}
+              <span className="text-neutral-400 text-xs flex-shrink-0">↗</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

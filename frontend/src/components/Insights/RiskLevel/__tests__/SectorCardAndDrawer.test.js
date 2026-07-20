@@ -28,7 +28,7 @@ describe("SectorCard Component", () => {
   it("renders sector name and description correctly", () => {
     render(
       <SectorCard
-        sectorKey={3}
+        sectorId={3}
         sectorName="Water & Sanitation"
         description="Water descriptions here."
         activities={mockActivities}
@@ -42,7 +42,7 @@ describe("SectorCard Component", () => {
   it("renders correct number of activity cards with labels", () => {
     render(
       <SectorCard
-        sectorKey={3}
+        sectorId={3}
         sectorName="Water & Sanitation"
         description="Water descriptions here."
         activities={mockActivities}
@@ -59,7 +59,7 @@ describe("SectorCard Component", () => {
     const handleActivityClick = jest.fn();
     render(
       <SectorCard
-        sectorKey={3}
+        sectorId={3}
         sectorName="Water & Sanitation"
         activities={mockActivities}
         onActivityClick={handleActivityClick}
@@ -73,15 +73,16 @@ describe("SectorCard Component", () => {
   it("renders empty state correctly when there are no activities", () => {
     render(
       <SectorCard
-        sectorKey={3}
+        sectorId={3}
         sectorName="Water & Sanitation"
+        inkhundlaName="Kumethula"
         activities={[]}
       />,
     );
 
     expect(
       screen.getByText(
-        "No active activities currently defined in this sector.",
+        "No Response activities triggered for Kumethula in this sector — routine monitoring only.",
       ),
     ).toBeInTheDocument();
   });
