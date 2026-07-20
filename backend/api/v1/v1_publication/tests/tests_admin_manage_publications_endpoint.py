@@ -20,9 +20,9 @@ class PublicationViewSetTestCase(APITestCase):
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 3)
         self.user = (
-            SystemUser.objects.filter(
-                role=UserRoleTypes.admin
-            ).order_by("?").first()
+            SystemUser.objects.filter(role=UserRoleTypes.admin)
+            .order_by("?")
+            .first()
         )
         self.client.force_authenticate(user=self.user)
 
@@ -92,10 +92,7 @@ class PublicationViewSetTestCase(APITestCase):
             ],
         )
         publication = Publication.objects.get(pk=data["id"])
-        self.assertEqual(
-            publication.reviews.count(),
-            2
-        )
+        self.assertEqual(publication.reviews.count(), 2)
 
     def test_publication_list(self):
         call_command("fake_publications_seeder", "--test", True)
@@ -109,13 +106,17 @@ class PublicationViewSetTestCase(APITestCase):
         )
         self.assertCountEqual(
             sorted(list(data["data"][0])),
-            sorted([
-                "id",
-                "year_month",
-                "due_date",
-                "initial_values",
-                "status",
-            ])
+            sorted(
+                [
+                    "id",
+                    "year_month",
+                    "due_date",
+                    "initial_values",
+                    "status",
+                    "updated_at",
+                    "progress_reviews",
+                ]
+            ),
         )
 
     def test_publication_detail(self):
@@ -130,14 +131,11 @@ class PublicationViewSetTestCase(APITestCase):
         )
         url = reverse(
             "publication-details",
-            kwargs={"version": "v1", "pk": publication.id}
+            kwargs={"version": "v1", "pk": publication.id},
         )
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.json()["id"],
-            publication.id
-        )
+        self.assertEqual(response.json()["id"], publication.id)
 
     def test_update_publication(self):
         publication = Publication.objects.create(
@@ -151,7 +149,7 @@ class PublicationViewSetTestCase(APITestCase):
         )
         url = reverse(
             "publication-details",
-            kwargs={"version": "v1", "pk": publication.id}
+            kwargs={"version": "v1", "pk": publication.id},
         )
         data = {
             "validated_values": [
@@ -186,7 +184,7 @@ class PublicationViewSetTestCase(APITestCase):
         )
         url = reverse(
             "publication-details",
-            kwargs={"version": "v1", "pk": publication.id}
+            kwargs={"version": "v1", "pk": publication.id},
         )
         response = self.client.delete(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -222,7 +220,7 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             response.json(),
-            {"reviewers": ["Please select at least one reviewer."]}
+            {"reviewers": ["Please select at least one reviewer."]},
         )
 
     @patch("django.utils.timezone.now")
@@ -253,6 +251,5 @@ class PublicationViewSetTestCase(APITestCase):
         response = self.client.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.json(),
-            {"due_date": ["The date must be today or later."]}
+            response.json(), {"due_date": ["The date must be today or later."]}
         )
