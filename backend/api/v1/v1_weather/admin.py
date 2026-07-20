@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from api.v1.v1_weather.models import (
+    AdministrationNormal,
     StationDailyAggregate,
     WeatherSource,
     WeatherStation,
@@ -31,3 +32,17 @@ class StationDailyAggregateAdmin(admin.ModelAdmin):
     list_display = ("station", "date", "parameter", "value", "readings_count")
     list_filter = ("parameter", "station")
     date_hierarchy = "date"
+
+
+@admin.register(AdministrationNormal)
+class AdministrationNormalAdmin(admin.ModelAdmin):
+    list_display = (
+        "administration",
+        "month",
+        "parameter",
+        "value",
+        "dataset",
+        "pixel_count",
+    )
+    list_filter = ("parameter", "month", "dataset")
+    search_fields = ("administration__name",)

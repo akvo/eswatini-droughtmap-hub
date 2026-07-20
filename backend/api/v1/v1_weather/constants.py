@@ -73,3 +73,25 @@ INGESTION_LAG_ALERT_DAYS = 30
 
 TOTAL_PLANNED_STATIONS = 8
 NETWORK = "MET"
+
+# --- 30-year normals (WX-5) ---------------------------------------------
+# One band per month-of-year (climatology). Both rasters are EPSG:4326 and
+# live in the repo alongside eswatini.topojson.
+NORMALS_DIR = "./source/30years"
+NORMALS_RASTERS = {
+    WeatherParameter.precipitation: {
+        "filename": "ESW_CHIRPS_precip_mm_1991-2020.tif",
+        "dataset": "CHIRPS 1991-2020",
+    },
+    WeatherParameter.tmean: {
+        "filename": "ESW_AgERA5_tmean_c_1990-2020.tif",
+        "dataset": "AgERA5 1990-2020",
+    },
+}
+# The AgERA5 export above covers tmean only, so tmax/tmin normals have no
+# source yet (design D-4). AgERA5 itself DOES publish Temperature-Air-2m-Max-24h
+# and Min-24h — they are just not in our file, so the fix is a re-export from
+# the same dataset, not a different one (design OQ-2). Adding them here plus a
+# NORMALS_RASTERS entry is the whole wiring.
+NORMALS_UNAVAILABLE = [WeatherParameter.tmax, WeatherParameter.tmin]
+NORMALS_DEFINITION = "monthly mean over the normals period"

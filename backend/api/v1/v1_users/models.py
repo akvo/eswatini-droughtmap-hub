@@ -14,6 +14,7 @@ from api.v1.v1_users.constants import (
     TechnicalWorkingGroup,
     ActionEnum,
 )
+from api.v1.v1_activity.constants import ActivitySector
 
 
 class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
@@ -36,9 +37,11 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
         choices=TechnicalWorkingGroup.FieldStr.items(),
         default=None,
         null=True,
+        blank=True,
     )
     # Marks a reviewer as a sector lead (create/edit own-sector drafts).
     activity_sector = models.IntegerField(
+        choices=ActivitySector.FieldStr.items(),  # 1..8 sector leads
         default=None,
         null=True,
         blank=True,

@@ -1,21 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { Spin } from "antd";
 import { useInsights } from "@/context/InsightsContextProvider";
 
+const WeatherTab = dynamic(
+  () => import("@/components/Insights/WeatherTab/WeatherTab"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-96 flex flex-col gap-3 items-center justify-center">
+        <Spin size="large" />
+        <span className="text-sm text-neutral-400">Loading Weather Tab...</span>
+      </div>
+    ),
+  },
+);
+
 const WeatherPage = () => {
-  const { selectedInkhundla } = useInsights();
+  const { selectedInkhundla, administrationId, region, zone } = useInsights();
 
   return (
-    <div className="p-8 text-center bg-white rounded-b-lg">
-      <h3 className="text-lg font-bold text-neutral-800 mb-2">
-        Weather Stations Explorer
-      </h3>
-      <p className="text-neutral-500 max-w-md mx-auto text-sm">
-        The Weather Stations tab displays temperature and rainfall aggregates
-        for {selectedInkhundla} Inkhundla. This tab is currently under
-        construction.
-      </p>
-    </div>
+    <WeatherTab
+      selectedInkhundla={selectedInkhundla}
+      administrationId={administrationId}
+      region={region}
+      zone={zone}
+    />
   );
 };
 
