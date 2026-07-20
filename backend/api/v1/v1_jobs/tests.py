@@ -1,4 +1,8 @@
+import re
+from pathlib import Path
 from types import SimpleNamespace
+from django.conf import settings
+from django.test import SimpleTestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -108,3 +112,45 @@ class JobAPITestCase(APITestCase):
         self.assertEqual(
             response.data["message"], "Feedback received successfully"
         )
+
+
+class CronJobScriptTestCase(SimpleTestCase):
+    """
+    The crontab and job.sh drift apart silently: cron only logs the usage
+    error to cron.log, so a task name that job.sh does not accept means the
+    scheduled command never runs and nobody is told. This happened once
+    already, when job.sh gained a required task argument while the crontab
+    still invoked it bare.
+    """
+
+    base_dir = Path(settings.BASE_DIR)
+
+    def _job_sh_tasks(self):
+        # Task names are the case-branch labels in job.sh, e.g. "  reviews)".
+        job_sh = (self.base_dir / "job.sh").read_text()
+        return set(re.findall(r"^\s{2}(\w+)\)", job_sh, re.MULTILINE))
+
+    def _cron_tasks(self):
+        cron = (self.base_dir / "eswatini-cron").read_text()
+        return re.findall(r"job\.sh\s*(\S*)", cron)
+
+    def test_every_cron_task_is_handled_by_job_sh(self):
+        known = self._job_sh_tasks()
+        self.assertIn("reviews", known)
+        for task in self._cron_tasks():
+            # A bare "./job.sh" (task == "") hits the usage branch and exits 1.
+            self.assertIn(
+                task,
+                known,
+                f"crontab calls './job.sh {task}', which job.sh does not "
+                f"handle (known tasks: {sorted(known)}).",
+            )
+
+    def test_every_job_sh_task_is_scheduled(self):
+        scheduled = set(self._cron_tasks())
+        for task in self._job_sh_tasks():
+            self.assertIn(
+                task,
+                scheduled,
+                f"job.sh handles '{task}' but no crontab entry runs it.",
+            )
