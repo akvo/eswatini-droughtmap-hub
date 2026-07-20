@@ -377,7 +377,7 @@ const IksTab = ({
   ];
 
   return (
-    <div className="space-y-6 w-full -mt-6">
+    <div className="space-y-6 w-full">
       <div className="bg-white">
         <InkhundlaHeader
           name={selectedInkhundla}

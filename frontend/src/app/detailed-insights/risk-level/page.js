@@ -1,15 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Spin, Alert, Empty } from "antd";
+import { Spin, Alert } from "antd";
 import { useInsights } from "@/context/InsightsContextProvider";
 import { api } from "@/lib/api";
-import { ACTIVITY_STATUS, ACTIVITY_SECTOR_OPTIONS } from "@/static/config";
+import {
+  ACTIVITY_STATUS,
+  ACTIVITY_SECTOR_OPTIONS,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
 
 // Component imports
 import RiskScoreBuildUp from "@/components/Insights/RiskLevel/RiskScoreBuildUp";
 import SectorCard from "@/components/Insights/RiskLevel/SectorCard";
 import ActivitySlideIn from "@/components/Insights/RiskLevel/ActivitySlideIn";
+import InkhundlaHeader from "@/components/Insights/InkhundlaHeader";
 
 // Mock data fallback
 import mockRiskData from "@/static/mocks/risk-level/risk_score.json";
@@ -133,8 +138,21 @@ const RiskLevelPage = () => {
     );
   }
 
+  // Resolve dynamic dclass for the shared InkhundlaHeader component
+  const droughtKey = (riskData?.drought?.key || "none").toLowerCase();
+  const dclass =
+    DROUGHT_CATEGORY_VALUE[droughtKey] ?? DROUGHT_CATEGORY_VALUE.none;
+
   return (
-    <div className="p-6 bg-neutral-50 min-h-screen">
+    <div className="min-h-screen">
+      {/* Selected Inkhundla Header Section */}
+      <InkhundlaHeader
+        name={selectedInkhundla}
+        region={region}
+        zone={zone}
+        dclass={dclass}
+      />
+
       {/* Page Layout Container */}
       <div className="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
         {/* Left Panel: Risk Score Build-up */}
@@ -144,35 +162,33 @@ const RiskLevelPage = () => {
 
         {/* Right Panel: Response Activities Groups */}
         <div className="flex-1 flex flex-col gap-6">
-          <div className="bg-white p-6 border border-neutral-200 shadow-sm flex flex-col gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-neutral-800 m-0">
-                Recommended Response Activities
-              </h2>
-              <p className="text-neutral-500 text-sm mt-1">
-                Suggested interventions categorized by sector, based on triggers
-                matching the current drought situation in {selectedInkhundla}.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold text-neutral-800 m-0">
+              Recommended Response Activities
+            </h2>
+            <p className="text-neutral-500 text-sm mt-1">
+              Suggested interventions categorized by sector, based on triggers
+              matching the current drought situation in {selectedInkhundla}.
+            </p>
+          </div>
 
-            <div className="flex flex-col gap-6">
-              {SECTOR_LIST.map((sector) => {
-                // Filter active activities matching this sector ID
-                const sectorActivities = activities.filter(
-                  (act) => Number(act.sector) === sector.id,
-                );
+          <div className="flex flex-col gap-6">
+            {SECTOR_LIST.map((sector) => {
+              // Filter active activities matching this sector ID
+              const sectorActivities = activities.filter(
+                (act) => Number(act.sector) === sector.id,
+              );
 
-                return (
-                  <SectorCard
-                    key={sector.id}
-                    sectorKey={sector.key}
-                    sectorName={sector.name}
-                    activities={sectorActivities}
-                    onActivityClick={(id) => setSelectedActivityId(id)}
-                  />
-                );
-              })}
-            </div>
+              return (
+                <SectorCard
+                  key={sector.id}
+                  sectorKey={sector.key}
+                  sectorName={sector.name}
+                  activities={sectorActivities}
+                  onActivityClick={(id) => setSelectedActivityId(id)}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

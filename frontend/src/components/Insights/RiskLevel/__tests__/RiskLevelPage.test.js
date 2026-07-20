@@ -121,6 +121,10 @@ describe("RiskLevelPage Integration", () => {
         return Promise.resolve({
           administration: { id: 1, name: "Nkwene" },
           risk_score: { value: 3.5 },
+          drought: {
+            key: "D3",
+            label: "D3 — Extreme drought",
+          },
         });
       }
       if (url.includes("/activities")) {
@@ -142,6 +146,12 @@ describe("RiskLevelPage Integration", () => {
     expect(screen.getByTestId("risk-score-buildup")).toBeInTheDocument();
     expect(screen.getByText("Risk Score: 3.5")).toBeInTheDocument();
     expect(screen.getByText("Administration: Nkwene")).toBeInTheDocument();
+
+    // Verify Selected Inkhundla Header is rendered
+    expect(screen.getByText("Nkwene Inkhundla")).toBeInTheDocument();
+    expect(screen.getByText("Shiselweni · Middleveld")).toBeInTheDocument();
+    expect(screen.getByText("D3")).toBeInTheDocument();
+    expect(screen.getByText("D3 Extreme Drought")).toBeInTheDocument();
 
     // Verify recommended activities section and sector cards
     expect(
@@ -168,6 +178,10 @@ describe("RiskLevelPage Integration", () => {
         return Promise.resolve({
           administration: { id: 1, name: "Nkwene" },
           risk_score: { value: 3.5 },
+          drought: {
+            key: "D3",
+            label: "D3 — Extreme drought",
+          },
         });
       }
       if (url.includes("/activities")) {
