@@ -262,21 +262,23 @@ const RiskScoreBuildUp = ({ riskData }) => {
             <span>Scale Distribution</span>
             <span>Current Level</span>
           </div>
-          <div className="h-2 rounded-full overflow-hidden w-full relative bg-neutral-25 border border-neutral-100">
+          <div className="relative w-full h-2 flex items-center">
+            <div className="h-2 rounded-full overflow-hidden w-full relative bg-neutral-25 border border-neutral-100">
+              <div
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg, rgb(177, 13, 11) 0%, rgb(242, 117, 37) 39.9%, rgb(243, 156, 18) 65.52%, rgb(18, 183, 106) 100%)",
+                }}
+                className="absolute inset-0 w-full h-full"
+              />
+            </div>
+            {/* Risk Level Pin Indicator */}
             <div
-              style={{
-                backgroundImage:
-                  "linear-gradient(90deg, rgb(177, 13, 11) 0%, rgb(242, 117, 37) 39.9%, rgb(243, 156, 18) 65.52%, rgb(18, 183, 106) 100%)",
-              }}
-              className="absolute inset-0 w-full h-full"
+              style={{ left: `${pinPercentage}%` }}
+              className="absolute top-1/2 -translate-y-1/2 -ml-[5px] w-2.5 h-2.5 bg-neutral-800 rounded-full border border-white shadow-sm transition-all duration-300"
+              title={`Risk Score: ${risk_score.value.toFixed(1)}`}
             />
           </div>
-          {/* Risk Level Pin Indicator */}
-          <div
-            style={{ left: `${pinPercentage}%` }}
-            className="absolute bottom-[-6px] -ml-[5px] w-2.5 h-2.5 bg-neutral-800 rounded-full border border-white shadow-sm transition-all duration-300"
-            title={`Risk Score: ${risk_score.value.toFixed(1)}`}
-          />
         </div>
       </div>
     </div>
