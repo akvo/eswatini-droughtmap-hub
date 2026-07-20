@@ -12,6 +12,10 @@ from api.v1.v1_publication.constants import (
     CDIGeonodeCategory,
     PublicationStatus,
 )
+from api.v1.v1_publication.utils import (
+    attach_component_rasters,
+    geonode_auth,
+)
 
 
 class Command(BaseCommand):
@@ -39,8 +43,6 @@ class Command(BaseCommand):
         # Recursively fetch all pages from Geonode API
         category = kwargs.get("category", CDIGeonodeCategory.cdi)
 
-        username = settings.GEONODE_ADMIN_USERNAME
-        password = settings.GEONODE_ADMIN_PASSWORD
         page = 1
         while True:
             url = (
@@ -55,7 +57,7 @@ class Command(BaseCommand):
             )
             response = requests.get(
                 url,
-                auth=(username, password),
+                auth=geonode_auth(),
                 verify=GEONODE_SSL_VERIFY,
             )
             if response.status_code != 200:
@@ -94,6 +96,8 @@ class Command(BaseCommand):
                             f"{resource['pk']} already exists. Skipping."
                         )
                     )
+                    if category == CDIGeonodeCategory.cdi:
+                        attach_component_rasters(publication)
                     continue
 
                 # Create new publication if it doesn't exist
@@ -139,6 +143,9 @@ class Command(BaseCommand):
                 # Update the job with the task ID
                 job.task_id = task_id
                 job.save()
+
+                if category == CDIGeonodeCategory.cdi:
+                    attach_component_rasters(publication)
             # Pagination logic
             total_count = data.get("total", 0)
             page_size = data.get("page_size", len(resources))

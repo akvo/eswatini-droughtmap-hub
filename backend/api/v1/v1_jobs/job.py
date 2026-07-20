@@ -15,12 +15,15 @@ from api.v1.v1_jobs.models import Jobs
 from api.v1.v1_jobs.constants import JobStatus, JobTypes
 from api.v1.v1_publication.constants import GEONODE_SSL_VERIFY
 from api.v1.v1_users.models import SystemUser
-from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     PublicationSerializer,
 )
-from api.v1.v1_publication.utils import get_category
+from api.v1.v1_publication.utils import (
+    get_category,
+    attach_component_rasters,
+)
 from utils.email_helper import send_email, EmailTypes
 
 # Set up logging
@@ -236,6 +239,45 @@ def download_geonode_dataset_results(task):
     job.save()
 
 
+def compute_zonal_values(input_file: str) -> list:
+    # Indicator-agnostic zonal stats: for each administration polygon, mask
+    # the raster to that geometry and reduce the valid, non-negative pixels
+    # to a single value via (min + mean) * 0.5. No category here — that is
+    # a CDI-specific concept layered on top by callers that need it.
+    topojson_file = "./source/eswatini.topojson"
+    gdf = gpd.read_file(topojson_file)
+    gdf.crs = "epsg:4326"
+    results = []
+    with rasterio.open(input_file) as src:
+        gdf_reprojected = gdf.to_crs(src.crs)
+        for _, row in gdf_reprojected.iterrows():
+            geom = row["geometry"]
+            admin_id = row["administration_id"]
+            if geom.is_empty:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            try:
+                masked_arr, _ = mask(dataset=src, shapes=[geom], crop=True,
+                                     nodata=src.nodata, filled=False)
+            except ValueError:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            masked_arr = masked_arr[0]
+            valid_data = masked_arr.compressed()
+            if valid_data.size == 0:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            positive_values = valid_data[np.where(valid_data >= 0)]
+            if positive_values.size == 0:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            min_val = np.min(positive_values)
+            mean_val = np.mean(positive_values)
+            final_value = (min_val + mean_val) * 0.5
+            results.append({"administration_id": admin_id, "value": float(final_value)})
+    return results
+
+
 def generate_initial_cdi_values(
     publication_id: int,
     input_file: str,
@@ -248,93 +290,81 @@ def generate_initial_cdi_values(
             f"Publication with ID {publication_id} does not exist."
         )
         return False
-    # Read the topojson file to load all Administrations
-    topojson_file = "./source/eswatini.topojson"
-    gdf = gpd.read_file(topojson_file)
 
-    gdf.crs = "epsg:4326"
-
-    # Ensure the CRS of the GeoDataFrame and the raster are the same
-    with rasterio.open(input_file) as src:
-        gdf = gdf.to_crs(src.crs)
-
-    # Custom zonal stats using rasterio and numpy
-    results = []
-
-    with rasterio.open(input_file) as src:
-        # Reproject GeoDataFrame to match raster CRS
-        gdf_reprojected = gdf.to_crs(src.crs)
-
-        for _, row in gdf_reprojected.iterrows():
-            geom = row["geometry"]
-            admin_id = row["administration_id"]
-
-            if geom.is_empty:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            try:
-                # Mask the raster using the geometry
-                masked_arr, _ = mask(
-                    dataset=src,
-                    shapes=[geom],
-                    crop=True,
-                    nodata=src.nodata,
-                    filled=False  # returns a masked array
-                )
-            except ValueError:
-                # Handle invalid geometry or no overlap
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            # Flatten and get valid (unmasked) data
-            masked_arr = masked_arr[0]  # first band
-            valid_data = masked_arr.compressed()  # Get only unmasked values
-
-            if valid_data.size == 0:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            # Use numpy.where to filter out missing data (-1 values)
-            positive_values = valid_data[np.where(valid_data >= 0)]
-
-            if positive_values.size == 0:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            min_val = np.min(positive_values)
-            mean_val = np.mean(positive_values)
-
-            # Apply the formula (min + mean) * 0.5
-            final_value = (min_val + mean_val) * 0.5
-
-            category = get_category(final_value)
-
-            results.append({
-                "administration_id": admin_id,
-                "value": float(final_value),
-                "category": category
-            })
-
+    raw = compute_zonal_values(input_file)
+    results = [
+        {**item, "category": get_category(item["value"])
+                  if item["value"] is not None else None}
+        for item in raw
+    ]
     publication.initial_values = results
     publication.save()
     return PublicationSerializer(publication).data
+
+
+def generate_indicator_values(publication_raster_id: int, input_file: str):
+    raster = PublicationRaster.objects.filter(pk=publication_raster_id).first()
+    if not raster:
+        logger.error(f"PublicationRaster {publication_raster_id} does not exist.")
+        return False
+    raster.values = compute_zonal_values(input_file)
+    raster.extracted_at = timezone.now()
+    raster.save()
+    return {"id": raster.id, "indicator": raster.indicator}
+
+
+def attach_publication_rasters(publication_id: int):
+    # Component discovery walks the GeoNode catalogue up to four times, so it
+    # runs here in the worker rather than inline in the create request (D-6):
+    # a slow or unreachable GeoNode must never delay or fail publication
+    # creation, which only ever needed the CDI raster.
+    publication = Publication.objects.filter(pk=publication_id).first()
+    if not publication:
+        logger.error(f"Publication with ID {publication_id} does not exist.")
+        return False
+    attached = attach_component_rasters(publication)
+    return {"publication": publication_id, "attached": attached}
+
+
+def download_indicator_dataset_results(task):
+    job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    job_info = job.info
+    raster_id = job_info["publication_raster_id"]
+    filename = job_info["filename"]
+    input_file = os.path.join(tmp_dir, filename)
+    if task.success and os.path.exists(input_file):
+        job.status = JobStatus.done
+        job.available = timezone.now()
+        next_job = Jobs.objects.create(
+            type=JobTypes.indicator_values,
+            status=JobStatus.on_progress,
+            info={"publication_raster_id": raster_id},
+        )
+        task_id = async_task(
+            "api.v1.v1_jobs.job.generate_indicator_values",
+            raster_id,
+            input_file,
+            hook="api.v1.v1_jobs.job.generate_indicator_values_results",
+        )
+        next_job.task_id = task_id
+        next_job.save()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
+
+
+def generate_indicator_values_results(task):
+    job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    if task.success:
+        job.status = JobStatus.done
+        job.available = timezone.now()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
 
 
 def generate_initial_cdi_values_results(task):

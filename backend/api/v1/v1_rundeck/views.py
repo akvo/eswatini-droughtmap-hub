@@ -328,6 +328,10 @@ class RundeckExecutionsAPI(APIView):
                 json={
                     "options": {
                         "year_month": serializer.validated_data["year_month"],
+                        # lst_weight/ndvi_weight are the unchanged Rundeck
+                        # option names; the job maps them onto the pipeline's
+                        # --esi_weight/--evi2_weight flags (ESI replaced LST,
+                        # EVI2 replaced NDVI).
                         "lst_weight": str(
                             serializer.validated_data["lst_weight"]
                         ),

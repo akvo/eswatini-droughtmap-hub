@@ -9,6 +9,8 @@ from .views import (
     ExportMapAPI,
     PublishedMapViewSet,
     PublicationDateAPI,
+    PublicationRasterAPI,
+    ComponentRasterPreviewAPI,
 )
 from .review.view import (
     ReviewStatsAPI,
@@ -108,5 +110,19 @@ urlpatterns = [
         r"^(?P<version>(v1))/dates",
         PublicationDateAPI.as_view(),
         name="publication-dates",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/publications/(?P<pk>[0-9]+)"
+        r"/rasters/(?P<raster_id>[0-9]+)$",
+        PublicationRasterAPI.as_view(), name="publication-raster-detail",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/component-rasters$",
+        ComponentRasterPreviewAPI.as_view(),
+        name="component-raster-preview",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/publications/(?P<pk>[0-9]+)/rasters$",
+        PublicationRasterAPI.as_view(), name="publication-rasters",
     ),
 ]

@@ -1,5 +1,6 @@
 import time
 import requests
+from datetime import datetime
 import geopandas as gpd
 import topojson as tp
 import matplotlib.pyplot as plt
@@ -11,7 +12,7 @@ from pathlib import Path
 from matplotlib.patches import Patch
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework import viewsets, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,7 +24,7 @@ from drf_spectacular.utils import (
     OpenApiParameter
 )
 from django.core.management import call_command
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.conf import settings
 from django_q.tasks import async_task
 from django.db import IntegrityError, transaction
@@ -44,10 +45,13 @@ from api.v1.v1_publication.serializers import (
     ExportMapSerializer,
     PublishedMapSerializer,
     CompareMapSerializer,
+    AttachRasterSerializer,
+    PublicationRasterItemSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
     Publication,
+    PublicationRaster,
 )
 from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
@@ -60,6 +64,7 @@ from api.v1.v1_publication.constants import (
     FilterStatus,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
+from api.v1.v1_publication.utils import discover_components, geonode_auth
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 from utils.default_serializers import (
@@ -299,6 +304,7 @@ class CDIGeonodeAPI(APIView):
             cdi_id = serializer.validated_data["id"]
             response = requests.get(
                 f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}",
+                auth=geonode_auth(),
                 verify=GEONODE_SSL_VERIFY,
                 timeout=GEONODE_REQUEST_TIMEOUT,
             )
@@ -367,11 +373,9 @@ class CDIGeonodeAPI(APIView):
                     )
                 )
                 url = f"{url}&page={page}&sort[]=-date"
-        username = settings.GEONODE_ADMIN_USERNAME
-        password = settings.GEONODE_ADMIN_PASSWORD
         response = requests.get(
             url,
-            auth=(username, password),
+            auth=geonode_auth(),
             verify=GEONODE_SSL_VERIFY,
             timeout=GEONODE_REQUEST_TIMEOUT,
         )
@@ -547,6 +551,24 @@ class PublicationViewSet(viewsets.ModelViewSet):
                 job.task_id = task_id
                 job.save()
 
+                # Queue component-raster discovery (ESI/EVI2/SM/SPI) as its
+                # own job rather than running it inline: it walks the GeoNode
+                # catalogue up to four times, and none of that should delay
+                # or fail the publication the admin just asked for (D-6).
+                # Independent of the CDI chain above, so reviewer emails are
+                # never held up waiting on components.
+                raster_job = Jobs.objects.create(
+                    type=JobTypes.attach_component_rasters,
+                    status=JobStatus.on_progress,
+                    info={"publication_id": publication.id},
+                )
+                raster_job.task_id = async_task(
+                    "api.v1.v1_jobs.job.attach_publication_rasters",
+                    publication.id,
+                    hook="api.v1.v1_jobs.job.job_done_hook",
+                )
+                raster_job.save()
+
                 # Return the serialized publication data
                 return PublicationSerializer(publication).data
         except IntegrityError as e:
@@ -569,6 +591,196 @@ class PublicationViewSet(viewsets.ModelViewSet):
         if instance.narrative and total_adms == total_validated:
             instance.published_at = timezone.now()
         instance.save()
+
+
+class ComponentRasterPreviewAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Preview component rasters available for a month",
+        description=(
+            "Which of ESI/EVI2/SM/SPI GeoNode currently holds for the given "
+            "month. Advisory only: the attach job re-reads the catalogue "
+            "after the publication is created and remains the source of "
+            "truth."
+        ),
+        tags=["Admin"],
+        parameters=[
+            OpenApiParameter(
+                name="year_month",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Target month as YYYY-MM.",
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 400: DefaultResponseSerializer},
+    )
+    def get(self, request, version):
+        year_month = request.GET.get("year_month", "")
+        try:
+            target_month = datetime.strptime(
+                year_month[:7], "%Y-%m"
+            ).strftime("%Y-%m")
+        except ValueError:
+            raise ValidationError({
+                "year_month": "Invalid format. Use YYYY-MM."
+            })
+        return Response(
+            {
+                "data": discover_components(target_month),
+                "meta": {"year_month": target_month},
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class PublicationRasterAPI(APIView):
+    # Class-level permission is JWT-only: GET (list) is available to any
+    # authenticated user (admin or reviewer), while POST/DELETE additionally
+    # gate on IsAdmin explicitly at the top of the method body, matching the
+    # house style used by the mutating endpoints above.
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Attach an indicator raster to a publication",
+        description=(
+            "Resolve the GeoNode download URL for geonode_id server-side, "
+            "create the PublicationRaster row, and queue the "
+            "download-then-extract job chain."
+        ),
+        tags=["Admin"],
+        request=AttachRasterSerializer,
+        responses={
+            201: AttachRasterSerializer,
+            400: DefaultResponseSerializer,
+            403: DefaultResponseSerializer,
+        },
+    )
+    def post(self, request, version, pk, raster_id=None):
+        # This method is only reachable from the list route
+        # (.../rasters); the detail route (.../rasters/<raster_id>)
+        # supplies raster_id and should 404 here instead of hitting the
+        # "unexpected keyword argument" TypeError DRF would otherwise
+        # surface as a 500.
+        if raster_id is not None:
+            raise Http404
+        if not IsAdmin().has_permission(request, self):
+            raise PermissionDenied()
+        publication = get_object_or_404(Publication, pk=pk)
+
+        serializer = AttachRasterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        geonode_id = serializer.validated_data["geonode_id"]
+
+        # Resolve the download URL server-side rather than trusting the
+        # client with it, so a caller can only ever attach GeoNode
+        # resources the backend itself can see and authenticate against.
+        response = requests.get(
+            f"{settings.GEONODE_BASE_URL}/api/v2/resources/{geonode_id}",
+            auth=geonode_auth(),
+            verify=GEONODE_SSL_VERIFY,
+            timeout=GEONODE_REQUEST_TIMEOUT,
+        )
+        resource = (
+            response.json().get("resource")
+            if response.status_code == 200 else None
+        ) or {}
+        download_url = resource.get("download_url")
+        if response.status_code != 200 or not download_url:
+            raise ValidationError({
+                "geonode_id": "Unable to resolve GeoNode resource."
+            })
+
+        try:
+            # Nested atomic() turns the uniqueness violation into a
+            # savepoint rollback instead of poisoning the whole request's
+            # transaction, so the 400 response can still be built normally.
+            # The job creation + async_task dispatch live inside this same
+            # block (matching PublicationViewSet.perform_create's pattern
+            # above) so that a failure there rolls the raster row back too,
+            # instead of leaving an orphaned PublicationRaster with no job
+            # that would then block re-attaching via the unique constraint.
+            with transaction.atomic():
+                raster = serializer.save(publication=publication)
+
+                timestamp = int(time.time())
+                filename = "raster_{0}_{1}_{2}.tif".format(
+                    publication.id, raster.indicator, timestamp
+                )
+                job = Jobs.objects.create(
+                    type=JobTypes.download_geonode_dataset,
+                    status=JobStatus.on_progress,
+                    info={
+                        "publication_raster_id": raster.id,
+                        "filename": filename,
+                    },
+                )
+                task_id = async_task(
+                    "api.v1.v1_jobs.job.download_geonode_dataset",
+                    download_url,
+                    filename,
+                    hook=(
+                        "api.v1.v1_jobs.job."
+                        "download_indicator_dataset_results"
+                    ),
+                )
+                job.task_id = task_id
+                job.save()
+        except IntegrityError:
+            raise ValidationError({
+                "indicator": (
+                    "This indicator is already attached to the publication."
+                )
+            })
+
+        return Response(
+            AttachRasterSerializer(raster).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        summary="List indicator rasters attached to a publication",
+        tags=["Admin"],
+        responses={200: PublicationRasterItemSerializer(many=True)},
+    )
+    def get(self, request, version, pk, raster_id=None):
+        # Same list-route-only guard as post() above.
+        if raster_id is not None:
+            raise Http404
+        publication = get_object_or_404(Publication, pk=pk)
+        return Response(
+            {
+                "data": PublicationRasterItemSerializer(
+                    publication.rasters.all(), many=True
+                ).data,
+                "meta": {
+                    "publication": publication.id,
+                    "year_month": publication.year_month.strftime("%Y-%m"),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Detach an indicator raster from a publication",
+        tags=["Admin"],
+        responses={204: None, 403: DefaultResponseSerializer},
+    )
+    def delete(self, request, version, pk, raster_id=None):
+        # Mirror image of the list-route guards above: this method only
+        # lives on the detail route (.../rasters/<raster_id>), so a
+        # DELETE against the list route (no raster_id) should 404
+        # instead of hitting a "missing positional argument" TypeError.
+        if raster_id is None:
+            raise Http404
+        if not IsAdmin().has_permission(request, self):
+            raise PermissionDenied()
+        raster = get_object_or_404(
+            PublicationRaster, pk=raster_id, publication_id=pk
+        )
+        raster.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PublicationReviewsAPI(APIView):

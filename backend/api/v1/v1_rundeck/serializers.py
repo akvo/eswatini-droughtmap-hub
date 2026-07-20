@@ -123,6 +123,9 @@ class ContactsSerializer(serializers.Serializer):
 
 
 class RundeckJobOptionsSerializer(serializers.Serializer):
+    # Field names are the Rundeck job option names, which were deliberately
+    # NOT renamed during the NDMC migration (droughtmap-hub-cdi aa99eaa):
+    # lst_weight feeds --esi_weight and ndvi_weight feeds --evi2_weight.
     year_month = serializers.CharField()
     lst_weight = serializers.FloatField()
     ndvi_weight = serializers.FloatField()
@@ -137,6 +140,22 @@ class RundeckJobOptionsSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Invalid date format. Use YYYY-MM."
             )
+
+    def validate(self, attrs):
+        # STEP_0301 aborts the whole run when the weights do not total 1.0
+        # (1e-6 tolerance); change-weight.sh only warns, so reject here rather
+        # than burn a Rundeck execution.
+        total = (
+            attrs["lst_weight"]
+            + attrs["ndvi_weight"]
+            + attrs["spi_weight"]
+            + attrs["sm_weight"]
+        )
+        if abs(total - 1.0) > 1e-6:
+            raise serializers.ValidationError(
+                f"CDI weights must sum to 1.0, got {total}."
+            )
+        return attrs
 
     class Meta:
         fields = [

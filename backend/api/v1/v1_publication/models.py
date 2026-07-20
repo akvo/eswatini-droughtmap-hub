@@ -5,6 +5,7 @@ from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.constants import (
     PublicationStatus,
     AdministrationZones,
+    RasterIndicatorTypes,
 )
 
 
@@ -114,3 +115,30 @@ class Review(models.Model):
 
     class Meta:
         db_table = "reviews"
+
+
+class PublicationRaster(models.Model):
+    publication = models.ForeignKey(
+        Publication, on_delete=models.CASCADE, related_name="rasters"
+    )
+    indicator = models.CharField(
+        max_length=10, choices=RasterIndicatorTypes.choices()
+    )
+    geonode_id = models.IntegerField()
+    values = models.JSONField(
+        null=True, blank=True, validators=[validate_json_values]
+    )
+    extracted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.publication_id}:{self.indicator}"
+
+    class Meta:
+        db_table = "publication_rasters"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["publication", "indicator"],
+                name="uniq_publication_raster_indicator",
+            )
+        ]

@@ -190,3 +190,22 @@ class RundeckExecutionsAPITestCase(APITestCase):
             response.data["id"],
             self.mock_response_data["executions"][0]["id"]
         )
+
+    @patch("requests.post")
+    def test_rundeck_execute_job_rejects_weights_not_summing_to_one(
+        self, mock_post
+    ):
+        response = self.client.post(
+            self.url,
+            {
+                "year_month": "2025-02",
+                "lst_weight": 0.3,
+                "ndvi_weight": 0.3,
+                "spi_weight": 0.3,
+                "sm_weight": 0.3,
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("sum to 1.0", response.data["message"])
+        mock_post.assert_not_called()
