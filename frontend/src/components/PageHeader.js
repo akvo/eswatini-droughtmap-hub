@@ -35,13 +35,13 @@ const PageHeader = ({
   return (
     <section
       className={classNames(
-        "relative -mx-4 -mt-3 overflow-hidden bg-white px-4 pb-24 pt-16 sm:-mx-8 sm:px-8 md:-mx-12 md:px-12 xl:-mx-16 xl:px-16",
+        "relative left-1/2 w-screen -translate-x-1/2 -mt-3 overflow-hidden bg-white px-4 pb-24 pt-16 sm:px-8 md:px-12 xl:px-20",
         className,
       )}
     >
       <div
         aria-hidden
-        className="absolute inset-0 bg-dhi-pattern bg-[length:200%_auto] bg-center bg-no-repeat opacity-50 pointer-events-none"
+        className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
       />
       <header className="relative mx-auto flex w-full flex-col gap-6 max-w-[1280px]">
         {date && (
