@@ -627,3 +627,16 @@ export const ALLOWED_MIMES = [
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ];
+
+export const SECTOR_DESCRIPTIONS = {
+  wash: "Water & Sanitation activities address drinking water access, hygiene, and sanitation — critical when drought reduces surface and groundwater availability.",
+  food: "Food & Agriculture activities target food security through seed distribution, livestock support, and emergency food aid when drought reduces crop yields.",
+  env: "Environment & Energy activities protect ecosystems and energy resources stressed by drought, including rangeland rehabilitation and renewable energy access.",
+  health:
+    "Health & Nutrition activities respond to malnutrition and disease risk that increase when drought reduces food security and water quality.",
+  trans:
+    "Transport & Logistics activities ensure humanitarian supply chains remain functional when drought damages road infrastructure.",
+  edu: "Education activities mitigate school dropout rates caused by household food insecurity during drought.",
+  coord:
+    "Coordination activities align all sector responses to avoid duplication and prioritise resources across the 59 Tinkhundla.",
+};
