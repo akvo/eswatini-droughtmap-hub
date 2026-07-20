@@ -1,12 +1,17 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import RiskLevelPage from "../../../../app/detailed-insights/risk-level/page";
-import { api } from "../../../../lib/api";
+import { api } from "@/lib/api";
 import { useInsights } from "@/context/InsightsContextProvider";
 import { ACTIVITY_STATUS } from "@/static/config";
 
+// Mock next/dynamic to load RiskLevelTab synchronously in test environment
+jest.mock("next/dynamic", () => () => {
+  return require("../RiskLevelTab").default;
+});
+
 // Mock the api module
-jest.mock("../../../../lib/api", () => ({
+jest.mock("@/lib/api", () => ({
   api: jest.fn(),
 }));
 

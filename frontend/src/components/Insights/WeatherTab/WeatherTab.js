@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import { api } from "@/lib/api";
 import useWeatherNormals from "@/hooks/useWeatherNormals";
 import InkhundlaHeader from "../InkhundlaHeader";
+import TabLoader from "../TabLoader";
 import MetricItemCard from "./MetricItemCard";
 import PrecipitationChart from "./PrecipitationChart";
 import TemperatureChart from "./TemperatureChart";
@@ -75,14 +76,7 @@ const WeatherTab = ({
   }, [administrationId]);
 
   if (loading) {
-    return (
-      <div className="w-full h-96 flex flex-col gap-3 items-center justify-center bg-white">
-        <Spin size="large" />
-        <span className="text-sm text-neutral-400">
-          Loading weather data...
-        </span>
-      </div>
-    );
+    return <TabLoader tip="Loading weather data..." />;
   }
 
   const lastMonth = findCard(stats, "precipitation_last_month");
