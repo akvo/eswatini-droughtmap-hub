@@ -208,12 +208,16 @@ export const MAP_CATEGORY_OPTIONS = [
     label: "SPI Raster Map",
   },
   {
-    value: "ndvi-raster-map",
+    value: "evi2-raster-map",
     label: "NDVI Raster Map",
   },
   {
-    value: "lst-raster-map",
+    value: "esi-raster-map",
     label: "LST Raster Map",
+  },
+  {
+    value: "sm-raster-map",
+    label: "SM Raster Map",
   },
 ];
 
