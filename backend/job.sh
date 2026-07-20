@@ -16,6 +16,9 @@ case "$TASK" in
   weather)
     ./manage.py fetch_weather_observations "$@"
     ;;
+  rasters)
+    ./manage.py attach_component_rasters "$@"
+    ;;
   *)
     echo "Usage: $0 {reviews|weather} [extra args]" >&2
     exit 1

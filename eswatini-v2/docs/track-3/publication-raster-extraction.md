@@ -4,8 +4,9 @@
 
 **Task ID**: WX-3 (branch `feature/106--weather-station-backend-apis` follow-up; WX-2 is taken by review confidence deltas)
 **Author**: Iwan Firmawan (with Claude)
-**Date**: 2026-07-15
-**Status**: Draft
+**Date**: 2026-07-15 (updated 2026-07-20)
+**Status**: B1–B10 implemented (crontab entry for the retry sweep deliberately
+deferred until after a supervised first run — see D-7)
 **Owner**: Engineer B — runs in parallel with [`weather-station-backend.md`](weather-station-backend.md) (WX-1, Engineer A)
 
 > ⚠️ **Not to be confused with PA-1 `v1_indicators`** ([`PA-1_v1_indicators.md`](../specs/PA-1_v1_indicators.md)), which stores *exposure & vulnerability* indicators (population, cropland, IPC) per Administration. This feature stores **satellite drought-indicator rasters** (ESI, EVI2, SM, SPI) per *publication*, extracted from GeoNode — the data foundation for the future station-vs-satellite comparison.
@@ -48,19 +49,21 @@ cleanly with the same rasterio masking approach `generate_initial_cdi_values` us
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] Admin can attach an ESI/EVI2/SM/SPI GeoNode dataset to a publication (one per
+- [x] Admin can attach an ESI/EVI2/SM/SPI GeoNode dataset to a publication (one per
       indicator) and see extraction progress via the existing Jobs tracking.
-- [ ] Per-Inkhundla zonal values for each attached indicator are queryable per
+- [x] Components are attached automatically when a publication is created, without
+      the admin doing anything (D-6), with availability previewed on the form (D-8).
+- [x] Per-Inkhundla zonal values for each attached indicator are queryable per
       publication.
-- [ ] The CDI review/publication workflow behaves exactly as before.
+- [x] The CDI review/publication workflow behaves exactly as before.
 
 ### Technical Acceptance Criteria
-- [ ] Zonal-stats logic exists once, shared by the CDI task and the new indicator
+- [x] Zonal-stats logic exists once, shared by the CDI task and the new indicator
       task, with a parity test proving the refactor changed nothing.
-- [ ] Extraction reuses the existing `download_geonode_dataset` chain (including
+- [x] Extraction reuses the existing `download_geonode_dataset` chain (including
       `GEONODE_SSL_VERIFY`) and the `Jobs` status model.
-- [ ] Migration is purely additive; `Publication` untouched.
-- [ ] Coverage in the CI `test.sh` run.
+- [x] Migration is purely additive; `Publication` untouched.
+- [x] Coverage in the CI `test.sh` run.
 
 ---
 
@@ -101,7 +104,7 @@ class PublicationRaster(models.Model):
 | Model | Change | Reason |
 |-------|--------|--------|
 | `Publication` | none | backward compatibility (D-1) |
-| `JobTypes` (constants) | add `indicator_values = 10` | new job type for the extraction task |
+| `JobTypes` (constants) | add `indicator_values = 10`, `attach_component_rasters = 11` | extraction task + create-time discovery task (D-6) |
 
 ### Migration Strategy
 
@@ -122,6 +125,7 @@ class PublicationRaster(models.Model):
 | POST | `/api/v1/publications/<id>/rasters` | Attach indicator GeoNode dataset & queue extraction | JWT admin |
 | GET | `/api/v1/publications/<id>/rasters` | List attached rasters + extracted values | JWT |
 | DELETE | `/api/v1/publications/<id>/rasters/<raster_id>` | Detach (re-attach re-extracts) | JWT admin |
+| GET | `/api/v1/admin/component-rasters?year_month=YYYY-MM` | Preview which components GeoNode has for a month (D-8) | JWT admin |
 
 ### Request/Response Examples
 
@@ -262,6 +266,108 @@ identifiers: backend currently defines `cdi/spi/ndvi/lst`-raster-map, while the
 pipeline produces ESI/EVI2/SM/SPI — verify the live identifiers against GeoNode before
 coding (see OQ-1).
 
+### D-6: Component attach also runs on publication *create*, as a queued job — DECIDED 2026-07-20
+
+**Context**: D-5 gave auto-discovery to `publications_seeder` only. But the seeder is
+a manual command (the nightly cron runs `reviews`/`weather` only), so a publication
+created by an admin through `POST /admin/publications` never got component rasters at
+all. The admin path and the seeder path had diverged.
+
+**Options Considered**:
+1. Call `attach_component_rasters` inline in `PublicationViewSet.perform_create`
+2. Queue a dedicated discovery job from `perform_create`; the job does the GeoNode
+   walk and attaches
+
+**Decision**: Option 2.
+
+**Rationale**: discovery is up to 4 paginated GeoNode catalogue walks. Inline, that is
+seconds of added latency on the create request and makes publication creation fail (or
+hang) whenever GeoNode is slow or down — for data that is strictly supplementary to
+the CDI raster the admin actually asked for. Queued, the POST returns at today's speed
+and GeoNode availability is decoupled from it.
+
+**Impact**:
+- `attach_component_rasters` / `find_component_resource` move off the seeder `Command`
+  class into `v1_publication/utils.py`; `self.stdout.write` becomes `logger`. The
+  seeder and the create flow call the same function — one implementation, same
+  idempotency guards (D-5). (Landed briefly as a separate `rasters.py`, then merged
+  into `utils.py` in review — see D-9.)
+- New `JobTypes.attach_component_rasters = 11` with its own `Jobs` row, so a discovery
+  run that finds nothing is still visible in Jobs tracking rather than inferred from
+  the absence of child download jobs.
+- The CDI chain and the reviewer-notification email are untouched and never wait on
+  components.
+
+### D-7: Missing component = skip, retry on the next scheduled seeder pass — DECIDED 2026-07-20
+
+**Options Considered**:
+1. Skip silently, no retry (the behavior as built)
+2. ~~Skip, and put `publications_seeder` on the nightly cron~~ — **rejected, see below**
+3. Persist a row marked "unavailable" (new status field + migration)
+4. Skip, and add a dedicated `attach_component_rasters` management command for the
+   scheduled retry
+
+**Decision**: Option 4.
+
+**Rationale**: a component is missing mainly because the CDI pipeline has not uploaded
+that month yet — a timing gap, not an error state, so it does not warrant a schema
+change (option 3). But option 1 leaves permanent silent holes, because D-5's premise
+("the idempotent re-run IS the backfill") only holds if something actually re-runs.
+
+> ⚠️ **Option 2 was proposed and rejected — do not revive it.** `publications_seeder`
+> is a **demo/bypass tool**, not a sync job: it creates publications with
+> `status=PublicationStatus.published` and back-fills `validated_values` from
+> `initial_values` with an empty `narrative`, so that the homepage has published maps
+> to show. Scheduling it would auto-publish every CDI raster in GeoNode **without any
+> review or validation**, silently bypassing the entire Track 2 workflow. The retry
+> mechanism must never be able to create or publish a publication.
+
+**Impact**:
+- New `attach_component_rasters` management command: iterates existing publications
+  that are missing extracted components and calls the shared function. It only ever
+  adds `PublicationRaster` rows — it cannot create, publish, or otherwise modify a
+  `Publication`. `--year-month` scopes a run.
+- `job.sh` gains a `rasters` task pointing at that command; the crontab entry follows
+  after a supervised first run (§10 B10).
+- **Prerequisite, now landed** (commit `26909dd`): the crontab invoked `job.sh` with no
+  task argument, which since `1a50764` fell through to the usage branch and exited 1 —
+  so `check_overdue_reviews` had been silently dead and `fetch_weather_observations`
+  had never been scheduled at all. Fixed, with a test cross-checking crontab task names
+  against `job.sh` case branches in both directions.
+
+### D-8: Create form previews component availability before submit — DECIDED 2026-07-20
+
+**Decision**: `PublicationForm` calls a read-only `GET /admin/component-rasters` for the
+selected month and shows which of ESI/EVI2/SM/SPI GeoNode currently has.
+
+**Rationale**: with D-6 the attach happens asynchronously *after* create, so without a
+preview the admin gets no signal at all that a month is missing components — the first
+hint would be an empty panel on the detail page later.
+
+**Impact / caveat**: the preview and the actual attach are two separate GeoNode reads at
+different times, so **the preview is advisory, not a guarantee** — the attach job stays
+the source of truth. The endpoint does the same 4 catalogue walks synchronously, which
+is acceptable here because it is a GET the admin explicitly triggers and waits on
+(unlike D-6's create path, where the latency would be imposed on an unrelated action).
+
+### D-9: Shared code lives in `utils.py`; one `geonode_auth()` for every call — DECIDED 2026-07-20
+
+**Decision**: the component-discovery helpers were merged into the existing
+`v1_publication/utils.py` rather than kept in their own `rasters.py`, and the GeoNode
+credential pair became a single `geonode_auth()` used by every outbound GeoNode call.
+
+**Rationale**: `utils.py` was the module the seeders and `job.py` already imported from,
+and a second small helper module beside it earned nothing. The credentials were being
+rebuilt inline at each call site, which is how the inconsistency below survived.
+
+**⚠️ Behavior change (not a pure refactor)**: the single-resource lookup in
+`CDIGeonodeAPI.get` (`GET /admin/cdi-geonode?id=`) was querying GeoNode
+**anonymously**, while the list query directly beside it authenticated. It now
+authenticates like the others, so it can return resources that were previously
+invisible to it. This is believed to be the correct behavior — an admin-only endpoint
+had no reason to be anonymous — but it is a change in what the endpoint can see, and
+worth a look on staging.
+
 ---
 
 ## 6. Type/Constant Mappings
@@ -273,6 +379,7 @@ coding (see OQ-1).
 | `"sm"` | `RasterIndicatorTypes.sm` | `sm` |
 | `"spi"` | `RasterIndicatorTypes.spi` | `spi` |
 | — | `JobTypes.indicator_values` | `10` |
+| — | `JobTypes.attach_component_rasters` | `11` |
 
 GeoNode category identifiers (verified against the pipeline repo, see resolved OQ in §11):
 
@@ -303,9 +410,11 @@ swap is mechanically safe.
 
 ### Seeder/CLI Compatibility
 - [x] Existing seeders work (CDI path unchanged)
-- [ ] `publications_seeder` extended (B6): per publication, discover component rasters
+- [x] `publications_seeder` extended (B6): per publication, discover component rasters
       in GeoNode by category + month, create `PublicationRaster` rows, queue
       extraction — idempotent, doubles as historical backfill (D-5)
+- [x] `attach_component_rasters` command (B10) is the cron-safe retry: adds raster rows
+      only, never creates or publishes a `Publication` (D-7)
 
 ---
 
@@ -327,7 +436,16 @@ swap is mechanically safe.
 |-----------|----------|
 | Unit | `compute_zonal_values` parity: refactored output equals current `generate_initial_cdi_values` output on the same fixture raster (use a small STEP GeoTIFF crop as fixture) · nodata / empty-geometry / no-overlap branches · `PublicationRaster` uniqueness + validators |
 | Integration | attach endpoint → job chain (mocked GeoNode HTTP) → values persisted + `extracted_at` set · failed download marks job failed, `values` stays null · re-attach after delete re-extracts |
+| Create-time attach (D-6/D-7) | every available component attached · missing component skipped with **no row persisted** · GeoNode unreachable attaches nothing and does not raise · retry command leaves `Publication.status` and the publication count untouched · a failed download is re-queued even when all four rows already exist |
+| Preview (D-8) | availability per indicator · missing component flagged without blocking submit · failed lookup degrades to "No data" · no request without a month |
+| Scheduling guard | crontab task names cross-checked against `job.sh` case branches in both directions · `publications_seeder` asserted absent from both (D-7) |
 | E2E (CI) | app tests in the `test.sh` coverage run |
+
+> `PublicationForm` itself cannot be rendered under jsdom — antd's reviewer `List`
+> throws `Cannot read properties of undefined (reading 'length')` on the unmodified
+> file, independently of this feature. That is why the preview lives in its own
+> `ComponentRasterPreview` component, which is testable in isolation. Making the form
+> renderable in tests is worth its own small task.
 
 ---
 
@@ -341,6 +459,15 @@ swap is mechanically safe.
 | B4 | Attach / list / detach endpoints + serializers (manual override path, D-5) | B1 |
 | B5 | Frontend mock fixtures under `frontend/src/static/mocks/` for the rasters list response | B4 |
 | B6 | Extend `publications_seeder`: component-raster discovery by GeoNode category + month → auto-attach + queue extraction, idempotent (also the historical backfill); reconcile `CDIGeonodeCategory` identifiers with the pipeline's actual categories | B3 |
+
+B1–B6 are implemented. Follow-up wave from D-6/D-7/D-8:
+
+| # | Task | Depends on |
+|---|------|-----------|
+| B7 | Extract `attach_component_rasters` / `find_component_resource` off the seeder `Command` into `v1_publication/utils.py` (`stdout` → `logger`); seeder calls the shared function | B6 |
+| B8 | `JobTypes.attach_component_rasters` + task & `Jobs` row; `PublicationViewSet.perform_create` queues it after the CDI chain (D-6) | B7 |
+| B9 | `GET /admin/component-rasters?year_month=` preview endpoint + `PublicationForm` availability panel (D-8) | B7 |
+| B10 | `attach_component_rasters` management command + `job.sh rasters` task; **manual supervised first run**, then the crontab entry as a separate follow-up commit (D-7) | B8 |
 
 **Cross-feature sync points** (with Engineer A on WX-1): none technical — no shared
 tables or migrations. Shared rituals only: pair-review each other's schema PRs
@@ -378,13 +505,26 @@ tables or migrations. Shared rituals only: pair-review each other's schema PRs
           evi2 = "evi2-raster-map"
           sm = "sm-raster-map"
       ```
-- [ ] OQ-1: Adjacent legacy naming (out of WX-3 scope, flag to tech lead):
-      `v1_rundeck.Settings` still has `lst_weight` / `ndvi_weight` fields while the
-      pipeline's weight config uses `esi/evi2/spi/sm`. These are 1:1 successors
-      (ESI replaces LST; EVI2 supersedes NDVI), so the fix is a straight rename
-      (`lst_weight → esi_weight`, `ndvi_weight → evi2_weight`) — but it touches the
-      Rundeck job options contract and the Settings migration, so it deserves its own
-      small task.
+- [x] ~~OQ-1: rename `lst_weight → esi_weight`, `ndvi_weight → evi2_weight` in
+      `v1_rundeck.Settings`?~~ **RESOLVED 2026-07-20: do NOT rename — the earlier
+      recommendation above was wrong.** The pipeline's `change-weight.sh` renamed its
+      *flags* (`droughtmap-hub-cdi` `8d80475`), but the README added in `aa99eaa` states
+      that the **Rundeck job options were deliberately left as-is**: the job definition
+      pipes `${option.lst_weight}` into `--esi_weight` and `${option.ndvi_weight}` into
+      `--evi2_weight`. Renaming the hub-side option keys would send options the deployed
+      Rundeck job does not declare, breaking the run. `lst_weight` is now simply the name
+      of the field carrying the **ESI** weight.
+      - Done instead (aligning with those commits): the field names are annotated at both
+        ends (`RundeckJobOptionsSerializer`, `RundeckExecutionsAPI.post`) so the
+        indirection is not a trap for the next reader.
+      - Also added: `RundeckJobOptionsSerializer.validate()` rejects weights that do not
+        sum to 1.0 (1e-6 tolerance). `STEP_0301` aborts the whole pipeline run on a
+        non-1.0 total and `change-weight.sh` only *warns*, so the hub is the last place
+        that can fail fast instead of burning a Rundeck execution.
+      - Still stale, cosmetic only: `DEFAULT_CDI_WEIGHTS` in `frontend/src/static/config.js`
+        is `spi 0.4 / sm 0.0` while the pipeline default is now `spi 0.3 / sm 0.1` (both
+        sum to 1.0, so nothing breaks), and the settings-page labels still read "LST
+        Weight" / "NDVI Weight". Relabelling the UI needs no backend change.
 
 ---
 

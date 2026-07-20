@@ -1,15 +1,28 @@
+import itertools
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
 from django.core.management import call_command
 from django.test.utils import override_settings
 from io import StringIO
 from datetime import datetime, timedelta
-from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.constants import (
     PublicationStatus,
     CDIGeonodeCategory,
 )
 from api.v1.v1_jobs.models import Jobs, JobStatus, JobTypes
+
+# The seeder now also queries these four categories, alongside CDI, to
+# discover component rasters for each publication (see
+# tests_publication_seeder_rasters.py for that behavior). The CDI-focused
+# tests below route those component queries to an empty result so they
+# stay isolated from that newer behavior.
+COMPONENT_CATEGORIES = (
+    CDIGeonodeCategory.esi,
+    CDIGeonodeCategory.evi2,
+    CDIGeonodeCategory.sm,
+    CDIGeonodeCategory.spi,
+)
 
 
 @override_settings(
@@ -78,12 +91,37 @@ class PublicationsSeederCommandTestCase(TestCase):
             "resources": []
         }
 
+    def _route_by_category(self, cdi_responses):
+        # Build a requests.get side_effect that serves `cdi_responses`
+        # (a single dict reused for every call, or a list consumed one
+        # response per call — e.g. for pagination) to the CDI query, and
+        # an empty result to the four component-category queries the
+        # seeder also fires per publication.
+        cdi_iter = iter(
+            cdi_responses if isinstance(cdi_responses, list)
+            else itertools.repeat(cdi_responses)
+        )
+
+        def side_effect(url, **kwargs):
+            response = MagicMock(status_code=200)
+            if any(
+                f"filter{{category.identifier}}={category}" in url
+                for category in COMPONENT_CATEGORIES
+            ):
+                response.json.return_value = self.mock_empty_response
+            else:
+                response.json.return_value = next(cdi_iter)
+            return response
+
+        return side_effect
+
     @patch("django_q.tasks.async_task")
     @patch("requests.get")
     def test_run_publications_seeder(self, mock_get, mock_async_task):
         # Configure the mock to return a response with JSON data
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = self.mock_response_data
+        mock_get.side_effect = self._route_by_category(
+            self.mock_response_data
+        )
         mock_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
@@ -152,8 +190,9 @@ class PublicationsSeederCommandTestCase(TestCase):
             status=PublicationStatus.in_review
         )
 
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = self.mock_response_data
+        mock_get.side_effect = self._route_by_category(
+            self.mock_response_data
+        )
         mock_async_task.side_effect = self.generate_task_id
 
         out = StringIO()
@@ -179,6 +218,11 @@ class PublicationsSeederCommandTestCase(TestCase):
         # Only 5 new publications should be created (excluding existing)
         total_publications = Publication.objects.count()
         self.assertEqual(total_publications, 6)
+
+        # Component-category queries are routed to an empty result, so
+        # this CDI-focused test stays isolated from component raster
+        # creation (covered separately in tests_publication_seeder_rasters).
+        self.assertEqual(PublicationRaster.objects.count(), 0)
 
     @patch("requests.get")
     def test_geonode_server_error_response(self, mock_get):
@@ -233,23 +277,32 @@ class PublicationsSeederCommandTestCase(TestCase):
             ]
         }
 
-        mock_get.side_effect = [
-            MagicMock(status_code=200, json=lambda: first_page_data),
-            MagicMock(status_code=200, json=lambda: second_page_data),
-        ]
+        mock_get.side_effect = self._route_by_category(
+            [first_page_data, second_page_data]
+        )
         mock_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
 
-        # Verify pagination calls were made
-        self.assertEqual(mock_get.call_count, 2)
+        # Verify pagination calls were made for the CDI query itself.
+        # (Each of the 25 publications created also triggers component
+        # lookups; those are routed to an empty result above and are not
+        # this test's concern, so they're filtered out here.)
+        cdi_calls = [
+            call for call in mock_get.call_args_list
+            if not any(
+                f"filter{{category.identifier}}={category}" in call[0][0]
+                for category in COMPONENT_CATEGORIES
+            )
+        ]
+        self.assertEqual(len(cdi_calls), 2)
 
         # Check first page URL
-        first_call_url = mock_get.call_args_list[0][0][0]
+        first_call_url = cdi_calls[0][0][0]
         self.assertIn("page=1", first_call_url)
 
         # Check second page URL
-        second_call_url = mock_get.call_args_list[1][0][0]
+        second_call_url = cdi_calls[1][0][0]
         self.assertIn("page=2", second_call_url)
 
         # All 25 publications should be created
@@ -280,8 +333,7 @@ class PublicationsSeederCommandTestCase(TestCase):
             ]
         }
 
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = mock_response_data
+        mock_get.side_effect = self._route_by_category(mock_response_data)
         mock_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
@@ -310,11 +362,15 @@ class PublicationsSeederCommandTestCase(TestCase):
         expected_due_date = base_date + timedelta(days=30)
         self.assertEqual(pub_second_date.due_date, expected_due_date.date())
 
+        # Component-category queries are routed to an empty result, so
+        # this CDI-focused test stays isolated from component raster
+        # creation (covered separately in tests_publication_seeder_rasters).
+        self.assertEqual(PublicationRaster.objects.count(), 0)
+
     @patch("api.v1.v1_publication.management.commands.publications_seeder.async_task")
     @patch("requests.get")
     def test_job_creation_details(self, mock_get, mock_async_task):
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = {
+        mock_get.side_effect = self._route_by_category({
             "total": 1,
             "page_size": 20,
             "resources": [
@@ -325,7 +381,7 @@ class PublicationsSeederCommandTestCase(TestCase):
                     "download_url": "http://geonode:8000/download/123",
                 }
             ]
-        }
+        })
         mock_async_task.side_effect = self.generate_task_id
 
         with patch('time.time', return_value=1234567890):
