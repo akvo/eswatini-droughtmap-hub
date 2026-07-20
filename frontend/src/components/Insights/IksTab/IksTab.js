@@ -511,6 +511,7 @@ const IksTab = ({
             items={getRainfallPredictors()}
             months={bulkSeries.months}
             indicatorsData={bulkSeries.indicators}
+            section="B"
           />
           <PredictorAccordion
             title="Section C: Seasonal & extreme-weather predictors (8 indicators)"
@@ -518,6 +519,7 @@ const IksTab = ({
             items={getSeasonalPredictors()}
             months={bulkSeries.months}
             indicatorsData={bulkSeries.indicators}
+            section="C"
           />
         </div>
 

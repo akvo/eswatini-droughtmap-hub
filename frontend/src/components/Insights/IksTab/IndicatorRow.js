@@ -27,6 +27,7 @@ const IndicatorRow = ({
   isDroughtLeaning = false,
   months = [],
   checkedMonths = [],
+  section,
 }) => {
   return (
     <div className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0 gap-4 bg-white px-4">
@@ -37,9 +38,13 @@ const IndicatorRow = ({
         {(months.length > 0 ? months : Array(12).fill("")).map((m, idx) => {
           const observed = checkedMonths[idx] || false;
           const color = observed
-            ? isDroughtLeaning
-              ? "bg-red-500"
-              : "bg-blue-600"
+            ? section === "B"
+              ? "bg-[#3e5eb9]"
+              : section === "C"
+                ? "bg-[#b10d0b]"
+                : isDroughtLeaning
+                  ? "bg-[#b10d0b]"
+                  : "bg-[#3e5eb9]"
             : "bg-neutral-100";
           const label = m ? formatMonthLabel(m) : `Month ${idx + 1}`;
           return (
