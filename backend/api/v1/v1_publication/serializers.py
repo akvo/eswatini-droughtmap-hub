@@ -102,6 +102,13 @@ class PublicationSerializer(serializers.ModelSerializer):
 
 class PublicationInfoSerializer(serializers.ModelSerializer):
     year_month = serializers.DateField(format="%Y-%m")
+    progress_reviews = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_progress_reviews(self, obj):
+        total_reviews = obj.reviews.count()
+        total_completed = obj.reviews.filter(is_completed=True).count()
+        return f"{total_completed}/{total_reviews}"
 
     class Meta:
         model = Publication
@@ -111,6 +118,8 @@ class PublicationInfoSerializer(serializers.ModelSerializer):
             "due_date",
             "initial_values",
             "status",
+            "updated_at",
+            "progress_reviews",
         ]
 
 

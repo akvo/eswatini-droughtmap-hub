@@ -1,5 +1,6 @@
 from django.db import models
 
+from api.v1.v1_publication.models import Administration
 from api.v1.v1_weather.constants import WeatherParameter
 
 
@@ -72,5 +73,46 @@ class StationDailyAggregate(models.Model):
             models.UniqueConstraint(
                 fields=["station", "date", "parameter"],
                 name="uniq_station_date_parameter",
+            )
+        ]
+
+
+class AdministrationNormal(models.Model):
+    """One row per administration + month-of-year + parameter (long format,
+    same spirit as StationDailyAggregate / D-3).
+
+    Climatology, not a calendar series: `month` is 1..12 and carries no year.
+    Extracted from the rasters in ./source/30years by `extract_weather_normals`.
+    """
+
+    administration = models.ForeignKey(
+        Administration,
+        on_delete=models.CASCADE,
+        related_name="weather_normals",
+    )
+    month = models.IntegerField()
+    parameter = models.CharField(
+        max_length=30, choices=WeatherParameter.choices()
+    )
+    value = models.FloatField()
+    # Provenance: which raster, and how many pixels backed the mean. CHIRPS is
+    # a 0.25 deg grid, so this is often 1-6 (design D-2).
+    dataset = models.CharField(max_length=100)
+    pixel_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return (
+            f"{self.administration.name} m{self.month:02d} "
+            f"{self.parameter}={self.value}"
+        )
+
+    class Meta:
+        db_table = "weather_administration_normals"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["administration", "month", "parameter"],
+                name="uniq_administration_month_parameter",
             )
         ]

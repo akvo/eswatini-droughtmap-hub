@@ -241,6 +241,14 @@ h5 {
 }
 .edm-reviews-table.ant-table-wrapper .ant-table-tbody > tr > td {
   border-bottom-color: var(--table-border);
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+.edm-reviews-table.ant-table-wrapper .ant-table-thead > tr > th {
+  border-left: 0 !important;
+  border-right: 0 !important;
+  border-top: 0 !important;
 }
 .edm-reviews-table.ant-table-wrapper
   .ant-table-tbody

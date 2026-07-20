@@ -2,6 +2,7 @@ from django.urls import re_path
 
 from api.v1.v1_weather.views import (
     AdministrationLatestAPI,
+    AdministrationNormalsAPI,
     AdministrationSeriesAPI,
     AdministrationStatsAPI,
     WeatherSourceAPI,
@@ -10,6 +11,12 @@ from api.v1.v1_weather.views import (
 )
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/weather/administrations/"
+        r"(?P<administration_id>[0-9]+)/normals",
+        AdministrationNormalsAPI.as_view(),
+        name="weather-administration-normals",
+    ),
     re_path(
         r"^(?P<version>(v1))/weather/administrations/"
         r"(?P<administration_id>[0-9]+)/stats",

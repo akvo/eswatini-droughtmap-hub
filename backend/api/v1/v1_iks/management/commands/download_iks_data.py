@@ -48,7 +48,24 @@ def download_attachment(download_url, save_path, username=None, password=None):
 class Command(BaseCommand):
     help = "Download and sync IKS data from Kobo Toolbox"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reprocess",
+            action="store_true",
+            help=(
+                "Re-extract IKS values from submissions already stored in "
+                "the DB, without fetching from Kobo. Needed after the "
+                "extractor learns a new question: the sync cursor only moves "
+                "forward, so already-pulled submissions are never re-read on "
+                "their own."
+            ),
+        )
+
     def handle(self, *args, **options):
+        if options.get("reprocess"):
+            self._reprocess()
+            return
+
         # 1. Load active KoboAdapter
         adapter = (
             KoboAdapter.objects.filter(active=True)
@@ -69,16 +86,8 @@ class Command(BaseCommand):
             )
             return
 
-        # Load TopoJSON using geopandas
-        topojson_path = "./source/eswatini.topojson"
-        try:
-            gdf = gpd.read_file(topojson_path)
-            if gdf.crs is None:
-                gdf.set_crs("EPSG:4326", inplace=True)
-        except Exception as e:
-            self.stdout.write(
-                self.style.ERROR(f"Failed to load topojson: {str(e)}")
-            )
+        gdf = self._load_topojson()
+        if gdf is None:
             return
 
         headers = {}
@@ -141,6 +150,53 @@ class Command(BaseCommand):
             )
         )
 
+    def _load_topojson(self):
+        """Load the Eswatini boundaries, or None if unreadable."""
+        try:
+            gdf = gpd.read_file("./source/eswatini.topojson")
+            if gdf.crs is None:
+                gdf.set_crs("EPSG:4326", inplace=True)
+            return gdf
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f"Failed to load topojson: {str(e)}")
+            )
+            return None
+
+    def _reprocess(self):
+        """Re-extract IKS values from submissions already in the DB.
+
+        Every answer Kobo sent is kept verbatim in KoboData.raw_data, so a
+        question added to the extractor after a submission was pulled can be
+        backfilled from there — no Kobo round-trip, and no re-running the
+        attachment downloads. Values are upserted, so this is repeatable.
+        """
+        forms = KoboForm.objects.filter(active=True)
+        if not forms.exists():
+            self.stdout.write(
+                self.style.WARNING("No active KoboForm registered.")
+            )
+            return
+
+        gdf = self._load_topojson()
+        if gdf is None:
+            return
+
+        count = 0
+        for kobo_data in KoboData.objects.filter(form__in=forms).iterator():
+            res = kobo_data.raw_data
+            if not isinstance(res, dict):
+                continue
+            _, _, administration_id = self._resolve_location(res, gdf)
+            self._map_iks_values(
+                kobo_data.form, res, kobo_data.kobo_id, administration_id
+            )
+            count += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Reprocessed {count} stored submissions.")
+        )
+
     def _advance_cursor(self, form, newest, failed):
         """Move this form's cursor to the newest submission seen (its own
         clock, safer than wall-clock now() against API/DB skew).
@@ -179,19 +235,15 @@ class Command(BaseCommand):
             url += "&query=" + quote(json.dumps(query))
         return url
 
-    def _process_submission(self, adapter, form, res, gdf):
-        """Upsert a single Kobo submission and its IKS values.
+    def _resolve_location(self, res, gdf):
+        """Return (lat, lon, administration_id) for a submission.
 
-        Returns the submission_time on success, or None if skipped.
+        Any of the three is None when the submission cannot be placed.
+        Parse geolocation with priority:
+        1. _geolocation (array: [lat, lon])
+        2. start-geopoint (string: "lat lon altitude accuracy")
+        3. survey_start_gps (string: "lat lon ...")
         """
-        kobo_id = res.get("_id")
-        if not kobo_id:
-            return None
-
-        # Parse geolocation with priority:
-        # 1. _geolocation (array: [lat, lon])
-        # 2. start-geopoint (string: "lat lon altitude accuracy")
-        # 3. survey_start_gps (string: "lat lon ...")
         lat, lon = None, None
         administration_id = None
 
@@ -237,6 +289,19 @@ class Command(BaseCommand):
             except Exception as ex:
                 logger.error(f"Error checking point-in-polygon for ({lat}, {lon}): {str(ex)}")
 
+        return lat, lon, administration_id
+
+    def _process_submission(self, adapter, form, res, gdf):
+        """Upsert a single Kobo submission and its IKS values.
+
+        Returns the submission_time on success, or None if skipped.
+        """
+        kobo_id = res.get("_id")
+        if not kobo_id:
+            return None
+
+        lat, lon, administration_id = self._resolve_location(res, gdf)
+
         # Get or create KoboData
         sub_time_str = res.get("_submission_time", "")
         sub_time = timezone.now()
@@ -265,7 +330,19 @@ class Command(BaseCommand):
             },
         )
 
-        # Map Indicators and values
+        self._map_iks_values(form, res, kobo_id, administration_id)
+
+        # Trigger image download jobs asynchronously if attachments exist
+        self._queue_attachments(adapter, res, kobo_id)
+
+        return sub_time
+
+    def _map_iks_values(self, form, res, kobo_id, administration_id):
+        """Upsert the IKS indicators and values a submission reports.
+
+        Shared by the Kobo sync and by --reprocess, so a question added here
+        reaches stored submissions too.
+        """
         # Scan common indicator group keys B1 and C1
         indicator_fields = [
             (
@@ -354,7 +431,8 @@ class Command(BaseCommand):
                     f"Administration with ID {administration_id} not found in database."  # noqa
                 )
 
-        # Trigger image download jobs asynchronously if attachments exist
+    def _queue_attachments(self, adapter, res, kobo_id):
+        """Dispatch an async download job per attachment."""
         attachments = res.get("_attachments", [])
         for attach in attachments:
             download_url = attach.get("download_url")
@@ -383,5 +461,3 @@ class Command(BaseCommand):
                 )
                 job.task_id = task_id
                 job.save()
-
-        return sub_time

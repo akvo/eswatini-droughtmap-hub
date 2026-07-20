@@ -92,17 +92,21 @@ export default function Step1Identify({
 
       <div className="flex flex-col gap-1.5">
         <label className="text-sm text-neutral-600 font-semibold">
-          Description
+          Description *
         </label>
         <Input.TextArea
-          placeholder="Add reviewer notes..."
+          placeholder="please write a description of the activity you are adding."
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
           rows={4}
           className="w-full"
+          status={errors.description ? "error" : ""}
         />
+        {errors.description && (
+          <span className="text-xs text-red-500">{errors.description}</span>
+        )}
       </div>
     </div>
   );
