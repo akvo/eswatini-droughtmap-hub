@@ -1,6 +1,5 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Spin, message } from "antd";
 import { api } from "@/lib/api";
 import ActivityDetailContent from "../../ActivityLibrary/ActivityDetailContent";
@@ -8,6 +7,12 @@ import ActivityDetailContent from "../../ActivityLibrary/ActivityDetailContent";
 const ActivitySlideIn = ({ activityId, onClose }) => {
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -42,9 +47,9 @@ const ActivitySlideIn = ({ activityId, onClose }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activityId, onClose]);
 
-  if (!activityId) return null;
+  if (!activityId || !mounted) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div
@@ -86,7 +91,8 @@ const ActivitySlideIn = ({ activityId, onClose }) => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
