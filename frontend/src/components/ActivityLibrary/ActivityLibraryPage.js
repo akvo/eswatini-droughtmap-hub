@@ -181,7 +181,7 @@ export default function ActivityLibraryPage() {
               className="font-semibold bg-blue-600 border-blue-600 hover:bg-blue-700"
               onClick={() => setShowSlideIn(true)}
             >
-              Add new library
+              Add new activity
             </Button>
           </Can>
         }

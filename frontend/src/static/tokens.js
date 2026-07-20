@@ -71,6 +71,8 @@ const text = {
 const border = {
   table: "#e5e7eb",
   input: "#D0D5DD",
+  // Figma colors/neutral/300 — metric-card grid hairlines (node 3509:110399)
+  card: "#d2d2d2",
 };
 
 const surface = {

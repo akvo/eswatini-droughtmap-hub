@@ -2,6 +2,63 @@ import { USER_ROLES } from "@/static/config";
 import { Button } from "antd";
 import Link from "next/link";
 
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+// "2026-04" -> "04". The weather series is keyed by calendar period, while
+// 30-year normals are climatology keyed by month-of-year.
+export const monthOfYear = (period) => period.slice(5, 7);
+
+/**
+ * X-axis labels for a list of "YYYY-MM" periods. Ranges span up to 120 months,
+ * where a bare "Jan" would repeat — so the year is appended only when the
+ * window actually crosses a year boundary.
+ */
+export const periodLabels = (periods = []) => {
+  const multiYear = new Set(periods.map((p) => p.slice(0, 4))).size > 1;
+  return periods.map((p) => {
+    const month = MONTH_LABELS[parseInt(monthOfYear(p), 10) - 1] ?? p;
+    return multiYear ? `${month} ${p.slice(2, 4)}` : month;
+  });
+};
+
+// Climatology lookup: the normals row keyed "01".."12" for a calendar period.
+export const normalAt = (normals, period) =>
+  normals?.data?.find((d) => d.period === monthOfYear(period))?.value ?? null;
+
+// The /weather/.../series payload nests one entry per chart under `data`.
+export const findWeatherSeries = (series, key) =>
+  series?.data?.find((s) => s.key === key) ?? null;
+
+/**
+ * Provenance line for the D-5 resolution ladder: an inkhundla resolves to its
+ * own region's station where possible, otherwise to the nearest one — which
+ * has to stay visible rather than read as local data.
+ */
+export const stationProvenance = (meta) => {
+  if (!meta?.station) {
+    return "";
+  }
+  if (meta.resolution === "nearest_station_fallback") {
+    const distance = meta.distance_km ? ` · ${meta.distance_km} km away` : "";
+    const region = meta.station_region ? ` (${meta.station_region})` : "";
+    return `Nearest station: ${meta.station}${region}${distance} — no station in this region`;
+  }
+  return `Station: ${meta.station}`;
+};
+
 export const transformReviews = (
   administrations = [],
   reviews = [],

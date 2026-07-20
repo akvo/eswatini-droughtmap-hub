@@ -8,6 +8,9 @@ from api.v1.v1_weather.constants import (
     DEGRADED_COMPLETENESS,
     EXPECTED_READINGS_PER_DAY,
     NETWORK,
+    NORMALS_DEFINITION,
+    NORMALS_RASTERS,
+    NORMALS_UNAVAILABLE,
     OFFLINE_AFTER_DAYS,
     UNITS,
     WIS2_PARAMETERS,
@@ -15,6 +18,7 @@ from api.v1.v1_weather.constants import (
     WeatherParameter,
 )
 from api.v1.v1_weather.models import (
+    AdministrationNormal,
     StationDailyAggregate,
     WeatherStation,
 )
@@ -489,6 +493,71 @@ def administration_stats(administration, include_completeness=False) -> dict:
         completeness_card,
     ]
     base["meta"] = _resolution_meta(station, resolution, distance_km)
+    return base
+
+
+def administration_normals(administration) -> dict:
+    """30-year monthly normals for the chart overlays (WX-5).
+
+    Climatology, so periods are month-of-year '01'..'12' and the payload is
+    both range- and station-independent — an Inkhundla with no station data
+    still has normals (design D-3). Temperature keeps the nested value object
+    so tmax/tmin can be added when a source exists (D-4)."""
+    rows = list(
+        AdministrationNormal.objects.filter(
+            administration=administration
+        ).values("month", "parameter", "value")
+    )
+    base = _administration_base(administration)
+    if not rows:
+        base["data"] = None
+        base["meta"] = {"reason": "no_normals_extracted"}
+        return base
+
+    by_parameter = {}
+    for row in rows:
+        by_parameter.setdefault(row["parameter"], {})[row["month"]] = row[
+            "value"
+        ]
+    months = [f"{month:02d}" for month in range(1, 13)]
+    precipitation = by_parameter.get(WeatherParameter.precipitation, {})
+    tmean = by_parameter.get(WeatherParameter.tmean, {})
+
+    base["data"] = [
+        {
+            "key": "precipitation_normal_30y",
+            "label": "30-year average",
+            "units": UNITS[WeatherParameter.precipitation],
+            "data": [
+                {"period": month, "value": precipitation.get(int(month))}
+                for month in months
+            ],
+        },
+        {
+            "key": "temperature_normal_30y",
+            "label": "30-year average",
+            "units": UNITS[WeatherParameter.tmean],
+            "data": [
+                {
+                    "period": month,
+                    "value": (
+                        {WeatherParameter.tmean: tmean[int(month)]}
+                        if int(month) in tmean
+                        else None
+                    ),
+                }
+                for month in months
+            ],
+        },
+    ]
+    base["meta"] = {
+        "definition": NORMALS_DEFINITION,
+        "datasets": {
+            parameter: raster["dataset"]
+            for parameter, raster in NORMALS_RASTERS.items()
+        },
+        "unavailable": NORMALS_UNAVAILABLE,
+    }
     return base
 
 
