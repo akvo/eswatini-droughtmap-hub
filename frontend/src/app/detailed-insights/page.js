@@ -1,9 +1,23 @@
-import { redirect } from "next/navigation";
+"use client";
 
-// /detailed-insights has no content of its own — send it to the default tab.
-const DetailedInsightsPage = () => {
-  // CDI Explorer is the design's default tab (Figma 4159:184659).
-  redirect("/detailed-insights/cdi");
+import { useInsights } from "@/context/InsightsContextProvider";
+
+// CDI Explorer is the default tab, so it lives at the index route itself
+// rather than behind a redirect — a redirect() here would fire during the
+// layout's deferred (empty-state) render and corrupt the App Router's hooks.
+const CdiPage = () => {
+  const { selectedInkhundla } = useInsights();
+
+  return (
+    <div className="p-8 text-center bg-white rounded-b-lg">
+      <h3 className="text-lg font-bold text-neutral-800 mb-2">CDI Explorer</h3>
+      <p className="text-neutral-500 max-w-md mx-auto text-sm">
+        The CDI Explorer tab provides historical satellite drought category
+        trends for {selectedInkhundla} Inkhundla. This tab is currently under
+        construction.
+      </p>
+    </div>
+  );
 };
 
-export default DetailedInsightsPage;
+export default CdiPage;

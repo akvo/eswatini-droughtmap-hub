@@ -87,11 +87,30 @@ NORMALS_RASTERS = {
         "filename": "ESW_AgERA5_tmean_c_1990-2020.tif",
         "dataset": "AgERA5 1990-2020",
     },
+    # NB: both temperature files below carry band descriptions reading
+    # "m01_tmean_c".. — mislabelled by the export, NOT tmean data. Verified
+    # 2026-07-17: each differs from the tmean file in all 12 months and
+    # tmin <= tmean <= tmax holds in every pixel. Extraction reads bands by
+    # index, so the wrong names are inert — but do not trust them.
+    WeatherParameter.tmax: {
+        "filename": "ESW_AgERA5_tmax_c_1990-2020.tif",
+        "dataset": "AgERA5 1990-2020",
+    },
+    WeatherParameter.tmin: {
+        "filename": "ESW_AgERA5_tmin_c_1990-2020.tif",
+        "dataset": "AgERA5 1990-2020",
+    },
 }
-# The AgERA5 export above covers tmean only, so tmax/tmin normals have no
-# source yet (design D-4). AgERA5 itself DOES publish Temperature-Air-2m-Max-24h
-# and Min-24h — they are just not in our file, so the fix is a re-export from
-# the same dataset, not a different one (design OQ-2). Adding them here plus a
-# NORMALS_RASTERS entry is the whole wiring.
-NORMALS_UNAVAILABLE = [WeatherParameter.tmax, WeatherParameter.tmin]
+# Every normals parameter now has a raster (OQ-2 closed 2026-07-17). Kept as
+# the contract for any future parameter that lacks a source: the endpoint
+# advertises it here and the frontend hides that average rather than faking it.
+NORMALS_UNAVAILABLE = []
 NORMALS_DEFINITION = "monthly mean over the normals period"
+# Which parameters share the temperature series' nested value object, and the
+# order they appear in it. Listed regardless of whether a raster exists yet:
+# the service emits only what was actually extracted.
+TEMPERATURE_NORMALS = [
+    WeatherParameter.tmax,
+    WeatherParameter.tmean,
+    WeatherParameter.tmin,
+]

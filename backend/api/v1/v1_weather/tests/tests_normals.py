@@ -303,13 +303,48 @@ class NormalsEndpointTests(APITestCase):
         )
         self.assertEqual(precipitation["data"][0]["value"], 10.0)
 
-    def test_temperature_carries_tmean_only(self):
+    def test_temperature_carries_only_the_parameters_extracted(self):
+        """setUp seeds tmean only, so tmax/tmin must not be invented for it —
+        a parameter with no row is absent, never zero-filled."""
         body = self._get(HHUKWINI_ADM).json()
         temperature = body["data"][1]
         self.assertEqual(temperature["key"], "temperature_normal_30y")
         self.assertEqual(temperature["data"][0]["value"], {"tmean": 1.0})
-        # tmax/tmin have no source — the payload says so rather than faking it
-        self.assertEqual(body["meta"]["unavailable"], ["tmax", "tmin"])
+
+    def test_temperature_includes_every_extracted_parameter(self):
+        """Regression: the payload was hard-coded to tmean, so extracting the
+        tmax/tmin rasters filled the DB and `meta.datasets` while the value
+        object silently stayed tmean-only — the chart could never draw those
+        lines. Order follows TEMPERATURE_NORMALS (tmax, tmean, tmin)."""
+        for month in range(1, 13):
+            for parameter, offset in (
+                (WeatherParameter.tmax, 5.0),
+                (WeatherParameter.tmin, -5.0),
+            ):
+                AdministrationNormal.objects.create(
+                    administration=self.administration,
+                    month=month,
+                    parameter=parameter,
+                    value=float(month) + offset,
+                    dataset="AgERA5 1990-2020",
+                    pixel_count=6,
+                )
+
+        temperature = self._get(HHUKWINI_ADM).json()["data"][1]
+        self.assertEqual(
+            temperature["data"][0]["value"],
+            {"tmax": 6.0, "tmean": 1.0, "tmin": -4.0},
+        )
+        self.assertEqual(
+            temperature["data"][11]["value"],
+            {"tmax": 17.0, "tmean": 12.0, "tmin": 7.0},
+        )
+
+    def test_nothing_is_advertised_as_unavailable(self):
+        """OQ-2 closed: every normals parameter has a raster. The key stays in
+        the contract so a future sourceless parameter can be declared."""
+        body = self._get(HHUKWINI_ADM).json()
+        self.assertEqual(body["meta"]["unavailable"], [])
 
     def test_reports_when_nothing_extracted(self):
         AdministrationNormal.objects.all().delete()

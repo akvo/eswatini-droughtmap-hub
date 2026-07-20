@@ -5,7 +5,8 @@
 **Task ID**: WX-5 (increment on WX-1/WX-4)
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-07-16
-**Status**: Draft
+**Status**: Implemented (2026-07-17) — all four parameters extracted (2832 rows),
+`/normals` live, 65 v1_weather tests green. OQ-1/OQ-2/OQ-3 all closed.
 **Figma**: [Detailed insights → Weather Station Explorer, node `3509-110107`](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3509-110107&m=dev)
 **Builds on**: [`weather-station-backend.md`](weather-station-backend.md) (WX-1) · [`weather-explorer-public-api.md`](weather-explorer-public-api.md) (WX-4)
 **Supersedes**: requirements [`weather-wis2-backend-requirements.md`](weather-wis2-backend-requirements.md) **Q2** — "30-yr normals dropped this phase, source TBD, frontend placeholder". The source has landed; this doc replaces the placeholder with real data.
@@ -48,17 +49,18 @@ Goal:
   the original definition: January country-wide mean **133.0 mm** vs the original's
   **132.98 mm**, with min/max widening (50.6–309.9 vs 82.4–220.5) as expected at 5x finer
   resolution.
-- **The delivered AgERA5 file carries tmean only** — this is a property of the export, not of
-  AgERA5: Max/Min-24h exist in the same CDS dataset, but need credentials and daily→normal
-  aggregation, so tmax/tmin 30-yr averages are still unavailable (§5 D-4, OQ-2).
+- **AgERA5 tmax and tmin landed 2026-07-17** on the same 0.1° grid, closing OQ-2: all four
+  parameters extract and the Explorer draws all six of the frame's temperature series. Their
+  band descriptions are mislabelled `m01_tmean_c`.. — inert (extraction indexes bands) but not
+  to be trusted; the data was validated instead, `tmin ≤ tmean ≤ tmax` in every pixel (§5 D-4).
 
 ---
 
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] The Explorer's precipitation chart shows a real 30-year average bar per month for any Inkhundla, no longer labelled placeholder.
-- [ ] The temperature chart shows a real 30-year mean line; Tmax/Tmin 30-yr averages are not offered (no source).
+- [x] The Explorer's precipitation chart shows a real 30-year average bar per month for any Inkhundla, no longer labelled placeholder.
+- [x] The temperature chart shows real 30-year Tmax/Tmean/Tmin average lines — all six of the frame's series (OQ-2 closed 2026-07-17).
 - [ ] An Inkhundla with no station data still shows its normals — normals do not depend on station resolution.
 - [ ] Re-running the command does not duplicate or drift values.
 
@@ -127,14 +129,17 @@ class AdministrationNormal(models.Model):
     {"key": "precipitation_normal_30y", "label": "30-year average", "units": "mm",
      "data": [{"period": "01", "value": 174.0}, {"period": "02", "value": 150.2}]},
     {"key": "temperature_normal_30y", "label": "30-year average", "units": "°C",
-     "data": [{"period": "01", "value": {"tmean": 20.4}}]}
+     "data": [{"period": "01", "value": {"tmax": 25.2, "tmean": 21.2, "tmin": 16.5}}]}
   ],
   "meta": {
     "definition": "monthly mean over the normals period",
-    "datasets": {"precipitation": "CHIRPS 1991-2020", "tmean": "AgERA5 1990-2020"},
-    "unavailable": ["tmax", "tmin"]
+    "datasets": {"precipitation": "CHIRPS 1991-2020", "tmean": "AgERA5 1990-2020",
+                 "tmax": "AgERA5 1990-2020", "tmin": "AgERA5 1990-2020"},
+    "unavailable": []
   }
 }
+// The temperature value object holds only the parameters actually extracted;
+// anything without a raster is named in meta.unavailable, never zero-filled.
 // No rows extracted yet -> data: null, meta.reason: "no_normals_extracted"
 ```
 
@@ -194,11 +199,23 @@ would hide normals precisely where the station data is missing and the compariso
 **Impact**: the frontend fetches normals once per Inkhundla and keeps mapping them by
 month-of-year, which is what the mock import already does.
 
-### D-4: Serve tmean normals; tmax/tmin stay unavailable
+### D-4: The payload advertises what is missing rather than faking it
 
-The AgERA5 raster is tmean only. Rather than fabricate the other two, the response carries
-`meta.unavailable: ["tmax","tmin"]` and the frontend offers only the T Mean 30-yr average.
-The nested `{tmean: …}` value shape means adding tmax/tmin later is additive.
+Originally the AgERA5 export was tmean only, so the response carried
+`meta.unavailable: ["tmax","tmin"]` and the frontend offered just the T Mean average — the
+nested `{tmean: …}` value shape kept adding the others additive.
+
+**As built (2026-07-17)**: tmax/tmin arrived and `NORMALS_UNAVAILABLE` is now empty. The
+mechanism stays, because it is what let the two new parameters ship without touching the
+chart — and it is the contract for any future sourceless parameter. Both sides derive from
+data rather than a fixed list: the service builds the value object from `TEMPERATURE_NORMALS`
+∩ extracted rows, the chart offers averages from `meta.unavailable`.
+
+**Correction**: this was documented as constants-only wiring, but the service was hard-coded
+to `{tmean: …}`, so tmax filled the DB and `meta.datasets` while the value object stayed
+tmean-only — the chart could never draw the line. Caught by testing the live endpoint after
+extraction, not by the suite: the frontend test mocked the API, so it proved the component was
+ready without ever exercising the service. Regression test added in `tests_normals.py`.
 
 ### D-5: Plain command, not a Rundeck job
 
@@ -210,10 +227,15 @@ imply a cadence that does not exist.
 
 ## 6. Type/Constant Mappings
 
-| Raster band | Internal parameter | Units |
-|---|---|---|
-| `m01_precip_mm` … `m12_precip_mm` | `WeatherParameter.precipitation` | mm |
-| `m01_tmean_c` … `m12_tmean_c` | `WeatherParameter.tmean` | °C |
+Bands map by **index** (band N = month N), never by description — the tmax/tmin exports
+mislabel theirs as `m01_tmean_c`.. (OQ-2).
+
+| Raster | Bands | Internal parameter | Units |
+|---|---|---|---|
+| `ESW_CHIRPS_precip_mm_1991-2020.tif` | `m01_precip_mm` … | `WeatherParameter.precipitation` | mm |
+| `ESW_AgERA5_tmean_c_1990-2020.tif` | `m01_tmean_c` … | `WeatherParameter.tmean` | °C |
+| `ESW_AgERA5_tmax_c_1990-2020.tif` | mislabelled `m01_tmean_c` … | `WeatherParameter.tmax` | °C |
+| `ESW_AgERA5_tmin_c_1990-2020.tif` | mislabelled `m01_tmean_c` … | `WeatherParameter.tmin` | °C |
 
 ---
 
@@ -273,20 +295,27 @@ imply a cadence that does not exist.
       giving 25x the pixels. As predicted, **no application code changed** — same filename, same
       band names; only `extract_weather_normals` was re-run. Validation: January country-wide mean
       133.0 mm vs the original's 132.98 mm.
-- [ ] **OQ-2 (needs a data export, not code): tmax/tmin normals.** Confirmed obtainable —
-      AgERA5's CDS dataset (`sis-agrometeorological-indicators`) publishes
-      `Temperature-Air-2m-Max-24h` / `Min-24h` on the same 0.1° grid as the delivered tmean file.
-      Two blockers: it is **daily**, so a 30-year normal means aggregating ~11k fields, and CDS
-      needs an account/API key (none in this environment; no `cdsapi`/`xarray` installed).
-      **Action**: re-export from whatever pipeline produced `ESW_AgERA5_tmean_c_1990-2020.tif`,
-      adding Max-24h/Min-24h with the same band layout. Wiring is then **constants-only**
-      (`NORMALS_RASTERS` + `NORMALS_UNAVAILABLE`) — the frontend derives which averages to offer
-      from `meta.unavailable`, proven by a test in `WeatherTab.test.js`. See
-      `backend/source/30years/README.md`.
-      **Rejected alternative**: TerraClimate (open, monthly, 4 km, has tmax/tmin). Its normals
-      would not be commensurable with the AgERA5 tmean on the same axis, and reading it here is
-      blocked anyway — GDAL's netCDF driver needs `userfaultfd` (unavailable in Docker) and the
-      HDF5 fallback drops the CF `scale_factor`/`_FillValue` metadata, yielding garbage values.
+- [x] ~~OQ-2: tmax/tmin normals~~ **RESOLVED 2026-07-17 — both delivered and shipped.**
+      `ESW_AgERA5_tmax_c_1990-2020.tif` and `ESW_AgERA5_tmin_c_1990-2020.tif` arrived on the
+      same 0.1° grid as the tmean file, so all four parameters now extract (2832 rows =
+      59 × 12 × 4) and the Explorer draws all six of the frame's temperature series.
+      **Validation on arrival** — the band descriptions could not be trusted (below), so the
+      data was checked directly: each file differs from tmean in all 12 months, and
+      **tmin ≤ tmean ≤ tmax holds in every pixel of every month** (0 violations), at both
+      raster and per-Inkhundla level.
+      **Two corrections to this doc's earlier claims:**
+      (a) the wiring was **not** constants-only — `administration_normals()` was hard-coded to
+      emit `{tmean: …}`, so extraction filled the DB and `meta.datasets` while the value object
+      silently stayed tmean-only. The frontend test that "proved" the drop-in path had mocked
+      the API, so it never exercised the real service. Now driven by `TEMPERATURE_NORMALS` ∩
+      extracted rows, with a regression test.
+      (b) **both new files carry band descriptions reading `m01_tmean_c`..** — mislabelled by
+      the export. Harmless here (extraction indexes bands, never names) but it means a future
+      file mix-up cannot be caught by reading the band names; re-run the ordering check instead.
+      **Rejected alternative** (recorded for the future): TerraClimate — its normals would not
+      be commensurable with AgERA5 on the same axis, and reading it here is blocked anyway
+      (GDAL's netCDF driver needs `userfaultfd`, unavailable in Docker; the HDF5 fallback drops
+      CF `scale_factor`/`_FillValue` and yields garbage).
 
 ---
 
