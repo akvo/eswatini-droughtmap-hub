@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "./lib";
 import { USER_ROLES } from "./static/config";
 
-const protectedRoutes = ["/profile", "/publications", "/reviews", "/settings"];
+const protectedRoutes = [
+  "/profile",
+  "/publications",
+  "/reviews",
+  "/settings",
+  "/validations",
+];
 const authRoutes = ["/login"];
 
 export default async function middleware(request) {
@@ -41,7 +47,8 @@ export default async function middleware(request) {
       (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||
-          pathName.startsWith("/settings")))
+          pathName.startsWith("/settings") ||
+          pathName.startsWith("/validations")))
     ) {
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
