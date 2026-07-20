@@ -68,7 +68,7 @@ const monthMap = {
  * every tab from having to handle a null administrationId.
  */
 const SelectInkhundlaEmptyState = () => (
-  <div className="flex min-h-[480px] w-full flex-col items-center justify-center gap-4 bg-brandTint px-4 text-center">
+  <div className="flex min-h-[480px] w-full flex-col items-center justify-center gap-4 bg-white px-4 text-center">
     <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-neutral-200 bg-white">
       <InfoCircleOutlined className="text-xl text-primary" />
     </div>
