@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.core.exceptions import ValidationError
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_users.constants import UserRoleTypes
 
@@ -63,3 +64,11 @@ class UserModelTestCase(TestCase):
             str(context.exception),
             "Invalid Admin role"
         )
+
+    def _clean_sector(self, value):
+        field = SystemUser._meta.get_field("activity_sector")
+        return field.clean(value, self.user)
+
+    def test_activity_sector_rejects_out_of_range(self):
+        with self.assertRaises(ValidationError):
+            self._clean_sector(99)
