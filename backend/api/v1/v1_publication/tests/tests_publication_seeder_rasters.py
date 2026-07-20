@@ -116,16 +116,18 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
         response.json.return_value = self.cdi_response
         return response
 
+    @patch("api.v1.v1_publication.utils.async_task")
     @patch(
         "api.v1.v1_publication.management.commands.publications_seeder"
         ".async_task"
     )
     @patch("requests.get")
     def test_seeder_attaches_component_rasters(
-        self, mock_get, mock_async_task
+        self, mock_get, mock_async_task, mock_component_async_task
     ):
         mock_get.side_effect = self._mock_get
         mock_async_task.side_effect = self.generate_task_id
+        mock_component_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
 
@@ -161,22 +163,24 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
 
         component_hook_calls = [
             call
-            for call in mock_async_task.call_args_list
+            for call in mock_component_async_task.call_args_list
             if call.kwargs.get("hook")
             == "api.v1.v1_jobs.job.download_indicator_dataset_results"
         ]
         self.assertEqual(len(component_hook_calls), 4)
 
+    @patch("api.v1.v1_publication.utils.async_task")
     @patch(
         "api.v1.v1_publication.management.commands.publications_seeder"
         ".async_task"
     )
     @patch("requests.get")
     def test_seeder_component_rasters_are_idempotent(
-        self, mock_get, mock_async_task
+        self, mock_get, mock_async_task, mock_component_async_task
     ):
         mock_get.side_effect = self._mock_get
         mock_async_task.side_effect = self.generate_task_id
+        mock_component_async_task.side_effect = self.generate_task_id
 
         call_command("publications_seeder")
 

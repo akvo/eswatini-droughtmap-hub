@@ -1,5 +1,6 @@
 import time
 import requests
+from datetime import datetime
 import geopandas as gpd
 import topojson as tp
 import matplotlib.pyplot as plt
@@ -63,6 +64,7 @@ from api.v1.v1_publication.constants import (
     FilterStatus,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
+from api.v1.v1_publication.utils import discover_components, geonode_auth
 from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 from utils.default_serializers import (
@@ -302,6 +304,7 @@ class CDIGeonodeAPI(APIView):
             cdi_id = serializer.validated_data["id"]
             response = requests.get(
                 f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}",
+                auth=geonode_auth(),
                 verify=GEONODE_SSL_VERIFY,
                 timeout=GEONODE_REQUEST_TIMEOUT,
             )
@@ -370,11 +373,9 @@ class CDIGeonodeAPI(APIView):
                     )
                 )
                 url = f"{url}&page={page}&sort[]=-date"
-        username = settings.GEONODE_ADMIN_USERNAME
-        password = settings.GEONODE_ADMIN_PASSWORD
         response = requests.get(
             url,
-            auth=(username, password),
+            auth=geonode_auth(),
             verify=GEONODE_SSL_VERIFY,
             timeout=GEONODE_REQUEST_TIMEOUT,
         )
@@ -550,6 +551,24 @@ class PublicationViewSet(viewsets.ModelViewSet):
                 job.task_id = task_id
                 job.save()
 
+                # Queue component-raster discovery (ESI/EVI2/SM/SPI) as its
+                # own job rather than running it inline: it walks the GeoNode
+                # catalogue up to four times, and none of that should delay
+                # or fail the publication the admin just asked for (D-6).
+                # Independent of the CDI chain above, so reviewer emails are
+                # never held up waiting on components.
+                raster_job = Jobs.objects.create(
+                    type=JobTypes.attach_component_rasters,
+                    status=JobStatus.on_progress,
+                    info={"publication_id": publication.id},
+                )
+                raster_job.task_id = async_task(
+                    "api.v1.v1_jobs.job.attach_publication_rasters",
+                    publication.id,
+                    hook="api.v1.v1_jobs.job.job_done_hook",
+                )
+                raster_job.save()
+
                 # Return the serialized publication data
                 return PublicationSerializer(publication).data
         except IntegrityError as e:
@@ -572,6 +591,48 @@ class PublicationViewSet(viewsets.ModelViewSet):
         if instance.narrative and total_adms == total_validated:
             instance.published_at = timezone.now()
         instance.save()
+
+
+class ComponentRasterPreviewAPI(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Preview component rasters available for a month",
+        description=(
+            "Which of ESI/EVI2/SM/SPI GeoNode currently holds for the given "
+            "month. Advisory only: the attach job re-reads the catalogue "
+            "after the publication is created and remains the source of "
+            "truth."
+        ),
+        tags=["Admin"],
+        parameters=[
+            OpenApiParameter(
+                name="year_month",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Target month as YYYY-MM.",
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 400: DefaultResponseSerializer},
+    )
+    def get(self, request, version):
+        year_month = request.GET.get("year_month", "")
+        try:
+            target_month = datetime.strptime(
+                year_month[:7], "%Y-%m"
+            ).strftime("%Y-%m")
+        except ValueError:
+            raise ValidationError({
+                "year_month": "Invalid format. Use YYYY-MM."
+            })
+        return Response(
+            {
+                "data": discover_components(target_month),
+                "meta": {"year_month": target_month},
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class PublicationRasterAPI(APIView):
@@ -617,10 +678,7 @@ class PublicationRasterAPI(APIView):
         # resources the backend itself can see and authenticate against.
         response = requests.get(
             f"{settings.GEONODE_BASE_URL}/api/v2/resources/{geonode_id}",
-            auth=(
-                settings.GEONODE_ADMIN_USERNAME,
-                settings.GEONODE_ADMIN_PASSWORD,
-            ),
+            auth=geonode_auth(),
             verify=GEONODE_SSL_VERIFY,
             timeout=GEONODE_REQUEST_TIMEOUT,
         )

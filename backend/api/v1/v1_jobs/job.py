@@ -20,7 +20,10 @@ from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     PublicationSerializer,
 )
-from api.v1.v1_publication.utils import get_category
+from api.v1.v1_publication.utils import (
+    get_category,
+    attach_component_rasters,
+)
 from utils.email_helper import send_email, EmailTypes
 
 # Set up logging
@@ -308,6 +311,19 @@ def generate_indicator_values(publication_raster_id: int, input_file: str):
     raster.extracted_at = timezone.now()
     raster.save()
     return {"id": raster.id, "indicator": raster.indicator}
+
+
+def attach_publication_rasters(publication_id: int):
+    # Component discovery walks the GeoNode catalogue up to four times, so it
+    # runs here in the worker rather than inline in the create request (D-6):
+    # a slow or unreachable GeoNode must never delay or fail publication
+    # creation, which only ever needed the CDI raster.
+    publication = Publication.objects.filter(pk=publication_id).first()
+    if not publication:
+        logger.error(f"Publication with ID {publication_id} does not exist.")
+        return False
+    attached = attach_component_rasters(publication)
+    return {"publication": publication_id, "attached": attached}
 
 
 def download_indicator_dataset_results(task):

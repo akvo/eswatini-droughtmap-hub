@@ -9,6 +9,7 @@ class JobTypes:
     new_user_password_setup = 8
     send_feedback = 9
     indicator_values = 10
+    attach_component_rasters = 11
 
     FieldStr = {
         test: "test",
@@ -21,6 +22,7 @@ class JobTypes:
         new_user_password_setup: "new_user_password_setup",
         send_feedback: "send_feedback",
         indicator_values: "indicator_values",
+        attach_component_rasters: "attach_component_rasters",
     }
 
 
