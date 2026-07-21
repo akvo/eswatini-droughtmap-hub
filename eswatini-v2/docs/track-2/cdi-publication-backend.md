@@ -3,7 +3,7 @@
 **Task ID**: Track 2 — CDI Publication (backend) (#135)
 **App**: `backend/api/v1/v1_publication`
 **Date**: 2026-07-21
-**Status**: Ready for Implementation
+**Status**: Implemented
 **Related**: [`cdi-publication-frontend.md`](cdi-publication-frontend.md) (list restyle — independent) · [`../track-3/publication-raster-extraction.md`](../track-3/publication-raster-extraction.md) (WX-3, the raster pipeline this extends)
 
 ---
