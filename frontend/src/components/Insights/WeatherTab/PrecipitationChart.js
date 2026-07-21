@@ -14,9 +14,38 @@ import {
   stationProvenance,
 } from "@/lib/helper";
 
-// Figma 3509:116475 — the same two tokens the temperature chart uses.
 const STATION_COLOR = SERIES_COLOR.station;
-const NORMAL_COLOR = SERIES_COLOR.contrast;
+const STATION_NAME = "Station monthly total";
+const NORMAL_NAME = "30-year average";
+
+// Both rainfall series share one blue: they are the same metric (mm of rain)
+// in two states, so hue is not the thing that distinguishes them. The 30-year
+// average is set apart by a diagonal hatch instead — ECharts paints `decal`
+// over the fill, so the stripes are part of the bar rather than an overlay.
+const NORMAL_DECAL = {
+  color: "rgba(255, 255, 255, 0.85)",
+  dashArrayX: [1, 0], // unbroken along x …
+  dashArrayY: [4, 4], // … 4px stripe / 4px gap along y
+  rotation: -Math.PI / 4, // -45° = the reference figure's diagonal
+};
+
+// Knocked back from the solid station bars, so the average reads as context
+// rather than competing with the observed data.
+const NORMAL_OPACITY = 0.7;
+
+// The CSS equivalent of NORMAL_DECAL, for the DOM swatches (checkbox legend
+// and tooltip) that cannot use an ECharts decal. One constant so the three
+// places the hatch appears stay in step.
+const HATCH_GRADIENT =
+  "repeating-linear-gradient(-45deg, rgba(255,255,255,.85) 0 2px," +
+  " transparent 2px 5px)";
+
+// Mirrors the shape of ECharts' own tooltip marker (10px dot), so the two
+// rows line up — only the fill differs.
+const HATCH_MARKER =
+  `<span style="display:inline-block;margin-right:4px;border-radius:10px;` +
+  `width:10px;height:10px;background-color:${STATION_COLOR};` +
+  `background-image:${HATCH_GRADIENT};opacity:${NORMAL_OPACITY};"></span>`;
 
 /**
  * Monthly precipitation bars (Figma 3509:110472): observed station totals
@@ -44,7 +73,7 @@ const PrecipitationChart = ({ administrationId, normals }) => {
   const chartSeries = [];
   if (showStation) {
     chartSeries.push({
-      name: "Station monthly total",
+      name: STATION_NAME,
       type: "bar",
       data: points.map((p) => p.value),
       itemStyle: { color: STATION_COLOR },
@@ -53,12 +82,16 @@ const PrecipitationChart = ({ administrationId, normals }) => {
   }
   if (showNormals && normalsSeries) {
     chartSeries.push({
-      name: "30-year average",
+      name: NORMAL_NAME,
       type: "bar",
       // Normals are climatology keyed "01".."12", so they map onto whatever
       // calendar months the range covers.
       data: periods.map((p) => normalAt(normalsSeries, p)),
-      itemStyle: { color: NORMAL_COLOR },
+      itemStyle: {
+        color: STATION_COLOR,
+        decal: NORMAL_DECAL,
+        opacity: NORMAL_OPACITY,
+      },
       barMaxWidth: 42,
     });
   }
@@ -67,9 +100,25 @@ const PrecipitationChart = ({ administrationId, normals }) => {
     grid: { top: 16, right: 16, bottom: 24, left: 8, containLabel: true },
     tooltip: {
       trigger: "axis",
-      // Months before the archive starts come back null — say so rather than
-      // letting ECharts render a silent gap.
-      valueFormatter: (v) => (v == null ? "No data" : `${v} ${units}`),
+      // Hand-rolled rather than `valueFormatter` so the average's swatch can
+      // carry the same hatch as its bar — the default marker is a solid dot,
+      // which now reads identically to the station series.
+      formatter: (params) => {
+        const rows = params
+          .map((p) => {
+            // Months before the archive starts come back null — say so rather
+            // than letting ECharts render a silent gap.
+            const value = p.value == null ? "No data" : `${p.value} ${units}`;
+            const marker =
+              p.seriesName === NORMAL_NAME ? HATCH_MARKER : p.marker;
+            return (
+              `<div>${marker}${p.seriesName}` +
+              `<b style="float:right;margin-left:20px">${value}</b></div>`
+            );
+          })
+          .join("");
+        return `${params[0]?.axisValueLabel ?? ""}${rows}`;
+      },
     },
     legend: { show: false },
     xAxis: {
@@ -104,27 +153,32 @@ const PrecipitationChart = ({ administrationId, normals }) => {
       isEmpty={!points.length}
       emptyText="No station data available for this period"
       controls={
-        <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
-          {/* Each checkbox takes its series colour, so the control reads as
-              the legend for the bars it toggles. */}
-          <ConfigProvider theme={{ token: { colorPrimary: STATION_COLOR } }}>
+        <ConfigProvider theme={{ token: { colorPrimary: STATION_COLOR } }}>
+          {/* One provider for both: the series share a colour now, so the
+              controls do too — the hatched swatch marks the average. */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
             <Checkbox
               checked={showStation}
               onChange={(e) => setShowStation(e.target.checked)}
             >
-              <span className="text-sm">Station monthly total</span>
+              <span className="text-sm">{STATION_NAME}</span>
             </Checkbox>
-          </ConfigProvider>
-          <ConfigProvider theme={{ token: { colorPrimary: NORMAL_COLOR } }}>
+            {/* The box itself carries the hatch (see globals.css), so the
+                control is the legend key — no extra swatch beside it. */}
             <Checkbox
+              className="edm-checkbox-hatched"
+              style={{
+                "--hatch-gradient": HATCH_GRADIENT,
+                "--hatch-opacity": NORMAL_OPACITY,
+              }}
               checked={showNormals}
               disabled={!normalsSeries}
               onChange={(e) => setShowNormals(e.target.checked)}
             >
-              <span className="text-sm">30-year average</span>
+              <span className="text-sm">{NORMAL_NAME}</span>
             </Checkbox>
-          </ConfigProvider>
-        </div>
+          </div>
+        </ConfigProvider>
       }
     >
       <Bar rawConfig={rawConfig} />
