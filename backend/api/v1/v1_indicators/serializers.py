@@ -33,8 +33,9 @@ class IndicatorSerializer(serializers.ModelSerializer):
             "created",
             "updated",
         ]
-        read_only_fields = ["is_placeholder", "created", "updated"]
+        read_only_fields = ["created", "updated"]
         extra_kwargs = {
+            "is_placeholder": {"default": True},
             "administration": {
                 "validators": [
                     UniqueValidator(
@@ -45,7 +46,7 @@ class IndicatorSerializer(serializers.ModelSerializer):
                         ),
                     )
                 ]
-            }
+            },
         }
 
     def validate_rainfed_share(self, value):

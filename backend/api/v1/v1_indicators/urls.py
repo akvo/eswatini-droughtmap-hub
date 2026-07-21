@@ -5,6 +5,7 @@ urlpatterns = [
     re_path(
         r"^(?P<version>(v1))/indicators$",
         IndicatorViewSet.as_view({"get": "list", "post": "create"}),
+        name="indicator-list",
     ),
     re_path(
         r"^(?P<version>(v1))/indicators/(?P<administration_id>[0-9]+)$",
@@ -16,5 +17,6 @@ urlpatterns = [
                 "delete": "destroy",
             }
         ),
+        name="indicator-detail",
     ),
 ]
