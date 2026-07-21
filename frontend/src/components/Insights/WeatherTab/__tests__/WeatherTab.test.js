@@ -162,9 +162,9 @@ describe("WeatherTab", () => {
     renderTab();
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Sign in as TWG to view data completeness."),
-      ).toBeInTheDocument();
+      // Substring, so copy tweaks to the locked-card wording don't break this
+      // — the assertion is about the TWG gate, not the exact sentence.
+      expect(screen.getByText(/Sign in as TWG member/)).toBeInTheDocument();
     });
     expect(screen.queryByText("84%")).not.toBeInTheDocument();
   });
