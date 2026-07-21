@@ -386,3 +386,13 @@ h5 {
   margin-right: 8px;
   opacity: 0.7;
 }
+
+/* Hatched checkbox (Weather Explorer legend).
+   antd paints the checked fill on .ant-checkbox-inner, which no theme token
+   can carry a pattern into — so the component sets --hatch-gradient inline and
+   this rule consumes it. One source: the same constant feeds the bar's ECharts
+   decal and the tooltip swatch, so the legend cannot drift from the chart. */
+.edm-checkbox-hatched .ant-checkbox-checked .ant-checkbox-inner {
+  background-image: var(--hatch-gradient);
+  opacity: var(--hatch-opacity, 1);
+}
