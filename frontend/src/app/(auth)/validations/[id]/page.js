@@ -215,7 +215,11 @@ const ValidationDetailPage = () => {
         <Button
           type="link"
           className="edm-reviews-action"
-          disabled={record.status === "validated"}
+          onClick={() => {
+            router.push(
+              `/validations/${id}/${record.administration_id}`,
+            );
+          }}
         >
           {record.status === "validated" ? "View" : "Validate"}
         </Button>
