@@ -103,6 +103,34 @@ describe("IksTab Subcomponents", () => {
       );
       expect(screen.getByText("Blue swallows appearance")).toBeInTheDocument();
     });
+
+    it("renders ticked months as blue bg-[#3e5eb9] for Section B", () => {
+      const { container } = render(
+        <IndicatorRow
+          name="Indicator B"
+          months={["2026-01"]}
+          checkedMonths={[true]}
+          section="B"
+        />,
+      );
+      const dot = container.querySelector(".rounded-\\[1px\\]");
+      expect(dot).toHaveClass("bg-[#3e5eb9]");
+      expect(dot).not.toHaveClass("bg-[#b10d0b]");
+    });
+
+    it("renders ticked months as red bg-[#b10d0b] for Section C", () => {
+      const { container } = render(
+        <IndicatorRow
+          name="Indicator C"
+          months={["2026-01"]}
+          checkedMonths={[true]}
+          section="C"
+        />,
+      );
+      const dot = container.querySelector(".rounded-\\[1px\\]");
+      expect(dot).toHaveClass("bg-[#b10d0b]");
+      expect(dot).not.toHaveClass("bg-[#3e5eb9]");
+    });
   });
 
   describe("PredictorAccordion", () => {

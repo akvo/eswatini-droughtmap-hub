@@ -439,8 +439,13 @@ const IksTab = ({
             {chartReady ? (
               <Line rawConfig={activityOptions} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Spin tip="Rendering Chart..." />
+              <div className="w-full h-full flex flex-col gap-2 items-center justify-center">
+                {/* `tip` needs Spin's nest/fullscreen pattern — the label is
+                    a sibling instead. */}
+                <Spin />
+                <span className="text-sm text-neutral-400">
+                  Rendering Chart...
+                </span>
               </div>
             )}
           </div>
@@ -505,6 +510,7 @@ const IksTab = ({
             items={getRainfallPredictors()}
             months={bulkSeries.months}
             indicatorsData={bulkSeries.indicators}
+            section="B"
           />
           <PredictorAccordion
             title="Section C: Seasonal & extreme-weather predictors (8 indicators)"
@@ -512,6 +518,7 @@ const IksTab = ({
             items={getSeasonalPredictors()}
             months={bulkSeries.months}
             indicatorsData={bulkSeries.indicators}
+            section="C"
           />
         </div>
 

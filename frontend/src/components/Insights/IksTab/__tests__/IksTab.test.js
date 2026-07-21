@@ -66,11 +66,19 @@ describe("IksTab Component Redesigned Mockup", () => {
   });
 
   it("renders error state when api fails", async () => {
+    // The component logs the failure before showing its error UI; silence that
+    // expected noise here and assert it happened, rather than letting it print.
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     api.mockRejectedValue(new Error("Network failure"));
     render(<IksTab />);
     await waitFor(() => {
       expect(screen.getByText("Failed to Load IKS Data")).toBeInTheDocument();
     });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Failed to load IKS data:",
+      expect.any(Error),
+    );
+    errorSpy.mockRestore();
   });
 
   it("renders layout successfully mapping figma mockup elements", async () => {

@@ -10,6 +10,7 @@ const PredictorAccordion = ({
   items,
   months = [],
   indicatorsData = {},
+  section,
 }) => (
   <div className="pb-6">
     <div className="px-4 mb-4">
@@ -40,6 +41,7 @@ const PredictorAccordion = ({
                   isDroughtLeaning={ind.isDroughtLeaning}
                   months={months}
                   checkedMonths={indicatorsData[ind.dbKey] || []}
+                  section={section}
                 />
               ))}
             </div>

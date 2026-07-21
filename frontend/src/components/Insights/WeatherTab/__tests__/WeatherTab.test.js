@@ -95,8 +95,8 @@ const NORMALS = {
       label: "30-year average",
       units: "°C",
       data: [
-        { period: "04", value: { tmean: 18.7 } },
-        { period: "05", value: { tmean: 16.8 } },
+        { period: "04", value: { tmax: 24.1, tmean: 18.7, tmin: 13.2 } },
+        { period: "05", value: { tmax: 22.0, tmean: 16.8, tmin: 11.4 } },
       ],
     },
   ],
@@ -105,8 +105,11 @@ const NORMALS = {
     datasets: {
       precipitation: "CHIRPS 1991-2020",
       tmean: "AgERA5 1990-2020",
+      tmax: "AgERA5 1990-2020",
+      tmin: "AgERA5 1990-2020",
     },
-    unavailable: ["tmax", "tmin"],
+    // OQ-2 closed — every normals parameter has a raster.
+    unavailable: [],
   },
 };
 
@@ -227,7 +230,7 @@ describe("WeatherTab", () => {
     expect(tmax.connectNulls).toBe(false);
   });
 
-  it("plots a 30-yr average only for parameters that have a source", async () => {
+  it("plots all six of the frame's series now every normal has a source", async () => {
     mockApi();
     renderTab();
 
@@ -238,26 +241,27 @@ describe("WeatherTab", () => {
     const line = JSON.parse(
       screen.getByTestId("line-chart").getAttribute("data-config"),
     );
-    // Our AgERA5 export covers tmean only, so tmax/tmin get no dashed average.
     expect(line.series.map((s) => s.name)).toEqual([
       "T max",
       "T min",
       "T Mean",
+      "T max 30 yr avg",
+      "T min 30 yr avg",
       "T Mean 30 yr avg",
     ]);
-    const average = line.series.find((s) => s.name === "T Mean 30 yr avg");
+
+    const average = line.series.find((s) => s.name === "T max 30 yr avg");
     // Normals are station-independent, so May carries an average even though
     // the station reported no May temperature (tmax above is [23.7, null]).
-    expect(average.data).toEqual([18.7, 16.8]);
+    expect(average.data).toEqual([24.1, 22.0]);
     expect(average.lineStyle.type).toBe("dashed");
-    expect(
-      screen.getByText("tmax/tmin average unavailable"),
-    ).toBeInTheDocument();
+    // Nothing is missing, so the "unavailable" note stays off the toolbar.
+    expect(screen.queryByText(/average unavailable/)).not.toBeInTheDocument();
   });
 
-  it("adds the T max average as soon as a source exists, with no code change", async () => {
-    // Proves the drop-in path for AgERA5 tmax: the backend drops "tmax" from
-    // meta.unavailable and fills the value object; nothing here changes.
+  it("hides the average for a parameter the backend reports as sourceless", async () => {
+    // The contract that let tmax/tmin ship without touching this component:
+    // the chart offers averages from meta.unavailable, never a fixed list.
     mockApi({
       normals: {
         ...NORMALS,
@@ -266,8 +270,8 @@ describe("WeatherTab", () => {
           {
             ...NORMALS.data[1],
             data: [
-              { period: "04", value: { tmean: 18.7, tmax: 24.1 } },
-              { period: "05", value: { tmean: 16.8, tmax: 22.0 } },
+              { period: "04", value: { tmax: 24.1, tmean: 18.7 } },
+              { period: "05", value: { tmax: 22.0, tmean: 16.8 } },
             ],
           },
         ],
@@ -283,11 +287,13 @@ describe("WeatherTab", () => {
     const line = JSON.parse(
       screen.getByTestId("line-chart").getAttribute("data-config"),
     );
-    const average = line.series.find((s) => s.name === "T max 30 yr avg");
-    expect(average.data).toEqual([24.1, 22.0]);
+    expect(line.series.find((s) => s.name === "T max 30 yr avg").data).toEqual([
+      24.1, 22.0,
+    ]);
     expect(
       line.series.find((s) => s.name === "T min 30 yr avg"),
     ).toBeUndefined();
+    expect(screen.getByText("tmin average unavailable")).toBeInTheDocument();
   });
 
   it("still renders station data when normals are unavailable", async () => {

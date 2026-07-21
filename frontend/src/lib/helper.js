@@ -21,6 +21,22 @@ const MONTH_LABELS = [
 // 30-year normals are climatology keyed by month-of-year.
 export const monthOfYear = (period) => period.slice(5, 7);
 
+// A Date -> "YYYY-MM". Goes through Date so a negative month index normalises
+// back into the previous year rather than producing "2026--3".
+const asPeriod = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+/**
+ * Trailing-N-month window as inclusive {from, to} "YYYY-MM" — `to` is the
+ * current month, `from` is (n-1) months earlier. Default 12 = current month
+ * plus the 11 before it, so the /series chart opens on the last 12 months with
+ * the current month on the far right. `now` is injectable for testing.
+ */
+export const lastNMonths = (n = 12, now = new Date()) => ({
+  from: asPeriod(new Date(now.getFullYear(), now.getMonth() - (n - 1), 1)),
+  to: asPeriod(now),
+});
+
 /**
  * X-axis labels for a list of "YYYY-MM" periods. Ranges span up to 120 months,
  * where a bare "Jan" would repeat — so the year is appended only when the

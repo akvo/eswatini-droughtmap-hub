@@ -11,6 +11,7 @@ from api.v1.v1_weather.constants import (
     NORMALS_DEFINITION,
     NORMALS_RASTERS,
     NORMALS_UNAVAILABLE,
+    TEMPERATURE_NORMALS,
     OFFLINE_AFTER_DAYS,
     UNITS,
     WIS2_PARAMETERS,
@@ -521,7 +522,19 @@ def administration_normals(administration) -> dict:
         ]
     months = [f"{month:02d}" for month in range(1, 13)]
     precipitation = by_parameter.get(WeatherParameter.precipitation, {})
-    tmean = by_parameter.get(WeatherParameter.tmean, {})
+
+    def temperature_at(month: int):
+        """All temperature parameters present for this month, keyed by name.
+
+        Driven by what was extracted rather than a fixed list, so a new
+        raster (tmin) reaches the payload by adding a NORMALS_RASTERS entry
+        and re-running the command — no change here."""
+        values = {
+            parameter: by_parameter[parameter][month]
+            for parameter in TEMPERATURE_NORMALS
+            if month in by_parameter.get(parameter, {})
+        }
+        return values or None
 
     base["data"] = [
         {
@@ -538,14 +551,7 @@ def administration_normals(administration) -> dict:
             "label": "30-year average",
             "units": UNITS[WeatherParameter.tmean],
             "data": [
-                {
-                    "period": month,
-                    "value": (
-                        {WeatherParameter.tmean: tmean[int(month)]}
-                        if int(month) in tmean
-                        else None
-                    ),
-                }
+                {"period": month, "value": temperature_at(int(month))}
                 for month in months
             ],
         },
