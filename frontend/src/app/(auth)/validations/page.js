@@ -14,12 +14,13 @@ dayjs.extend(advancedFormat);
 
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
+  { label: "Not yet started", value: "not_yet_started" },
   { label: "Pending", value: "pending" },
   { label: "Completed", value: "completed" },
 ];
 
 const PUBLICATION_STATUS_MAP = {
-  1: { label: "In Review", color: "#3b82f6" },
+  1: { label: "Not yet started", color: "#667085" },
   2: { label: "Pending", color: "#f39c12" },
   3: { label: "Completed", color: "#12b76a" },
 };
