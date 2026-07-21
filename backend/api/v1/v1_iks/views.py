@@ -153,6 +153,31 @@ class IKSStatsView(APIView):
 
         total_reports = queryset.count()
 
+        # Generate months_list representing the rolling 12 months
+        # (current month is far right)
+        now = datetime.now()
+        curr_year = now.year
+        curr_month = now.month
+        months_list = []
+        for i in range(11, -1, -1):
+            m = curr_month - i
+            y = curr_year
+            while m <= 0:
+                m += 12
+                y -= 1
+            months_list.append(f"{y}-{m:02d}")
+
+        # Calculate consistency: percentage of the last 12 months
+        # with at least one Kobo submission
+        months_with_reports = set()
+        for sub_time in queryset.values_list("submission_time", flat=True):
+            if sub_time:
+                period_str = sub_time.strftime("%Y-%m")
+                if period_str in months_list:
+                    months_with_reports.add(period_str)
+        reported_months_count = len(months_with_reports)
+        consistency = (reported_months_count / 12.0) * 100.0
+
         # Calculate dummy/actual statistics based on available data
         validation_count = 0
         validation_time_sum = 0
@@ -173,8 +198,12 @@ class IKSStatsView(APIView):
             else 0.0
         )
 
-        consistency = 90.0 if total_reports > 0 else 0.0
         form_completion = 95.0 if total_reports > 0 else 0.0
+
+        is_authenticated = request.user and request.user.is_authenticated
+        if not is_authenticated:
+            consistency = None
+            form_completion = None
 
         # Check values matching drought-related indicators
         drought_values = active_values().filter(
@@ -192,17 +221,6 @@ class IKSStatsView(APIView):
             drought_values.values("created__month").distinct().count()
         )
 
-        now = datetime.now()
-        curr_year = now.year
-        curr_month = now.month
-        months_list = []
-        for i in range(11, -1, -1):
-            m = curr_month - i
-            y = curr_year
-            while m <= 0:
-                m += 12
-                y -= 1
-            months_list.append(f"{y}-{m:02d}")
 
         rain_leaning = [0] * 12
         extreme_weather = [0] * 12
