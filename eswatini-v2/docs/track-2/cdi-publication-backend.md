@@ -1,9 +1,9 @@
 # Feature Design: CDI Publication — GeoNode geodata cache + push-ingestion
 
-**Task ID**: Track 2 — CDI Publication (backend)
+**Task ID**: Track 2 — CDI Publication (backend) (#135)
 **App**: `backend/api/v1/v1_publication`
 **Date**: 2026-07-21
-**Status**: Draft
+**Status**: Ready for Implementation
 **Related**: [`cdi-publication-frontend.md`](cdi-publication-frontend.md) (list restyle — independent) · [`../track-3/publication-raster-extraction.md`](../track-3/publication-raster-extraction.md) (WX-3, the raster pipeline this extends)
 
 ---
@@ -159,12 +159,36 @@ Its fields are a superset of `CDIGeonodeListSerializer`, so the list serializer 
 
 ### Read path (DB-only — GeoNode never touched)
 
-```
-GET /admin/cdi-geonode
-  → query PublicationGeonode (filter by category / status / id, join Publication
-    by cdi_geonode_id for publication_id + status), paginate, serve.
-  → NO GeoNode call, ever. GeoNode being up or down changes nothing here.
-  → meta carries the row's `synced_at` so the UI can show "last updated" if it wants.
+```jsonc
+// GET /api/v1/admin/cdi-geonode?category=cdi-raster-map   (header: Authorization: Bearer <jwt>)
+// Source: PublicationGeonode table — zero GeoNode calls, ever.
+// Contract identical to the old live-fetch response PLUS two additive fields:
+//   file_size  (nullable BigInt — bytes; null if pipeline omitted it)
+//   synced_at  (ISO-8601 — last cache write; lets the UI show "last updated" if desired)
+{
+  "current": 1,
+  "total": 2,
+  "total_page": 1,
+  "data": [
+    {
+      "pk": 4021,
+      "title": "step_0303_cdi_pct_rank_eswatini_202605",
+      "detail_url": "https://geonode…/catalogue/#/dataset/4021",
+      "embed_url": "https://geonode…/datasets/geonode:step_0303/embed",
+      "thumbnail_url": "https://geonode…/uploaded/thumbs/dataset-abc.jpg",
+      "download_url": "https://geonode…/datasets/geonode:step_0303/dataset_download",
+      "created": "2026-05-26T00:04:11Z",
+      "year_month": "2026-05-01",
+      "publication_id": 42,
+      "status": 1,
+      "file_size": 204800,          // NEW — null if unknown; frontend formats as "200 KB"
+      "synced_at": "2026-05-26T00:04:11Z"  // NEW — last cache write for this row
+    }
+  ],
+  "meta": {
+    "synced_at": "2026-05-26T00:04:11Z"   // newest synced_at across the returned result set
+  }
+}
 ```
 
 The cache is populated by two writers, never by a read:
