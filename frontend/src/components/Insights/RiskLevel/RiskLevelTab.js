@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Alert, Empty } from "antd";
 import { api } from "@/lib/api";
 import {
@@ -59,58 +59,58 @@ const RiskLevelTab = ({
   // Drawer state
   const [selectedActivityId, setSelectedActivityId] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!selectedInkhundla) {
-        setLoading(false);
-        return;
+  const fetchRiskData = useCallback(async () => {
+    if (!selectedInkhundla) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Parallel fetch for risk score and activities list
+      const [riskRes, activitiesRes] = await Promise.allSettled([
+        api("GET", `/risk-score?administration_id=${administrationId || ""}`),
+        api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
+      ]);
+
+      // 1. Process Risk Score Response (with fallback to mock data)
+      let resolvedRiskData = null;
+      if (riskRes.status === "fulfilled" && riskRes.value) {
+        resolvedRiskData = riskRes.value;
+      } else {
+        // Resilient mock fallback: Override the name/region/zone from context to look dynamic
+        resolvedRiskData = {
+          ...mockRiskData,
+          administration: {
+            id: administrationId || mockRiskData.administration.id,
+            name: selectedInkhundla || mockRiskData.administration.name,
+            region: region || mockRiskData.administration.region,
+            zone: zone || mockRiskData.administration.zone,
+          },
+        };
       }
+      setRiskData(resolvedRiskData);
 
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Parallel fetch for risk score and activities list
-        const [riskRes, activitiesRes] = await Promise.allSettled([
-          api("GET", `/risk-score?administration_id=${administrationId || ""}`),
-          api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
-        ]);
-
-        // 1. Process Risk Score Response (with fallback to mock data)
-        let resolvedRiskData = null;
-        if (riskRes.status === "fulfilled" && riskRes.value) {
-          resolvedRiskData = riskRes.value;
-        } else {
-          // Resilient mock fallback: Override the name/region/zone from context to look dynamic
-          resolvedRiskData = {
-            ...mockRiskData,
-            administration: {
-              id: administrationId || mockRiskData.administration.id,
-              name: selectedInkhundla || mockRiskData.administration.name,
-              region: region || mockRiskData.administration.region,
-              zone: zone || mockRiskData.administration.zone,
-            },
-          };
-        }
-        setRiskData(resolvedRiskData);
-
-        // 2. Process Activities Response
-        if (activitiesRes.status === "fulfilled" && activitiesRes.value) {
-          const list = activitiesRes.value.data || activitiesRes.value || [];
-          setActivities(list);
-        } else {
-          setActivities([]);
-        }
-      } catch (err) {
-        console.error("Error in page load:", err);
-        setError("An unexpected error occurred while loading risk data.");
-      } finally {
-        setLoading(false);
+      // 2. Process Activities Response
+      if (activitiesRes.status === "fulfilled" && activitiesRes.value) {
+        const list = activitiesRes.value.data || activitiesRes.value || [];
+        setActivities(list);
+      } else {
+        setActivities([]);
       }
-    };
-
-    fetchData();
+    } catch (err) {
+      console.error("Error in page load:", err);
+      setError("An unexpected error occurred while loading risk data.");
+    } finally {
+      setLoading(false);
+    }
   }, [selectedInkhundla, administrationId, region, zone]);
+
+  useEffect(() => {
+    fetchRiskData();
+  }, [fetchRiskData]);
 
   if (!selectedInkhundla) {
     return (
@@ -171,7 +171,7 @@ const RiskLevelTab = ({
           <div className="flex flex-col w-full">
             {SECTOR_LIST.map((sector) => {
               // Filter active activities matching this sector ID
-              const sectorActivities = activities.filter(
+              const sectorActivities = activities?.filter(
                 (act) => Number(act.sector) === sector.id,
               );
 

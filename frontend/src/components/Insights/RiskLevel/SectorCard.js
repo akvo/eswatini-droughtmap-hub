@@ -87,8 +87,24 @@ const SectorCard = ({
                   </p>
                 )}
               </div>
-              {/* Right Link Icon */}
-              <span className="text-neutral-400 text-xs flex-shrink-0">↗</span>
+              {/* Right Link Icon (lucide arrow-up-right, matches Figma) */}
+              <div className="absolute top-0 right-0 p-2">
+                <svg
+                  className="text-neutral-500 flex-shrink-0"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="7" y1="17" x2="17" y2="7" />
+                  <polyline points="7 7 17 7 17 17" />
+                </svg>
+              </div>
             </button>
           ))}
         </div>
