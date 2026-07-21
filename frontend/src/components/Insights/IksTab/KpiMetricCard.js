@@ -10,7 +10,8 @@ const KpiMetricCard = ({ title, value, subtitle, locked = false }) => (
         <div className="mt-2 flex items-start gap-2 text-neutral-400">
           <span className="text-sm select-none">🔒</span>
           <span className="text-xs text-neutral-500 font-normal leading-relaxed">
-            Sign in as TWG member to see data on report completness and consistency.
+            Sign in as TWG member to see data on report completness and
+            consistency.
           </span>
         </div>
       ) : (
@@ -18,7 +19,9 @@ const KpiMetricCard = ({ title, value, subtitle, locked = false }) => (
           <span className="text-2xl font-extrabold text-neutral-800 block mt-1">
             {value}
           </span>
-          <span className="text-xs text-neutral-400 block mt-1">{subtitle}</span>
+          <span className="text-xs text-neutral-400 block mt-1">
+            {subtitle}
+          </span>
         </>
       )}
     </div>
