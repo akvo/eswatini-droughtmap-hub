@@ -52,7 +52,8 @@ const MetricItemCard = ({
             <LockOutlined />
           </span>
           <p className="text-sm leading-[21px] text-[#606060] mb-0">
-            Sign in as TWG to view data completeness.
+            Sign in as TWG member to see how often this station has reported in
+            the last 12 months.
           </p>
         </div>
       ) : (

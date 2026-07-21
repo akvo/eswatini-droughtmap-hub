@@ -14,9 +14,18 @@ import {
   stationProvenance,
 } from "@/lib/helper";
 
-// Figma 3509:116475 — the same two tokens the temperature chart uses.
 const STATION_COLOR = SERIES_COLOR.station;
-const NORMAL_COLOR = SERIES_COLOR.contrast;
+
+// Both rainfall series share one blue: they are the same metric (mm of rain)
+// in two states, so hue is not the thing that distinguishes them. The 30-year
+// average is set apart by a diagonal hatch instead — ECharts paints `decal`
+// over the fill, so the stripes are part of the bar rather than an overlay.
+const NORMAL_DECAL = {
+  color: "rgba(255, 255, 255, 0.85)",
+  dashArrayX: [1, 0], // unbroken along x …
+  dashArrayY: [4, 4], // … 4px stripe / 4px gap along y
+  rotation: -Math.PI / 4, // -45° = the reference figure's diagonal
+};
 
 /**
  * Monthly precipitation bars (Figma 3509:110472): observed station totals
@@ -58,7 +67,7 @@ const PrecipitationChart = ({ administrationId, normals }) => {
       // Normals are climatology keyed "01".."12", so they map onto whatever
       // calendar months the range covers.
       data: periods.map((p) => normalAt(normalsSeries, p)),
-      itemStyle: { color: NORMAL_COLOR },
+      itemStyle: { color: STATION_COLOR, decal: NORMAL_DECAL },
       barMaxWidth: 42,
     });
   }
@@ -104,27 +113,38 @@ const PrecipitationChart = ({ administrationId, normals }) => {
       isEmpty={!points.length}
       emptyText="No station data available for this period"
       controls={
-        <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
-          {/* Each checkbox takes its series colour, so the control reads as
-              the legend for the bars it toggles. */}
-          <ConfigProvider theme={{ token: { colorPrimary: STATION_COLOR } }}>
+        <ConfigProvider theme={{ token: { colorPrimary: STATION_COLOR } }}>
+          {/* One provider for both: the series share a colour now, so the
+              controls do too — the hatched swatch marks the average. */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
             <Checkbox
               checked={showStation}
               onChange={(e) => setShowStation(e.target.checked)}
             >
               <span className="text-sm">Station monthly total</span>
             </Checkbox>
-          </ConfigProvider>
-          <ConfigProvider theme={{ token: { colorPrimary: NORMAL_COLOR } }}>
             <Checkbox
               checked={showNormals}
               disabled={!normalsSeries}
               onChange={(e) => setShowNormals(e.target.checked)}
             >
-              <span className="text-sm">30-year average</span>
+              <span className="inline-flex items-center gap-2 text-sm">
+                30-year average
+                {/* Mirrors the bar's hatch so the legend stays readable when
+                    both series are the same blue. */}
+                <span
+                  aria-hidden
+                  className="inline-block h-3 w-5 rounded-[2px] border border-white/40"
+                  style={{
+                    backgroundColor: STATION_COLOR,
+                    backgroundImage:
+                      "repeating-linear-gradient(-45deg, rgba(255,255,255,.85) 0 2px, transparent 2px 5px)",
+                  }}
+                />
+              </span>
             </Checkbox>
-          </ConfigProvider>
-        </div>
+          </div>
+        </ConfigProvider>
       }
     >
       <Bar rawConfig={rawConfig} />
