@@ -1,6 +1,6 @@
 import React from "react";
 import { Collapse } from "antd";
-import IndicatorRow from "./IndicatorRow";
+import IndicatorRow, { formatMonthLabel } from "./IndicatorRow";
 
 const { Panel } = Collapse;
 
@@ -13,9 +13,25 @@ const PredictorAccordion = ({
   section,
 }) => (
   <div className="pb-6">
-    <div className="px-4 mb-4">
-      <h4 className="text-sm font-bold text-neutral-700">{title}</h4>
-      <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>
+    <div className="px-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white py-1">
+      <div>
+        <h4 className="text-sm font-bold text-neutral-700">{title}</h4>
+        <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>
+      </div>
+      <div className="flex items-center gap-4 text-xs font-medium self-start sm:self-center">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`w-3.5 h-3.5 rounded-[1px] ${
+              section === "B" ? "bg-[#3e5eb9]" : "bg-[#b10d0b]"
+            }`}
+          />
+          <span className="text-neutral-500">Predictor observed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3.5 h-3.5 rounded-[1px] bg-neutral-100 border border-neutral-200" />
+          <span className="text-neutral-500">Predictor not observed</span>
+        </div>
+      </div>
     </div>
     <div className="border-y border-neutral-200 bg-white">
       <Collapse
@@ -33,7 +49,7 @@ const PredictorAccordion = ({
             key={item.key}
             className="border-b border-neutral-100 last:border-0 bg-white"
           >
-            <div className="divide-y divide-neutral-100 bg-neutral-50 border-t border-neutral-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 border-t border-neutral-100">
               {item.indicators.map((ind, i) => (
                 <IndicatorRow
                   key={i}

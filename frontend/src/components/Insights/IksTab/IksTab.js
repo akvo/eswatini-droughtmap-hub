@@ -179,10 +179,10 @@ const IksTab = ({
     );
   }
 
-  const consistency = stats.reporting_consistency_percentage || 0;
-  const validationRate = stats.validation_rate_percentage || 0;
-  const validationTime = stats.average_validation_time_days || 0;
-  const completionRate = stats.form_completion_percentage || 0;
+  const consistency = stats.reporting_consistency_percentage;
+  const isLocked = consistency === null || consistency === undefined;
+  const reportedMonthsCount = isLocked ? 0 : Math.round((consistency / 100) * 12);
+  const completionRate = stats.form_completion_percentage;
 
   // Derive date range from first and last weeks in the DB payload
   const dbWeeks = data.netSignal?.weeks || [];
@@ -385,12 +385,14 @@ const IksTab = ({
           <KpiMetricCard
             title="Reporting consistency"
             value={`${consistency}%`}
-            subtitle="12 / 12 months reported"
+            subtitle={`${reportedMonthsCount} / 12 months reported`}
+            locked={isLocked}
           />
           <KpiMetricCard
             title="Form completion"
             value={`${completionRate}%`}
             subtitle="Sections B + C + D filled"
+            locked={isLocked}
           />
         </div>
 

@@ -113,7 +113,7 @@ describe("IksTab Subcomponents", () => {
           section="B"
         />,
       );
-      const dot = container.querySelector(".rounded-\\[1px\\]");
+      const dot = container.querySelector(".rounded-\\[2px\\]");
       expect(dot).toHaveClass("bg-[#3e5eb9]");
       expect(dot).not.toHaveClass("bg-[#b10d0b]");
     });
@@ -127,7 +127,7 @@ describe("IksTab Subcomponents", () => {
           section="C"
         />,
       );
-      const dot = container.querySelector(".rounded-\\[1px\\]");
+      const dot = container.querySelector(".rounded-\\[2px\\]");
       expect(dot).toHaveClass("bg-[#b10d0b]");
       expect(dot).not.toHaveClass("bg-[#3e5eb9]");
     });

@@ -24,7 +24,8 @@ const zoneLabel = (zone) => {
   if (!zone) {
     return "";
   }
-  const known = ZONE_OPTIONS.find((o) => o.value === zone);
+  const normalized = zone.toLowerCase().trim();
+  const known = ZONE_OPTIONS.find((o) => o.value === normalized);
   return known
     ? known.label
     : zone
