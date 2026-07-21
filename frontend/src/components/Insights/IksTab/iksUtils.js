@@ -1,5 +1,13 @@
 import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
 
+export const formatPercentage = (val) => {
+  if (val === null || val === undefined) return "0";
+  const num = Number(val);
+  if (isNaN(num)) return "0";
+  if (num % 1 === 0) return num.toString();
+  return Number(num.toFixed(2)).toString();
+};
+
 export const getRainfallPredictors = () => {
   const birds = [];
   const insects = [];
