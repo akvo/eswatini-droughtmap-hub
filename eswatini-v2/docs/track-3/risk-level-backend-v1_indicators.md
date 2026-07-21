@@ -10,7 +10,7 @@
 **Track**: Track 3 — Operational Response
 **Author**: Galih Pratama
 **Date**: 2026-07-21
-**Status**: Draft
+**Status**: IMPLEMENTED
 
 **Related specs**:
 - Previous draft: [`eswatini-v2/docs/specs/PA-1_v1_indicators.md`](../specs/PA-1_v1_indicators.md) _(terminology updated: "Priority Area" → "Risk Level")_
@@ -75,19 +75,19 @@ sequenceDiagram
 
 ### User Acceptance Criteria
 
-- [ ] An admin can list, create, retrieve, update and delete an indicator record per Inkhundla.
-- [ ] A non-admin (reviewer / anonymous) receives `403` on any write and on the admin list/detail endpoints.
-- [ ] Every indicator exposes `source` and `as_of` so the data origin and freshness are visible.
-- [ ] After seeding, all 59 Tinkhundla have an indicator row, every one flagged `is_placeholder=True` — the prototype values are illustrative, not real NDMA data. Real curation happens later via admin CRUD.
+- [x] An admin can list, create, retrieve, update and delete an indicator record per Inkhundla.
+- [x] A non-admin (reviewer / anonymous) receives `403` on any write and on the admin list/detail endpoints.
+- [x] Every indicator exposes `source` and `as_of` so the data origin and freshness are visible.
+- [x] After seeding, all 59 Tinkhundla have an indicator row, every one flagged `is_placeholder=True` — the prototype values are illustrative, not real NDMA data. Real curation happens later via admin CRUD.
 
 ### Technical Acceptance Criteria
 
-- [ ] App `v1_indicators` follows hub conventions (`models` / `serializers` / `views` / `urls` / `constants` / `apps` + `management/commands` + `tests`), registered in `API_APPS` and `backend/eswatini/urls.py`.
-- [ ] `Indicator` is `OneToOne` to `Administration` (Decision D-1: never alter the core model).
-- [ ] Seeder `generate_indicators_seeder` is idempotent and produces exactly 59 rows on repeat runs (no duplicates).
-- [ ] DB constraints (one indicator per administration; non-negative counts; `rainfed_share`/`v_*` in `[0,1]`) enforced and tested.
-- [ ] Admin-only permission enforced and tested (`APITestCase`).
-- [ ] Endpoints appear in Swagger via `@extend_schema(tags=["Risk Level - Indicators"])`.
+- [x] App `v1_indicators` follows hub conventions (`models` / `serializers` / `views` / `urls` / `constants` / `apps` + `management/commands` + `tests`), registered in `API_APPS` and `backend/eswatini/urls.py`.
+- [x] `Indicator` is `OneToOne` to `Administration` (Decision D-1: never alter the core model).
+- [x] Seeder `generate_indicators_seeder` is idempotent and produces exactly 59 rows on repeat runs (no duplicates).
+- [x] DB constraints (one indicator per administration; non-negative counts; `rainfed_share`/`v_*` in `[0,1]`) enforced and tested.
+- [x] Admin-only permission enforced and tested (`APITestCase`).
+- [x] Endpoints appear in Swagger via `@extend_schema(tags=["Risk Level - Indicators"])`.
 
 ---
 
