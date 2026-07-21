@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Button, Tag, Spin, message, Modal } from "antd";
+import { Button, Spin, message, Modal } from "antd";
 import { api } from "@/lib/api";
 import { useUserContext } from "@/context/UserContextProvider";
 import { ACTIVITY_STATUS, USER_ROLES } from "@/static/config";
-import ActivityStatusTag from "./ActivityStatusTag";
-import { SECTOR_TAG_COLORS, SECTOR_ICONS } from "./ActivityTable";
-import TriggerConditionsView from "./TriggerConditionsView";
-import InkhundlaBanner from "./InkhundlaBanner";
-import OwnershipView from "./OwnershipView";
-import ContextSignoffView from "./ContextSignoffView";
 import Can from "@/components/Can";
+import ActivityDetailContent from "./ActivityDetailContent";
 
 export default function ActivityDetailSlideIn({
   activityId,
@@ -164,52 +159,7 @@ export default function ActivityDetailSlideIn({
               <Spin size="large" tip="Loading activity details..." />
             </div>
           ) : (
-            <>
-              {/* Section 1: Identity & Description */}
-              <div className="flex flex-col gap-4 py-4 border-b border-neutral-200">
-                {/* Badges / Tags */}
-                <div className="flex items-center justify-between w-full px-6">
-                  <ActivityStatusTag status={activity.status} />
-                  <Tag color={SECTOR_TAG_COLORS[activity.sector] || "default"}>
-                    {SECTOR_ICONS[activity.sector]}
-                    {activity.sector_label}
-                  </Tag>
-                </div>
-
-                {/* Title & Protocol ID */}
-                <div className="flex flex-col gap-1 px-6">
-                  <h2 className="text-2xl font-bold text-neutral-900 leading-tight m-0">
-                    {activity.title}
-                  </h2>
-                  <span className="text-sm font-semibold text-neutral-500 mt-2">
-                    {activity.code}
-                  </span>
-                </div>
-
-                {/* Description */}
-                {activity.description && (
-                  <div className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap px-6">
-                    {activity.description}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 2: Trigger Conditions */}
-              <div className="flex flex-col gap-4 py-4 border-b border-neutral-200 px-6">
-                <TriggerConditionsView triggers={activity.triggers} />
-                <InkhundlaBanner triggers={activity.triggers} />
-              </div>
-
-              {/* Section 3: Ownership */}
-              <div className="py-4 border-b border-neutral-200 px-6">
-                <OwnershipView activity={activity} />
-              </div>
-
-              {/* Section 4: Context & Sign-off */}
-              <div className="py-4 border-b border-neutral-200 px-6">
-                <ContextSignoffView activity={activity} />
-              </div>
-            </>
+            <ActivityDetailContent activity={activity} />
           )}
         </div>
 

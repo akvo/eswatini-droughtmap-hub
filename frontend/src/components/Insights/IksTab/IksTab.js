@@ -19,6 +19,7 @@ import { Line } from "akvo-charts";
 import { api } from "@/lib/api";
 import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
 import InkhundlaHeader from "../InkhundlaHeader";
+import TabLoader from "../TabLoader";
 import KpiMetricCard from "./KpiMetricCard";
 import MonthlyStatusGrid from "./MonthlyStatusGrid";
 import { formatMonthLabel } from "./IndicatorRow";
@@ -164,14 +165,7 @@ const IksTab = ({
   }, [administrationId, zone]);
 
   if (loading) {
-    return (
-      <div className="w-full h-96 flex flex-col items-center justify-center gap-4">
-        <Spin size="large" />
-        <span className="text-neutral-500 font-medium">
-          Fetching Indigenous Knowledge data...
-        </span>
-      </div>
-    );
+    return <TabLoader tip="Fetching Indigenous Knowledge data..." />;
   }
 
   if (error) {
@@ -377,7 +371,7 @@ const IksTab = ({
   ];
 
   return (
-    <div className="space-y-6 w-full -mt-6">
+    <div className="space-y-6 w-full">
       <div className="bg-white">
         <InkhundlaHeader
           name={selectedInkhundla}

@@ -1,18 +1,27 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useInsights } from "@/context/InsightsContextProvider";
+import TabLoader from "@/components/Insights/TabLoader";
+
+const RiskLevelTab = dynamic(
+  () => import("@/components/Insights/RiskLevel/RiskLevelTab"),
+  {
+    ssr: false,
+    loading: () => <TabLoader tip="Loading risk level details..." />,
+  },
+);
 
 const RiskLevelPage = () => {
-  const { selectedInkhundla } = useInsights();
+  const { selectedInkhundla, administrationId, region, zone } = useInsights();
 
   return (
-    <div className="p-8 text-center bg-white rounded-b-lg">
-      <h3 className="text-lg font-bold text-neutral-800 mb-2">Risk Level</h3>
-      <p className="text-neutral-500 max-w-md mx-auto text-sm">
-        The Risk Level tab summarises priority and drought risk for{" "}
-        {selectedInkhundla} Inkhundla. This tab is currently under construction.
-      </p>
-    </div>
+    <RiskLevelTab
+      selectedInkhundla={selectedInkhundla}
+      administrationId={administrationId}
+      region={region}
+      zone={zone}
+    />
   );
 };
 
