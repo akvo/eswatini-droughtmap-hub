@@ -95,7 +95,8 @@ const RiskLevelTab = ({
 
       // 2. Process Activities Response
       if (activitiesRes.status === "fulfilled" && activitiesRes.value) {
-        const list = activitiesRes.value.data || activitiesRes.value || [];
+        const rawList = activitiesRes.value.data || activitiesRes.value;
+        const list = Array.isArray(rawList) ? rawList : [];
         setActivities(list);
       } else {
         setActivities([]);
@@ -171,9 +172,9 @@ const RiskLevelTab = ({
           <div className="flex flex-col w-full">
             {SECTOR_LIST.map((sector) => {
               // Filter active activities matching this sector ID
-              const sectorActivities = activities?.filter(
-                (act) => Number(act.sector) === sector.id,
-              );
+              const sectorActivities = (
+                Array.isArray(activities) ? activities : []
+              ).filter((act) => Number(act.sector) === sector.id);
 
               return (
                 <SectorCard

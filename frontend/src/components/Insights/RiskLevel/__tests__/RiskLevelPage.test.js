@@ -217,4 +217,47 @@ describe("RiskLevelPage Integration", () => {
     // Drawer should be removed
     expect(screen.queryByTestId("activity-drawer")).not.toBeInTheDocument();
   });
+
+  it("handles non-array activities API error response gracefully without crashing", async () => {
+    useInsights.mockReturnValue({
+      selectedInkhundla: "Nkwene",
+      administrationId: 1,
+      region: "Shiselweni",
+      zone: "Middleveld",
+    });
+
+    // Mock API error response for activities
+    api.mockImplementation((method, url) => {
+      if (url.includes("/risk-score")) {
+        return Promise.resolve({
+          administration: { id: 1, name: "Nkwene" },
+          risk_score: { value: 3.5 },
+          drought: {
+            key: "D3",
+            label: "D3 — Extreme drought",
+          },
+        });
+      }
+      if (url.includes("/activities")) {
+        // Return 401/403 style error payload instead of array or {data: array}
+        return Promise.resolve({
+          detail: "Authentication credentials were not provided.",
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    render(<RiskLevelPage />);
+
+    // Loader should go away
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Loading risk level details..."),
+      ).not.toBeInTheDocument();
+    });
+
+    // Confirm dashboard renders successfully despite activities fetch failure
+    expect(screen.getByTestId("risk-score-buildup")).toBeInTheDocument();
+    expect(screen.getByText("All response activities")).toBeInTheDocument();
+  });
 });
