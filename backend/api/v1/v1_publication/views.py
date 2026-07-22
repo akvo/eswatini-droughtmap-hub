@@ -484,7 +484,11 @@ class PublicationViewSet(viewsets.ModelViewSet):
         queryset = Publication.objects.all().order_by("-due_date")
         params = self.request.query_params
         status_filter = params.get("status")
-        if status_filter == FilterStatus.pending:
+        if status_filter == FilterStatus.not_yet_started:
+            queryset = queryset.filter(
+                status=PublicationStatus.in_review
+            )
+        elif status_filter == FilterStatus.pending:
             queryset = queryset.filter(
                 status=PublicationStatus.in_validation
             )
