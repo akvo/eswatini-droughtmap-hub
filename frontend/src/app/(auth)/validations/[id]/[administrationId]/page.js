@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Avatar, Button, Input, Tag } from "antd";
-import {
-  HomeOutlined,
-  WarningFilled,
-} from "@ant-design/icons";
+import { HomeOutlined, WarningFilled } from "@ant-design/icons";
 import { Can, FeedbackSection } from "@/components";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import {
@@ -82,9 +79,7 @@ const ReviewerRow = ({ review }) => {
   const isPending = review.submitted_at === null;
   return (
     <div
-      className={`border-b border-[#eaecf0] ${
-        isPending ? "bg-[#fafafa]" : ""
-      }`}
+      className={`border-b border-[#eaecf0] ${isPending ? "bg-[#fafafa]" : ""}`}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <Avatar
@@ -102,9 +97,7 @@ const ReviewerRow = ({ review }) => {
           <div className="font-medium text-sm text-[#333333]">
             {review.name}
           </div>
-          <div className="text-xs text-[#606060]">
-            {review.email}
-          </div>
+          <div className="text-xs text-[#606060]">{review.email}</div>
         </div>
         <span className="text-sm text-[#606060] shrink-0">
           {review.submitted_at
@@ -171,9 +164,7 @@ const AgreementBar = ({ reviews }) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-[#333333]">
-          Agreement Analysis
-        </h3>
+        <h3 className="text-lg font-bold text-[#333333]">Agreement Analysis</h3>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-[#606060]">
             {modal.count}/{total} reviewers chose
@@ -275,196 +266,197 @@ const ValidationDecisionPage = () => {
     <div className="relative left-1/2 w-screen -translate-x-1/2 -mt-3 bg-brandTint px-4 sm:px-8 md:px-12 xl:px-20">
       <Can I="read" a="Publication">
         <div className="mx-auto w-full max-w-[1280px] pt-10">
-        {/* Breadcrumb + navigation */}
-        <div className="flex items-center justify-between py-3 border border-[#eaecf0] border-b-0 bg-white px-6">
-          <div className="flex items-center gap-2 text-sm">
-            <HomeOutlined className="text-[#606060]" />
-            <button
-              type="button"
-              className="text-[#606060] hover:text-[#3E5EB9]"
-              onClick={() => router.push(`/validations/${id}`)}
-            >
-              Drought Validation
-            </button>
-            <span className="text-[#606060]">/</span>
-            <span className="text-[#3E5EB9] font-medium">
-              {decision.label}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              disabled={prevId === null}
-              onClick={() => router.push(`/validations/${id}/${prevId}`)}
-            >
-              Previous
-            </Button>
-            <Button
-              disabled={nextId === null}
-              onClick={() => router.push(`/validations/${id}/${nextId}`)}
-            >
-              Next poligon
-            </Button>
-          </div>
-        </div>
-
-        {/* Two-column layout — 50/50 */}
-        <div className="flex flex-col lg:flex-row gap-3 pb-8">
-          {/* LEFT COLUMN */}
-          <div className="flex-1 min-w-0 flex flex-col border border-[#eaecf0] bg-white">
-            {/* Inkhundla summary */}
-            <div className="px-6 pt-6 pb-5">
-              <div className="flex items-start justify-between mb-3">
-                <Tag
-                  className="edm-reviews-status-tag"
-                  color={statusPill.color}
-                >
-                  {statusPill.label}
-                  {statusKey === "awaiting" && decision.awaiting_count > 0
-                    ? ` ${decision.awaiting_count} reviews`
-                    : ""}
-                </Tag>
-                <div className="text-sm text-[#606060]">
-                  Consensus:{" "}
-                  <span className="font-bold text-[#333333]">
-                    {decision.consensus}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-baseline justify-between mb-1">
-                <h1 className="text-2xl font-bold text-[#333333]">
-                  {decision.label}
-                </h1>
-                <span className="text-sm text-[#606060]">
-                  Reviews:{" "}
-                  <span className="font-bold text-[#333333] text-lg">
-                    {decision.reviews_completed}/{decision.reviews_total}
-                  </span>
-                </span>
-              </div>
-
-              <p className="text-sm text-[#606060] mb-4">
-                {decision.region} &middot; {decision.zone}
-              </p>
-
-              <div className="flex items-center gap-2 text-sm text-[#606060]">
-                <span>Period:</span>
-                <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
-                  {dayjs(decision.period_start).format("D MMM YYYY")}
-                </span>
-                <span>&ndash;</span>
-                <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
-                  {dayjs(decision.period_end).format("D MMM YYYY")}
-                </span>
-              </div>
+          {/* Breadcrumb + navigation */}
+          <div className="flex items-center justify-between py-3 border border-[#eaecf0] border-b-0 bg-white px-6">
+            <div className="flex items-center gap-2 text-sm">
+              <HomeOutlined className="text-[#606060]" />
+              <button
+                type="button"
+                className="text-[#606060] hover:text-[#3E5EB9]"
+                onClick={() => router.push(`/validations/${id}`)}
+              >
+                Drought Validation
+              </button>
+              <span className="text-[#606060]">/</span>
+              <span className="text-[#3E5EB9] font-medium">
+                {decision.label}
+              </span>
             </div>
-
-            {/* Reviewer rows */}
-            <div className="border-t border-[#eaecf0]">
-              {decision.reviews.map((review) => (
-                <ReviewerRow key={review.id} review={review} />
-              ))}
-            </div>
-
-            {/* Agreement analysis */}
-            <div className="px-6 py-5">
-              <AgreementBar reviews={decision.reviews} />
+            <div className="flex items-center gap-2">
+              <Button
+                disabled={prevId === null}
+                onClick={() => router.push(`/validations/${id}/${prevId}`)}
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={nextId === null}
+                onClick={() => router.push(`/validations/${id}/${nextId}`)}
+              >
+                Next poligon
+              </Button>
             </div>
           </div>
 
-          {/* RIGHT COLUMN — sticky decision panel */}
-          <div className="flex-1 min-w-0">
-            <div className="lg:sticky lg:top-4 border border-[#eaecf0] bg-white">
-              <div className="p-6 flex flex-col gap-5">
-                <h2 className="text-lg font-semibold text-[#333333]">
-                  Validation decision
-                </h2>
-
-                {/* Info notice */}
-                <div className="flex items-start gap-3 text-sm text-[#606060] leading-relaxed bg-[#f9fafb] rounded p-3">
-                  <WarningFilled
-                    className="shrink-0 mt-1"
-                    style={{ color: "#3E5EB9", fontSize: 16 }}
-                  />
-                  <p>
-                    Review the three sources above and choose the drought
-                    class you believe best represents conditions in this
-                    Inkhundla.
-                    <br />
-                    <br />
-                    No algorithm suggestion is shown &mdash; the calculated
-                    confidence score (right) tells you why this case landed
-                    on your desk. The CDI-E satellite class is visible in
-                    the source panel above as one input, not as a
-                    recommendation.
-                  </p>
-                </div>
-
-                {/* D-class picker + confidence */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center bg-[#f2f4f7] p-1" style={{ borderRadius: 10 }}>
-                    {DCLASS_OPTIONS.map((opt) => (
-                      <DClassChip
-                        key={opt.value}
-                        value={opt.value}
-                        selected={selectedCategory === opt.value}
-                        onClick={() => setSelectedCategory(opt.value)}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <span className="text-sm text-[#606060]">
-                      Confidence: {decision.confidence}
+          {/* Two-column layout — 50/50 */}
+          <div className="flex flex-col lg:flex-row gap-3 pb-8">
+            {/* LEFT COLUMN */}
+            <div className="flex-1 min-w-0 flex flex-col border border-[#eaecf0] bg-white">
+              {/* Inkhundla summary */}
+              <div className="px-6 pt-6 pb-5">
+                <div className="flex items-start justify-between mb-3">
+                  <Tag
+                    className="edm-reviews-status-tag"
+                    color={statusPill.color}
+                  >
+                    {statusPill.label}
+                    {statusKey === "awaiting" && decision.awaiting_count > 0
+                      ? ` ${decision.awaiting_count} reviews`
+                      : ""}
+                  </Tag>
+                  <div className="text-sm text-[#606060]">
+                    Consensus:{" "}
+                    <span className="font-bold text-[#333333]">
+                      {decision.consensus}%
                     </span>
-                    <ConfidenceBadge band={decision.confidence_band} />
                   </div>
                 </div>
 
-                {/* Reasoning */}
-                <div>
-                  <label className="block text-sm font-normal text-[#606060] mb-1.5">
-                    Reasoning
-                    {isOverride && (
-                      <span className="text-[#e60000] ml-1">
-                        (required if overriding the majority)
-                      </span>
-                    )}
-                  </label>
-                  <TextArea
-                    rows={4}
-                    placeholder="Add reviewer notes..."
-                    value={reasoning}
-                    onChange={(e) => setReasoning(e.target.value)}
-                  />
+                <div className="flex items-baseline justify-between mb-1">
+                  <h1 className="text-2xl font-bold text-[#333333]">
+                    {decision.label}
+                  </h1>
+                  <span className="text-sm text-[#606060]">
+                    Reviews:{" "}
+                    <span className="font-bold text-[#333333] text-lg">
+                      {decision.reviews_completed}/{decision.reviews_total}
+                    </span>
+                  </span>
                 </div>
 
+                <p className="text-sm text-[#606060] mb-4">
+                  {decision.region} &middot; {decision.zone}
+                </p>
+
+                <div className="flex items-center gap-2 text-sm text-[#606060]">
+                  <span>Period:</span>
+                  <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
+                    {dayjs(decision.period_start).format("D MMM YYYY")}
+                  </span>
+                  <span>&ndash;</span>
+                  <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
+                    {dayjs(decision.period_end).format("D MMM YYYY")}
+                  </span>
+                </div>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-3 border-t border-[#eaecf0] px-6 py-4">
-                <Button
-                  className="flex-1"
-                  onClick={handleSaveDraft}
-                  loading={saving}
-                >
-                  Save changes as draft
-                </Button>
-                <Button
-                  type="primary"
-                  className="flex-1"
-                  onClick={handleSubmit}
-                  loading={saving}
-                  disabled={isOverride && !reasoning.trim()}
-                >
-                  Submit decision
-                </Button>
+              {/* Reviewer rows */}
+              <div className="border-t border-[#eaecf0]">
+                {decision.reviews.map((review) => (
+                  <ReviewerRow key={review.id} review={review} />
+                ))}
               </div>
 
-              {/* Decision history */}
-              <DecisionHistory history={history.data} />
+              {/* Agreement analysis */}
+              <div className="px-6 py-5">
+                <AgreementBar reviews={decision.reviews} />
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN — sticky decision panel */}
+            <div className="flex-1 min-w-0">
+              <div className="lg:sticky lg:top-4 border border-[#eaecf0] bg-white">
+                <div className="p-6 flex flex-col gap-5">
+                  <h2 className="text-lg font-semibold text-[#333333]">
+                    Validation decision
+                  </h2>
+
+                  {/* Info notice */}
+                  <div className="flex items-start gap-3 text-sm text-[#606060] leading-relaxed bg-[#f9fafb] rounded p-3">
+                    <WarningFilled
+                      className="shrink-0 mt-1"
+                      style={{ color: "#3E5EB9", fontSize: 16 }}
+                    />
+                    <p>
+                      Review the three sources above and choose the drought
+                      class you believe best represents conditions in this
+                      Inkhundla.
+                      <br />
+                      <br />
+                      No algorithm suggestion is shown &mdash; the calculated
+                      confidence score (right) tells you why this case landed on
+                      your desk. The CDI-E satellite class is visible in the
+                      source panel above as one input, not as a recommendation.
+                    </p>
+                  </div>
+
+                  {/* D-class picker + confidence */}
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="flex items-center bg-[#f2f4f7] p-1"
+                      style={{ borderRadius: 10 }}
+                    >
+                      {DCLASS_OPTIONS.map((opt) => (
+                        <DClassChip
+                          key={opt.value}
+                          value={opt.value}
+                          selected={selectedCategory === opt.value}
+                          onClick={() => setSelectedCategory(opt.value)}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <span className="text-sm text-[#606060]">
+                        Confidence: {decision.confidence}
+                      </span>
+                      <ConfidenceBadge band={decision.confidence_band} />
+                    </div>
+                  </div>
+
+                  {/* Reasoning */}
+                  <div>
+                    <label className="block text-sm font-normal text-[#606060] mb-1.5">
+                      Reasoning
+                      {isOverride && (
+                        <span className="text-[#e60000] ml-1">
+                          (required if overriding the majority)
+                        </span>
+                      )}
+                    </label>
+                    <TextArea
+                      rows={4}
+                      placeholder="Add reviewer notes..."
+                      value={reasoning}
+                      onChange={(e) => setReasoning(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 border-t border-[#eaecf0] px-6 py-4">
+                  <Button
+                    className="flex-1"
+                    onClick={handleSaveDraft}
+                    loading={saving}
+                  >
+                    Save changes as draft
+                  </Button>
+                  <Button
+                    type="primary"
+                    className="flex-1"
+                    onClick={handleSubmit}
+                    loading={saving}
+                    disabled={isOverride && !reasoning.trim()}
+                  >
+                    Submit decision
+                  </Button>
+                </div>
+
+                {/* Decision history */}
+                <DecisionHistory history={history.data} />
+              </div>
             </div>
           </div>
-        </div>
         </div>
       </Can>
 
