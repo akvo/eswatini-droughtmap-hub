@@ -465,6 +465,7 @@ class GeonodePublicationPushAPI(APIView):
     @extend_schema(
         summary="Push GeoNode publication metadata to cache",
         tags=["Pipeline"],
+        auth=[{"ApiKeyAuth": []}],
         request=PushGeonodePublicationSerializer,
         responses={
             200: PushGeonodePublicationResponseSerializer,
@@ -504,6 +505,7 @@ class GeonodeRasterPushAPI(APIView):
     @extend_schema(
         summary="Push pre-computed raster values (GeoNode-down fallback)",
         tags=["Pipeline"],
+        auth=[{"ApiKeyAuth": []}],
         request=PushGeonodeRasterSerializer,
         responses={
             201: PushGeonodeRasterResponseSerializer,
@@ -556,13 +558,9 @@ class PublicationViewSet(viewsets.ModelViewSet):
         params = self.request.query_params
         status_filter = params.get("status")
         if status_filter == FilterStatus.not_yet_started:
-            queryset = queryset.filter(
-                status=PublicationStatus.in_review
-            )
+            queryset = queryset.filter(status=PublicationStatus.in_review)
         elif status_filter == FilterStatus.pending:
-            queryset = queryset.filter(
-                status=PublicationStatus.in_validation
-            )
+            queryset = queryset.filter(status=PublicationStatus.in_validation)
         elif status_filter == FilterStatus.completed:
             queryset = queryset.filter(status=PublicationStatus.published)
         elif status_filter and status_filter != FilterStatus.all:
@@ -822,7 +820,8 @@ class PublicationRasterAPI(APIView):
             raise ValidationError(
                 {
                     "indicator": (
-                        "This indicator is already attached to the publication."
+                        "This indicator is already attached "
+                        "to the publication."
                     )
                 }
             )
