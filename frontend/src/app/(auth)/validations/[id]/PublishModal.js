@@ -1,35 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Collapse, Input, Modal, Tag } from "antd";
-import { WarningFilled, DownOutlined } from "@ant-design/icons";
+import { Alert, Button, Input, Modal } from "antd";
+import { WarningFilled } from "@ant-design/icons";
+import dayjs from "dayjs";
 
-const SECTOR_FIELDS = [
-  { key: "drought", label: "Drought", placeholder: "D3", color: "#e60000" },
-  { key: "exposure", label: "Exposure", placeholder: "33", color: "#6ee7b7" },
-  {
-    key: "vulnerability",
-    label: "Vulnerability",
-    placeholder: "0,52",
-    color: "#6ee7b7",
-  },
+/**
+ * The sectors shown on the National Overview. Listed here only so the admin
+ * can see what will be published — the content itself is derived from the
+ * activity library evaluated against the validated map, never typed here.
+ */
+const SECTORS = [
+  "Water & Sanitation",
+  "Food & Agriculture",
+  "Health & Nutrition",
+  "Environment & Energy",
 ];
 
-const PublishModal = ({ open, onCancel, onPublish }) => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [sectors, setSectors] = useState({
-    drought: "",
-    exposure: "",
-    vulnerability: "",
-  });
+export const overviewTitle = (yearMonth) =>
+  `Drought situation overview — ${
+    yearMonth ? dayjs(yearMonth, "YYYY-MM").format("MMMM YYYY") : "this month"
+  }`;
 
-  const handleSectorChange = (key, value) => {
-    setSectors((prev) => ({ ...prev, [key]: value }));
-  };
+const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
+  const [narrative, setNarrative] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handlePublish = () => {
-    onPublish?.({ title, description, sectors });
+  const handlePublish = async () => {
+    if (!narrative.trim()) {
+      setError("A description is required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    // onPublish resolves with an error message, or null on success. The API
+    // helper resolves on 4xx rather than rejecting, so a rejected publish is
+    // a value to inspect — not an exception to catch.
+    const message = await onPublish?.({ narrative });
+    setSaving(false);
+    if (message) {
+      setError(message);
+    }
   };
 
   return (
@@ -48,7 +60,6 @@ const PublishModal = ({ open, onCancel, onPublish }) => {
             className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-60 pointer-events-none"
           />
           <div className="relative flex flex-col gap-6">
-            {/* Icon */}
             <div
               className="flex h-10 w-10 items-center justify-center rounded-full"
               style={{ backgroundColor: "#ECEFF8" }}
@@ -56,30 +67,27 @@ const PublishModal = ({ open, onCancel, onPublish }) => {
               <WarningFilled className="text-lg text-[#3E5EB9]" />
             </div>
 
-            {/* Header */}
             <div className="flex flex-col gap-2">
               <h2 className="text-xl font-semibold text-[#333333]">
                 Publish validated drought map
               </h2>
               <p className="text-sm text-[#606060]">
-                This will replace the current National Overview headline,
-                description, and the three sector-context boxes.
+                This replaces the current National Overview. The headline and
+                the sector cards are generated — only the description is yours
+                to write.
               </p>
             </div>
 
-            {/* Form fields */}
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-normal text-[#606060]">
                   Title for this month overview
                 </label>
-                <Input
-                  placeholder="Shown as the hero headline on the National Overview page"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
+                <div className="rounded border border-[#eaecf0] bg-[#f9fafb] px-3 py-2 text-sm text-[#333333]">
+                  {overviewTitle(yearMonth)}
+                </div>
                 <span className="text-xs text-[#606060]">
-                  Keep it concise — one line, active voice.
+                  Generated from the publication month.
                 </span>
               </div>
 
@@ -90,8 +98,9 @@ const PublishModal = ({ open, onCancel, onPublish }) => {
                 <Input.TextArea
                   rows={4}
                   placeholder="Shown underneath the title"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  value={narrative}
+                  onChange={(e) => setNarrative(e.target.value)}
+                  status={error && !narrative.trim() ? "error" : ""}
                 />
                 <span className="text-xs text-[#606060]">
                   Two-to-three sentences summarising the situation across the
@@ -102,45 +111,44 @@ const PublishModal = ({ open, onCancel, onPublish }) => {
           </div>
         </div>
 
-        {/* Sector fields */}
-        <div className="flex flex-col border-t border-[#eaecf0]">
-          {SECTOR_FIELDS.map((field) => (
+        {/* Sector cards — derived, shown so the admin can confirm */}
+        <div className="flex flex-col border-t border-[#eaecf0] pt-4">
+          <span className="text-sm font-medium text-[#333333]">
+            Sector information
+          </span>
+          <span className="text-xs text-[#606060] mb-2">
+            Compiled from the response activities triggered by this map.
+          </span>
+          {SECTORS.map((label) => (
             <div
-              key={field.key}
-              className="flex items-center justify-between border-b border-[#eaecf0] py-4"
+              key={label}
+              className="flex items-center justify-between border-b border-[#eaecf0] py-3"
             >
-              <span className="text-base font-medium text-[#333333]">
-                {field.label}
-              </span>
-              <div className="flex items-center gap-2">
-                <Tag
-                  style={{
-                    backgroundColor: field.color,
-                    color: field.key === "drought" ? "#fff" : "#333",
-                    border: "none",
-                    borderRadius: 4,
-                    fontWeight: 600,
-                    minWidth: 40,
-                    textAlign: "center",
-                  }}
-                >
-                  {sectors[field.key] || field.placeholder}
-                </Tag>
-                <DownOutlined className="text-xs text-[#606060]" />
-              </div>
+              <span className="text-sm text-[#333333]">{label}</span>
+              <span className="text-xs text-[#606060]">Auto-generated</span>
             </div>
           ))}
         </div>
 
+        {error && (
+          <Alert type="error" message={error} showIcon className="mt-4" />
+        )}
+
         {/* Footer */}
-        <div className="flex gap-3 border-t border-[#eaecf0] pt-4">
-          <Button className="flex-1" size="large" onClick={onCancel}>
+        <div className="flex gap-3 border-t border-[#eaecf0] pt-4 mt-4">
+          <Button
+            className="flex-1"
+            size="large"
+            onClick={onCancel}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button
             type="primary"
             className="flex-1"
             size="large"
+            loading={saving}
             onClick={handlePublish}
           >
             Publish

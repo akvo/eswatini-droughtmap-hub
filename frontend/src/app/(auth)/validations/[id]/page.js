@@ -1,8 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Avatar, Button, Input, Progress, Table, Tag, Tooltip } from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  Alert,
+  Avatar,
+  Button,
+  Input,
+  Progress,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
 import {
   CalendarOutlined,
   SearchOutlined,
@@ -10,8 +24,12 @@ import {
 } from "@ant-design/icons";
 import { Can, FeedbackSection, TabButtons } from "@/components";
 import { MetricCard } from "@/components/DS";
-import { PAGE_SIZE, DROUGHT_CATEGORY_CODE } from "@/static/config";
-import { validationSummary, validationQueue } from "@/static/mocks/validation";
+import { api } from "@/lib";
+import {
+  PAGE_SIZE,
+  DROUGHT_CATEGORY_CODE,
+  PUBLICATION_STATUS,
+} from "@/static/config";
 import dayjs from "dayjs";
 import PublishModal from "./PublishModal";
 
@@ -101,45 +119,119 @@ const DClassSpread = ({ levels = [] }) => (
   </div>
 );
 
+const SEARCH_DEBOUNCE_MS = 400;
+
 const ValidationDetailPage = () => {
   const { id } = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  /**
+   * Filters live in the URL, not in local state: the Validation Decision page
+   * has to send the admin back to the same tab, search and page, and local
+   * state does not survive navigating away.
+   */
+  const statusFilter = searchParams.get("status") || "all";
+  const search = searchParams.get("search") || "";
+  const page = Number(searchParams.get("page")) || 1;
 
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [error, setError] = useState(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [queue, setQueue] = useState({ data: [], total: 0 });
+  const [searchDraft, setSearchDraft] = useState(search);
 
-  // TODO: replace mock with API call: GET /admin/publication/{id}/validation-summary
-  const summary = validationSummary;
-  // TODO: replace mock with API call: GET /admin/publication/{id}/validation-queue
-  const queue = validationQueue;
+  const meta = summary?.meta;
+  const cards = summary?.data || [];
 
-  const allValidated = useMemo(() => {
-    const validated = summary.data.find((d) => d.key === "validated");
-    const awaiting = summary.data.find((d) => d.key === "awaiting");
-    return validated?.value > 0 && awaiting?.value === 0;
-  }, [summary]);
+  const setQuery = useCallback(
+    (patch) => {
+      const next = new URLSearchParams(searchParams.toString());
+      Object.entries(patch).forEach(([key, value]) => {
+        if (value === null || value === "" || value === "all") {
+          next.delete(key);
+        } else {
+          next.set(key, String(value));
+        }
+      });
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
-  const filteredData = useMemo(() => {
-    let rows = queue.data;
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page) });
     if (statusFilter !== "all") {
-      rows = rows.filter((r) => r.status === statusFilter);
+      params.set("status", statusFilter);
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.label.toLowerCase().includes(q) ||
-          r.group.toLowerCase().includes(q),
-      );
+    if (search) {
+      params.set("search", search);
     }
-    return rows;
-  }, [queue.data, statusFilter, search]);
+    return params.toString();
+  }, [page, search, statusFilter]);
 
-  const publishedDate = summary.published_at
-    ? dayjs(summary.published_at).format("D MMMM YYYY")
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [stats, administrations] = await Promise.all([
+        api("GET", `/admin/validation/${id}/stats`),
+        api("GET", `/admin/validation/${id}/administrations?${queryString}`),
+      ]);
+      setSummary(stats);
+      setQueue({
+        data: administrations?.data || [],
+        total: administrations?.total || 0,
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Could not load the validation queue.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, queryString]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Debounce typing into ?search=, while staying in sync when the URL changes
+  // underneath us — the back button, or a return from the decision page.
+  const searchRef = useRef(search);
+  useEffect(() => {
+    if (searchRef.current !== search) {
+      searchRef.current = search;
+      setSearchDraft(search);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    if (searchDraft === search) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      searchRef.current = searchDraft;
+      setQuery({ search: searchDraft, page: 1 });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search, searchDraft, setQuery]);
+
+  const decisionQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") {
+      params.set("status", statusFilter);
+    }
+    if (search) {
+      params.set("search", search);
+    }
+    return params.toString();
+  }, [search, statusFilter]);
+
+  const publishedDate = meta?.published_at
+    ? dayjs(meta.published_at).format("D MMMM YYYY")
     : null;
 
   const columns = [
@@ -179,20 +271,24 @@ const ValidationDetailPage = () => {
       render: (_, record) => <DClassSpread levels={record.dclass_spread} />,
     },
     {
-      title: "CONSENSUS",
+      title: (
+        <Tooltip title="Agreement between reviewers, weighted by how far apart their D-classes are. 100% = unanimous.">
+          <span>CONSENSUS</span>
+        </Tooltip>
+      ),
       key: "consensus",
       width: 140,
       render: (_, record) => (
         <div className="flex items-center gap-2">
           <Progress
-            percent={record.consensus}
+            percent={record.consensus ?? 0}
             showInfo={false}
             size={["100%", 6]}
             strokeColor="#3E5EB9"
             className="flex-1"
           />
           <span className="text-sm text-[#606060] whitespace-nowrap">
-            {record.consensus}%
+            {record.consensus === null ? "—" : `${record.consensus}%`}
           </span>
         </div>
       ),
@@ -216,8 +312,14 @@ const ValidationDetailPage = () => {
           type="link"
           className="edm-reviews-action"
           onClick={() => {
+            // Carry status + search so the decision page can resolve
+            // Previous/Next and send the admin back to the same tab. `page`
+            // is deliberately NOT carried — it is derived server-side and a
+            // copy here goes stale as soon as Next crosses a page boundary.
             router.push(
-              `/validations/${id}/${record.administration_id}`,
+              `/validations/${id}/${record.administration_id}${
+                decisionQuery ? `?${decisionQuery}` : ""
+              }`,
             );
           }}
         >
@@ -250,23 +352,34 @@ const ValidationDetailPage = () => {
           <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-col gap-3">
               <h1 className="text-[34px] font-bold leading-10 text-[#333333]">
-                This month drought validation
+                {meta?.year_month
+                  ? `${dayjs(meta.year_month, "YYYY-MM").format("MMMM YYYY")} drought validation`
+                  : "Drought validation"}
               </h1>
               <p className="text-base leading-6 text-[#606060]">
-                Lorem ipsum dolor sit amet consectetur.
+                Sign off the final drought class for every Inkhundla, then
+                publish the validated map.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <Button type="link" className="edm-reviews-action">
                 Methodology
               </Button>
-              <Button
-                type="primary"
-                disabled={!allValidated}
-                onClick={() => setPublishOpen(true)}
+              <Tooltip
+                title={
+                  meta && !meta.can_publish
+                    ? `${meta.pending_validation} Tinkhundla still need validation`
+                    : ""
+                }
               >
-                Publish validated map
-              </Button>
+                <Button
+                  type="primary"
+                  disabled={!meta?.can_publish}
+                  onClick={() => setPublishOpen(true)}
+                >
+                  Publish validated map
+                </Button>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -281,7 +394,7 @@ const ValidationDetailPage = () => {
         <Can I="read" a="Publication">
           {/* Summary cards */}
           <div className="relative z-10 mx-auto -mt-16 grid w-full max-w-[1280px] grid-cols-1 gap-0 sm:grid-cols-2 lg:grid-cols-4">
-            {summary.data.map((card) => (
+            {cards.map((card) => (
               <MetricCard
                 key={card.key}
                 label={card.label}
@@ -303,11 +416,8 @@ const ValidationDetailPage = () => {
                 <Input
                   placeholder="Search"
                   prefix={<SearchOutlined className="text-[#a4a4a4]" />}
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
                   className="w-48"
                   style={{ height: 40 }}
                   allowClear
@@ -328,33 +438,41 @@ const ValidationDetailPage = () => {
               <TabButtons
                 options={STATUS_FILTERS}
                 value={statusFilter}
-                onChange={(value) => {
-                  setStatusFilter(value);
-                  setPage(1);
-                }}
+                onChange={(value) => setQuery({ status: value, page: 1 })}
               />
             </div>
+            {error && (
+              <Alert
+                type="error"
+                message={error}
+                showIcon
+                className="m-4"
+                action={
+                  <Button size="small" onClick={fetchData}>
+                    Retry
+                  </Button>
+                }
+              />
+            )}
             <Table
               className="edm-reviews-table"
               columns={columns}
-              dataSource={filteredData}
+              dataSource={queue.data}
               rowKey="administration_id"
               loading={loading}
               tableLayout="fixed"
               scroll={{ x: 1000 }}
-              pagination={
-                filteredData.length <= PAGE_SIZE
-                  ? false
-                  : {
-                      current: page,
-                      pageSize: PAGE_SIZE,
-                      total: filteredData.length,
-                      responsive: true,
-                      align: "center",
-                      position: ["bottomCenter"],
-                      onChange: (_page) => setPage(_page),
-                    }
-              }
+              pagination={{
+                current: page,
+                pageSize: PAGE_SIZE,
+                total: queue.total,
+                responsive: true,
+                align: "center",
+                position: ["bottomCenter"],
+                hideOnSinglePage: true,
+                showSizeChanger: false,
+                onChange: (_page) => setQuery({ page: _page }),
+              }}
             />
           </section>
         </Can>
@@ -366,10 +484,21 @@ const ValidationDetailPage = () => {
 
       <PublishModal
         open={publishOpen}
+        yearMonth={meta?.year_month}
         onCancel={() => setPublishOpen(false)}
-        onPublish={(values) => {
-          console.log("Publish:", values);
+        onPublish={async ({ narrative }) => {
+          // api() resolves on 4xx rather than rejecting, so a failed publish
+          // has to be detected from the body — never from a catch block.
+          const res = await api("PUT", `/admin/publication/${id}`, {
+            status: PUBLICATION_STATUS.published,
+            narrative,
+          });
+          if (res?.status !== PUBLICATION_STATUS.published) {
+            return res?.status?.[0] ?? "Publish failed.";
+          }
           setPublishOpen(false);
+          fetchData();
+          return null;
         }}
       />
     </div>

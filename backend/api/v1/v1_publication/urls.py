@@ -20,6 +20,10 @@ from .review.view import (
     ReviewAdministrationDetailAPI,
     ReviewMapAPI,
 )
+from .validation.view import (
+    ValidationStatsAPI,
+    ValidationAdministrationsAPI,
+)
 
 urlpatterns = [
     re_path(r"^(?P<version>(v1))/config.js", get_config_file),
@@ -65,6 +69,20 @@ urlpatterns = [
         r"^(?P<version>(v1))/admin/cdi-geonode",
         CDIGeonodeAPI.as_view(),
         name="cdi-geonode",
+    ),
+    # Anchored, and under /admin/validation/ rather than /admin/publication/:
+    # the publication-details pattern below has no trailing `$`, so anything
+    # nested under it would be swallowed by a prefix match (D-3).
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)/stats$",
+        ValidationStatsAPI.as_view(),
+        name="validation-queue-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"
+        r"/administrations$",
+        ValidationAdministrationsAPI.as_view(),
+        name="validation-queue-administrations",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/publications",

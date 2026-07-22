@@ -42,6 +42,49 @@ class DroughtCategory:
     }
 
 
+def is_validated(category):
+    """A real, admin-assigned D-class. Not null, and not No Data.
+
+    ``DroughtCategory.none`` (-9999) is what the raster emits where it had no
+    signal; it is never a decision an admin hands down, and a published map
+    must not carry it. Lives here, beside the enum it interprets, so the row
+    status, the publish gate and the serialized category all share one
+    definition without any of them importing each other.
+    """
+    return category is not None and category != DroughtCategory.none
+
+
+class ValidationStatus:
+    """Row status on the admin validation queue.
+
+    A partition — every Inkhundla is exactly one of these — so the three
+    counts sum to the total and each summary card equals the row count behind
+    its matching tab. Computed per request, never stored.
+    """
+
+    ready = "ready"
+    awaiting = "awaiting"
+    validated = "validated"
+
+    FieldStr = {
+        ready: "Ready for validation",
+        awaiting: "Awaits reviews",
+        validated: "Validated this period",
+    }
+
+
+# Consensus is the mean absolute deviation of the submitted D-classes from
+# their median, normalized against the worst case: half the panel at each end
+# of the scale puts the median at the midpoint, giving a mean deviation of
+# span/2. Distance-aware, so [1,2] and [1,5] do not score alike.
+DROUGHT_SCALE_SPAN = DroughtCategory.d4 - DroughtCategory.normal
+CONSENSUS_MAX_DEV = DROUGHT_SCALE_SPAN / 2
+
+# Strictly more than this many distinct D-classes on one Inkhundla counts as
+# "high disagreement" on the summary cards — exactly 3 does not qualify.
+DISAGREEMENT_THRESHOLD = 3
+
+
 class CDIGeonodeCategory:
     cdi = "cdi-raster-map"
     spi = "spi-raster-map"

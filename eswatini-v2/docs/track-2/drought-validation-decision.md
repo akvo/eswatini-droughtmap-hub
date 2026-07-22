@@ -86,7 +86,7 @@ Backend-relevant criteria only; pure-layout ACs (AC-6.1 sticky panel, AC-4.4 chi
 | 3.3 | Status pill: Awaiting / Validated / Overridden | `status` + `is_override` (D-5) |
 | 4.1–4.3 | One row per assigned reviewer; empty state; reasoning quoted | `reviews[]` (D-4 masking; D-12 on row count) |
 | 5.3 | "N of M reviewers chose `<modal>`" + band label | `agreement.majority_count` / `total_submitted` / `band`, `majority_category` |
-| 6.2–6.3 | 6 chips, pre-set to the majority class, reasoning pre-populated | `majority_category`, `default_reasoning` (D-9) |
+| 6.2–6.3 | 6 chips, pre-set to the majority class, reasoning pre-populated | `majority_category` + `agreement.*`; the sentence is composed client-side (D-9, §3) |
 | 6.4 | Reasoning required when overriding | Serializer (§8), not only the disabled button — **also required on a tie** (D-9) |
 | 6.5 | Save as draft persists and re-opens; queue status stays Pending | `decision.is_draft` (D-1, D-6) |
 | 6.6 | Submit publishes the decision, returns to queue, KPIs move | D-1 (`validated_values` sync), D-6 |
@@ -163,16 +163,10 @@ The unique constraint makes the write path a plain `update_or_create` (§4) and 
 
 ### New constant
 
-`DroughtCategory` has no `choices()` helper (unlike `RasterIndicatorTypes`). Add both, next to it in `constants.py`:
+One, and it exists to constrain a model field — not to relabel anything:
 
 ```python
-class DroughtCategory:
-    ...
-    ShortStr = {          # "D2" — for chips and generated copy (D-9)
-        normal: "Normal", d0: "D0", d1: "D1",
-        d2: "D2", d3: "D3", d4: "D4", none: "No data",
-    }
-
+# api/v1/v1_publication/constants.py
 # Everything an admin may validate to — excludes `none` (queue doc D-11).
 VALIDATABLE_CATEGORIES = [
     (k, v) for k, v in DroughtCategory.FieldStr.items()
@@ -180,16 +174,14 @@ VALIDATABLE_CATEGORIES = [
 ]
 ```
 
-`ShortStr` mirrors the frontend's existing `DROUGHT_CATEGORY_CODE` (`static/config.js:70-78`) so `default_reasoning` reads "3 of 4 chose D2", not "3 of 4 chose D2 Severe Drought".
+**No short-label maps are added, on either enum.** An earlier draft introduced `DroughtCategory.ShortStr` and `TechnicalWorkingGroup.ShortStr` so the server could render "D2" and "MET". Both are unnecessary:
 
-`TechnicalWorkingGroup` likewise needs a short form — the payload's `organisation` is `"MET"`, but `FieldStr[met]` is `"MET (Meteorological Office)"`:
+- The frontend already owns those labels — `DROUGHT_CATEGORY_CODE` (`config.js:70-78`) and `TWG_OPTIONS` (`config.js:304`) — and already uses them for every other int this API sends.
+- A second dict beside `FieldStr` duplicates a map that is already keyed by the same ints. `v1_jobs/constants.py` shows the house pattern: where a machine-readable name is genuinely wanted, `FieldStr` **is** that map.
 
-```python
-class TechnicalWorkingGroup:
-    ...
-    ShortStr = {ndma: "NDMA", moag: "MoAg", met: "MET",
-                dwa: "DWA", uneswa: "UNESWA"}
-```
+So **`category` and `organisation` cross the API as integers**, exactly like `status` and `role`, and the display string is chosen at the point of display.
+
+**Consequence for `default_reasoning`**: the server would have needed `ShortStr` to compose *"Accepting the reviewer majority (3 of 4 chose D2)"*. It no longer composes it — see D-9. The payload carries `majority_category`, `majority_count` and `total_submitted`, which it already did, and the **frontend builds the sentence**. One less field on the wire, one less constant, and the copy lives with the rest of the page's copy.
 
 ### Modified Models
 
@@ -235,7 +227,7 @@ Filter params are the queue's, and are used **only** to compute `meta.prev/next/
     "year_month": "2026-05",             // the whole calendar month (D-8)
     "reviewers_required": 5,
     "can_submit": false,                 // D-3 — drives the lock notice
-    "viewer": { "name": "Sipho Dlamini", "organisation": "UNESWA" },
+    "viewer": { "name": "Sipho Dlamini", "organisation": 5 },  // TWG int
     "prev_administration_id": 11,        // D-7; null at the ends
     "next_administration_id": 19,
     "queue_page": 2                      // page of the queue holding THIS row
@@ -273,11 +265,11 @@ Filter params are the queue's, and are used **only** to compute `meta.prev/next/
   },
   "reviews": [
     { "user_id": 7, "initials": "AR", "name": "Ayanda Ropa",
-      "organisation": "MET", "email": "ayanda@example.org",
-      "submitted_at": "2026-05-09T10:12:00Z", "category": 3,
+      "organisation": 3, "email": "ayanda@example.org",     // TWG int; the
+      "submitted_at": "2026-05-09T10:12:00Z", "category": 3, // frontend labels
       "comment": "2 of 3 sources support D2.", "hidden": false },
     { "user_id": 22, "initials": "TN", "name": "Thabo Nkosi",
-      "organisation": "UNESWA", "email": "thabo@example.org",
+      "organisation": 5, "email": "thabo@example.org",
       "submitted_at": null, "category": null, "comment": null,
       "hidden": false }                                        // AC-4.2
   ],
@@ -286,17 +278,16 @@ Filter params are the queue's, and are used **only** to compute `meta.prev/next/
     "reasoning": "Majority of reviewers assessed D2…",
     "is_draft": true,
     "updated_at": "2026-05-18T08:31:00Z"
-  },
-  "default_reasoning": "Accepting the reviewer majority (3 of 4 chose D2)."
+  }
 }
 ```
 
-`decision` is `null` when nothing has been saved; the picker then falls back to `majority_category` + `default_reasoning` (AC-6.3).
+`decision` is `null` when nothing has been saved; the picker then falls back to `majority_category`, and the frontend composes the default reasoning from `majority_count` / `total_submitted` / `majority_category` (AC-6.3).
 
 **Masked variant** (D-4) — `reviews[]` keeps **one row per assigned reviewer** so AC-4.1's count still holds, but every row other than the requester's is reduced to:
 
 ```jsonc
-{ "user_id": null, "initials": null, "name": null, "organisation": "MET",
+{ "user_id": null, "initials": null, "name": null, "organisation": 3,
   "email": null, "submitted_at": null, "category": null, "comment": null,
   "hidden": true }
 ```
@@ -525,7 +516,7 @@ The shipped mock's `period_start` / `period_end` are dropped with the rest of it
 requires_reasoning = (category != majority) or agreement["is_tie"]
 ```
 
-With a tie, `default_reasoning` is `null` and the textarea opens empty rather than pre-filled with a sentence that would be false.
+With a tie the frontend composes **no** default sentence and the textarea opens empty, rather than pre-filled with a claim about a majority that does not exist. `agreement.is_tie` is the signal.
 
 **Three UI consequences**, all driven off the same flag:
 
@@ -539,9 +530,15 @@ With a tie, `default_reasoning` is `null` and the textarea opens empty rather th
 
 **The client currently disagrees with the server about ties.** `AgreementBar` (`page.js:154-170`) reduces with `b.count > a.count` over ascending categories, so on a 2-2 tie it keeps the **lower** class and would print "chose D1" while the chip pre-selects D2. Replace the client tally with `agreement.*` (§6) — it is the same computation done twice, and the copy is the one that is wrong.
 
-**`total_submitted == 0`**: no majority, no default chip, `consensus: null`, `default_reasoning: null`, `is_tie: false`. The picker opens empty and reasoning is required for any submission — there is no majority to accept.
+**`total_submitted == 0`**: no majority, no default chip, `consensus: null`, no default reasoning, `is_tie: false`. The picker opens empty and reasoning is required for any submission — there is no majority to accept.
 
-**`default_reasoning` format**: `f"Accepting the reviewer majority ({majority_count} of {total_submitted} chose {DroughtCategory.ShortStr[majority_category]})."` — hence `ShortStr` in §3.
+**The default reasoning is composed in the frontend**, not sent by the API (§3):
+
+```js
+`Accepting the reviewer majority (${majority_count} of ${total_submitted} chose ${DROUGHT_CATEGORY_CODE[majority_category]}).`
+```
+
+All three inputs are already in the payload, and `DROUGHT_CATEGORY_CODE` is already imported by the page. Composing it server-side would have required a short-label map on `DroughtCategory` purely to render a sentence.
 
 ### D-10: Confidence stays mock and read-only
 
@@ -598,7 +595,7 @@ Category `0` is **wet/normal conditions**; `-9999` is No Data. The page labels `
 
 **Out of scope, flagged**: `DROUGHT_CATEGORY_LEVELS` (`config.js:36`) also starts with `"None"` and has the same defect, but it is consumed by two Track 3 components (`ActivityLibrary/AddActivity/Step2Trigger.js:29`, `ActivityLibrary/TriggerConditionsView.js`) where it drives trigger conditions. Changing it is a Track 3 change with its own review — not bundled here.
 
-Frontend copy only; no API or constant change beyond `DroughtCategory.ShortStr` (§3), which already says `"Normal"`.
+Frontend copy only; no API or constant change. `DROUGHT_CATEGORY_CODE[0]` already says `"Normal"`.
 
 ---
 
@@ -616,8 +613,7 @@ app/(auth)/validations/[id]/[administrationId]/page.js   "use client" — shippe
 | File | Change |
 |---|---|
 | `v1_publication/models.py` | `ValidationDecision` (§3) |
-| `v1_publication/constants.py` | `DroughtCategory.ShortStr`, `VALIDATABLE_CATEGORIES` |
-| `v1_users/constants.py` | `TechnicalWorkingGroup.ShortStr` |
+| `v1_publication/constants.py` | `VALIDATABLE_CATEGORIES` (model field choices) — **no new label maps**, enums cross the API as ints |
 | `v1_publication/validation/utils.py` | `build_decision_payload`, `build_agreement`, `majority_of(categories)`, `mask_reviews`, `neighbours`, `sync_validated_values` |
 | `v1_publication/validation/view.py` | `ValidationDecisionAPI` (GET + PUT), `ValidationHistoryAPI` |
 | `v1_publication/validation/serializers.py` | `ValidationDecisionWriteSerializer` (§8), review + history read serializers |
@@ -639,7 +635,7 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | `page.js:232-240` | `statusKey`: use the server's `is_override` instead of comparing against the live majority (D-5, D-9) |
 | `page.js:242-246` | Delete the `validationQueue` indexing (it can only ever see one page of rows); Previous/Next navigate to `meta.prev/next_administration_id`, **preserving `status` + `search` and not `page`** (D-7). `disabled` when the id is `null` — the shipped `prevId === null` / `nextId === null` guards at `:296` and `:302` already have the right shape |
 | `page.js:282-288` | Breadcrumb "Drought Validation" → `/validations/{id}?status=&search=&page={meta.queue_page}` — `page` comes from the server every render, never from the URL the page was opened with (D-7) |
-| `page.js:224-227` | **State must initialise from the saved draft**, not from the majority: `selectedCategory = decision?.category ?? majority_category` and `reasoning = decision?.reasoning ?? default_reasoning ?? ""`. Without this AC-6.5 fails — a saved draft re-opens showing the majority chip and an empty textarea. Note both are `useState` **initialisers**, which run once on mount while the fetch is still in flight; they must move to a `useEffect` that syncs when the payload arrives, or the values latch on `undefined` |
+| `page.js:224-227` | **State must initialise from the saved draft**, not from the majority: `selectedCategory = decision?.category ?? majority_category` and `reasoning = decision?.reasoning ?? composeDefaultReasoning(agreement) ?? ""`. Without this AC-6.5 fails — a saved draft re-opens showing the majority chip and an empty textarea. Note both are `useState` **initialisers**, which run once on mount while the fetch is still in flight; they must move to a `useEffect` that syncs when the payload arrives, or the values latch on `undefined` |
 | `page.js:248-257` | `handleSaveDraft` → `PUT … {is_draft: true}`, then re-read the response so `decision.updated_at` reflects the save |
 | `page.js:259-272` | `handleSubmit` → `PUT … {is_draft: false}`; inspect the resolved body for the 400 and **do not navigate on failure** (§0). Keep the guard at `:260-262` as UX; §8 is the control |
 | `page.js:417-419` | `confidence` / `confidence_band` stay flat (D-10); honour `confidence_is_mock` on the badge |
@@ -663,8 +659,8 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | `is_override: true` → pill "Overridden" | `ValidationDecision.is_override` | `bool` |
 | `agreement.band` | `high` ≥80 · `moderate` 60–79 · `low` 40–59 · `none` <40 (D-2) | — |
 | `category`, `majority_category` | `VALIDATABLE_CATEGORIES`, never `none` (queue doc D-11) | `0`–`5` |
-| chip label `"D2"` | `DroughtCategory.ShortStr[3]` | `3` |
-| `organisation: "MET"` | `TechnicalWorkingGroup.ShortStr[met]` | `3` |
+| chip label `"D2"` | `DROUGHT_CATEGORY_CODE[3]` (frontend, `config.js:70-78`) | `3` |
+| `organisation: 3` | `TechnicalWorkingGroup.met` — int on the wire, labelled by `TWG_OPTIONS` (`config.js:304`) | `3` |
 | `can_submit` | `role == UserRoleTypes.admin` (D-3) | `1` |
 | `is_draft` | `ValidationDecision.is_draft` | `bool` |
 
@@ -721,7 +717,6 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | Django unit | `[3,3,2,2]` yields `consensus: 80`, band `high`, **and** `is_tie: true` — the tie is signalled by the flag, never by the score (D-9) |
 | Django unit | Two reviewers in one TWG: `reviews[]` has both rows, both categories appear in `distribution` and count toward the majority, and `reviews_total` still counts TWGs — `total_submitted` may exceed it (D-12) |
 | Django unit | Band boundaries at 80 / 60 / 40, including the changed `low`/`none` line (D-2) |
-| Django unit | `default_reasoning` renders the short code: "3 of 4 chose D2", not "D2 Severe Drought" (D-9) |
 | Django unit | Snapshot: submit, then add a review shifting the majority; stored `is_override` / `majority_category` unchanged, live `agreement.majority_category` moves (D-9) |
 | Django unit | Re-submit **re-snapshots**: a corrected category is judged against the majority at the second submit, not the first (D-6) |
 | Django unit | `neighbours` and the queue endpoint return the **same ordered ids** for the same `search`/`status` — walking prev/next from the first row reproduces the concatenated pages exactly (D-7 shared `ordered_rows`) |
@@ -737,7 +732,7 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | Jest | A payload carrying a draft initialises the picker to `decision.category` and the textarea to `decision.reasoning` — **not** to `majority_category` / `default_reasoning` (AC-6.5) |
 | Django API | PUT `is_draft: false`, category ≠ majority, blank reasoning → 400 on `reasoning` (AC-6.4) |
 | Django API | PUT `is_draft: false` accepting the **pre-selected chip on a tie** with blank reasoning → 400, message names the tie; `is_override` is `False` on the eventual success (D-9) |
-| Django unit | `default_reasoning` is `null` when `is_tie` — there is no majority to say it accepts (D-9) |
+| Jest | The default reasoning is composed from `majority_count`/`total_submitted`/`majority_category` and reads "3 of 4 chose D2"; on `is_tie` the textarea opens **empty** (D-9) |
 | Django API | PUT `is_draft: false`, `category: -9999` → 400 (queue doc D-11) |
 | Django API | PUT `is_draft: true` over a submitted decision → 400 (D-6) |
 | Django API | PUT `is_draft: false` stamps `validated_by`/`validated_at`, sets `is_override`, upserts `validated_values`, and moves the queue's `validated` count by exactly 1 (AC-6.6, D-1) |
