@@ -118,6 +118,10 @@ ul {
   outline: 0;
 }
 
+.inkhundla-map .leaflet-container {
+  background: #F2F2F2 !important;
+}
+
 h1,
 h2,
 h3,

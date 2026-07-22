@@ -16,6 +16,7 @@ import {
 } from "@/static/mocks/review";
 import dayjs from "dayjs";
 import ReviewDecisionHistory from "./ReviewDecisionHistory";
+import InkhundlaMap from "./InkhundlaMap";
 
 const { TextArea } = Input;
 
@@ -295,10 +296,7 @@ const IKSColumn = ({ iks }) => {
       <div className="flex items-start gap-4">
         <div className="flex-1">
           <div className="text-3xl font-bold text-[#333333]">
-            {iks.reports_count}{" "}
-            <span className="text-base font-normal text-[#606060]">
-              report{iks.reports_count !== 1 ? "s" : ""}
-            </span>
+            {iks.reports_count} report{iks.reports_count !== 1 ? "s" : ""}
           </div>
           <p className="text-xs text-[#606060] mt-1">
             submitted this period | indicator: Siganganyane fruiting | verified
@@ -472,8 +470,8 @@ const IndividualReviewPage = () => {
                 </span>
               </div>
             </div>
-            <div className="h-[220px] bg-[#e8edf8] flex items-center justify-center">
-              <span className="text-sm text-[#a4a4a4]">Map placeholder</span>
+            <div className="h-[220px]" style={{ background: "#F2F2F2" }}>
+              <InkhundlaMap administrationId={administrationId} />
             </div>
           </div>
         </div>

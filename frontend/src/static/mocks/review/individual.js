@@ -11,6 +11,21 @@ export const individualReview = {
   region: "Hhohho",
   zone: "Highveld",
   area_km2: 126,
+  geometry: {
+    type: "Polygon",
+    coordinates: [
+      [
+        [31.15, -26.20],
+        [31.25, -26.20],
+        [31.30, -26.25],
+        [31.28, -26.35],
+        [31.20, -26.38],
+        [31.12, -26.33],
+        [31.10, -26.25],
+        [31.15, -26.20],
+      ],
+    ],
+  },
   period_start: "2026-05-15",
   period_end: "2026-06-15",
   prev_administration_id: null,
