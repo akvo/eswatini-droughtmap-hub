@@ -288,6 +288,23 @@ describe("Validation decision page", () => {
     expect(target).toContain("page=2"); // meta.queue_page, not the URL
   });
 
+  it("carries the agreement filter through navigation", async () => {
+    // Without this, Previous/Next walk the unfiltered queue and land the
+    // admin on rows the filter had just excluded (AC-3.1).
+    currentParams = new URLSearchParams("agreement=undisputed&status=ready");
+    render(<ValidationDecisionPage />);
+    await loaded();
+
+    expect(
+      api.mock.calls.find(
+        ([m, url]) => m === "GET" && !url.endsWith("/history"),
+      )[1],
+    ).toContain("agreement=undisputed");
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(push.mock.calls.at(-1)[0]).toContain("agreement=undisputed");
+  });
+
   it("walks Previous/Next by the ids the server supplies", async () => {
     currentParams = new URLSearchParams("status=ready");
     render(<ValidationDecisionPage />);
@@ -396,10 +413,10 @@ describe("Validation decision page", () => {
     expect(screen.queryByText(/consensus$/i)).not.toBeInTheDocument();
   });
 
-  it("renders the period as the calendar month", async () => {
+  it("renders the period as the full calendar month span", async () => {
     render(<ValidationDecisionPage />);
     await waitFor(() =>
-      expect(screen.getByText("May 2026")).toBeInTheDocument(),
+      expect(screen.getByText("1 May 2026 - 31 May 2026")).toBeInTheDocument(),
     );
   });
 

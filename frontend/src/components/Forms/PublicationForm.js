@@ -19,7 +19,10 @@ import TinyEditor from "../TinyEditor";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
-import { CREATE_PUBLICATION_MAIL } from "@/static/config";
+import {
+  CREATE_PUBLICATION_MAIL,
+  MIN_TWGS_PER_PUBLICATION,
+} from "@/static/config";
 import { VerifiedIcon } from "../Icons";
 import ComponentRasterPreview from "../ComponentRasterPreview";
 
@@ -161,6 +164,25 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                     if (!selectedItems?.length) {
                       return Promise.reject(
                         new Error("Please select at least one reviewer."),
+                      );
+                    }
+                    // The unit is the Technical Working Group, not headcount:
+                    // three reviewers all from MoAg still leave one TWG, so
+                    // every Inkhundla would reach "ready" on one institution's
+                    // response and its consensus would be a single opinion.
+                    // Enforced server-side too; this is the courtesy copy.
+                    const twgs = new Set(
+                      selectedItems
+                        .map((v) => v?.technical_working_group)
+                        .filter((twg) => twg !== null && twg !== undefined),
+                    );
+                    if (twgs.size < MIN_TWGS_PER_PUBLICATION) {
+                      return Promise.reject(
+                        new Error(
+                          "Please select reviewers from at least " +
+                            `${MIN_TWGS_PER_PUBLICATION} different Technical ` +
+                            "Working Groups.",
+                        ),
                       );
                     }
                   },

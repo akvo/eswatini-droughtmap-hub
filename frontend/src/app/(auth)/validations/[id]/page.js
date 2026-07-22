@@ -11,11 +11,14 @@ import {
   Alert,
   Avatar,
   Button,
+  Checkbox,
   Input,
+  Modal,
   Progress,
   Table,
   Tag,
   Tooltip,
+  message,
 } from "antd";
 import {
   CalendarOutlined,
@@ -25,9 +28,13 @@ import {
 import { Can, FeedbackSection, TabButtons } from "@/components";
 import { DroughtScore, MetricCard } from "@/components/DS";
 import { api } from "@/lib";
-import { PAGE_SIZE, PUBLICATION_STATUS } from "@/static/config";
+import {
+  MIN_TWGS_PER_PUBLICATION,
+  PAGE_SIZE,
+  PUBLICATION_STATUS,
+} from "@/static/config";
 import dayjs from "dayjs";
-import PublishModal from "./PublishModal";
+import { PublishModal, ReviewerPanelModal } from "@/components/Validation";
 
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
@@ -35,6 +42,16 @@ const STATUS_FILTERS = [
   { label: "Awaiting review", value: "awaiting" },
   { label: "Validated", value: "validated" },
 ];
+
+/**
+ * Mirrors backend AgreementFilter. Cross-cuts the status tabs rather than
+ * extending them: the tabs are a partition whose counts must keep summing to
+ * the total, and agreement is orthogonal to all three (design D-6).
+ */
+const AGREEMENT = {
+  undisputed: "undisputed",
+  disagreement: "disagreement",
+};
 
 const STATUS_CONFIG = {
   ready: { label: "Ready", color: "#f39c12" },
@@ -113,11 +130,15 @@ const ValidationDetailPage = () => {
    */
   const statusFilter = searchParams.get("status") || "all";
   const search = searchParams.get("search") || "";
+  const agreement = searchParams.get("agreement") || "";
   const page = Number(searchParams.get("page")) || 1;
+  const nonDisputedOnly = agreement === AGREEMENT.undisputed;
 
   const [loading, setLoading] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
   const [error, setError] = useState(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [summary, setSummary] = useState(null);
   const [queue, setQueue] = useState({ data: [], total: 0 });
   const [searchDraft, setSearchDraft] = useState(search);
@@ -149,8 +170,11 @@ const ValidationDetailPage = () => {
     if (search) {
       params.set("search", search);
     }
+    if (agreement) {
+      params.set("agreement", agreement);
+    }
     return params.toString();
-  }, [page, search, statusFilter]);
+  }, [agreement, page, search, statusFilter]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -206,8 +230,52 @@ const ValidationDetailPage = () => {
     if (search) {
       params.set("search", search);
     }
+    // Carried too, or Previous/Next would walk the unfiltered queue and the
+    // admin would land on rows the filter had just excluded (AC-3.1).
+    if (agreement) {
+      params.set("agreement", agreement);
+    }
     return params.toString();
-  }, [search, statusFilter]);
+  }, [agreement, search, statusFilter]);
+
+  /**
+   * The bulk action is scoped to the filter, never to a selection (D-3). The
+   * server re-derives the set at write time and re-applies status=ready
+   * whatever we send, so a stale count here can only ever write less than it
+   * promised — never more.
+   */
+  const runBulkValidation = useCallback(() => {
+    Modal.confirm({
+      title: "Validate all non-disputed Tinkhundla?",
+      content: (
+        <span>
+          <strong>{queue.total}</strong>{" "}
+          {queue.total === 1 ? "Inkhundla has" : "Tinkhundla have"} the same
+          D-class from every reviewer. Each will be validated at that class and
+          recorded against your name.
+        </span>
+      ),
+      okText: "Validate all",
+      onOk: async () => {
+        setBulkRunning(true);
+        try {
+          // api() resolves on 4xx, so a refusal arrives as a body — it must be
+          // detected from the payload, not from a catch block.
+          const res = await api("POST", `/admin/validation/${id}/bulk`, {
+            search,
+          });
+          if (typeof res?.validated !== "number") {
+            message.error("Bulk validation failed.");
+            return;
+          }
+          message.success(res.message);
+          fetchData();
+        } finally {
+          setBulkRunning(false);
+        }
+      },
+    });
+  }, [fetchData, id, queue.total, search]);
 
   const publishedDate = meta?.published_at
     ? dayjs(meta.published_at).format("D MMMM YYYY")
@@ -354,6 +422,12 @@ const ValidationDetailPage = () => {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
+              <Button
+                className="edm-reviews-action"
+                onClick={() => setPanelOpen(true)}
+              >
+                Reviewer panel
+              </Button>
               <Button type="link" className="edm-reviews-action">
                 Methodology
               </Button>
@@ -394,9 +468,56 @@ const ValidationDetailPage = () => {
                 delta={card.delta || null}
                 deltaSuffix={card.delta_suffix || ""}
                 sublabel={card.meta}
+                // Only the disagreement card drills through. The other three
+                // mirror the status tabs, which are already one click away —
+                // and this card had no way in at all until now.
+                active={
+                  card.key === AGREEMENT.disagreement &&
+                  agreement === AGREEMENT.disagreement
+                }
+                onClick={
+                  card.key === AGREEMENT.disagreement
+                    ? () =>
+                        // Toggles. Applying a filter with no way back out of
+                        // it strands the admin on a subset of the queue with
+                        // nothing on screen admitting why.
+                        setQuery({
+                          agreement:
+                            agreement === AGREEMENT.disagreement
+                              ? null
+                              : AGREEMENT.disagreement,
+                          status: "all",
+                          page: 1,
+                        })
+                    : null
+                }
               />
             ))}
           </div>
+
+          {/* A single Technical Working Group makes every Inkhundla "ready"
+              off one institution's response, so the queue looks finished when
+              nothing has been cross-checked. Sits BELOW the cards: they carry
+              `-mt-16` to overlap the hero, so anything above them is drawn
+              underneath and clipped. */}
+          {meta && meta.reviewers_required < MIN_TWGS_PER_PUBLICATION && (
+            // The centring lives on a plain div, not on the Alert: antd 5
+            // injects its component CSS at runtime, after Tailwind's sheet, so
+            // `mx-auto` on `.ant-alert` itself is not dependable.
+            <div className="relative z-10 mx-auto mt-6 w-full max-w-[1280px]">
+              <Alert
+                type="warning"
+                showIcon
+                message="This publication has only one Technical Working Group reviewing it."
+                description="Every Inkhundla counts as fully reviewed after that one response, so no row can show consensus or be bulk-validated. Add reviewers from another working group to cross-check."
+                action={
+                  <Button size="small" onClick={() => setPanelOpen(true)}>
+                    Reviewer panel
+                  </Button>
+                }
+              />
+            </div>
+          )}
 
           {/* Validation queue */}
           <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
@@ -430,8 +551,43 @@ const ValidationDetailPage = () => {
               <TabButtons
                 options={STATUS_FILTERS}
                 value={statusFilter}
-                onChange={(value) => setQuery({ status: value, page: 1 })}
+                onChange={(value) =>
+                  // Picking a tab clears the agreement filter: leaving it on
+                  // would silently intersect two filters while only one of
+                  // them looks active.
+                  setQuery({ status: value, agreement: null, page: 1 })
+                }
               />
+              <div className="flex items-center gap-4">
+                <Checkbox
+                  checked={nonDisputedOnly}
+                  onChange={(e) =>
+                    // Sets the Ready tab too, so what the admin sees is
+                    // exactly what "Validate all N" will write (D-3).
+                    setQuery(
+                      e.target.checked
+                        ? {
+                            agreement: AGREEMENT.undisputed,
+                            status: "ready",
+                            page: 1,
+                          }
+                        : { agreement: null, page: 1 },
+                    )
+                  }
+                >
+                  Non-disputed only
+                </Checkbox>
+                {nonDisputedOnly && (
+                  <Button
+                    type="primary"
+                    disabled={!queue.total}
+                    loading={bulkRunning}
+                    onClick={runBulkValidation}
+                  >
+                    Validate all {queue.total} non-disputed
+                  </Button>
+                )}
+              </div>
             </div>
             {error && (
               <Alert
@@ -473,6 +629,15 @@ const ValidationDetailPage = () => {
           <FeedbackSection />
         </div>
       </div>
+
+      <ReviewerPanelModal
+        open={panelOpen}
+        publicationId={id}
+        onClose={() => setPanelOpen(false)}
+        // Adding a reviewer changes reviewers_required, which moves rows
+        // between Ready and Awaiting — refetch so the queue is not stale.
+        onChanged={fetchData}
+      />
 
       <PublishModal
         open={publishOpen}

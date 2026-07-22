@@ -6,6 +6,9 @@ import { Alert, Avatar, Button, Input, Tag } from "antd";
 import { HomeOutlined, WarningFilled } from "@ant-design/icons";
 import { Can, FeedbackSection } from "@/components";
 import { api } from "@/lib";
+// From @/lib/helper, not @/lib: matches how the weather charts import their
+// period helpers, and keeps this out of the barrel that page tests stub.
+import { periodRange } from "@/lib/helper";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import {
   DROUGHT_CATEGORY_CODE,
@@ -14,7 +17,7 @@ import {
   TWG_OPTIONS,
 } from "@/static/config";
 import dayjs from "dayjs";
-import DecisionHistory from "./DecisionHistory";
+import { DecisionHistory } from "@/components/Validation";
 
 const { TextArea } = Input;
 
@@ -214,7 +217,7 @@ const ValidationDecisionPage = () => {
   // crosses a page boundary.
   const queueQuery = (() => {
     const params = new URLSearchParams();
-    ["status", "search"].forEach((key) => {
+    ["status", "search", "agreement"].forEach((key) => {
       const value = searchParams.get(key);
       if (value) params.set(key, value);
     });
@@ -422,10 +425,11 @@ const ValidationDecisionPage = () => {
 
                 <div className="flex items-center gap-2 text-sm text-[#606060]">
                   <span>Period:</span>
+                  {/* Full span per the design, not a bare "February 2000":
+                      a validation covers the whole calendar month and the
+                      end day is derived, so a leap February reads 29. */}
                   <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
-                    {meta?.year_month
-                      ? dayjs(meta.year_month, "YYYY-MM").format("MMMM YYYY")
-                      : "—"}
+                    {periodRange(meta?.year_month) || "—"}
                   </span>
                 </div>
               </div>
