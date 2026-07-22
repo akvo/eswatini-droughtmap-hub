@@ -5,7 +5,7 @@
 **Reference implementation**: `frontend/src/app/(auth)/validations/page.js` (the design is already realised there)
 **Figma**: [4159-207961 "CDI publication"](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=4159-207961&m=dev) · local ref: [assets/cdi-publication-4159-207961.png](assets/cdi-publication-4159-207961.png)
 **Date**: 2026-07-21
-**Status**: Draft
+**Status**: Implemented
 
 ---
 
