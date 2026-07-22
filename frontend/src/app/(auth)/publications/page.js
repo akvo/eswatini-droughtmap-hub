@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, Select, Table, Tag } from "antd";
-import { CalendarOutlined, FileOutlined } from "@ant-design/icons";
-import { Can, FeedbackSection, TabButtons } from "@/components";
+import { FileOutlined } from "@ant-design/icons";
+import { Can, FeedbackSection, PageHeader, TabButtons } from "@/components";
 import {
   MAP_CATEGORY_OPTIONS,
   PAGE_SIZE,
@@ -217,34 +217,11 @@ const PublicationsPage = () => {
 
   return (
     <div className="w-full h-auto">
-      {/* Full-width header with fainted background pattern */}
-      <div className="relative left-1/2 w-screen -translate-x-1/2 -mt-3 bg-white pb-24 pt-16">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
-        />
-        <div className="relative mx-auto w-full max-w-[1280px] flex flex-col gap-6 px-4">
-          {headerDate && (
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 text-sm leading-[21px] text-[#606060]">
-                <CalendarOutlined />
-                Last updated
-              </span>
-              <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-sm leading-[21px] text-[#333333]">
-                {headerDate}
-              </span>
-            </div>
-          )}
-          <div className="flex flex-col gap-3">
-            <h1 className="text-[34px] font-bold leading-10 text-[#333333]">
-              CDI publication
-            </h1>
-            <p className="text-base leading-6 text-[#606060]">
-              Manage and track CDI map publications.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="CDI publication"
+        description="Manage and track CDI map publications."
+        date={headerDate}
+      />
 
       <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
         <div
