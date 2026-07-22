@@ -383,6 +383,19 @@ describe("Validation decision page", () => {
     ).toBeInTheDocument();
   });
 
+  it("labels the consensus band from the server, not a local threshold", async () => {
+    render(<ValidationDecisionPage />);
+    await loaded();
+    expect(screen.getByText("High consensus")).toBeInTheDocument();
+  });
+
+  it("shows no band label when nothing has been submitted", async () => {
+    respond(PAYLOAD({ consensus: null, agreement: null }));
+    render(<ValidationDecisionPage />);
+    await loaded();
+    expect(screen.queryByText(/consensus$/i)).not.toBeInTheDocument();
+  });
+
   it("renders the period as the calendar month", async () => {
     render(<ValidationDecisionPage />);
     await waitFor(() =>

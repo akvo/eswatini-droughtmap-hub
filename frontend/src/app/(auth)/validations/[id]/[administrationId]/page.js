@@ -25,18 +25,14 @@ const STATUS_PILL = {
   overridden: { label: "Overridden", color: "#e60000" },
 };
 
+// Labels only. The thresholds live server-side and arrive as
+// `agreement.band` — banding here too would be the same rule implemented
+// twice, which is exactly how the queue and this page would drift apart.
 const CONSENSUS_BAND = {
   high: { label: "High consensus", color: "#12b76a" },
   moderate: { label: "Moderate consensus", color: "#f39c12" },
   low: { label: "Low consensus", color: "#e60000" },
   none: { label: "No consensus", color: "#667085" },
-};
-
-const getConsensusBand = (pct) => {
-  if (pct >= 80) return "high";
-  if (pct >= 60) return "moderate";
-  if (pct >= 40) return "low";
-  return "none";
 };
 
 // Labels come from config.js, which is generated from the backend enum and
@@ -124,18 +120,13 @@ const ReviewerRow = ({ review }) => {
   );
 };
 
-const LEGEND_DOT_COLOR = {
-  0: "#3E5EB9",
-  1: "#12b76a",
-  2: "#fbd47f",
-  3: "#ffaa00",
-  4: "#e60000",
-  5: "#730000",
-};
-
+// Dots key the bar segments above them, so both read DROUGHT_CATEGORY_COLOR.
+// A separate ramp here had 0 as indigo and 1 as green, which made the legend
+// disagree with the very bar it explains.
 const LEGEND_ITEMS = [0, 1, 2, 3, 4, 5].map((cat) => ({
   cat,
   label: DROUGHT_CATEGORY_LABEL[cat],
+  color: DROUGHT_CATEGORY_COLOR[cat],
 }));
 
 /**
@@ -190,7 +181,7 @@ const AgreementBar = ({ agreement, majorityCategory }) => {
             <div key={item.cat} className="flex items-center gap-1.5 text-sm">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: LEGEND_DOT_COLOR[item.cat] }}
+                style={{ backgroundColor: item.color }}
               />
               <span className="text-[#606060]">{item.label}</span>
             </div>
@@ -402,6 +393,14 @@ const ValidationDecisionPage = () => {
                         ? "—"
                         : `${decision.consensus}%`}
                     </span>
+                    {agreement?.band && CONSENSUS_BAND[agreement.band] && (
+                      <span
+                        className="ml-2 font-medium"
+                        style={{ color: CONSENSUS_BAND[agreement.band].color }}
+                      >
+                        {CONSENSUS_BAND[agreement.band].label}
+                      </span>
+                    )}
                   </div>
                 </div>
 
