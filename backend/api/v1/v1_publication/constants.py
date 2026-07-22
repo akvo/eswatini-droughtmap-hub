@@ -120,6 +120,44 @@ CONSENSUS_MAX_DEV = DROUGHT_SCALE_SPAN / 2
 # "high disagreement" on the summary cards — exactly 3 does not qualify.
 DISAGREEMENT_THRESHOLD = 3
 
+# Agreement is a statement about two or more people. Below this, an Inkhundla
+# has no consensus score and belongs to neither agreement filter: one reviewer
+# has not agreed with anyone, and calling that 100% would let a whole
+# publication be bulk-validated on a single person's word (D-1, D-9).
+MIN_SUBMISSIONS_FOR_AGREEMENT = 2
+
+# Distinct Technical Working Groups a new publication's reviewer panel must
+# span. Two reviewers from the same TWG still leave `reviewers_required` at 1,
+# so every Inkhundla would reach "ready" on one institution's response — the
+# floor is on TWGs, not headcount, because that is the unit the workflow
+# counts in (D-10).
+MIN_TWGS_PER_PUBLICATION = 2
+
+
+class AgreementFilter:
+    """Cross-cutting filter over how far apart the reviewers are.
+
+    Deliberately NOT a partition, and deliberately not complements of each
+    other: `disagreement` matches the "High disagreement" summary card
+    (> DISAGREEMENT_THRESHOLD distinct classes) so clicking the card cannot
+    show a different number than the card claims. Rows with 2..3 distinct
+    classes are in neither — mild disagreement, still a human's job (D-2).
+    """
+
+    undisputed = "undisputed"
+    disagreement = "disagreement"
+
+    FieldStr = {
+        undisputed: "Non-disputed only",
+        disagreement: "High disagreement",
+    }
+
+
+# Bulk-validated decisions get generated reasoning rather than a null, so a
+# history entry never reads as an omission. Fixed prefix so an audit can find
+# every one of them with a single LIKE (D-8).
+BULK_REASONING_PREFIX = "Bulk-validated:"
+
 
 class CDIGeonodeCategory:
     cdi = "cdi-raster-map"

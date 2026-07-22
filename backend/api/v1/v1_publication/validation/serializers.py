@@ -1,6 +1,10 @@
 from rest_framework import serializers
 
-from api.v1.v1_publication.constants import ValidationStatus, is_validated
+from api.v1.v1_publication.constants import (
+    AgreementFilter,
+    ValidationStatus,
+    is_validated,
+)
 from api.v1.v1_publication.validation.decision import majority_of
 from api.v1.v1_publication.validation.utils import reviewers_required
 
@@ -51,6 +55,11 @@ class ValidationQueueFilterSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    agreement = serializers.ChoiceField(
+        choices=list(AgreementFilter.FieldStr.keys()),
+        required=False,
+        allow_null=True,
+    )
 
     def filters(self):
         """Cleaned kwargs for utils.ordered_rows (drop empty values)."""
@@ -58,7 +67,21 @@ class ValidationQueueFilterSerializer(serializers.Serializer):
         return {
             "search": data.get("search") or None,
             "status": data.get("status") or None,
+            "agreement": data.get("agreement") or None,
         }
+
+
+class ValidationBulkSerializer(serializers.Serializer):
+    """Body of the bulk-validate request.
+
+    `search` only, on purpose. `status` and `agreement` are fixed server-side
+    so a hand-edited request cannot validate rows the admin never saw, and no
+    Administration ids are accepted at all (D-3, TC-3).
+    """
+
+    search = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
 
 
 class ValidationDecisionFilterSerializer(serializers.Serializer):
@@ -75,6 +98,11 @@ class ValidationDecisionFilterSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    agreement = serializers.ChoiceField(
+        choices=list(AgreementFilter.FieldStr.keys()),
+        required=False,
+        allow_null=True,
+    )
     page_size = serializers.IntegerField(required=False, min_value=1)
 
     def filters(self):
@@ -82,6 +110,7 @@ class ValidationDecisionFilterSerializer(serializers.Serializer):
         return {
             "search": data.get("search") or None,
             "status": data.get("status") or None,
+            "agreement": data.get("agreement") or None,
             "page_size": data.get("page_size") or None,
         }
 

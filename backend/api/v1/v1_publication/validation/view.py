@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import Http404
 
-from api.v1.v1_publication.constants import ValidationStatus
+from api.v1.v1_publication.constants import AgreementFilter, ValidationStatus
 from api.v1.v1_publication.models import Publication
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_publication.validation.decision import (
@@ -33,6 +33,7 @@ from api.v1.v1_publication.validation.decision import (
     build_history,
     build_meta,
     build_reviews,
+    bulk_validate,
     has_submitted,
     majority_of,
     mask_reviews,
@@ -40,6 +41,7 @@ from api.v1.v1_publication.validation.decision import (
     save_decision,
 )
 from api.v1.v1_publication.validation.serializers import (
+    ValidationBulkSerializer,
     ValidationDecisionFilterSerializer,
     ValidationDecisionWriteSerializer,
     ValidationMetaSerializer,
@@ -67,6 +69,13 @@ _FILTER_PARAMS = [
         name="status",
         required=False,
         enum=list(ValidationStatus.FieldStr.keys()),
+        type=OpenApiTypes.STR,
+        location=OpenApiParameter.QUERY,
+    ),
+    OpenApiParameter(
+        name="agreement",
+        required=False,
+        enum=list(AgreementFilter.FieldStr.keys()),
         type=OpenApiTypes.STR,
         location=OpenApiParameter.QUERY,
     ),
@@ -139,6 +148,47 @@ class ValidationAdministrationsAPI(APIView):
         paginator = Pagination()
         page = paginator.paginate_queryset(rows, request)
         return paginator.get_paginated_response(page)
+
+
+class ValidationBulkAPI(APIView):
+    """Validate every ready + undisputed Inkhundla in one go.
+
+    Deliberately takes no list of ids and no status: the server re-derives the
+    set so the write can never exceed what the filter showed (D-3, TC-3).
+    """
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        operation_id="validation_bulk_validate",
+        summary="Bulk-validate the non-disputed, fully reviewed Tinkhundla",
+        tags=["Validation"],
+        request=ValidationBulkSerializer,
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+        },
+    )
+    def post(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        serializer = ValidationBulkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = bulk_validate(
+            publication,
+            request.user,
+            search=serializer.validated_data.get("search") or None,
+        )
+        message = f"{result['validated']} Tinkhundla validated."
+        if result["skipped_drafts"]:
+            message += (
+                f" {result['skipped_drafts']} skipped — "
+                "they have unsaved drafts."
+            )
+        return Response(
+            {**result, "message": message}, status=status.HTTP_200_OK
+        )
 
 
 def _row_or_404(publication, administration_id):

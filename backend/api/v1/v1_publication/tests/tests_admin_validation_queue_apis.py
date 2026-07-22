@@ -33,7 +33,7 @@ class ConsensusTestCase(APITestCase):
             (1, 1, 1, 1, 5): 68,     # single outlier against four agreeing
             (5, 2, 1, 4): 40,        # genuinely scattered
             (0, 0, 5, 5): 0,         # maximally split — the exact floor
-            (3,): 100,               # a single submission is unanimous
+            (3, 3): 100,             # two reviewers, agreeing
         }
         for categories, expected in cases.items():
             self.assertEqual(
@@ -43,6 +43,15 @@ class ConsensusTestCase(APITestCase):
     def test_no_submissions_is_none_not_zero(self):
         self.assertIsNone(consensus([]))
 
+    def test_one_submission_is_none_not_unanimous(self):
+        """D-9: 100% is a claim about agreement between people.
+
+        This used to return 100, which made a publication assigned a single
+        reviewer report full agreement on every Inkhundla — and made any row
+        still waiting on four other TWGs look settled.
+        """
+        self.assertIsNone(consensus([3]))
+
     def test_never_leaves_bounds(self):
         """Exhaustive over every multiset of D-classes up to 5 submissions."""
         from itertools import combinations_with_replacement
@@ -51,6 +60,9 @@ class ConsensusTestCase(APITestCase):
         for size in range(1, 6):
             for combo in combinations_with_replacement(scale, size):
                 value = consensus(list(combo))
+                if value is None:      # below two submissions — see D-9
+                    self.assertLess(len(combo), 2, msg=str(combo))
+                    continue
                 self.assertGreaterEqual(value, 0, msg=str(combo))
                 self.assertLessEqual(value, 100, msg=str(combo))
 

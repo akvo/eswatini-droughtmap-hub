@@ -23,6 +23,7 @@ from utils.custom_serializer_fields import (
 from api.v1.v1_users.serializers import UserReviewerSerializer
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from api.v1.v1_publication.constants import (
+    MIN_TWGS_PER_PUBLICATION,
     DroughtCategory,
     ExportMapTypes,
     CDIGeonodeCategory,
@@ -481,6 +482,23 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
         if len(value) == 0:
             raise serializers.ValidationError(
                 "Please select at least one reviewer."
+            )
+        # The floor is on TWGs, not headcount. `reviewers_required` counts
+        # distinct Technical Working Groups, so three reviewers who all sit in
+        # MoAg still leave it at 1 — every Inkhundla would reach "ready" on one
+        # institution's response, and consensus would be a single opinion.
+        # Creation is the only place this can be prevented rather than merely
+        # detected afterwards (D-10).
+        twgs = {
+            user.technical_working_group
+            for user in value
+            if user.technical_working_group is not None
+        }
+        if len(twgs) < MIN_TWGS_PER_PUBLICATION:
+            raise serializers.ValidationError(
+                "Please select reviewers from at least "
+                f"{MIN_TWGS_PER_PUBLICATION} different Technical Working "
+                "Groups."
             )
         return value
 

@@ -17,6 +17,8 @@ from statistics import median
 from api.v1.v1_publication.constants import (
     CONSENSUS_MAX_DEV,
     DISAGREEMENT_THRESHOLD,
+    MIN_SUBMISSIONS_FOR_AGREEMENT,
+    AgreementFilter,
     ValidationStatus,
     is_validated,
 )
@@ -45,10 +47,13 @@ def consensus(categories):
     ``[1, 1, 1, 1, 5]`` is 68, not the 20 a range-based measure would give
     four agreeing reviewers.
 
-    ``None`` when nothing usable was submitted — the bar renders empty rather
-    than fabricating 0%.
+    ``None`` below two submissions — the bar renders empty rather than
+    fabricating a number. 100% is a claim about agreement *between people*,
+    and one reviewer has not agreed with anyone; reporting it made a
+    single-reviewer publication look unanimously reviewed, and made any row
+    still awaiting its other TWGs look settled (D-9).
     """
-    if not categories:
+    if len(categories) < MIN_SUBMISSIONS_FOR_AGREEMENT:
         return None
     mid = median(categories)
     dev = sum(abs(c - mid) for c in categories) / len(categories)
@@ -130,19 +135,45 @@ def build_validation_rows(publication):
     return rows
 
 
-def filter_validation_rows(rows, search=None, status=None):
-    """Search by Administration name, filter by row status."""
+def agreement_of(spread):
+    """Which agreement bucket a row's D-class spread falls in, if any.
+
+    Three outcomes, not two. `undisputed` needs two or more submissions that
+    all match — one reviewer cannot be unanimous (D-1). `disagreement` uses
+    the same threshold as the summary card so clicking the card cannot show a
+    number the card disagrees with (D-2). Everything between, and every row
+    with nothing usable submitted, is `None`: real states, not gaps.
+    """
+    distinct = len(set(spread))
+    if (
+        len(spread) >= MIN_SUBMISSIONS_FOR_AGREEMENT
+        and distinct == 1
+    ):
+        return AgreementFilter.undisputed
+    if distinct > DISAGREEMENT_THRESHOLD:
+        return AgreementFilter.disagreement
+    return None
+
+
+def filter_validation_rows(rows, search=None, status=None, agreement=None):
+    """Search by Administration name, filter by row status and agreement.
+
+    `agreement` cross-cuts `status` rather than partitioning with it, so the
+    three combine with AND and the status counts stay a partition (D-6).
+    """
     def keep(row):
         if search and search.lower() not in (row["label"] or "").lower():
             return False
         if status and row["status"] != status:
+            return False
+        if agreement and agreement_of(row["dclass_spread"]) != agreement:
             return False
         return True
 
     return [row for row in rows if keep(row)]
 
 
-def ordered_rows(publication, search=None, status=None):
+def ordered_rows(publication, search=None, status=None, agreement=None):
     """THE queue: build, filter, order by Administration name.
 
     Single owner of "what the queue is, and in what order". The paginated
@@ -152,7 +183,10 @@ def ordered_rows(publication, search=None, status=None):
     is actually two diverging queries (D-7).
     """
     rows = filter_validation_rows(
-        build_validation_rows(publication), search=search, status=status
+        build_validation_rows(publication),
+        search=search,
+        status=status,
+        agreement=agreement,
     )
     return sorted(rows, key=lambda r: (r["label"] or "").lower())
 
@@ -168,9 +202,9 @@ def build_validation_stats(rows):
     disagreement = 0
     for row in rows:
         counts[row["status"]] += 1
-        # Derived from the serialized spread rather than a private field, so
-        # nothing internal has to survive as far as the response.
-        if len(set(row["dclass_spread"])) > DISAGREEMENT_THRESHOLD:
+        # Same predicate the ?agreement= filter uses, not a second copy of the
+        # threshold: clicking this card must land on exactly these rows (D-2).
+        if agreement_of(row["dclass_spread"]) == AgreementFilter.disagreement:
             disagreement += 1
 
     def card(key, meta):
@@ -187,8 +221,8 @@ def build_validation_stats(rows):
             "Reviewed by every Technical Working Group",
         ),
         {
-            "key": "disagreement",
-            "label": "High disagreement",
+            "key": AgreementFilter.disagreement,
+            "label": AgreementFilter.FieldStr[AgreementFilter.disagreement],
             "value": disagreement,
             "meta": (
                 f"More than {DISAGREEMENT_THRESHOLD} distinct D-classes"

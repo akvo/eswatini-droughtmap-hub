@@ -19,8 +19,15 @@ from collections import Counter
 from django.db import transaction
 from django.utils import timezone
 
-from api.v1.v1_publication.constants import ConsensusBand, is_validated
-from api.v1.v1_publication.models import ValidationDecision
+from api.v1.v1_publication.constants import (
+    BULK_REASONING_PREFIX,
+    AgreementFilter,
+    ConsensusBand,
+    DroughtCategory,
+    ValidationStatus,
+    is_validated,
+)
+from api.v1.v1_publication.models import Administration, ValidationDecision
 from api.v1.v1_publication.review.utils import initials
 from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_publication.validation.utils import (
@@ -157,7 +164,7 @@ def mask_reviews(reviews, user_id):
 
 
 def neighbours(publication, administration_id, search=None, status=None,
-               page_size=None):
+               agreement=None, page_size=None):
     """Prev/next ids and the queue page holding this Inkhundla.
 
     Computed over the whole filtered set **ignoring pagination**, so Next
@@ -169,7 +176,9 @@ def neighbours(publication, administration_id, search=None, status=None,
     `?status=ready` stops matching it and Prev/Next would otherwise dead-end
     on the next reload.
     """
-    rows = ordered_rows(publication, search=search, status=status)
+    rows = ordered_rows(
+        publication, search=search, status=status, agreement=agreement
+    )
     if all(r["administration_id"] != administration_id for r in rows):
         current = next(
             (
@@ -259,6 +268,79 @@ def save_decision(publication, administration, user, data, majority, is_tie):
             publication, administration.id, decision.category
         )
     return decision
+
+
+def bulk_reasoning(spread):
+    """Generated rationale for a bulk-validated row.
+
+    Bulk asks the admin for nothing, so leaving `reasoning` null would make
+    every bulk row read as an omission in Decision history months later. The
+    fixed prefix is what an audit greps for (D-8).
+    """
+    return (
+        f"{BULK_REASONING_PREFIX} all {len(spread)} reviewers agreed on "
+        f"{DroughtCategory.FieldStr.get(spread[0], spread[0])}."
+    )
+
+
+@transaction.atomic
+def bulk_validate(publication, user, search=None):
+    """Validate every ready + undisputed Inkhundla in one transaction.
+
+    The target set is re-derived here rather than accepted from the client, so
+    a reviewer submitting a dissenting class between render and click drops
+    that row from the write instead of corrupting it (TC-3). `status` is
+    forced to `ready` whatever the caller asked for: a hand-edited query
+    string must not be able to widen a write the admin never saw (D-3).
+
+    Rows that already carry a decision are skipped, not overwritten. A ready
+    row can never be *validated* already — `row_status` gives validated
+    precedence — but it can hold a **draft**, and silently discarding an
+    admin's part-written reasoning is invisible data loss (D-5).
+    """
+    rows = ordered_rows(
+        publication,
+        search=search,
+        status=ValidationStatus.ready,
+        agreement=AgreementFilter.undisputed,
+    )
+    decided = set(
+        ValidationDecision.objects
+        .filter(publication=publication)
+        .values_list("administration_id", flat=True)
+    )
+    targets = [r for r in rows if r["administration_id"] not in decided]
+
+    administrations = {
+        a.id: a
+        for a in Administration.objects.filter(
+            id__in=[r["administration_id"] for r in targets]
+        )
+    }
+    for row in targets:
+        spread = row["dclass_spread"]
+        category = spread[0]
+        # ponytail: one JSON rewrite per row via sync_validated_values — fine
+        # at 59 Tinkhundla, batch into a single sync if that count ever grows.
+        save_decision(
+            publication,
+            administrations[row["administration_id"]],
+            user,
+            {
+                "category": category,
+                "reasoning": bulk_reasoning(spread),
+                "is_draft": False,
+            },
+            # Unanimous, so the majority IS the category and `is_override`
+            # computes to False. Passed explicitly rather than recomputed so
+            # this reads as the same contract the decision PUT satisfies.
+            majority=category,
+            is_tie=False,
+        )
+    return {
+        "validated": len(targets),
+        "skipped_drafts": len(rows) - len(targets),
+    }
 
 
 def build_decision_payload(publication, row, reviews, masked):
