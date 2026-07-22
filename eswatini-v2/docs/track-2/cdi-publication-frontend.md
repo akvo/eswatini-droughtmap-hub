@@ -155,6 +155,17 @@ Response shape today (kept):
 
 ---
 
+### D-6: "Open in GeoNode" link — hidden, not deleted
+
+**Decision**: wrap the "Open in Geonode" button in the ACTIONS cell with a boolean constant `SHOW_GEONODE_LINK = false` at the top of `page.js`. The button is **not removed from code**; flipping the constant to `true` restores it without hunting through JSX.
+
+**Rationale**: Figma shows one ACTIONS link per row, but product hasn't explicitly signed off on removing the GeoNode link permanently. The constant makes the toggle zero-cost while keeping the UI clean for now.
+
+**Rejected**: deleting the GeoNode link entirely — premature without product confirmation.
+
+---
+
+
 ## 6. Component Design
 
 ```
@@ -235,6 +246,7 @@ Behaviour matches the current page; only the tab control replaces the status Sel
 | 1 | Preview file size (Figma "200 KB") | **Use the GeoNode payload's size if present, otherwise omit the line** — pass-through, no backend dependency (§4 note) |
 | 2 | `Awaiting N reviews` count | **No count** — render the plain `Awaiting review` label (D-4) |
 | 3 | Child routes (`create` / `[id]`) into `(auth)` | **Moved** — already relocated with the list into `(auth)/publications/` (D-1) |
+| 4 | "Open in Geonode" in ACTIONS column | **Hidden via `SHOW_GEONODE_LINK = false` constant** — not deleted, awaits product clarity (D-6) |
 
 No open questions remain.
 
