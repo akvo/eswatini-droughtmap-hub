@@ -162,6 +162,7 @@ const PublicationsPage = () => {
   const fetchData = useCallback(async () => {
     try {
       if (preload) {
+        setLoading(true);
         setPreload(false);
         const sort_order =
           sortOrder === "descend"
