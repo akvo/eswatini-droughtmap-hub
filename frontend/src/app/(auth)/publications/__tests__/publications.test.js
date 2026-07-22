@@ -217,17 +217,20 @@ describe("PublicationsPage", () => {
       .closest(".ant-tag");
     expect(notStartedTag).toHaveStyle("background-color: rgb(102, 112, 133)"); // #667085 equivalent
 
-    const awaitingTag = screen.getAllByText("Awaiting review")
+    const awaitingTag = screen
+      .getAllByText("Awaiting review")
       .find((el) => el.closest(".ant-tag"))
       .closest(".ant-tag");
     expect(awaitingTag).toHaveStyle("background-color: rgb(243, 156, 18)"); // #f39c12 equivalent
 
-    const readyTag = screen.getAllByText("Ready")
+    const readyTag = screen
+      .getAllByText("Ready")
       .find((el) => el.closest(".ant-tag"))
       .closest(".ant-tag");
     expect(readyTag).toHaveStyle("background-color: rgb(255, 205, 55)"); // #ffcd37 equivalent
 
-    const validatedTag = screen.getAllByText("Validated")
+    const validatedTag = screen
+      .getAllByText("Validated")
       .find((el) => el.closest(".ant-tag"))
       .closest(".ant-tag");
     expect(validatedTag).toHaveStyle("background-color: rgb(18, 183, 106)"); // #12b76a equivalent
@@ -308,5 +311,79 @@ describe("PublicationsPage", () => {
     fireEvent.click(previewLink);
 
     expect(screen.getByText("No preview available")).toBeInTheDocument();
+  });
+
+  it("truncates very long titles in the preview column", async () => {
+    const longTitle = "a".repeat(110);
+    const dataWithLongTitle = {
+      ...mockData,
+      data: [
+        {
+          ...mockData.data[0],
+          title: longTitle,
+        },
+      ],
+    };
+    api.mockResolvedValue(dataWithLongTitle);
+
+    render(<PublicationsPage />);
+
+    await waitFor(() => {
+      const truncatedTitle = `${"a".repeat(75)}.....`;
+      expect(screen.getByText(truncatedTitle)).toBeInTheDocument();
+    });
+  });
+
+  it("handles category selection change", async () => {
+    render(<PublicationsPage />);
+
+    await waitFor(() => expect(api).toHaveBeenCalledTimes(1));
+
+    const categorySelect = screen.getByTestId("mock-select");
+    fireEvent.change(categorySelect, { target: { value: "spi-raster-map" } });
+
+    await waitFor(() => {
+      expect(api).toHaveBeenLastCalledWith(
+        "GET",
+        expect.stringContaining("category=spi-raster-map"),
+      );
+    });
+  });
+
+  it("handles table sorting change", async () => {
+    const { container } = render(<PublicationsPage />);
+
+    await waitFor(() => expect(api).toHaveBeenCalledTimes(1));
+
+    // Simulate table onChange triggering sorting on PUBLICATION DATE (year_month)
+    const table = container.querySelector(".ant-table-wrapper");
+    // Find column header for year_month and click or trigger onChange callback manually
+    // Since columns have sorter: true, we can trigger handleTableChange callback via AntD Table's onChange
+    // The columns are: CREATED AT, PREVIEW, PUBLICATION DATE, STATUS, ACTIONS.
+    // Let's trigger sorting via the header sort trigger
+    const sorterHeader = screen.getByText("PUBLICATION DATE");
+    fireEvent.click(sorterHeader);
+
+    await waitFor(() => {
+      expect(api).toHaveBeenLastCalledWith(
+        "GET",
+        expect.stringContaining("sort=year_month"),
+      );
+    });
+  });
+
+  it("gracefully handles API fetch errors", async () => {
+    const consoleErrorMock = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    api.mockRejectedValue(new Error("API Failure"));
+
+    render(<PublicationsPage />);
+
+    await waitFor(() => {
+      expect(api).toHaveBeenCalled();
+      expect(consoleErrorMock).toHaveBeenCalled();
+    });
+    consoleErrorMock.mockRestore();
   });
 });
