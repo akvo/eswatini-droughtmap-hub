@@ -23,13 +23,9 @@ import {
   LeftOutlined,
 } from "@ant-design/icons";
 import { Can, FeedbackSection, TabButtons } from "@/components";
-import { MetricCard } from "@/components/DS";
+import { DroughtScore, MetricCard } from "@/components/DS";
 import { api } from "@/lib";
-import {
-  PAGE_SIZE,
-  DROUGHT_CATEGORY_CODE,
-  PUBLICATION_STATUS,
-} from "@/static/config";
+import { PAGE_SIZE, PUBLICATION_STATUS } from "@/static/config";
 import dayjs from "dayjs";
 import PublishModal from "./PublishModal";
 
@@ -89,32 +85,15 @@ const ReviewerAvatars = ({ reviewers = [] }) => (
   </div>
 );
 
-const VALIDATION_DCLASS_COLOR = {
-  0: "#CAF3DB", // Normal — Success-100
-  1: "#CAF3DB", // D0 — Success-100
-  2: "#FBEFBF", // D1 — Primary-100
-  3: "#F7D4B5", // D2 — Accent-100 (close to D3 design)
-  4: "#F7D4B5", // D3 — Accent-100
-  5: "#F7C3BE", // D4 — Error-100
-};
-
-const DClassBadge = ({ level }) => {
-  const bg = VALIDATION_DCLASS_COLOR[level] ?? "#f3f4f6";
-  const code = DROUGHT_CATEGORY_CODE?.[level] ?? "—";
-  return (
-    <span
-      className="inline-flex items-center justify-center rounded font-semibold h-[22px] min-w-[40px] px-1.5 text-xs"
-      style={{ backgroundColor: bg, color: "#20232D" }}
-    >
-      {code}
-    </span>
-  );
-};
-
+/**
+ * The D-classes the reviewers submitted. Hue and copy come from
+ * DROUGHT_CATEGORY_* in config.js via DroughtScore, so these chips can never
+ * disagree with the map, the legend or the decision page.
+ */
 const DClassSpread = ({ levels = [] }) => (
   <div className="flex items-center gap-1">
     {levels.map((level, i) => (
-      <DClassBadge key={i} level={level} />
+      <DroughtScore key={i} level={level} size="sm" />
     ))}
   </div>
 );
@@ -308,7 +287,7 @@ const ValidationDetailPage = () => {
             record.validated_category !== undefined && (
               <Tooltip title="Final validated D-class">
                 <span>
-                  <DClassBadge level={record.validated_category} />
+                  <DroughtScore level={record.validated_category} size="sm" />
                 </span>
               </Tooltip>
             )}

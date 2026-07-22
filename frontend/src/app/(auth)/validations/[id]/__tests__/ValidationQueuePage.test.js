@@ -33,6 +33,11 @@ jest.mock("@/components/DS", () => ({
       {label}: {value}
     </div>
   ),
+  // The real chip reads DROUGHT_CATEGORY_CODE; stub the code so the D-class
+  // assertions stay about the page, not about the design-system component.
+  DroughtScore: ({ level }) => (
+    <span>{["Normal", "D0", "D1", "D2", "D3", "D4"][level]}</span>
+  ),
 }));
 
 const replace = jest.fn();
@@ -207,13 +212,18 @@ describe("Validation queue page", () => {
     ]);
     render(<ValidationDetailPage />);
 
-    await waitFor(() => expect(urlsRequested()).toHaveLength(1));
-    await waitFor(() =>
-      expect(screen.getByText("Validated")).toBeInTheDocument(),
-    );
-    // D2 is DROUGHT_CATEGORY_CODE[3]; it appears once for the spread and once
-    // as the final class.
-    expect(screen.getAllByText("D2")).toHaveLength(2);
+    // Assert the thing itself inside waitFor. Gating on a different element
+    // and then asserting bare is what made this flake under parallel load.
+    // D2 is DROUGHT_CATEGORY_CODE[3] — once for the spread, once as the
+    // final class.
+    await waitFor(() => expect(screen.getAllByText("D2")).toHaveLength(2));
+    // "Validated" is also a status-filter tab, so match the row's tag only.
+    // The tab renders after /stats resolves, which is what made an ambiguous
+    // getByText here look like a load flake rather than a bad query.
+    const tags = screen
+      .getAllByText("Validated")
+      .filter((el) => el.tagName !== "BUTTON");
+    expect(tags).toHaveLength(1);
   });
 
   it("shows no final D-class while a row is still awaiting", async () => {
