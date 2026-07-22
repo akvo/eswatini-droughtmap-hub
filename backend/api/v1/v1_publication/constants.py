@@ -92,11 +92,13 @@ class ExportMapTypes:
 
 class FilterStatus:
     all = "all"
+    not_yet_started = "not_yet_started"
     pending = "pending"
     completed = "completed"
 
     FieldStr = {
         all: "All",
+        not_yet_started: "Not yet started",
         pending: "Pending",
         completed: "Completed",
     }
