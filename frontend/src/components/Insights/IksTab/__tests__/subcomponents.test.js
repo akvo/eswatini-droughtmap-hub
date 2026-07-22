@@ -35,6 +35,23 @@ describe("IksTab Subcomponents", () => {
       expect(screen.getByText("95%")).toBeInTheDocument();
       expect(screen.getByText("Updated monthly")).toBeInTheDocument();
     });
+
+    it("renders locked placeholder when locked is true", () => {
+      render(
+        <KpiMetricCard
+          title="Reporting Consistency"
+          value="95%"
+          subtitle="Updated monthly"
+          locked={true}
+        />,
+      );
+      expect(screen.getByText("🔒")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Sign in as TWG member to see data on report completness and consistency/i,
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("MonthlyStatusGrid", () => {
@@ -113,7 +130,7 @@ describe("IksTab Subcomponents", () => {
           section="B"
         />,
       );
-      const dot = container.querySelector(".rounded-\\[1px\\]");
+      const dot = container.querySelector(".rounded-\\[2px\\]");
       expect(dot).toHaveClass("bg-[#3e5eb9]");
       expect(dot).not.toHaveClass("bg-[#b10d0b]");
     });
@@ -127,7 +144,7 @@ describe("IksTab Subcomponents", () => {
           section="C"
         />,
       );
-      const dot = container.querySelector(".rounded-\\[1px\\]");
+      const dot = container.querySelector(".rounded-\\[2px\\]");
       expect(dot).toHaveClass("bg-[#b10d0b]");
       expect(dot).not.toHaveClass("bg-[#3e5eb9]");
     });

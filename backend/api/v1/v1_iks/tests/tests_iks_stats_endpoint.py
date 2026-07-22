@@ -55,6 +55,8 @@ class IKSStatsEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("zone", response.json())
         self.assertIn("indicator_activity", response.json())
+        self.assertIsNone(response.json()["reporting_consistency_percentage"])
+        self.assertIsNone(response.json()["form_completion_percentage"])
 
     def test_iks_stats_date_filters(self):
         """Test GET /api/v1/iks/{administration_id}/stats date filtering."""
