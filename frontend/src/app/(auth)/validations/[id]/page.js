@@ -297,9 +297,22 @@ const ValidationDetailPage = () => {
       title: "STATUS",
       dataIndex: "status",
       key: "status",
-      width: 160,
+      width: 200,
       render: (value, record) => (
-        <StatusBadge status={value} total={record.awaiting_count} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={value} total={record.awaiting_count} />
+          {/* The final class the admin assigned. The D-CLASS SPREAD column
+              shows what the reviewers submitted; without this the outcome of
+              a validated row is invisible until you open it. */}
+          {record.validated_category !== null &&
+            record.validated_category !== undefined && (
+              <Tooltip title="Final validated D-class">
+                <span>
+                  <DClassBadge level={record.validated_category} />
+                </span>
+              </Tooltip>
+            )}
+        </div>
       ),
     },
     {

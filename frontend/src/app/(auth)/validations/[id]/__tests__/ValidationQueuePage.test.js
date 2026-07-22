@@ -166,9 +166,7 @@ describe("Validation queue page", () => {
     render(<ValidationDetailPage />);
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
-    await waitFor(() =>
-      expect(screen.getByTitle("2")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByTitle("2")).toBeInTheDocument());
   });
 
   it("disables Publish until the server says every Inkhundla is validated", async () => {
@@ -199,6 +197,31 @@ describe("Validation queue page", () => {
         screen.getByRole("button", { name: /publish validated map/i }),
       ).not.toBeDisabled(),
     );
+  });
+
+  it("shows the admin's final D-class beside a validated badge", async () => {
+    // The spread column shows what reviewers submitted; the outcome of a
+    // validated row would otherwise be invisible without opening it.
+    respond([
+      { ...ROW, status: "validated", awaiting_count: 0, validated_category: 3 },
+    ]);
+    render(<ValidationDetailPage />);
+
+    await waitFor(() => expect(urlsRequested()).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getByText("Validated")).toBeInTheDocument(),
+    );
+    // D2 is DROUGHT_CATEGORY_CODE[3]; it appears once for the spread and once
+    // as the final class.
+    expect(screen.getAllByText("D2")).toHaveLength(2);
+  });
+
+  it("shows no final D-class while a row is still awaiting", async () => {
+    respond([{ ...ROW, status: "awaiting", validated_category: null }]);
+    render(<ValidationDetailPage />);
+
+    await waitFor(() => expect(urlsRequested()).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText("D2")).toHaveLength(1));
   });
 
   it("renders an em dash for a null consensus rather than 0%", async () => {
