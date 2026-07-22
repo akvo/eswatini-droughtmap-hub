@@ -11,6 +11,8 @@ from .views import (
     PublicationDateAPI,
     PublicationRasterAPI,
     ComponentRasterPreviewAPI,
+    GeonodePublicationPushAPI,
+    GeonodeRasterPushAPI,
 )
 from .review.view import (
     ReviewStatsAPI,
@@ -62,7 +64,7 @@ urlpatterns = [
     re_path(
         r"^(?P<version>(v1))/admin/cdi-geonode",
         CDIGeonodeAPI.as_view(),
-        name="cdi-geonode"
+        name="cdi-geonode",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/publications",
@@ -114,7 +116,8 @@ urlpatterns = [
     re_path(
         r"^(?P<version>(v1))/publications/(?P<pk>[0-9]+)"
         r"/rasters/(?P<raster_id>[0-9]+)$",
-        PublicationRasterAPI.as_view(), name="publication-raster-detail",
+        PublicationRasterAPI.as_view(),
+        name="publication-raster-detail",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/component-rasters$",
@@ -123,6 +126,17 @@ urlpatterns = [
     ),
     re_path(
         r"^(?P<version>(v1))/publications/(?P<pk>[0-9]+)/rasters$",
-        PublicationRasterAPI.as_view(), name="publication-rasters",
+        PublicationRasterAPI.as_view(),
+        name="publication-rasters",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/geonode/publications$",
+        GeonodePublicationPushAPI.as_view(),
+        name="geonode-publication-push",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/geonode/publications/(?P<pk>[0-9]+)/rasters$",
+        GeonodeRasterPushAPI.as_view(),
+        name="geonode-raster-push",
     ),
 ]

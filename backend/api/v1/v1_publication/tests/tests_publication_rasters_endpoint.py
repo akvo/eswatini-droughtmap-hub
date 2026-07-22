@@ -10,6 +10,7 @@ from api.v1.v1_users.models import SystemUser
 from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_jobs.models import Jobs, JobTypes
+from api.v1.v1_publication.constants import CDIGeonodeCategory
 
 
 @override_settings(
@@ -24,12 +25,16 @@ class PublicationRasterAPITestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 1)
-        self.admin = SystemUser.objects.filter(
-            role=UserRoleTypes.admin
-        ).order_by("?").first()
-        self.reviewer = SystemUser.objects.filter(
-            role=UserRoleTypes.reviewer
-        ).order_by("?").first()
+        self.admin = (
+            SystemUser.objects.filter(role=UserRoleTypes.admin)
+            .order_by("?")
+            .first()
+        )
+        self.reviewer = (
+            SystemUser.objects.filter(role=UserRoleTypes.reviewer)
+            .order_by("?")
+            .first()
+        )
         self.client.force_authenticate(user=self.admin)
 
         self.publication = Publication.objects.create(
@@ -97,7 +102,9 @@ class PublicationRasterAPITestCase(APITestCase):
 
         mock_async_task.assert_called_once()
         args, kwargs = mock_async_task.call_args
-        self.assertEqual(args[0], "api.v1.v1_jobs.job.download_geonode_dataset")
+        self.assertEqual(
+            args[0], "api.v1.v1_jobs.job.download_geonode_dataset"
+        )
         self.assertEqual(args[1], "http://geonode/download/317")
         self.assertEqual(args[2], job.info["filename"])
         self.assertEqual(
@@ -310,4 +317,57 @@ class PublicationRasterAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(PublicationRaster.objects.count(), 0)
         mock_get.assert_not_called()
+        mock_async_task.assert_not_called()
+
+    @patch("api.v1.v1_publication.views.async_task")
+    @patch("api.v1.v1_publication.views.requests.get")
+    def test_attach_raster_falls_back_to_cache(
+        self, mock_get, mock_async_task
+    ):
+        mock_async_task.return_value = "mock-task-id-2"
+        from api.v1.v1_publication.models import PublicationGeonode
+
+        # Seed cache row
+        PublicationGeonode.objects.create(
+            geonode_id=317,
+            category=CDIGeonodeCategory.cdi,
+            title="Cached Title",
+            year_month=date(2026, 4, 1),
+            download_url="https://geonode.com/cached/download/317.tif",
+        )
+
+        # Mock requests to raise Exception (simulating GeoNode down)
+        mock_get.side_effect = Exception("GeoNode down")
+
+        response = self.client.post(
+            self.rasters_url(),
+            {"indicator": "evi2", "geonode_id": 317},
+            format="json",
+        )
+
+        # Should fall back to cache, succeed, create row, and dispatch job
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(PublicationRaster.objects.count(), 1)
+        self.assertEqual(PublicationRaster.objects.first().geonode_id, 317)
+        self.assertTrue(mock_async_task.called)
+
+    @patch("api.v1.v1_publication.views.async_task")
+    @patch("api.v1.v1_publication.views.requests.get")
+    def test_attach_raster_fails_if_no_cache_and_geonode_down(
+        self, mock_get, mock_async_task
+    ):
+        # Mock requests to raise Exception (simulating GeoNode down)
+        mock_get.side_effect = Exception("GeoNode down")
+
+        # Do NOT seed cache
+
+        response = self.client.post(
+            self.rasters_url(),
+            {"indicator": "evi2", "geonode_id": 317},
+            format="json",
+        )
+
+        # Should fail with 400 Bad Request
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(PublicationRaster.objects.count(), 0)
         mock_async_task.assert_not_called()

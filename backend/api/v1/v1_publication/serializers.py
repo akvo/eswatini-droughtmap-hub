@@ -94,8 +94,8 @@ class PublicationSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super(PublicationSerializer, self).__init__(*args, **kwargs)
-        request = self.context.get('request')
-        if request and request.method == 'PUT':
+        request = self.context.get("request")
+        if request and request.method == "PUT":
             for field in self.fields:
                 self.fields[field].required = False
 
@@ -148,7 +148,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             # Check if category is invalid when reviewed is True
             if reviewed:
                 if category is None or (category != 0 and not category):
-                    admin_id = suggestion.get('administration_id')
+                    admin_id = suggestion.get("administration_id")
                     raise serializers.ValidationError(
                         f"Category required when reviewed is True "
                         f"(item #{i+1}, administration_id: {admin_id})"
@@ -174,12 +174,10 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class ReviewListSerializer(serializers.ModelSerializer):
     year_month = serializers.DateField(
-        source="publication.year_month",
-        format="%Y-%m"
+        source="publication.year_month", format="%Y-%m"
     )
     due_date = serializers.DateField(
-        source="publication.due_date",
-        format="%Y-%m-%d"
+        source="publication.due_date", format="%Y-%m-%d"
     )
     progress_review = serializers.SerializerMethodField()
     publication_id = serializers.IntegerField(source="publication.id")
@@ -190,7 +188,7 @@ class ReviewListSerializer(serializers.ModelSerializer):
         # Filter for suggestion values where reviewed is True
         suggestion_values = obj.suggestion_values or []
         reviewed_count = sum(
-            1 for item in suggestion_values if item.get('reviewed') is True
+            1 for item in suggestion_values if item.get("reviewed") is True
         )
         # total = len(list(filter(
         #     lambda x: x["category"] != DroughtCategory.none,
@@ -204,6 +202,7 @@ class ReviewListSerializer(serializers.ModelSerializer):
         if obj.updated_at:
             return obj.updated_at.strftime("%Y-%m-%d")
         return obj.publication.created_at.strftime("%Y-%m-%d")
+
     class Meta:
         model = Review
         fields = [
@@ -236,12 +235,10 @@ class CDIGeonodeFilterSerializer(serializers.Serializer):
     sort = CustomCharField(
         required=False,
         allow_null=True,
-        help_text="Field to sort by: year_month, created, title, status"
+        help_text="Field to sort by: year_month, created, title, status",
     )
     sort_order = CustomCharField(
-        required=False,
-        allow_null=True,
-        help_text="Sort order: asc or desc"
+        required=False, allow_null=True, help_text="Sort order: asc or desc"
     )
 
     class Meta:
@@ -257,12 +254,10 @@ class CDIGeonodeListSerializer(serializers.Serializer):
     download_url = CustomURLField()
     created = CustomDateTimeField()
     year_month = CustomCharField()
-    publication_id = CustomIntegerField(
-        allow_null=True
-    )
-    status = CustomIntegerField(
-        allow_null=True
-    )
+    publication_id = CustomIntegerField(allow_null=True)
+    status = CustomIntegerField(allow_null=True)
+    file_size = CustomIntegerField(allow_null=True, required=False)
+    synced_at = CustomDateTimeField(allow_null=True, required=False)
 
     class Meta:
         fields = [
@@ -276,7 +271,63 @@ class CDIGeonodeListSerializer(serializers.Serializer):
             "year_month",
             "publication_id",
             "status",
+            "file_size",
+            "synced_at",
         ]
+
+
+class PushGeonodePublicationSerializer(serializers.Serializer):
+    geonode_id = serializers.IntegerField(min_value=1)
+    category = serializers.ChoiceField(
+        choices=list(CDIGeonodeCategory.FieldStr.keys())
+    )
+    title = serializers.CharField(max_length=255)
+    year_month = serializers.DateField()
+    detail_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    embed_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    thumbnail_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    download_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    file_size = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0
+    )
+
+
+class PushGeonodeRasterSerializer(serializers.Serializer):
+    indicator = serializers.ChoiceField(choices=RasterIndicatorTypes.choices())
+    geonode_id = serializers.IntegerField(min_value=1)
+    values = serializers.ListField(child=serializers.DictField())
+
+    def validate_values(self, value):
+        from .models import validate_json_values
+        from django.core.exceptions import (
+            ValidationError as DjangoValidationError,
+        )
+
+        try:
+            validate_json_values(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
+
+class PushGeonodePublicationResponseSerializer(serializers.Serializer):
+    geonode_id = serializers.IntegerField()
+    synced_at = serializers.DateTimeField()
+
+
+class PushGeonodeRasterResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    indicator = serializers.CharField()
+    geonode_id = serializers.IntegerField()
+    extracted_at = serializers.DateTimeField()
 
 
 class PublicationReviewsSerializer(serializers.ModelSerializer):
@@ -298,13 +349,15 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
         ]
         non_validated_ids = [
             v["administration_id"]
-            for v in list(filter(
-                lambda x: (
-                    x.get("category") is None
-                    or x["administration_id"] not in no_data_ids
-                ),
-                validated_values
-            ))
+            for v in list(
+                filter(
+                    lambda x: (
+                        x.get("category") is None
+                        or x["administration_id"] not in no_data_ids
+                    ),
+                    validated_values,
+                )
+            )
         ]
 
         reviews = [
@@ -330,11 +383,13 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
             reviews = filtered_reviews
 
         if non_validated and (
-            len(non_validated_ids) or
-            len(non_validated_ids) == 0 and len(obj.validated_values)
+            len(non_validated_ids)
+            or len(non_validated_ids) == 0
+            and len(obj.validated_values)
         ):
             reviews = [
-                r for r in reviews
+                r
+                for r in reviews
                 if r["administration_id"] in non_validated_ids
             ]
 
@@ -343,11 +398,7 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
     @extend_schema_field(OpenApiTypes.ANY)
     def get_users(self, obj):
         return UserReviewerSerializer(
-            instance=[
-                r.user
-                for r in obj.completed_reviews
-            ],
-            many=True
+            instance=[r.user for r in obj.completed_reviews], many=True
         ).data
 
     class Meta:
@@ -365,9 +416,7 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
     year_month = CustomDateField()
     due_date = CustomDateField()
     reviewers = CustomListField(
-        child=CustomPrimaryKeyRelatedField(
-            queryset=SystemUser.objects.none()
-        ),
+        child=CustomPrimaryKeyRelatedField(queryset=SystemUser.objects.none()),
         required=True,
     )
     subject = CustomCharField()
@@ -376,10 +425,9 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fields.get("reviewers").child.queryset = SystemUser.objects \
-            .filter(
-                role=UserRoleTypes.reviewer
-            ).all()
+        self.fields.get("reviewers").child.queryset = (
+            SystemUser.objects.filter(role=UserRoleTypes.reviewer).all()
+        )
 
     def validate_due_date(self, value):
         today = timezone.now().date()
@@ -439,9 +487,7 @@ class ExportMapSerializer(serializers.Serializer):
     )
 
     class Meta:
-        fields = [
-            "export_type"
-        ]
+        fields = ["export_type"]
 
 
 class PublishedMapSerializer(serializers.ModelSerializer):
@@ -466,10 +512,7 @@ class CompareMapSerializer(serializers.Serializer):
     right_date = CustomDateField(required=False)
 
     class Meta:
-        fields = [
-            "left_date",
-            "right_date"
-        ]
+        fields = ["left_date", "right_date"]
 
 
 class AttachRasterSerializer(serializers.ModelSerializer):

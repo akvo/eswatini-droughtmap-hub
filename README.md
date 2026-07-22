@@ -246,3 +246,23 @@ Only active forms (`Active=True`) are synced from the Kobo API using the active 
 ```bash
 docker compose exec backend python manage.py download_iks_data
 ```
+
+### **Sync GeoNode Publication Cache: `sync_publication_geonodes`**
+
+The `sync_publication_geonodes` command is a manual backfill command to fetch metadata for all CDI, SPI, ESI, EVI2, and SM raster map resources from the configured GeoNode instance, saving them into the local database cache (`PublicationGeonode`). This cache ensures that:
+
+- The `/publications` catalog works even if GeoNode is temporarily offline.
+- Performance is optimized by avoiding real-time API calls to GeoNode on every page list/sort request.
+
+#### **Run the Sync Command**
+
+```bash
+# Sync all categories (CDI, SPI, ESI, EVI2, and SM)
+docker compose exec backend python manage.py sync_publication_geonodes
+
+# Sync a specific category only
+docker compose exec backend python manage.py sync_publication_geonodes --category cdi-raster-map
+
+# Run in dry-run mode (does not modify the database cache)
+docker compose exec backend python manage.py sync_publication_geonodes --dry-run
+```
