@@ -812,6 +812,32 @@ Verified: **507 backend tests**, **106 frontend tests**, ESLint clean, productio
 
 ---
 
+## 13. Amended by the agreement-filters work (2026-07-22)
+
+[`drought-validation-bulk-filters.md`](drought-validation-bulk-filters.md) changes three things this document specified. Recorded here so the queue's own rules are not read as still current.
+
+### D-8 amended — `consensus` is `None` below two submissions
+
+As shipped, `consensus([3])` returned **100**: one reviewer is trivially unanimous with themselves. That made a publication assigned a single Technical Working Group report *maximum agreement on every Inkhundla*, and made any row still waiting on four other TWGs look settled while sitting in the Awaiting tab.
+
+`consensus()` now returns `None` below `MIN_SUBMISSIONS_FOR_AGREEMENT` (2). The distance-aware formula, its bounds and its outlier robustness are unchanged — only the floor is new. The queue already renders `null` as "—", so no display work followed. See bulk-filters D-9.
+
+### The "High disagreement" card became a control
+
+The card is now a clickable toggle that filters the queue to exactly the rows it counts, and both the card and the `?agreement=disagreement` filter read one predicate (`agreement_of`) rather than two copies of `DISAGREEMENT_THRESHOLD`. Its `key` is now `AgreementFilter.disagreement` rather than the string literal `"disagreement"` — same wire value.
+
+`MetricCard` gained optional `onClick` + `active`; without them it renders exactly as before, so the other three cards are unchanged.
+
+### §12 "Shipped" table — file locations moved
+
+`PublishModal.js` and its test now live in `frontend/src/components/Validation/`, not beside the route. The route folders hold only `page.js` and their page tests. Imports go through `@/components/Validation`.
+
+### Still true
+
+The D-10 status partition, the D-2 TWG coverage definition, the D-6 server-side publish gate and the D-11 "No Data is not an outcome" predicate are all unchanged. The agreement filter deliberately **cross-cuts** the status partition rather than extending it, precisely so the card-equals-tab arithmetic D-10 established keeps holding (bulk-filters D-6).
+
+---
+
 ## Approval
 
 | Role | Name | Date | Status |

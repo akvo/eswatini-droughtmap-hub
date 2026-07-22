@@ -858,6 +858,34 @@ Verified: **546 backend tests**, **122 frontend tests**, lint clean both sides, 
 
 ---
 
+## 14. Amended by the agreement-filters work (2026-07-22)
+
+[`drought-validation-bulk-filters.md`](drought-validation-bulk-filters.md) touches this page in five places.
+
+### AC-5.3 was never actually rendered
+
+`CONSENSUS_BAND` **and** `getConsensusBand` were both declared and neither was referenced, so the page showed a bare percentage with no band label beside it. Now rendered from `agreement.band`, and the client-side threshold helper is **deleted** rather than called: the server already bands the score from `ConsensusBand.THRESHOLDS`, and a second copy of those cut-points here is exactly how this page and the queue would come to disagree about one number. `CONSENSUS_BAND` survives as labels and colours only, keyed by what the server sends.
+
+### Two drought colour ramps deleted
+
+`LEGEND_DOT_COLOR` matched `config.js` for D1–D4 but had `0` as indigo and `1` as green — so the legend key contradicted the agreement bar directly above it, which was already reading `DROUGHT_CATEGORY_COLOR`. Both it and the queue's `VALIDATION_DCLASS_COLOR` are gone; every chip now goes through the shared `DroughtScore`. D-13's "labels come from config" now extends to hue.
+
+### `?agreement=` joins the carried filters
+
+`queueQuery` carries `status`, `search` **and** `agreement`, so Previous/Next walk the filtered queue instead of dropping the admin onto rows the filter had just excluded. `neighbours()` and `ValidationDecisionFilterSerializer` take the new kwarg. `page` is still deliberately absent (D-7).
+
+### Period renders the full month span
+
+The header said `MMMM YYYY`; the design calls for `1 February 2000 - 29 February 2000`. Now `periodRange()` in `lib/helper.js`, with the end day **derived** (`new Date(year, month, 0)`) so a leap February is 29 rather than a hardcoded length. Imported from `@/lib/helper`, matching the weather charts, not from the `@/lib` barrel that this page's tests stub.
+
+`MONTH_LABELS` became `MONTH_NAMES` (full names) with `periodLabels` deriving the three-letter form by `.slice(0, 3)` — one list, so the charts are byte-identical and there is no second month table to drift.
+
+### `DecisionHistory` moved
+
+Now `frontend/src/components/Validation/DecisionHistory.js`, imported via `@/components/Validation`, alongside the sibling `components/Review/` package. The route folder holds only `page.js` and its tests.
+
+---
+
 ## Approval
 
 | Role | Name | Date | Status |
