@@ -224,9 +224,9 @@ class TechnicalWorkingGroup:
 
 Under the `/admin/validation/{pk}/` prefix from queue doc D-3 — deliberately away from the un-anchored `^admin/publication/(?P<pk>[0-9]+)` pattern that would otherwise swallow them.
 
-### `GET …/administrations/{administration_id}?status=&search=`
+### `GET …/administrations/{administration_id}?status=&search=&page_size=`
 
-Filter params are the queue's, and are used only to compute `meta.prev/next/queue_page` (D-7).
+Filter params are the queue's, and are used **only** to compute `meta.prev/next/queue_page` (D-7). `page` is deliberately **not** accepted — `queue_page` is derived, never echoed.
 
 ```jsonc
 {
@@ -448,18 +448,52 @@ Adding a fourth status would break `ready + awaiting + validated == total`, sile
 
 AC-2.3 walks "the next Inkhundla in the current queue (same tab, same sort order)"; AC-2.2 returns to the queue "with the same tab and filters". Both need the queue's filter context. The shipped page fakes it by indexing the `validationQueue` mock (`page.js:242-246`), which cannot survive server-side pagination — the neighbours of row 10 are on page 2.
 
-**Decision**: the decision endpoint accepts the queue's `search` and `status`, and returns:
+**Decision**: the decision endpoint accepts `search`, `status` and `page_size`, and returns:
 
-- `prev/next_administration_id` — computed over the **whole filtered set, ignoring pagination**, so Next walks off the end of a page into the next one. That is what AC-2.3 asks for; page boundaries are a display artefact.
-- `queue_page` — the page number containing **this** Inkhundla under the same filters, so the breadcrumb returns to the right page rather than page 1 after several Nexts. Without it, Next × 3 then Back lands on the wrong page.
+- `prev/next_administration_id` — computed over the **whole filtered set, ignoring pagination**, so Next walks off the end of one page onto the next. That is what AC-2.3 asks for; page boundaries are a display artefact of the table, not a property of the queue.
+- `queue_page` — the page number holding **this** Inkhundla under the same filters, so Back lands where the admin actually is rather than on page 1.
 
-**Ordering must be defined.** "The queue's current order" is nowhere specified today: `build_rows` iterates `initial_values` in JSON insertion order, and the queue endpoint has no sort param. Prev/next over an undefined order is non-deterministic.
+#### How a move between administrations resolves
 
-**Decision**: the validation queue is ordered by **`Administration.name` ascending**, everywhere — table, prev/next and `queue_page`. Alphabetical is what the table appears to show and what a user scanning for an Inkhundla expects. This is a change to the queue doc (§12).
+```
+Queue    /validations/4?status=ready&search=kub&page=2
+  ↓ row click — carries status + search, NOT page
+Page     /validations/4/12?status=ready&search=kub
+  ↓
+GET      /admin/validation/4/administrations/12?status=ready&search=kub&page_size=10
+  ↓ server: build_rows → filter(status, search) → order by Administration.name
+  ↓         i = index_of(12) → prev = rows[i-1], next = rows[i+1]
+  ↓         queue_page = i // page_size + 1
+meta     { prev_administration_id: 11, next_administration_id: 19, queue_page: 2 }
+  ↓
+Next  →  /validations/4/19?status=ready&search=kub      (same query, new id)
+Back  →  /validations/4?status=ready&search=kub&page={meta.queue_page}
+```
 
-**Consequence**: the queue holds `search`, `status` and `page` in the URL query string, and the decision page forwards `search` + `status` to the API and carries all three on the breadcrumb link. (`page` is never sent to the API — `queue_page` is computed, not accepted.)
+**`page` is never carried on the decision-page URL.** It is derivable — `meta.queue_page` — and a copy in the URL goes stale the moment Next crosses a page boundary, which is exactly the case it was meant to serve. Carrying it would reintroduce the bug it was added to fix. The row link and the Next/Previous links therefore pass **only** `status` and `search`; the breadcrumb builds `page` from `meta.queue_page` on every render.
 
-**Rejected**: passing neighbour ids through router state (lost on refresh and on the direct URL that AC-1.1 explicitly supports); fetching the whole filtered queue client-side (defeats the pagination the queue doc introduced).
+**`page_size` must be forwarded**, or `queue_page` is computed against the wrong divisor. `Pagination` defaults to 10 but accepts `page_size` up to 100 (queue doc §0.3), so a queue at `?page_size=50` would otherwise get a `queue_page` five times too large. Same param name, same default.
+
+**Ordering must be defined.** "The queue's current order" is nowhere specified today: `build_rows` iterates `initial_values` in JSON insertion order, and the queue endpoint has no sort param. Prev/next over an undefined order is non-deterministic — the same Next button could yield different Tinkhundla on two page loads.
+
+**Decision**: the validation queue is ordered by **`Administration.name` ascending**, everywhere — table, prev/next and `queue_page`. Alphabetical is what the table appears to show and what someone scanning for an Inkhundla expects. This is a change to the queue doc (§12).
+
+**Both endpoints call the same function.** `ordered_rows(publication, search, status)` in `validation/utils.py` — build → filter → sort by name — is the single owner of "what the queue is, and in what order":
+
+| | `GET …/administrations` (queue) | `GET …/administrations/{id}` (this page) |
+|---|---|---|
+| Uses `ordered_rows` | yes | yes |
+| Then | hands it to `Pagination` | indexes into it for prev/next + `queue_page` |
+| Accepts `page` | yes | **no** — `queue_page` is derived, never echoed |
+| Accepts `page_size` | yes, sets the page size | yes, **only** as the `queue_page` divisor |
+
+**This is the same list, paginated in one place and indexed in the other — not two APIs that happen to agree.** Duplicating the build/filter/sort into a second code path is how Next ends up walking an order the table never shows, which presents as a UI glitch and is actually two diverging queries.
+
+**The current Inkhundla may not be in its own filtered set.** Validate an Inkhundla on the *Ready* tab and it becomes `validated`, so `?status=ready` no longer matches it. On a reload or a Back-then-Forward it would have no index, and prev/next would have nowhere to start.
+
+**Decision**: compute neighbours over `filtered ∪ {current}`, sorted by name — the current row is always in the list it is being located within, whether or not the filter still admits it. Prev/Next therefore keep working after a status change, and `queue_page` reports where the row *would* sit. One line, and it removes a dead-end state that is easy to reach and confusing to hit.
+
+**Rejected**: passing neighbour ids through router state (lost on refresh and on the direct URL AC-1.1 explicitly supports); fetching the whole filtered queue client-side (defeats the pagination the queue doc introduced); returning `null` neighbours when the row falls out of its filter (predictable, but disables navigation exactly when an admin is working through a tab).
 
 ### D-8: The reference period is the calendar month; the backend sends only `year_month` ✅ **resolved**
 
@@ -603,7 +637,8 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | `page.js:44` | `getConsensusBand`: last threshold `30` → `40` (D-2) |
 | `page.js:154-170` | `AgreementBar`: delete the client-side tally; render from `agreement.distribution` / `majority_count` / `total_submitted`. Fixes the tie disagreement (D-9) |
 | `page.js:232-240` | `statusKey`: use the server's `is_override` instead of comparing against the live majority (D-5, D-9) |
-| `page.js:242-246` | Delete the `validationQueue` indexing; use `meta.prev/next_administration_id` (D-7) |
+| `page.js:242-246` | Delete the `validationQueue` indexing (it can only ever see one page of rows); Previous/Next navigate to `meta.prev/next_administration_id`, **preserving `status` + `search` and not `page`** (D-7). `disabled` when the id is `null` — the shipped `prevId === null` / `nextId === null` guards at `:296` and `:302` already have the right shape |
+| `page.js:282-288` | Breadcrumb "Drought Validation" → `/validations/{id}?status=&search=&page={meta.queue_page}` — `page` comes from the server every render, never from the URL the page was opened with (D-7) |
 | `page.js:224-227` | **State must initialise from the saved draft**, not from the majority: `selectedCategory = decision?.category ?? majority_category` and `reasoning = decision?.reasoning ?? default_reasoning ?? ""`. Without this AC-6.5 fails — a saved draft re-opens showing the majority chip and an empty textarea. Note both are `useState` **initialisers**, which run once on mount while the fetch is still in flight; they must move to a `useEffect` that syncs when the payload arrives, or the values latch on `undefined` |
 | `page.js:248-257` | `handleSaveDraft` → `PUT … {is_draft: true}`, then re-read the response so `decision.updated_at` reflects the save |
 | `page.js:259-272` | `handleSubmit` → `PUT … {is_draft: false}`; inspect the resolved body for the 400 and **do not navigate on failure** (§0). Keep the guard at `:260-262` as UX; §8 is the control |
@@ -615,7 +650,7 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | `DecisionHistory.js:57-59` | Renders `entry.confidence_band` via `ConfidenceBadge`. A past decision has no confidence, and confidence is mock (D-10). **Replace with the AC-7.1 marker icon** from `is_override` (✓ accepted / ⤴ overridden), which does not exist today |
 | `DecisionHistory.js:61-65` | Reads `entry.comment`; the contract says `reasoning`, matching the model field and the decision payload |
 | `DecisionHistory.js:38-49` | `initials` / `name` stay flat — no change |
-| `validations/[id]/page.js` | Mirror `search`/`status`/`page` into the URL; carry them on the row link (D-7) |
+| `validations/[id]/page.js` | Mirror `search`/`status`/`page` into the URL; the row link at `:215-222` carries **`status` + `search` only** (D-7) |
 | `middleware.js:48-51` | Allow `reviewer` on `/validations/{id}/{administrationId}` (D-3) |
 
 ---
@@ -689,7 +724,10 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | Django unit | `default_reasoning` renders the short code: "3 of 4 chose D2", not "D2 Severe Drought" (D-9) |
 | Django unit | Snapshot: submit, then add a review shifting the majority; stored `is_override` / `majority_category` unchanged, live `agreement.majority_category` moves (D-9) |
 | Django unit | Re-submit **re-snapshots**: a corrected category is judged against the majority at the second submit, not the first (D-6) |
-| Django unit | `neighbours`: ordering is `Administration.name` ascending; prev/next cross page boundaries; `null` at the ends; `queue_page` locates the current row (D-7) |
+| Django unit | `neighbours` and the queue endpoint return the **same ordered ids** for the same `search`/`status` — walking prev/next from the first row reproduces the concatenated pages exactly (D-7 shared `ordered_rows`) |
+| Django unit | `neighbours`: ordering is `Administration.name` ascending; prev/next **cross page boundaries** (last row of page 1 → first row of page 2); `null` at the ends; `queue_page` locates the current row (D-7) |
+| Django unit | `queue_page` honours `?page_size=` — the same row reports page 2 at `page_size=10` and page 1 at `page_size=50` (D-7) |
+| Django unit | A validated Inkhundla requested with `?status=ready` still returns working `prev`/`next` and a `queue_page`, because neighbours are computed over `filtered ∪ {current}` (D-7) |
 | Django API | GET as admin → full `reviews[]`, `masked: false` |
 | Django API | GET as a reviewer who **has not** submitted → `masked: true`, `agreement`/`consensus`/`majority_category` all `null`, own row intact, `len(reviews)` unchanged, and **no other reviewer's `category`, `comment`, `name`, `email` or `user_id` anywhere in the response body** (D-4) |
 | Django API | GET as a reviewer who **has** submitted → full payload, `masked: false`, `can_submit: false` |

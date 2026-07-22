@@ -251,6 +251,8 @@ Reads emit the sectors as a list (D-4).
 
 **Row ordering is `Administration.name` ascending** on `/administrations`, and on the row set behind the decision page's Previous/Next. `build_rows` iterates `initial_values` in JSON insertion order, which is arbitrary; an undefined order makes pagination unstable and Previous/Next non-deterministic.
 
+**One function owns that list.** `ordered_rows(publication, search, status)` — build → filter → sort by name — is called by **both** this paginated endpoint and the decision page's neighbour lookup ([`drought-validation-decision.md`](drought-validation-decision.md) D-7). Only this endpoint then hands the result to `Pagination`; the decision endpoint indexes into it. If the two ever computed the list separately, "Next" would walk an order the table does not show, and the bug would look like a UI glitch rather than two diverging queries.
+
 **Per-Inkhundla validation is not written through this endpoint.** It has its own single-entry write path — `PUT /admin/validation/{publication_id}/administrations/{administration_id}` — specified in [`drought-validation-decision.md`](drought-validation-decision.md) §4. This endpoint's `validated_values` remains the published projection that write keeps in sync.
 
 ---
@@ -618,7 +620,7 @@ The genuine `null`-array trap is documented in §0.2 and is handled correctly by
 |---|---|
 | `v1_publication/review/utils.py` | `build_rows` gains `submissions`; `disputed` derives from it (D-1) |
 | `v1_publication/review/view.py` | `_public_row` helper; applied at all **three** reviewer response sites (D-1) |
-| `v1_publication/validation/utils.py` | **New** — `reviewers_required`, `build_validation_rows`, `filter_validation_rows`, `build_validation_stats` |
+| `v1_publication/validation/utils.py` | **New** — `reviewers_required`, `build_validation_rows`, `filter_validation_rows`, `ordered_rows`, `build_validation_stats` |
 | `v1_publication/validation/view.py` | **New** — `ValidationStatsAPI`, `ValidationAdministrationsAPI` |
 | `v1_publication/validation/serializers.py` | **New** — filter + response serializers for the schema |
 | `v1_publication/models.py` | Five new fields (§3) |
