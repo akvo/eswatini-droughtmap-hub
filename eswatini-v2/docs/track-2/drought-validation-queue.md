@@ -195,6 +195,9 @@ Query params: `search` (Administration **name**, case-insensitive contains), `st
       "administration_id": 12,
       "label": "Piggs Peak",              // Administration.name
       "group": "Hhohho",                  // Administration.region  (NOT zone)
+      "zone": "middleveld",               // Administration.zone
+      "confidence": 2.0,                  // mock until a real formula exists
+      "confidence_band": "low",           //   (review queue D-6)
       "reviews_completed": 4,             // distinct TWGs that have submitted
       "reviews_total": 5,                 // = meta.reviewers_required
       "reviewers": [                      // reviewers who SUBMITTED, not assignees
@@ -215,6 +218,8 @@ Query params: `search` (Administration **name**, case-insensitive contains), `st
 ```
 
 **`reviewers`, `dclass_spread` and `reviews_completed` are three views of the same list** and are always mutually consistent: `len(reviewers) == len(dclass_spread)`, and `reviews_completed == len({r.group for r in reviewers if r.group})`. They differ only when two submitters share a TWG.
+
+`zone`, `confidence` and `confidence_band` are carried for the decision page, which needs them and is built from the same rows — one builder rather than a second lookup. The queue table ignores them.
 
 Keys match the current mock in `static/mocks/validation/queue.js`, with two changes: `reviewers[]` gains `group`, and the mock's unused `key` field is dropped (the table already keys on `administration_id`, `page.js:337`). The mock's `group` values mix regions ("Manzini") and zones ("Highveld"); the API returns **`region`** consistently.
 

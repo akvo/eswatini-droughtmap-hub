@@ -23,13 +23,31 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.http import Http404
 
 from api.v1.v1_publication.constants import ValidationStatus
 from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Administration
+from api.v1.v1_publication.validation.decision import (
+    build_decision_payload,
+    build_history,
+    build_meta,
+    build_reviews,
+    has_submitted,
+    majority_of,
+    mask_reviews,
+    neighbours,
+    save_decision,
+)
 from api.v1.v1_publication.validation.serializers import (
+    ValidationDecisionFilterSerializer,
+    ValidationDecisionWriteSerializer,
     ValidationMetaSerializer,
     ValidationQueueFilterSerializer,
 )
+from api.v1.v1_publication.constants import is_validated
+from api.v1.v1_users.constants import UserRoleTypes
+from api.v1.v1_publication.models import ValidationDecision
 from api.v1.v1_publication.validation.utils import (
     build_validation_stats,
     ordered_rows,
@@ -121,3 +139,167 @@ class ValidationAdministrationsAPI(APIView):
         paginator = Pagination()
         page = paginator.paginate_queryset(rows, request)
         return paginator.get_paginated_response(page)
+
+
+def _row_or_404(publication, administration_id):
+    row = next(
+        (
+            r for r in ordered_rows(publication)
+            if r["administration_id"] == administration_id
+        ),
+        None,
+    )
+    if row is None:
+        raise Http404("Administration not part of this publication.")
+    return row
+
+
+class ValidationDecisionAPI(APIView):
+    """One Inkhundla: the decision context (GET) and the decision (PUT).
+
+    GET is IsAuthenticated — a non-NDRMA TWG member may view the page but
+    sees colleagues' D-classes only after submitting their own. PUT is
+    IsAdmin, so the reviewer's Submit is rejected by the permission class
+    rather than by a hidden button.
+    """
+
+    def get_permissions(self):
+        if self.request.method == "PUT":
+            return [IsAuthenticated(), IsAdmin()]
+        return [IsAuthenticated()]
+
+    @extend_schema(
+        operation_id="validation_decision_retrieve",
+        summary="Validation decision context for one Inkhundla",
+        tags=["Validation"],
+        parameters=_FILTER_PARAMS + [
+            OpenApiParameter(
+                name="page_size",
+                required=False,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 404: DefaultResponseSerializer},
+    )
+    def get(self, request, version, pk, administration_id):
+        publication = get_object_or_404(Publication, pk=pk)
+        administration_id = int(administration_id)
+        row = _row_or_404(publication, administration_id)
+
+        serializer = ValidationDecisionFilterSerializer(
+            data=request.query_params
+        )
+        serializer.is_valid(raise_exception=True)
+
+        reviews = build_reviews(publication, administration_id)
+        masked = (
+            request.user.role == UserRoleTypes.reviewer
+            and not has_submitted(reviews, request.user.id)
+        )
+        payload = build_decision_payload(
+            publication,
+            row,
+            mask_reviews(reviews, request.user.id) if masked else reviews,
+            masked,
+        )
+        payload["meta"] = build_meta(
+            publication,
+            request.user,
+            neighbours(
+                publication, administration_id, **serializer.filters()
+            ),
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        operation_id="validation_decision_update",
+        summary="Save the validation decision as a draft, or submit it",
+        tags=["Validation"],
+        request=ValidationDecisionWriteSerializer,
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+        },
+    )
+    def put(self, request, version, pk, administration_id):
+        publication = get_object_or_404(Publication, pk=pk)
+        administration_id = int(administration_id)
+        _row_or_404(publication, administration_id)
+        administration = get_object_or_404(
+            Administration, pk=administration_id
+        )
+
+        reviews = build_reviews(publication, administration_id)
+        categories = [
+            r["category"] for r in reviews if is_validated(r.get("category"))
+        ]
+        instance = ValidationDecision.objects.filter(
+            publication=publication, administration=administration
+        ).first()
+
+        serializer = ValidationDecisionWriteSerializer(
+            data=request.data,
+            context={"categories": categories, "instance": instance},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        majority, is_tie = majority_of(categories)
+        decision = save_decision(
+            publication,
+            administration,
+            request.user,
+            serializer.validated_data,
+            majority,
+            is_tie,
+        )
+        return Response(
+            {
+                "category": decision.category,
+                "reasoning": decision.reasoning,
+                "is_draft": decision.is_draft,
+                "is_override": decision.is_override,
+                "majority_category": decision.majority_category,
+                "validated_at": decision.validated_at,
+                "updated_at": decision.updated_at,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ValidationHistoryAPI(APIView):
+    """Prior validated decisions for this Inkhundla (AC-7.1)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="validation_decision_history",
+        summary="Validation history for one Inkhundla, earlier cycles only",
+        tags=["Validation"],
+        parameters=[
+            OpenApiParameter(
+                name="limit",
+                required=False,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 404: DefaultResponseSerializer},
+    )
+    def get(self, request, version, pk, administration_id):
+        publication = get_object_or_404(Publication, pk=pk)
+        administration_id = int(administration_id)
+        try:
+            limit = int(request.query_params.get("limit", 6))
+        except (TypeError, ValueError):
+            limit = 6
+        return Response(
+            {
+                "administration_id": administration_id,
+                "data": build_history(
+                    publication, administration_id, limit=max(limit, 1)
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )

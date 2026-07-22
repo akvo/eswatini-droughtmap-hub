@@ -89,7 +89,6 @@ class IsValidatedTestCase(APITestCase):
         )
 
 
-
 class DisagreementCardTestCase(APITestCase):
     """Summary card 2: "more than 3 different drought scores assigned".
 
@@ -124,6 +123,7 @@ class DisagreementCardTestCase(APITestCase):
 
     def test_empty_spread_is_not_disagreement(self):
         self.assertEqual(self._disagreement([[]]), 0)
+
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
 class ValidationQueueAPIsTestCase(APITestCase):
@@ -286,9 +286,11 @@ class ValidationQueueAPIsTestCase(APITestCase):
         self.assertEqual(
             set(row),
             {
-                "administration_id", "label", "group", "reviews_completed",
-                "reviews_total", "reviewers", "dclass_spread", "consensus",
-                "status", "awaiting_count", "validated_category",
+                "administration_id", "label", "group", "zone",
+                "reviews_completed", "reviews_total", "reviewers",
+                "dclass_spread", "consensus", "confidence",
+                "confidence_band", "status", "awaiting_count",
+                "validated_category",
             },
         )
         # No private or admin-only field survives into the response.

@@ -5,7 +5,7 @@
 **App**: `backend/api/v1/v1_publication`
 **Figma**: [3258-43487 "Validation Decision"](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3258-43487&m=dev)
 **Date**: 2026-07-22
-**Status**: Draft
+**Status**: Implemented (2026-07-22)
 **Related**: [`drought-validation-queue.md`](drought-validation-queue.md) — **this doc amends it, see §12** · [`drought-review-queue.md`](drought-review-queue.md)
 
 ---
@@ -189,20 +189,35 @@ So **`category` and `organisation` cross the API as integers**, exactly like `st
 
 ### Migration Strategy
 
-```python
-# One CreateModel migration. No changes to existing tables, no data migration.
-#
-# NO BACKFILL (resolved, §10). Past publications hold categories in
-#   validated_values but never captured reasoning, validator, timestamp or the
-#   majority, so a backfilled row could carry nothing but a D-class — a history
-#   entry with no rationale and no accepted/overridden marker, which is the
-#   information AC-7.1 exists to show. History therefore starts empty and fills
-#   from the first decision recorded through this feature; DecisionHistory.js
-#   already renders "No previous decisions recorded." (:68-72).
-#
-# Rollback: DeleteModel. validated_values is untouched, so the published map
-# and every export keep working with or without this table.
+**`models.py` is not hand-migrated.** Editing it must be followed by a generated migration, or the app and CI diverge from the schema:
+
+```bash
+docker compose exec backend ./manage.py makemigrations v1_publication
+# or, locally:  cd backend && python manage.py makemigrations v1_publication
 ```
+
+The file lands as `migrations/000N_<autoname>.py` and **must be committed with the model change**. `backend/test.sh` runs `./manage.py migrate` before the suite, so a missing migration fails CI rather than passing quietly.
+
+**Generated**: `0006_validationdecision_and_more.py` — one `CreateModel` plus the unique constraint. No changes to existing tables, no data migration.
+
+```python
+operations = [
+    migrations.CreateModel(name="ValidationDecision", fields=[...]),
+    migrations.AddConstraint(
+        model_name="validationdecision",
+        constraint=models.UniqueConstraint(
+            fields=("publication", "administration"),
+            name="uniq_validation_decision_per_inkhundla",
+        ),
+    ),
+]
+```
+
+**No backfill** (resolved, §10). Past publications hold categories in `validated_values` but never captured reasoning, validator, timestamp or the majority, so a backfilled row could carry nothing but a D-class — a history entry with no rationale and no accepted/overridden marker, which is the information AC-7.1 exists to show. History starts empty and fills from the first decision recorded through this feature; `DecisionHistory.js` already renders "No previous decisions recorded." (`:68-72`).
+
+**Rollback**: `DeleteModel`. `validated_values` is untouched, so the published map and every export keep working with or without this table — which is the whole point of keeping the JSON as the published projection (D-1).
+
+**Deploy order**: migrate before serving; the new endpoints 500 without the table, and nothing else reads it.
 
 ---
 
@@ -614,13 +629,16 @@ app/(auth)/validations/[id]/[administrationId]/page.js   "use client" — shippe
 |---|---|
 | `v1_publication/models.py` | `ValidationDecision` (§3) |
 | `v1_publication/constants.py` | `VALIDATABLE_CATEGORIES` (model field choices) — **no new label maps**, enums cross the API as ints |
-| `v1_publication/validation/utils.py` | `build_decision_payload`, `build_agreement`, `majority_of(categories)`, `mask_reviews`, `neighbours`, `sync_validated_values` |
+| `v1_publication/validation/decision.py` | **New file** — `majority_of`, `consensus_band`, `build_agreement`, `build_reviews`, `has_submitted`, `mask_reviews`, `neighbours`, `sync_validated_values`, `save_decision`, `build_decision_payload`, `build_meta`, `build_history` |
 | `v1_publication/validation/view.py` | `ValidationDecisionAPI` (GET + PUT), `ValidationHistoryAPI` |
-| `v1_publication/validation/serializers.py` | `ValidationDecisionWriteSerializer` (§8), review + history read serializers |
-| `v1_publication/urls.py` | Two anchored routes |
-| `v1_publication/tests/tests_validation_decision.py` | New (§9) |
+| `v1_publication/validation/serializers.py` | `ValidationDecisionWriteSerializer` (§8), `ValidationDecisionFilterSerializer` |
+| `v1_publication/constants.py` | `VALIDATABLE_CATEGORIES`, `ConsensusBand` |
+| `v1_publication/urls.py` | Two anchored routes, both **above** the queue's `/administrations$` |
+| `v1_publication/tests/tests_admin_validation_decision_apis.py` | New (§9) |
 
 `majority_of(categories)` takes a **list of categories**, not rows — the same list `dclass_spread` is built from, `None`/`-9999` already filtered (queue doc D-8) — and returns **`(majority, is_tie)`** (D-9). There is no `reference_period`: the period is the calendar month (D-8).
+
+**Built as `decision.py`, not inside `utils.py`.** `validation/utils.py` was already 193 lines and owns the *queue* aggregation; the decision helpers are a different concern over the same rows. Splitting keeps both files inside the 200–400 line guidance and makes the import direction one-way — `decision` imports `utils`, never the reverse.
 
 ### Frontend changes (PR #140 follow-up)
 
@@ -800,6 +818,46 @@ Unchanged and still authoritative: the three-status partition (D-10), the `is_va
 
 ---
 
+## 13. As built (2026-07-22)
+
+Verified: **546 backend tests**, **122 frontend tests**, lint clean both sides, production build green.
+
+### Shipped
+
+| Area | Files |
+|---|---|
+| Model | `models.py` — `ValidationDecision`; migration `0006_validationdecision_and_more.py` |
+| Constants | `constants.py` — `VALIDATABLE_CATEGORIES`, `ConsensusBand` |
+| Aggregation | `validation/decision.py` (new); `validation/utils.py` rows gain `zone` / `confidence` / `confidence_band` |
+| API | `ValidationDecisionAPI` (GET + PUT), `ValidationHistoryAPI`, two anchored routes |
+| Frontend | decision `page.js` wired to all three endpoints; `DecisionHistory.js` marker; `middleware.js` reviewer access; **all three validation mocks deleted** |
+| Tests | `tests_admin_validation_decision_apis.py` (39), `__tests__/ValidationDecisionPage.test.js` (16) |
+
+### Deviations from the plan, and why
+
+| Plan said | Built | Why |
+|---|---|---|
+| Helpers in `validation/utils.py` | New `validation/decision.py` | utils was already 193 lines and owns the queue aggregation; splitting keeps both files in range and the import direction one-way |
+| Queue row contract unchanged | Row gains `zone`, `confidence`, `confidence_band` | The decision page needs them and is built from the same rows — one builder beats a second lookup. The queue doc's §4 and its test were updated together |
+| `reviews[]` is `submissions` enriched | Built from the **reviewer roster** | `submissions` only holds reviewers who have submitted; AC-4.1/4.2 need a pending row for those who have not |
+| — | `submitted_at` is `review.updated_at or created_at` | `suggestion_values` entries carry no per-Inkhundla timestamp; this is the closest truthful value |
+
+### Behaviours worth not regressing
+
+- **A tie requires reasoning even when the chip is unchanged**, and `is_override` is still `False`. Related conditions, not the same one — a test pins both halves.
+- **The majority is snapshotted at submit.** A test adds reviews *after* submitting and asserts the stored `is_override` does not move while the live `agreement` does.
+- **The requester's own reviewer row is never masked.** Masking removes colleagues' category, name, email and comment; `organisation` survives.
+- **`sync_validated_values` upserts against `initial_values`**, never by mapping over `validated_values` — that field is null on a fresh publication and mapping over it writes nothing.
+- **The page must not use `try/catch` for writes.** `api()` resolves on 4xx; a test asserts a rejected submit keeps the page open.
+
+### Follow-ups
+
+1. **Deploy**: migrate before serving — the new endpoints 500 without the table.
+2. The legacy `/publications/{id}/validation` page still writes `validated_values` wholesale, bypassing `ValidationDecision`, so categories set there never appear in history (D-1, D-11).
+3. `DROUGHT_CATEGORY_LEVELS[0] === "None"` remains for Track 3 (D-13).
+
+---
+
 ## Approval
 
 | Role | Name | Date | Status |
@@ -818,4 +876,4 @@ Unchanged and still authoritative: the three-status partition (D-10), the `is_va
 - [x] D-13 (labels from `config.js`) resolved
 - [x] §10 — all questions answered, no open items
 - [x] §12 amendments applied to `drought-validation-queue.md` (2026-07-22)
-- [ ] Design approved → proceed with `/sc:implement`
+- [x] Implemented — see §13 (2026-07-22)

@@ -42,6 +42,16 @@ class DroughtCategory:
     }
 
 
+# Everything an admin may validate an Inkhundla to. Excludes `none` (-9999):
+# "No Data" is raster output where the CDI had no signal, never a decision
+# an admin hands down, and a published map must not carry it.
+VALIDATABLE_CATEGORIES = [
+    (key, label)
+    for key, label in DroughtCategory.FieldStr.items()
+    if key != DroughtCategory.none
+]
+
+
 def is_validated(category):
     """A real, admin-assigned D-class. Not null, and not No Data.
 
@@ -71,6 +81,32 @@ class ValidationStatus:
         awaiting: "Awaits reviews",
         validated: "Validated this period",
     }
+
+
+class ConsensusBand:
+    """Bands over the consensus score.
+
+    The cut-points are multiples of 20 because that is where the score means
+    something provable: `consensus < 100 - 20*s` implies at least two
+    reviewers are more than `s` D-classes apart. So `< 60` certifies a
+    disagreement wider than two D-classes and `< 40` wider than three. Round
+    numbers borrowed from modal-share intuition would not carry that.
+    """
+
+    high = "high"
+    moderate = "moderate"
+    low = "low"
+    none = "none"
+
+    FieldStr = {
+        high: "High consensus",
+        moderate: "Moderate consensus",
+        low: "Low consensus",
+        none: "No consensus",
+    }
+
+    # (floor, band), highest floor first.
+    THRESHOLDS = ((80, high), (60, moderate), (40, low))
 
 
 # Consensus is the mean absolute deviation of the submitted D-classes from

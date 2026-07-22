@@ -23,6 +23,8 @@ from .review.view import (
 from .validation.view import (
     ValidationStatsAPI,
     ValidationAdministrationsAPI,
+    ValidationDecisionAPI,
+    ValidationHistoryAPI,
 )
 
 urlpatterns = [
@@ -77,6 +79,18 @@ urlpatterns = [
         r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)/stats$",
         ValidationStatsAPI.as_view(),
         name="validation-queue-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"
+        r"/administrations/(?P<administration_id>[0-9]+)/history$",
+        ValidationHistoryAPI.as_view(),
+        name="validation-decision-history",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"
+        r"/administrations/(?P<administration_id>[0-9]+)$",
+        ValidationDecisionAPI.as_view(),
+        name="validation-decision",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"

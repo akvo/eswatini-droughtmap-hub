@@ -21,10 +21,9 @@ jest.mock("antd/lib/_util/responsiveObserver", () => {
 });
 
 const type = (value) =>
-  fireEvent.change(
-    screen.getByPlaceholderText("Shown underneath the title"),
-    { target: { value } },
-  );
+  fireEvent.change(screen.getByPlaceholderText("Shown underneath the title"), {
+    target: { value },
+  });
 
 const publish = () =>
   fireEvent.click(screen.getByRole("button", { name: /^publish$/i }));

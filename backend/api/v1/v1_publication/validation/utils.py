@@ -95,10 +95,16 @@ def build_validation_rows(publication):
         covered = len({s["group"] for s in submissions if s["group"]})
         status = row_status(row["assigned_score"], covered, required)
 
+        confidence = row.get("confidence") or {}
         rows.append({
             "administration_id": row["administration_id"],
             "label": row["name"],
             "group": row["region"],
+            "zone": row["zone"],
+            # Mock until a real formula exists (review queue D-6); flat so the
+            # decision page can render it without unwrapping an object.
+            "confidence": confidence.get("value"),
+            "confidence_band": confidence.get("band"),
             "reviews_completed": covered,
             "reviews_total": required,
             "reviewers": [
