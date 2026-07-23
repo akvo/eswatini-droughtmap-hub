@@ -23,11 +23,13 @@ from utils.custom_serializer_fields import (
 from api.v1.v1_users.serializers import UserReviewerSerializer
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from api.v1.v1_publication.constants import (
+    MIN_TWGS_PER_PUBLICATION,
     DroughtCategory,
     ExportMapTypes,
     CDIGeonodeCategory,
     PublicationStatus,
     RasterIndicatorTypes,
+    is_validated,
 )
 
 
@@ -98,6 +100,45 @@ class PublicationSerializer(serializers.ModelSerializer):
         if request and request.method == "PUT":
             for field in self.fields:
                 self.fields[field].required = False
+
+    def validate(self, attrs):
+        """A publication may not go out with unvalidated Tinkhundla.
+
+        This is the control; the disabled Publish button is a courtesy. It
+        guards every write path into `published`, including the legacy publish
+        page, which had no such check.
+
+        Object-level rather than `validate_status`, because the answer depends
+        on `validated_values`: a single PUT may set the categories *and*
+        publish in one request, so the check must run against the state this
+        write will leave behind, not the state before it.
+
+        `is_validated` rather than a bare `is not None` is what keeps -9999
+        ("No Data") off a published map: it is raster output from where the
+        CDI had no signal, never a decision an admin handed down. The same
+        predicate backs `can_publish`, so the button and the endpoint agree.
+        """
+        if attrs.get("status") != PublicationStatus.published:
+            return attrs
+
+        def after_write(field):
+            return attrs.get(field, getattr(self.instance, field, None))
+
+        validated = {
+            v["administration_id"]
+            for v in (after_write("validated_values") or [])
+            if is_validated(v.get("category"))
+        }
+        total = len(after_write("initial_values") or [])
+        missing = total - len(validated)
+        if missing > 0:
+            raise serializers.ValidationError({
+                "status": (
+                    f"Cannot publish: {missing} of {total} Tinkhundla "
+                    "are not validated yet."
+                )
+            })
+        return attrs
 
 
 class PublicationInfoSerializer(serializers.ModelSerializer):
@@ -441,6 +482,23 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
         if len(value) == 0:
             raise serializers.ValidationError(
                 "Please select at least one reviewer."
+            )
+        # The floor is on TWGs, not headcount. `reviewers_required` counts
+        # distinct Technical Working Groups, so three reviewers who all sit in
+        # MoAg still leave it at 1 — every Inkhundla would reach "ready" on one
+        # institution's response, and consensus would be a single opinion.
+        # Creation is the only place this can be prevented rather than merely
+        # detected afterwards (D-10).
+        twgs = {
+            user.technical_working_group
+            for user in value
+            if user.technical_working_group is not None
+        }
+        if len(twgs) < MIN_TWGS_PER_PUBLICATION:
+            raise serializers.ValidationError(
+                "Please select reviewers from at least "
+                f"{MIN_TWGS_PER_PUBLICATION} different Technical Working "
+                "Groups."
             )
         return value
 

@@ -136,6 +136,36 @@ def notify_review_request(
     }
 
 
+def dispatch_review_request(publication, review, subject, message):
+    """Queue one reviewer's invitation email.
+
+    Extracted so a reviewer added to an existing publication gets exactly the
+    invitation the original panel got — same placeholders, same Jobs row, same
+    async task. A second email path here would drift from this one, and the
+    reviewer who received the drifted version is the one least able to notice.
+    """
+    job = Jobs.objects.create(
+        type=JobTypes.review_request,
+        status=JobStatus.on_progress,
+        result=ReviewSerializer(review).data,
+    )
+    body = message \
+        .replace("{{reviewer_name}}", review.user.name) \
+        .replace("{{year_month}}", publication.year_month.strftime("%Y-%m")) \
+        .replace("{{due_date}}", publication.due_date.strftime("%Y-%m-%d"))
+
+    job.task_id = async_task(
+        "api.v1.v1_jobs.job.notify_review_request",
+        review.user.email,
+        review.id,
+        subject,
+        body,
+        hook="api.v1.v1_jobs.job.email_notification_results",
+    )
+    job.save()
+    return job
+
+
 def notify_feedback_received(
     email: str,
     feedback: str
@@ -408,39 +438,7 @@ def generate_initial_cdi_values_results(task):
             return
         # Send email to all reviewers
         for review in publication.reviews.all():
-            # Create a job
-            job = Jobs.objects.create(
-                type=JobTypes.review_request,
-                status=JobStatus.on_progress,
-                result=ReviewSerializer(review).data,
-            )
-            # Replace placeholders in the message
-            body = message \
-                .replace(
-                    "{{reviewer_name}}",
-                    review.user.name
-                ) \
-                .replace(
-                    "{{year_month}}",
-                    publication.year_month.strftime("%Y-%m")
-                ) \
-                .replace(
-                    "{{due_date}}",
-                    publication.due_date.strftime("%Y-%m-%d")
-                )
-
-            # Dispatch the send email job for each reviewer
-            task_id = async_task(
-                "api.v1.v1_jobs.job.notify_review_request",
-                review.user.email,
-                review.id,
-                subject,
-                body,
-                hook="api.v1.v1_jobs.job.email_notification_results",
-            )
-            # Update the job with the task ID
-            job.task_id = task_id
-            job.save()
+            dispatch_review_request(publication, review, subject, message)
 
     else:
         job.status = JobStatus.failed

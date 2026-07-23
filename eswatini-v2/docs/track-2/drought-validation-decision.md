@@ -5,7 +5,7 @@
 **App**: `backend/api/v1/v1_publication`
 **Figma**: [3258-43487 "Validation Decision"](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3258-43487&m=dev)
 **Date**: 2026-07-22
-**Status**: Draft
+**Status**: Implemented (2026-07-22)
 **Related**: [`drought-validation-queue.md`](drought-validation-queue.md) — **this doc amends it, see §12** · [`drought-review-queue.md`](drought-review-queue.md)
 
 ---
@@ -86,7 +86,7 @@ Backend-relevant criteria only; pure-layout ACs (AC-6.1 sticky panel, AC-4.4 chi
 | 3.3 | Status pill: Awaiting / Validated / Overridden | `status` + `is_override` (D-5) |
 | 4.1–4.3 | One row per assigned reviewer; empty state; reasoning quoted | `reviews[]` (D-4 masking; D-12 on row count) |
 | 5.3 | "N of M reviewers chose `<modal>`" + band label | `agreement.majority_count` / `total_submitted` / `band`, `majority_category` |
-| 6.2–6.3 | 6 chips, pre-set to the majority class, reasoning pre-populated | `majority_category`, `default_reasoning` (D-9) |
+| 6.2–6.3 | 6 chips, pre-set to the majority class, reasoning pre-populated | `majority_category` + `agreement.*`; the sentence is composed client-side (D-9, §3) |
 | 6.4 | Reasoning required when overriding | Serializer (§8), not only the disabled button — **also required on a tie** (D-9) |
 | 6.5 | Save as draft persists and re-opens; queue status stays Pending | `decision.is_draft` (D-1, D-6) |
 | 6.6 | Submit publishes the decision, returns to queue, KPIs move | D-1 (`validated_values` sync), D-6 |
@@ -163,16 +163,10 @@ The unique constraint makes the write path a plain `update_or_create` (§4) and 
 
 ### New constant
 
-`DroughtCategory` has no `choices()` helper (unlike `RasterIndicatorTypes`). Add both, next to it in `constants.py`:
+One, and it exists to constrain a model field — not to relabel anything:
 
 ```python
-class DroughtCategory:
-    ...
-    ShortStr = {          # "D2" — for chips and generated copy (D-9)
-        normal: "Normal", d0: "D0", d1: "D1",
-        d2: "D2", d3: "D3", d4: "D4", none: "No data",
-    }
-
+# api/v1/v1_publication/constants.py
 # Everything an admin may validate to — excludes `none` (queue doc D-11).
 VALIDATABLE_CATEGORIES = [
     (k, v) for k, v in DroughtCategory.FieldStr.items()
@@ -180,16 +174,14 @@ VALIDATABLE_CATEGORIES = [
 ]
 ```
 
-`ShortStr` mirrors the frontend's existing `DROUGHT_CATEGORY_CODE` (`static/config.js:70-78`) so `default_reasoning` reads "3 of 4 chose D2", not "3 of 4 chose D2 Severe Drought".
+**No short-label maps are added, on either enum.** An earlier draft introduced `DroughtCategory.ShortStr` and `TechnicalWorkingGroup.ShortStr` so the server could render "D2" and "MET". Both are unnecessary:
 
-`TechnicalWorkingGroup` likewise needs a short form — the payload's `organisation` is `"MET"`, but `FieldStr[met]` is `"MET (Meteorological Office)"`:
+- The frontend already owns those labels — `DROUGHT_CATEGORY_CODE` (`config.js:70-78`) and `TWG_OPTIONS` (`config.js:304`) — and already uses them for every other int this API sends.
+- A second dict beside `FieldStr` duplicates a map that is already keyed by the same ints. `v1_jobs/constants.py` shows the house pattern: where a machine-readable name is genuinely wanted, `FieldStr` **is** that map.
 
-```python
-class TechnicalWorkingGroup:
-    ...
-    ShortStr = {ndma: "NDMA", moag: "MoAg", met: "MET",
-                dwa: "DWA", uneswa: "UNESWA"}
-```
+So **`category` and `organisation` cross the API as integers**, exactly like `status` and `role`, and the display string is chosen at the point of display.
+
+**Consequence for `default_reasoning`**: the server would have needed `ShortStr` to compose *"Accepting the reviewer majority (3 of 4 chose D2)"*. It no longer composes it — see D-9. The payload carries `majority_category`, `majority_count` and `total_submitted`, which it already did, and the **frontend builds the sentence**. One less field on the wire, one less constant, and the copy lives with the rest of the page's copy.
 
 ### Modified Models
 
@@ -197,20 +189,35 @@ class TechnicalWorkingGroup:
 
 ### Migration Strategy
 
-```python
-# One CreateModel migration. No changes to existing tables, no data migration.
-#
-# NO BACKFILL (resolved, §10). Past publications hold categories in
-#   validated_values but never captured reasoning, validator, timestamp or the
-#   majority, so a backfilled row could carry nothing but a D-class — a history
-#   entry with no rationale and no accepted/overridden marker, which is the
-#   information AC-7.1 exists to show. History therefore starts empty and fills
-#   from the first decision recorded through this feature; DecisionHistory.js
-#   already renders "No previous decisions recorded." (:68-72).
-#
-# Rollback: DeleteModel. validated_values is untouched, so the published map
-# and every export keep working with or without this table.
+**`models.py` is not hand-migrated.** Editing it must be followed by a generated migration, or the app and CI diverge from the schema:
+
+```bash
+docker compose exec backend ./manage.py makemigrations v1_publication
+# or, locally:  cd backend && python manage.py makemigrations v1_publication
 ```
+
+The file lands as `migrations/000N_<autoname>.py` and **must be committed with the model change**. `backend/test.sh` runs `./manage.py migrate` before the suite, so a missing migration fails CI rather than passing quietly.
+
+**Generated**: `0006_validationdecision_and_more.py` — one `CreateModel` plus the unique constraint. No changes to existing tables, no data migration.
+
+```python
+operations = [
+    migrations.CreateModel(name="ValidationDecision", fields=[...]),
+    migrations.AddConstraint(
+        model_name="validationdecision",
+        constraint=models.UniqueConstraint(
+            fields=("publication", "administration"),
+            name="uniq_validation_decision_per_inkhundla",
+        ),
+    ),
+]
+```
+
+**No backfill** (resolved, §10). Past publications hold categories in `validated_values` but never captured reasoning, validator, timestamp or the majority, so a backfilled row could carry nothing but a D-class — a history entry with no rationale and no accepted/overridden marker, which is the information AC-7.1 exists to show. History starts empty and fills from the first decision recorded through this feature; `DecisionHistory.js` already renders "No previous decisions recorded." (`:68-72`).
+
+**Rollback**: `DeleteModel`. `validated_values` is untouched, so the published map and every export keep working with or without this table — which is the whole point of keeping the JSON as the published projection (D-1).
+
+**Deploy order**: migrate before serving; the new endpoints 500 without the table, and nothing else reads it.
 
 ---
 
@@ -235,7 +242,7 @@ Filter params are the queue's, and are used **only** to compute `meta.prev/next/
     "year_month": "2026-05",             // the whole calendar month (D-8)
     "reviewers_required": 5,
     "can_submit": false,                 // D-3 — drives the lock notice
-    "viewer": { "name": "Sipho Dlamini", "organisation": "UNESWA" },
+    "viewer": { "name": "Sipho Dlamini", "organisation": 5 },  // TWG int
     "prev_administration_id": 11,        // D-7; null at the ends
     "next_administration_id": 19,
     "queue_page": 2                      // page of the queue holding THIS row
@@ -273,11 +280,11 @@ Filter params are the queue's, and are used **only** to compute `meta.prev/next/
   },
   "reviews": [
     { "user_id": 7, "initials": "AR", "name": "Ayanda Ropa",
-      "organisation": "MET", "email": "ayanda@example.org",
-      "submitted_at": "2026-05-09T10:12:00Z", "category": 3,
+      "organisation": 3, "email": "ayanda@example.org",     // TWG int; the
+      "submitted_at": "2026-05-09T10:12:00Z", "category": 3, // frontend labels
       "comment": "2 of 3 sources support D2.", "hidden": false },
     { "user_id": 22, "initials": "TN", "name": "Thabo Nkosi",
-      "organisation": "UNESWA", "email": "thabo@example.org",
+      "organisation": 5, "email": "thabo@example.org",
       "submitted_at": null, "category": null, "comment": null,
       "hidden": false }                                        // AC-4.2
   ],
@@ -286,17 +293,16 @@ Filter params are the queue's, and are used **only** to compute `meta.prev/next/
     "reasoning": "Majority of reviewers assessed D2…",
     "is_draft": true,
     "updated_at": "2026-05-18T08:31:00Z"
-  },
-  "default_reasoning": "Accepting the reviewer majority (3 of 4 chose D2)."
+  }
 }
 ```
 
-`decision` is `null` when nothing has been saved; the picker then falls back to `majority_category` + `default_reasoning` (AC-6.3).
+`decision` is `null` when nothing has been saved; the picker then falls back to `majority_category`, and the frontend composes the default reasoning from `majority_count` / `total_submitted` / `majority_category` (AC-6.3).
 
 **Masked variant** (D-4) — `reviews[]` keeps **one row per assigned reviewer** so AC-4.1's count still holds, but every row other than the requester's is reduced to:
 
 ```jsonc
-{ "user_id": null, "initials": null, "name": null, "organisation": "MET",
+{ "user_id": null, "initials": null, "name": null, "organisation": 3,
   "email": null, "submitted_at": null, "category": null, "comment": null,
   "hidden": true }
 ```
@@ -525,7 +531,7 @@ The shipped mock's `period_start` / `period_end` are dropped with the rest of it
 requires_reasoning = (category != majority) or agreement["is_tie"]
 ```
 
-With a tie, `default_reasoning` is `null` and the textarea opens empty rather than pre-filled with a sentence that would be false.
+With a tie the frontend composes **no** default sentence and the textarea opens empty, rather than pre-filled with a claim about a majority that does not exist. `agreement.is_tie` is the signal.
 
 **Three UI consequences**, all driven off the same flag:
 
@@ -539,9 +545,15 @@ With a tie, `default_reasoning` is `null` and the textarea opens empty rather th
 
 **The client currently disagrees with the server about ties.** `AgreementBar` (`page.js:154-170`) reduces with `b.count > a.count` over ascending categories, so on a 2-2 tie it keeps the **lower** class and would print "chose D1" while the chip pre-selects D2. Replace the client tally with `agreement.*` (§6) — it is the same computation done twice, and the copy is the one that is wrong.
 
-**`total_submitted == 0`**: no majority, no default chip, `consensus: null`, `default_reasoning: null`, `is_tie: false`. The picker opens empty and reasoning is required for any submission — there is no majority to accept.
+**`total_submitted == 0`**: no majority, no default chip, `consensus: null`, no default reasoning, `is_tie: false`. The picker opens empty and reasoning is required for any submission — there is no majority to accept.
 
-**`default_reasoning` format**: `f"Accepting the reviewer majority ({majority_count} of {total_submitted} chose {DroughtCategory.ShortStr[majority_category]})."` — hence `ShortStr` in §3.
+**The default reasoning is composed in the frontend**, not sent by the API (§3):
+
+```js
+`Accepting the reviewer majority (${majority_count} of ${total_submitted} chose ${DROUGHT_CATEGORY_CODE[majority_category]}).`
+```
+
+All three inputs are already in the payload, and `DROUGHT_CATEGORY_CODE` is already imported by the page. Composing it server-side would have required a short-label map on `DroughtCategory` purely to render a sentence.
 
 ### D-10: Confidence stays mock and read-only
 
@@ -598,7 +610,7 @@ Category `0` is **wet/normal conditions**; `-9999` is No Data. The page labels `
 
 **Out of scope, flagged**: `DROUGHT_CATEGORY_LEVELS` (`config.js:36`) also starts with `"None"` and has the same defect, but it is consumed by two Track 3 components (`ActivityLibrary/AddActivity/Step2Trigger.js:29`, `ActivityLibrary/TriggerConditionsView.js`) where it drives trigger conditions. Changing it is a Track 3 change with its own review — not bundled here.
 
-Frontend copy only; no API or constant change beyond `DroughtCategory.ShortStr` (§3), which already says `"Normal"`.
+Frontend copy only; no API or constant change. `DROUGHT_CATEGORY_CODE[0]` already says `"Normal"`.
 
 ---
 
@@ -616,15 +628,17 @@ app/(auth)/validations/[id]/[administrationId]/page.js   "use client" — shippe
 | File | Change |
 |---|---|
 | `v1_publication/models.py` | `ValidationDecision` (§3) |
-| `v1_publication/constants.py` | `DroughtCategory.ShortStr`, `VALIDATABLE_CATEGORIES` |
-| `v1_users/constants.py` | `TechnicalWorkingGroup.ShortStr` |
-| `v1_publication/validation/utils.py` | `build_decision_payload`, `build_agreement`, `majority_of(categories)`, `mask_reviews`, `neighbours`, `sync_validated_values` |
+| `v1_publication/constants.py` | `VALIDATABLE_CATEGORIES` (model field choices) — **no new label maps**, enums cross the API as ints |
+| `v1_publication/validation/decision.py` | **New file** — `majority_of`, `consensus_band`, `build_agreement`, `build_reviews`, `has_submitted`, `mask_reviews`, `neighbours`, `sync_validated_values`, `save_decision`, `build_decision_payload`, `build_meta`, `build_history` |
 | `v1_publication/validation/view.py` | `ValidationDecisionAPI` (GET + PUT), `ValidationHistoryAPI` |
-| `v1_publication/validation/serializers.py` | `ValidationDecisionWriteSerializer` (§8), review + history read serializers |
-| `v1_publication/urls.py` | Two anchored routes |
-| `v1_publication/tests/tests_validation_decision.py` | New (§9) |
+| `v1_publication/validation/serializers.py` | `ValidationDecisionWriteSerializer` (§8), `ValidationDecisionFilterSerializer` |
+| `v1_publication/constants.py` | `VALIDATABLE_CATEGORIES`, `ConsensusBand` |
+| `v1_publication/urls.py` | Two anchored routes, both **above** the queue's `/administrations$` |
+| `v1_publication/tests/tests_admin_validation_decision_apis.py` | New (§9) |
 
 `majority_of(categories)` takes a **list of categories**, not rows — the same list `dclass_spread` is built from, `None`/`-9999` already filtered (queue doc D-8) — and returns **`(majority, is_tie)`** (D-9). There is no `reference_period`: the period is the calendar month (D-8).
+
+**Built as `decision.py`, not inside `utils.py`.** `validation/utils.py` was already 193 lines and owns the *queue* aggregation; the decision helpers are a different concern over the same rows. Splitting keeps both files inside the 200–400 line guidance and makes the import direction one-way — `decision` imports `utils`, never the reverse.
 
 ### Frontend changes (PR #140 follow-up)
 
@@ -639,7 +653,7 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | `page.js:232-240` | `statusKey`: use the server's `is_override` instead of comparing against the live majority (D-5, D-9) |
 | `page.js:242-246` | Delete the `validationQueue` indexing (it can only ever see one page of rows); Previous/Next navigate to `meta.prev/next_administration_id`, **preserving `status` + `search` and not `page`** (D-7). `disabled` when the id is `null` — the shipped `prevId === null` / `nextId === null` guards at `:296` and `:302` already have the right shape |
 | `page.js:282-288` | Breadcrumb "Drought Validation" → `/validations/{id}?status=&search=&page={meta.queue_page}` — `page` comes from the server every render, never from the URL the page was opened with (D-7) |
-| `page.js:224-227` | **State must initialise from the saved draft**, not from the majority: `selectedCategory = decision?.category ?? majority_category` and `reasoning = decision?.reasoning ?? default_reasoning ?? ""`. Without this AC-6.5 fails — a saved draft re-opens showing the majority chip and an empty textarea. Note both are `useState` **initialisers**, which run once on mount while the fetch is still in flight; they must move to a `useEffect` that syncs when the payload arrives, or the values latch on `undefined` |
+| `page.js:224-227` | **State must initialise from the saved draft**, not from the majority: `selectedCategory = decision?.category ?? majority_category` and `reasoning = decision?.reasoning ?? composeDefaultReasoning(agreement) ?? ""`. Without this AC-6.5 fails — a saved draft re-opens showing the majority chip and an empty textarea. Note both are `useState` **initialisers**, which run once on mount while the fetch is still in flight; they must move to a `useEffect` that syncs when the payload arrives, or the values latch on `undefined` |
 | `page.js:248-257` | `handleSaveDraft` → `PUT … {is_draft: true}`, then re-read the response so `decision.updated_at` reflects the save |
 | `page.js:259-272` | `handleSubmit` → `PUT … {is_draft: false}`; inspect the resolved body for the 400 and **do not navigate on failure** (§0). Keep the guard at `:260-262` as UX; §8 is the control |
 | `page.js:417-419` | `confidence` / `confidence_band` stay flat (D-10); honour `confidence_is_mock` on the badge |
@@ -663,8 +677,8 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | `is_override: true` → pill "Overridden" | `ValidationDecision.is_override` | `bool` |
 | `agreement.band` | `high` ≥80 · `moderate` 60–79 · `low` 40–59 · `none` <40 (D-2) | — |
 | `category`, `majority_category` | `VALIDATABLE_CATEGORIES`, never `none` (queue doc D-11) | `0`–`5` |
-| chip label `"D2"` | `DroughtCategory.ShortStr[3]` | `3` |
-| `organisation: "MET"` | `TechnicalWorkingGroup.ShortStr[met]` | `3` |
+| chip label `"D2"` | `DROUGHT_CATEGORY_CODE[3]` (frontend, `config.js:70-78`) | `3` |
+| `organisation: 3` | `TechnicalWorkingGroup.met` — int on the wire, labelled by `TWG_OPTIONS` (`config.js:304`) | `3` |
 | `can_submit` | `role == UserRoleTypes.admin` (D-3) | `1` |
 | `is_draft` | `ValidationDecision.is_draft` | `bool` |
 
@@ -721,7 +735,6 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | Django unit | `[3,3,2,2]` yields `consensus: 80`, band `high`, **and** `is_tie: true` — the tie is signalled by the flag, never by the score (D-9) |
 | Django unit | Two reviewers in one TWG: `reviews[]` has both rows, both categories appear in `distribution` and count toward the majority, and `reviews_total` still counts TWGs — `total_submitted` may exceed it (D-12) |
 | Django unit | Band boundaries at 80 / 60 / 40, including the changed `low`/`none` line (D-2) |
-| Django unit | `default_reasoning` renders the short code: "3 of 4 chose D2", not "D2 Severe Drought" (D-9) |
 | Django unit | Snapshot: submit, then add a review shifting the majority; stored `is_override` / `majority_category` unchanged, live `agreement.majority_category` moves (D-9) |
 | Django unit | Re-submit **re-snapshots**: a corrected category is judged against the majority at the second submit, not the first (D-6) |
 | Django unit | `neighbours` and the queue endpoint return the **same ordered ids** for the same `search`/`status` — walking prev/next from the first row reproduces the concatenated pages exactly (D-7 shared `ordered_rows`) |
@@ -737,7 +750,7 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | Jest | A payload carrying a draft initialises the picker to `decision.category` and the textarea to `decision.reasoning` — **not** to `majority_category` / `default_reasoning` (AC-6.5) |
 | Django API | PUT `is_draft: false`, category ≠ majority, blank reasoning → 400 on `reasoning` (AC-6.4) |
 | Django API | PUT `is_draft: false` accepting the **pre-selected chip on a tie** with blank reasoning → 400, message names the tie; `is_override` is `False` on the eventual success (D-9) |
-| Django unit | `default_reasoning` is `null` when `is_tie` — there is no majority to say it accepts (D-9) |
+| Jest | The default reasoning is composed from `majority_count`/`total_submitted`/`majority_category` and reads "3 of 4 chose D2"; on `is_tie` the textarea opens **empty** (D-9) |
 | Django API | PUT `is_draft: false`, `category: -9999` → 400 (queue doc D-11) |
 | Django API | PUT `is_draft: true` over a submitted decision → 400 (D-6) |
 | Django API | PUT `is_draft: false` stamps `validated_by`/`validated_at`, sets `is_override`, upserts `validated_values`, and moves the queue's `validated` count by exactly 1 (AC-6.6, D-1) |
@@ -805,6 +818,74 @@ Unchanged and still authoritative: the three-status partition (D-10), the `is_va
 
 ---
 
+## 13. As built (2026-07-22)
+
+Verified: **546 backend tests**, **122 frontend tests**, lint clean both sides, production build green.
+
+### Shipped
+
+| Area | Files |
+|---|---|
+| Model | `models.py` — `ValidationDecision`; migration `0006_validationdecision_and_more.py` |
+| Constants | `constants.py` — `VALIDATABLE_CATEGORIES`, `ConsensusBand` |
+| Aggregation | `validation/decision.py` (new); `validation/utils.py` rows gain `zone` / `confidence` / `confidence_band` |
+| API | `ValidationDecisionAPI` (GET + PUT), `ValidationHistoryAPI`, two anchored routes |
+| Frontend | decision `page.js` wired to all three endpoints; `DecisionHistory.js` marker; `middleware.js` reviewer access; **all three validation mocks deleted** |
+| Tests | `tests_admin_validation_decision_apis.py` (39), `__tests__/ValidationDecisionPage.test.js` (16) |
+
+### Deviations from the plan, and why
+
+| Plan said | Built | Why |
+|---|---|---|
+| Helpers in `validation/utils.py` | New `validation/decision.py` | utils was already 193 lines and owns the queue aggregation; splitting keeps both files in range and the import direction one-way |
+| Queue row contract unchanged | Row gains `zone`, `confidence`, `confidence_band` | The decision page needs them and is built from the same rows — one builder beats a second lookup. The queue doc's §4 and its test were updated together |
+| `reviews[]` is `submissions` enriched | Built from the **reviewer roster** | `submissions` only holds reviewers who have submitted; AC-4.1/4.2 need a pending row for those who have not |
+| — | `submitted_at` is `review.updated_at or created_at` | `suggestion_values` entries carry no per-Inkhundla timestamp; this is the closest truthful value |
+
+### Behaviours worth not regressing
+
+- **A tie requires reasoning even when the chip is unchanged**, and `is_override` is still `False`. Related conditions, not the same one — a test pins both halves.
+- **The majority is snapshotted at submit.** A test adds reviews *after* submitting and asserts the stored `is_override` does not move while the live `agreement` does.
+- **The requester's own reviewer row is never masked.** Masking removes colleagues' category, name, email and comment; `organisation` survives.
+- **`sync_validated_values` upserts against `initial_values`**, never by mapping over `validated_values` — that field is null on a fresh publication and mapping over it writes nothing.
+- **The page must not use `try/catch` for writes.** `api()` resolves on 4xx; a test asserts a rejected submit keeps the page open.
+
+### Follow-ups
+
+1. **Deploy**: migrate before serving — the new endpoints 500 without the table.
+2. The legacy `/publications/{id}/validation` page still writes `validated_values` wholesale, bypassing `ValidationDecision`, so categories set there never appear in history (D-1, D-11).
+3. `DROUGHT_CATEGORY_LEVELS[0] === "None"` remains for Track 3 (D-13).
+
+---
+
+## 14. Amended by the agreement-filters work (2026-07-22)
+
+[`drought-validation-bulk-filters.md`](drought-validation-bulk-filters.md) touches this page in five places.
+
+### AC-5.3 was never actually rendered
+
+`CONSENSUS_BAND` **and** `getConsensusBand` were both declared and neither was referenced, so the page showed a bare percentage with no band label beside it. Now rendered from `agreement.band`, and the client-side threshold helper is **deleted** rather than called: the server already bands the score from `ConsensusBand.THRESHOLDS`, and a second copy of those cut-points here is exactly how this page and the queue would come to disagree about one number. `CONSENSUS_BAND` survives as labels and colours only, keyed by what the server sends.
+
+### Two drought colour ramps deleted
+
+`LEGEND_DOT_COLOR` matched `config.js` for D1–D4 but had `0` as indigo and `1` as green — so the legend key contradicted the agreement bar directly above it, which was already reading `DROUGHT_CATEGORY_COLOR`. Both it and the queue's `VALIDATION_DCLASS_COLOR` are gone; every chip now goes through the shared `DroughtScore`. D-13's "labels come from config" now extends to hue.
+
+### `?agreement=` joins the carried filters
+
+`queueQuery` carries `status`, `search` **and** `agreement`, so Previous/Next walk the filtered queue instead of dropping the admin onto rows the filter had just excluded. `neighbours()` and `ValidationDecisionFilterSerializer` take the new kwarg. `page` is still deliberately absent (D-7).
+
+### Period renders the full month span
+
+The header said `MMMM YYYY`; the design calls for `1 February 2000 - 29 February 2000`. Now `periodRange()` in `lib/helper.js`, with the end day **derived** (`new Date(year, month, 0)`) so a leap February is 29 rather than a hardcoded length. Imported from `@/lib/helper`, matching the weather charts, not from the `@/lib` barrel that this page's tests stub.
+
+`MONTH_LABELS` became `MONTH_NAMES` (full names) with `periodLabels` deriving the three-letter form by `.slice(0, 3)` — one list, so the charts are byte-identical and there is no second month table to drift.
+
+### `DecisionHistory` moved
+
+Now `frontend/src/components/Validation/DecisionHistory.js`, imported via `@/components/Validation`, alongside the sibling `components/Review/` package. The route folder holds only `page.js` and its tests.
+
+---
+
 ## Approval
 
 | Role | Name | Date | Status |
@@ -823,4 +904,4 @@ Unchanged and still authoritative: the three-status partition (D-10), the `is_va
 - [x] D-13 (labels from `config.js`) resolved
 - [x] §10 — all questions answered, no open items
 - [x] §12 amendments applied to `drought-validation-queue.md` (2026-07-22)
-- [ ] Design approved → proceed with `/sc:implement`
+- [x] Implemented — see §13 (2026-07-22)

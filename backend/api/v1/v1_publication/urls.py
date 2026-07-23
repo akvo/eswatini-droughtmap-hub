@@ -20,6 +20,14 @@ from .review.view import (
     ReviewAdministrationDetailAPI,
     ReviewMapAPI,
 )
+from .validation.view import (
+    ValidationBulkAPI,
+    ValidationStatsAPI,
+    ValidationAdministrationsAPI,
+    ValidationDecisionAPI,
+    ValidationHistoryAPI,
+)
+from .twg.view import ReviewerAssignmentAPI
 
 urlpatterns = [
     re_path(r"^(?P<version>(v1))/config.js", get_config_file),
@@ -65,6 +73,53 @@ urlpatterns = [
         r"^(?P<version>(v1))/admin/cdi-geonode",
         CDIGeonodeAPI.as_view(),
         name="cdi-geonode",
+    ),
+    # Anchored, and under /admin/validation/ rather than /admin/publication/:
+    # the publication-details pattern below has no trailing `$`, so anything
+    # nested under it would be swallowed by a prefix match (D-3).
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)/stats$",
+        ValidationStatsAPI.as_view(),
+        name="validation-queue-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)/bulk$",
+        ValidationBulkAPI.as_view(),
+        name="validation-bulk",
+    ),
+    # Reviewer assignment. Under /admin/publication-reviewers/ beside existing
+    # /admin/publication-reviews/, NOT nested under /admin/publication/{pk} —
+    # that pattern carries no trailing `$`, so anything below it is swallowed
+    # by PublicationViewSet.retrieve and answered 200 with the wrong body
+    # (D-12, same trap as the validation queue's D-3).
+    re_path(
+        r"^(?P<version>(v1))/admin/publication-reviewers/(?P<pk>[0-9]+)"
+        r"/(?P<user_id>[0-9]+)$",
+        ReviewerAssignmentAPI.as_view(),
+        name="publication-reviewer-detail",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/publication-reviewers/(?P<pk>[0-9]+)$",
+        ReviewerAssignmentAPI.as_view(),
+        name="publication-reviewers",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"
+        r"/administrations/(?P<administration_id>[0-9]+)/history$",
+        ValidationHistoryAPI.as_view(),
+        name="validation-decision-history",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"
+        r"/administrations/(?P<administration_id>[0-9]+)$",
+        ValidationDecisionAPI.as_view(),
+        name="validation-decision",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/validation/(?P<pk>[0-9]+)"
+        r"/administrations$",
+        ValidationAdministrationsAPI.as_view(),
+        name="validation-queue-administrations",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/publications",
