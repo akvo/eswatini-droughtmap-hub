@@ -8,7 +8,11 @@ are deterministic placeholders
 until the Δ-based confidence formula and station data exist. See CLAUDE.md
 "Frontend Mock Data" — these responses are the backend contract.
 """
-from api.v1.v1_publication.models import Administration
+from api.v1.v1_publication.models import (
+    Administration,
+    Publication,
+    Review,
+)
 from api.v1.v1_publication.constants import (
     DroughtCategory,
     MOCK_STATIONS,
@@ -26,6 +30,107 @@ def _category_map(values):
     return {
         v["administration_id"]: v.get("category")
         for v in (values or [])
+    }
+
+
+def _value_map(values):
+    """administration_id -> raw CDI-E value (initial_values carries both a
+    ``category`` and the composite ``value``; the queue only needs category,
+    the individual page also needs the score)."""
+    return {
+        v["administration_id"]: v.get("value")
+        for v in (values or [])
+    }
+
+
+def recent_publications(anchor, limit=12):
+    """The anchor publication plus its ``limit-1`` predecessors by month
+    (newest first). Anchors the 12-month CDI-E history + decision history to
+    the publication being reviewed, not to "now"."""
+    return list(
+        Publication.objects.filter(year_month__lte=anchor.year_month)
+        .order_by("-year_month")[:limit]
+    )
+
+
+def indicator_values(publication, administration_id):
+    """Raw percentile ranks for each attached indicator raster, this admin.
+    Labels/colours are frontend config (WX-3 D-4) — API sends key+value only.
+    ``value`` is null when the raster has no entry for the Inkhundla."""
+    out = []
+    for raster in publication.rasters.all():
+        value = next(
+            (
+                item.get("value")
+                for item in (raster.values or [])
+                if item.get("administration_id") == administration_id
+            ),
+            None,
+        )
+        out.append({"key": raster.indicator, "value": value})
+    return out
+
+
+def cdi_history(administration_id, publications):
+    """CDI-E composite value for this admin across ``publications``,
+    oldest -> newest (the chart plots the current month on the far right)."""
+    history = []
+    for pub in reversed(publications):
+        history.append({
+            "period": pub.year_month.strftime("%Y-%m"),
+            "value": _value_map(pub.initial_values).get(administration_id),
+        })
+    return history
+
+
+def reviewer_decision_history(user, administration_id, publications):
+    """THIS reviewer's own submitted drought-class picks for this admin,
+    newest first. AC-critical: request.user's Review only — never other
+    reviewers, never the validator's ValidationDecision table."""
+    if user is None or not user.is_authenticated:
+        return []
+    reviews = {
+        r.publication_id: r
+        for r in Review.objects.filter(
+            publication__in=publications, user_id=user.id
+        )
+    }
+    out = []
+    for pub in publications:  # newest first
+        review = reviews.get(pub.id)
+        if not review:
+            continue
+        suggestion = next(
+            (
+                s for s in (review.suggestion_values or [])
+                if s.get("administration_id") == administration_id
+                and s.get("reviewed")
+            ),
+            None,
+        )
+        if suggestion is None:
+            continue
+        decided = review.completed_at or review.updated_at
+        out.append({
+            "period": pub.year_month.strftime("%Y-%m"),
+            "category": suggestion.get("category"),
+            "comment": suggestion.get("comment") or "",
+            "decided_at": decided.isoformat() if decided else None,
+        })
+    return out
+
+
+def build_administration_cdi(publication, administration_id, cdi_class,
+                             publications):
+    """The individual review page's CDI-E block: composite score+category,
+    per-indicator percentile ranks, and the 12-month history."""
+    return {
+        "score": _value_map(publication.initial_values).get(
+            administration_id
+        ),
+        "category": cdi_class,
+        "indicators": indicator_values(publication, administration_id),
+        "history": cdi_history(administration_id, publications),
     }
 
 

@@ -244,6 +244,46 @@ class ReviewQueueAPIsTestCase(APITestCase):
         res = self.client.get(self.detail_url(1))
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_detail_includes_cdi_block(self):
+        adm_id = self.publication.initial_values[0]["administration_id"]
+        res = self.client.get(self.detail_url(adm_id))
+        cdi = res.data["administration"]["cdi"]
+        self.assertEqual(
+            set(cdi), {"score", "category", "indicators", "history"}
+        )
+        self.assertEqual(
+            cdi["category"], res.data["administration"]["cdi_class"]
+        )
+        self.assertIsInstance(cdi["indicators"], list)
+        # history plots oldest -> newest: current month is the last point.
+        self.assertEqual(
+            cdi["history"][-1]["period"],
+            self.publication.year_month.strftime("%Y-%m"),
+        )
+
+    def test_detail_decision_history_is_own_reviewer_only(self):
+        adm_id = self.publication.initial_values[0]["administration_id"]
+        mine = self.publication.reviews.get(user_id=self.user.id)
+        mine.suggestion_values = [
+            {"administration_id": adm_id, "category": DroughtCategory.d2,
+             "reviewed": True, "comment": "mine"}
+        ]
+        mine.save()
+        other = self.publication.reviews.exclude(
+            user_id=self.user.id
+        ).first()
+        if other:
+            other.suggestion_values = [
+                {"administration_id": adm_id, "category": DroughtCategory.d4,
+                 "reviewed": True, "comment": "theirs"}
+            ]
+            other.save()
+        res = self.client.get(self.detail_url(adm_id))
+        history = res.data["administration"]["decision_history"]
+        cats = [h["category"] for h in history]
+        self.assertIn(DroughtCategory.d2, cats)          # my own pick
+        self.assertNotIn(DroughtCategory.d4, cats)       # other reviewer's
+
     # ---- map -------------------------------------------------------------
     def test_map_reviewed_filter(self):
         review = self.publication.reviews.first()
