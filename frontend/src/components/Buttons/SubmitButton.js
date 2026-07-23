@@ -19,7 +19,12 @@ const SubmitButton = ({
         validateOnly: true,
       })
       .then(() => setSubmittable(true))
-      .catch(() => setSubmittable(false));
+      .catch((err) => {
+        if (err && err.outOfDate) {
+          return;
+        }
+        setSubmittable(false);
+      });
   }, [form, values]);
   return (
     <Button

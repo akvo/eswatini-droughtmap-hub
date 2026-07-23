@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, Select, Table, Tag } from "antd";
 import { FileOutlined } from "@ant-design/icons";
-import { Can, FeedbackSection, PageHeader, TabButtons } from "@/components";
+import {
+  Can,
+  FeedbackSection,
+  PageHeader,
+  StartPublicationModal,
+  TabButtons,
+} from "@/components";
 import {
   MAP_CATEGORY_OPTIONS,
   PAGE_SIZE,
@@ -23,6 +29,7 @@ const SHOW_GEONODE_LINK = false;
 const PublicationsPage = () => {
   const [publications, setPublications] = useState([]);
   const [preview, setPreview] = useState(null);
+  const [selectedGeonode, setSelectedGeonode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
@@ -140,7 +147,11 @@ const PublicationsPage = () => {
               className="edm-reviews-action"
               onClick={(e) => {
                 e.stopPropagation();
-                router.push(routeURL);
+                if (publication_id) {
+                  router.push(routeURL);
+                } else {
+                  setSelectedGeonode(record);
+                }
               }}
             >
               {actionLabel}
@@ -321,6 +332,16 @@ const PublicationsPage = () => {
           <p className="py-8 text-center text-gray-500">No preview available</p>
         )}
       </Modal>
+
+      <StartPublicationModal
+        geonode={selectedGeonode}
+        open={!!selectedGeonode && !selectedGeonode.publication_id}
+        onClose={() => setSelectedGeonode(null)}
+        onSuccess={() => {
+          setSelectedGeonode(null);
+          setPreload(true);
+        }}
+      />
     </div>
   );
 };
