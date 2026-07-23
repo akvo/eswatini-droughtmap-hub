@@ -2,19 +2,23 @@ import { USER_ROLES } from "@/static/config";
 import { Button } from "antd";
 import Link from "next/link";
 
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
+// Hardcoded rather than derived from toLocaleString: month names must not
+// change with the server or browser locale. The three-letter abbreviations are
+// exactly the first three letters of the English names for all twelve months,
+// so one list serves both forms.
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
   "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 // "2026-04" -> "04". The weather series is keyed by calendar period, while
@@ -45,9 +49,33 @@ export const lastNMonths = (n = 12, now = new Date()) => ({
 export const periodLabels = (periods = []) => {
   const multiYear = new Set(periods.map((p) => p.slice(0, 4))).size > 1;
   return periods.map((p) => {
-    const month = MONTH_LABELS[parseInt(monthOfYear(p), 10) - 1] ?? p;
+    const month =
+      MONTH_NAMES[parseInt(monthOfYear(p), 10) - 1]?.slice(0, 3) ?? p;
     return multiYear ? `${month} ${p.slice(2, 4)}` : month;
   });
+};
+
+/**
+ * "2000-02" -> "1 February 2000 - 29 February 2000".
+ *
+ * A publication covers a whole calendar month, and the validation pages say so
+ * explicitly rather than showing a bare "February 2000" and leaving the reader
+ * to assume the span. The end day is derived (day 0 of the following month),
+ * so February is 29 in a leap year and 28 otherwise — never a hardcoded 30.
+ *
+ * Returns null for a missing or malformed period so callers keep rendering
+ * their own placeholder instead of "1 undefined NaN".
+ */
+export const periodRange = (period) => {
+  const [year, month] = String(period || "")
+    .split("-")
+    .map(Number);
+  if (!year || !month || month < 1 || month > 12) {
+    return null;
+  }
+  const name = MONTH_NAMES[month - 1];
+  const lastDay = new Date(year, month, 0).getDate();
+  return `1 ${name} ${year} - ${lastDay} ${name} ${year}`;
 };
 
 // Climatology lookup: the normals row keyed "01".."12" for a calendar period.

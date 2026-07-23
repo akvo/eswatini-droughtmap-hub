@@ -16,6 +16,12 @@ from api.v1.v1_publication.constants import (
 )
 
 
+def initials(name):
+    """'Ayanda Ropa' -> 'AR'. Avatar label for the validation queue."""
+    parts = [p for p in (name or "").split() if p]
+    return "".join(p[0] for p in parts[:2]).upper() or "?"
+
+
 def _category_map(values):
     return {
         v["administration_id"]: v.get("category")
@@ -69,21 +75,29 @@ def build_rows(publication, user=None):
     admins = Administration.objects.in_bulk(list(initial.keys()))
     mine = _my_suggestions(publication, user)
 
-    # Categories reviewed per administration, across every review — including
-    # reviews still in progress. A reviewer marks Tinkhundla one by one and only
+    # Submissions per administration, across every review — including reviews
+    # still in progress. A reviewer marks Tinkhundla one by one and only
     # submits the review once all of them are done, so waiting for is_completed
     # would leave the queue showing "not started" for work already done.
-    reviewed = {}
-    for review in publication.reviews.all():
+    #
+    # Who submitted what is kept, not just the category: the validation queue
+    # shows the reviewer mix and the D-class spread. It must NOT reach the
+    # reviewer-facing endpoints — see _public_row in review/view.py.
+    submissions = {}
+    for review in publication.reviews.select_related("user").all():
         for s in (review.suggestion_values or []):
             if s.get("reviewed"):
-                reviewed.setdefault(
-                    s["administration_id"], []
-                ).append(s.get("category"))
+                submissions.setdefault(s["administration_id"], []).append({
+                    "user_id": review.user_id,
+                    "label": initials(review.user.name),
+                    "group": review.user.technical_working_group,
+                    "category": s.get("category"),
+                })
 
     rows = []
     for administration_id, cdi_class in initial.items():
-        categories = reviewed.get(administration_id, [])
+        row_submissions = submissions.get(administration_id, [])
+        categories = [s["category"] for s in row_submissions]
         reviewed_count = len(categories)
         status = _review_status(reviewed_count, total_reviewers)
         admin = admins.get(administration_id)
@@ -110,8 +124,28 @@ def build_rows(publication, user=None):
             "disputed": (
                 len({c for c in categories if c is not None}) > 1
             ),
+            # Admin-only (validation queue). Stripped from every /reviewer/*
+            # response by _public_row — see review/view.py.
+            "submissions": row_submissions,
         })
     return rows
+
+
+def public_row(row):
+    """Drop admin-only fields before a row reaches a reviewer.
+
+    ``submissions`` (added by build_rows) carries every colleague's D-class.
+    The review queue deliberately shows a reviewer only their own
+    ``my_suggestion``: seeing what four others chose before submitting turns
+    five independent judgements into one plus four echoes, which is what the
+    TWG-coverage threshold exists to prevent.
+
+    Lives here, next to build_rows, so the field's whole lifecycle — added in
+    one function, stripped in the next — reads in one place. Applied at all
+    three /reviewer/* response sites; there is no single chokepoint, because
+    the detail endpoint does not go through the filtered-rows helper.
+    """
+    return {k: v for k, v in row.items() if k != "submissions"}
 
 
 def filter_rows(rows, search=None, confidence=None,

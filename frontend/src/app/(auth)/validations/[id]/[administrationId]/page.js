@@ -1,23 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Avatar, Button, Input, Tag } from "antd";
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Alert, Avatar, Button, Input, Tag } from "antd";
 import { HomeOutlined, WarningFilled } from "@ant-design/icons";
 import { Can, FeedbackSection } from "@/components";
+import { api } from "@/lib";
+// From @/lib/helper, not @/lib: matches how the weather charts import their
+// period helpers, and keeps this out of the barrel that page tests stub.
+import { periodRange } from "@/lib/helper";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import {
   DROUGHT_CATEGORY_CODE,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
+  TWG_OPTIONS,
 } from "@/static/config";
-import {
-  validationDecision,
-  validationHistory,
-  validationQueue,
-} from "@/static/mocks/validation";
 import dayjs from "dayjs";
-import DecisionHistory from "./DecisionHistory";
+import { DecisionHistory } from "@/components/Validation";
 
 const { TextArea } = Input;
 
@@ -28,6 +28,9 @@ const STATUS_PILL = {
   overridden: { label: "Overridden", color: "#e60000" },
 };
 
+// Labels only. The thresholds live server-side and arrive as
+// `agreement.band` — banding here too would be the same rule implemented
+// twice, which is exactly how the queue and this page would drift apart.
 const CONSENSUS_BAND = {
   high: { label: "High consensus", color: "#12b76a" },
   moderate: { label: "Moderate consensus", color: "#f39c12" },
@@ -35,21 +38,14 @@ const CONSENSUS_BAND = {
   none: { label: "No consensus", color: "#667085" },
 };
 
-const getConsensusBand = (pct) => {
-  if (pct >= 80) return "high";
-  if (pct >= 60) return "moderate";
-  if (pct >= 30) return "low";
-  return "none";
-};
-
-const DCLASS_OPTIONS = [
-  { value: 0, label: "None" },
-  { value: 1, label: "D0" },
-  { value: 2, label: "D1" },
-  { value: 3, label: "D2" },
-  { value: 4, label: "D3" },
-  { value: 5, label: "D4" },
-];
+// Labels come from config.js, which is generated from the backend enum and
+// already says "Normal" for 0. Two hand-written arrays in this file would
+// drift the moment a label changes — and "None" reads as "no data" to a
+// validator, which is exactly the confusion -9999 exists to avoid.
+const DCLASS_OPTIONS = [0, 1, 2, 3, 4, 5].map((value) => ({
+  value,
+  label: DROUGHT_CATEGORY_CODE[value],
+}));
 
 const DClassChip = ({ value, selected, onClick }) => {
   const bg = DROUGHT_CATEGORY_COLOR?.[value] ?? "#f3f4f6";
@@ -127,59 +123,55 @@ const ReviewerRow = ({ review }) => {
   );
 };
 
-const LEGEND_DOT_COLOR = {
-  0: "#3E5EB9",
-  1: "#12b76a",
-  2: "#fbd47f",
-  3: "#ffaa00",
-  4: "#e60000",
-  5: "#730000",
-};
+// Dots key the bar segments above them, so both read DROUGHT_CATEGORY_COLOR.
+// A separate ramp here had 0 as indigo and 1 as green, which made the legend
+// disagree with the very bar it explains.
+const LEGEND_ITEMS = [0, 1, 2, 3, 4, 5].map((cat) => ({
+  cat,
+  label: DROUGHT_CATEGORY_LABEL[cat],
+  color: DROUGHT_CATEGORY_COLOR[cat],
+}));
 
-const LEGEND_ITEMS = [
-  { cat: 0, label: "None" },
-  { cat: 1, label: "D0 Normal" },
-  { cat: 2, label: "D1 Moderate" },
-  { cat: 3, label: "D2 Severe" },
-  { cat: 4, label: "D3 Extreme" },
-  { cat: 5, label: "D4 Exceptional" },
-];
+/**
+ * Renders the server's tally. It used to be computed here, with a reduce that
+ * kept the FIRST of two tied classes in ascending order — so a 2-2 tie
+ * reported the LOWER class while the chip pre-selected the higher one. Same
+ * computation done twice, disagreeing.
+ */
+const AgreementBar = ({ agreement, majorityCategory }) => {
+  if (!agreement || agreement.total_submitted === 0) return null;
 
-const AgreementBar = ({ reviews }) => {
-  const submitted = reviews.filter((r) => r.category !== null);
-  if (submitted.length === 0) return null;
-
-  const counts = {};
-  submitted.forEach((r) => {
-    counts[r.category] = (counts[r.category] || 0) + 1;
-  });
-
-  const sorted = Object.entries(counts)
-    .map(([cat, count]) => ({ category: Number(cat), count }))
-    .sort((a, b) => a.category - b.category);
-
-  const total = submitted.length;
-  const modal = sorted.reduce((a, b) => (b.count > a.count ? b : a));
+  const { distribution, majority_count, total_submitted, is_tie } = agreement;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-[#333333]">Agreement Analysis</h3>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-[#606060]">
-            {modal.count}/{total} reviewers chose
+        {is_tie ? (
+          <span className="text-sm text-[#e60000]">
+            No single majority &mdash;{" "}
+            {agreement.tied_categories
+              .map((c) => DROUGHT_CATEGORY_CODE[c])
+              .join(" and ")}{" "}
+            tied at {majority_count} of {total_submitted}
           </span>
-          <DroughtScore level={modal.category} size="sm" />
-        </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-[#606060]">
+              {majority_count}/{total_submitted} reviewers chose
+            </span>
+            <DroughtScore level={majorityCategory} size="sm" />
+          </div>
+        )}
       </div>
 
       <div className="flex h-8 w-full gap-1">
-        {sorted.map((s) => (
+        {distribution.map((s) => (
           <div
             key={s.category}
             className="rounded"
             style={{
-              width: `${(s.count / total) * 100}%`,
+              width: `${(s.count / total_submitted) * 100}%`,
               backgroundColor: DROUGHT_CATEGORY_COLOR[s.category],
             }}
           />
@@ -192,7 +184,7 @@ const AgreementBar = ({ reviews }) => {
             <div key={item.cat} className="flex items-center gap-1.5 text-sm">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: LEGEND_DOT_COLOR[item.cat] }}
+                style={{ backgroundColor: item.color }}
               />
               <span className="text-[#606060]">{item.label}</span>
             </div>
@@ -203,63 +195,151 @@ const AgreementBar = ({ reviews }) => {
   );
 };
 
+/** The default note the picker starts with when the majority is accepted. */
+export const composeDefaultReasoning = (agreement, majorityCategory) => {
+  if (!agreement || agreement.total_submitted === 0 || agreement.is_tie) {
+    // A tie has no majority to accept — pre-filling a sentence that claims
+    // one would be false, so the textarea opens empty.
+    return "";
+  }
+  const code = DROUGHT_CATEGORY_CODE[majorityCategory];
+  return `Accepting the reviewer majority (${agreement.majority_count} of ${agreement.total_submitted} chose ${code}).`;
+};
+
 const ValidationDecisionPage = () => {
   const { id, administrationId } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // TODO: replace with API call
-  const decision = validationDecision;
-  const history = validationHistory;
-  const queue = validationQueue;
+  // The queue's filters, carried through so Previous/Next walk the same list
+  // the admin was looking at. `page` is NOT carried — it is derived server
+  // side as meta.queue_page and a copy here goes stale the moment Next
+  // crosses a page boundary.
+  const queueQuery = (() => {
+    const params = new URLSearchParams();
+    ["status", "search", "agreement"].forEach((key) => {
+      const value = searchParams.get(key);
+      if (value) params.set(key, value);
+    });
+    return params.toString();
+  })();
 
-  const [selectedCategory, setSelectedCategory] = useState(
-    decision.majority_category,
-  );
-  const [reasoning, setReasoning] = useState("");
+  const [decision, setDecision] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [reasoning, setReasoning] = useState("");
 
-  const isOverride = selectedCategory !== decision.majority_category;
+  const meta = decision?.meta;
+  const agreement = decision?.agreement;
+  const canSubmit = Boolean(meta?.can_submit);
 
-  const statusKey =
-    decision.validated_category !== null
-      ? decision.validated_category !== decision.majority_category
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const base = `/admin/validation/${id}/administrations/${administrationId}`;
+      const [payload, historyPayload] = await Promise.all([
+        api("GET", queueQuery ? `${base}?${queueQuery}` : base),
+        api("GET", `${base}/history`),
+      ]);
+      setDecision(payload);
+      setHistory(historyPayload?.data || []);
+      // Initialise from the saved draft, NOT from the majority: a draft that
+      // re-opened showing the majority chip and an empty textarea would look
+      // like it had never been saved.
+      setSelectedCategory(
+        payload?.decision?.category ?? payload?.majority_category ?? null,
+      );
+      setReasoning(
+        payload?.decision?.reasoning ??
+          composeDefaultReasoning(
+            payload?.agreement,
+            payload?.majority_category,
+          ),
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Could not load this validation decision.");
+    } finally {
+      setLoading(false);
+    }
+  }, [administrationId, id, queueQuery]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const majorityCategory = decision?.majority_category ?? null;
+  // A tie has no majority to accept, so the pick is the validator's own
+  // judgement and reasoning is required even when the chip is unchanged.
+  const isOverride =
+    majorityCategory !== null && selectedCategory !== majorityCategory;
+  const needsReasoning = isOverride || Boolean(agreement?.is_tie);
+
+  const statusKey = decision
+    ? decision.status === "validated"
+      ? decision.is_override
         ? "overridden"
         : "validated"
-      : decision.status === "ready"
-        ? "ready"
-        : "awaiting";
-  const statusPill = STATUS_PILL[statusKey];
+      : decision.status
+    : "awaiting";
+  const statusPill = STATUS_PILL[statusKey] || STATUS_PILL.awaiting;
 
-  const queueIds = queue.data.map((r) => r.administration_id);
-  const currentIdx = queueIds.indexOf(Number(administrationId));
-  const prevId = currentIdx > 0 ? queueIds[currentIdx - 1] : null;
-  const nextId =
-    currentIdx < queueIds.length - 1 ? queueIds[currentIdx + 1] : null;
+  const prevId = meta?.prev_administration_id ?? null;
+  const nextId = meta?.next_administration_id ?? null;
+
+  const goTo = (targetId) =>
+    router.push(
+      `/validations/${id}/${targetId}${queueQuery ? `?${queueQuery}` : ""}`,
+    );
+
+  const backToQueue = () => {
+    const params = new URLSearchParams(queueQuery);
+    if (meta?.queue_page) params.set("page", String(meta.queue_page));
+    const qs = params.toString();
+    router.push(`/validations/${id}${qs ? `?${qs}` : ""}`);
+  };
+
+  const write = async (isDraft) => {
+    setSaving(true);
+    setError(null);
+    // api() resolves on 4xx rather than rejecting, so a rejected write is a
+    // value to inspect — never an exception to catch.
+    const res = await api(
+      "PUT",
+      `/admin/validation/${id}/administrations/${administrationId}`,
+      {
+        category: selectedCategory,
+        reasoning,
+        is_draft: isDraft,
+      },
+    );
+    setSaving(false);
+    if (res?.is_draft === isDraft) {
+      return null;
+    }
+    const message =
+      res?.reasoning?.[0] || res?.category?.[0] || res?.is_draft?.[0];
+    setError(message || "Could not save this decision.");
+    return message || "error";
+  };
 
   const handleSaveDraft = async () => {
-    setSaving(true);
-    // TODO: API call to save draft
-    console.log("Save draft:", {
-      administration_id: administrationId,
-      category: selectedCategory,
-      reasoning,
-    });
-    setSaving(false);
+    if (!(await write(true))) {
+      fetchData();
+    }
   };
 
   const handleSubmit = async () => {
-    if (isOverride && !reasoning.trim()) {
+    if (needsReasoning && !reasoning.trim()) {
       return;
     }
-    setSaving(true);
-    // TODO: API call to submit decision
-    console.log("Submit decision:", {
-      administration_id: administrationId,
-      category: selectedCategory,
-      reasoning,
-    });
-    setSaving(false);
-    router.push(`/validations/${id}`);
+    if (!(await write(false))) {
+      backToQueue();
+    }
   };
 
   return (
@@ -273,27 +353,21 @@ const ValidationDecisionPage = () => {
               <button
                 type="button"
                 className="text-[#606060] hover:text-[#3E5EB9]"
-                onClick={() => router.push(`/validations/${id}`)}
+                onClick={backToQueue}
               >
                 Drought Validation
               </button>
               <span className="text-[#606060]">/</span>
               <span className="text-[#3E5EB9] font-medium">
-                {decision.label}
+                {decision?.label || "…"}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                disabled={prevId === null}
-                onClick={() => router.push(`/validations/${id}/${prevId}`)}
-              >
+              <Button disabled={prevId === null} onClick={() => goTo(prevId)}>
                 Previous
               </Button>
-              <Button
-                disabled={nextId === null}
-                onClick={() => router.push(`/validations/${id}/${nextId}`)}
-              >
-                Next poligon
+              <Button disabled={nextId === null} onClick={() => goTo(nextId)}>
+                Next
               </Button>
             </div>
           </div>
@@ -310,56 +384,78 @@ const ValidationDecisionPage = () => {
                     color={statusPill.color}
                   >
                     {statusPill.label}
-                    {statusKey === "awaiting" && decision.awaiting_count > 0
+                    {statusKey === "awaiting" && decision?.awaiting_count > 0
                       ? ` ${decision.awaiting_count} reviews`
                       : ""}
                   </Tag>
                   <div className="text-sm text-[#606060]">
                     Consensus:{" "}
                     <span className="font-bold text-[#333333]">
-                      {decision.consensus}%
+                      {decision?.consensus === null ||
+                      decision?.consensus === undefined
+                        ? "—"
+                        : `${decision.consensus}%`}
                     </span>
+                    {agreement?.band && CONSENSUS_BAND[agreement.band] && (
+                      <span
+                        className="ml-2 font-medium"
+                        style={{ color: CONSENSUS_BAND[agreement.band].color }}
+                      >
+                        {CONSENSUS_BAND[agreement.band].label}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-baseline justify-between mb-1">
                   <h1 className="text-2xl font-bold text-[#333333]">
-                    {decision.label}
+                    {decision?.label}
                   </h1>
                   <span className="text-sm text-[#606060]">
                     Reviews:{" "}
                     <span className="font-bold text-[#333333] text-lg">
-                      {decision.reviews_completed}/{decision.reviews_total}
+                      {decision?.reviews_completed}/{decision?.reviews_total}
                     </span>
                   </span>
                 </div>
 
                 <p className="text-sm text-[#606060] mb-4">
-                  {decision.region} &middot; {decision.zone}
+                  {decision?.region} &middot; {decision?.zone}
                 </p>
 
                 <div className="flex items-center gap-2 text-sm text-[#606060]">
                   <span>Period:</span>
+                  {/* Full span per the design, not a bare "February 2000":
+                      a validation covers the whole calendar month and the
+                      end day is derived, so a leap February reads 29. */}
                   <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
-                    {dayjs(decision.period_start).format("D MMM YYYY")}
-                  </span>
-                  <span>&ndash;</span>
-                  <span className="rounded border border-[#d2d2d2] px-2 py-0.5 text-[#333333]">
-                    {dayjs(decision.period_end).format("D MMM YYYY")}
+                    {periodRange(meta?.year_month) || "—"}
                   </span>
                 </div>
               </div>
 
               {/* Reviewer rows */}
               <div className="border-t border-[#eaecf0]">
-                {decision.reviews.map((review) => (
-                  <ReviewerRow key={review.id} review={review} />
+                {decision?.masked && (
+                  <div className="px-4 py-3 text-sm text-[#606060] bg-[#f9fafb]">
+                    Submit your own review for this Inkhundla to see the other
+                    TWG decisions.
+                  </div>
+                )}
+                {(decision?.reviews || []).map((review, index) => (
+                  <ReviewerRow
+                    key={review.user_id ?? `hidden-${index}`}
+                    review={review}
+                  />
                 ))}
               </div>
 
               {/* Agreement analysis */}
               <div className="px-6 py-5">
-                <AgreementBar reviews={decision.reviews} />
+                <AgreementBar
+                  agreement={agreement}
+                  majorityCategory={majorityCategory}
+                />
               </div>
             </div>
 
@@ -401,15 +497,17 @@ const ValidationDecisionPage = () => {
                           key={opt.value}
                           value={opt.value}
                           selected={selectedCategory === opt.value}
-                          onClick={() => setSelectedCategory(opt.value)}
+                          onClick={() =>
+                            canSubmit && setSelectedCategory(opt.value)
+                          }
                         />
                       ))}
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
                       <span className="text-sm text-[#606060]">
-                        Confidence: {decision.confidence}
+                        Confidence: {decision?.confidence ?? "—"}
                       </span>
-                      <ConfidenceBadge band={decision.confidence_band} />
+                      <ConfidenceBadge band={decision?.confidence_band} />
                     </div>
                   </div>
 
@@ -417,9 +515,11 @@ const ValidationDecisionPage = () => {
                   <div>
                     <label className="block text-sm font-normal text-[#606060] mb-1.5">
                       Reasoning
-                      {isOverride && (
+                      {needsReasoning && (
                         <span className="text-[#e60000] ml-1">
-                          (required if overriding the majority)
+                          {agreement?.is_tie
+                            ? "(required — the reviewers are tied)"
+                            : "(required if overriding the majority)"}
                         </span>
                       )}
                     </label>
@@ -427,33 +527,66 @@ const ValidationDecisionPage = () => {
                       rows={4}
                       placeholder="Add reviewer notes..."
                       value={reasoning}
+                      disabled={!canSubmit}
                       onChange={(e) => setReasoning(e.target.value)}
                     />
                   </div>
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-3 border-t border-[#eaecf0] px-6 py-4">
-                  <Button
-                    className="flex-1"
-                    onClick={handleSaveDraft}
-                    loading={saving}
-                  >
-                    Save changes as draft
-                  </Button>
-                  <Button
-                    type="primary"
-                    className="flex-1"
-                    onClick={handleSubmit}
-                    loading={saving}
-                    disabled={isOverride && !reasoning.trim()}
-                  >
-                    Submit decision
-                  </Button>
-                </div>
+                {error && (
+                  <Alert
+                    type="error"
+                    message={error}
+                    showIcon
+                    className="mx-6 mb-4"
+                  />
+                )}
+
+                {/* Action buttons — the permission class is the control; this
+                    is the courtesy (AC-1.2). Nothing is shown until the
+                    payload lands: `can_submit` is false while it is in
+                    flight, so rendering early flashes the lock notice at an
+                    admin who is perfectly entitled to submit. */}
+                {loading ? (
+                  <div className="border-t border-[#eaecf0] px-6 py-4 text-sm text-[#a4a4a4]">
+                    Loading decision&hellip;
+                  </div>
+                ) : canSubmit ? (
+                  <div className="flex gap-3 border-t border-[#eaecf0] px-6 py-4">
+                    <Button
+                      className="flex-1"
+                      onClick={handleSaveDraft}
+                      loading={saving}
+                    >
+                      Save changes as draft
+                    </Button>
+                    <Button
+                      type="primary"
+                      className="flex-1"
+                      onClick={handleSubmit}
+                      loading={saving}
+                      disabled={needsReasoning && !reasoning.trim()}
+                    >
+                      Submit decision
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-t border-[#eaecf0] px-6 py-4 text-sm text-[#606060] bg-[#f9fafb]">
+                    You are signed in as{" "}
+                    <strong>
+                      {TWG_OPTIONS.find(
+                        (o) => o.value === meta?.viewer?.organisation,
+                      )?.label || "a TWG member"}
+                    </strong>{" "}
+                    &middot; {meta?.viewer?.name}. Only NDRMA can publish the
+                    final validation. You can view the reviewer decisions, the
+                    calculated suggestion and the agreement analysis, but cannot
+                    accept or submit.
+                  </div>
+                )}
 
                 {/* Decision history */}
-                <DecisionHistory history={history.data} />
+                <DecisionHistory history={history} />
               </div>
             </div>
           </div>

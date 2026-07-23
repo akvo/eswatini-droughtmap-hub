@@ -43,12 +43,17 @@ export default async function middleware(request) {
       });
     }
 
+    // A TWG reviewer may VIEW one Inkhundla's validation decision — the page
+    // shows them the panel they are part of — but not the queue index, and
+    // not submit (the PUT is admin-only server-side).
+    const isDecisionPage = /^\/validations\/\d+\/\d+/.test(pathName);
+
     if (
       (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||
           pathName.startsWith("/settings") ||
-          pathName.startsWith("/validations")))
+          (pathName.startsWith("/validations") && !isDecisionPage)))
     ) {
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }

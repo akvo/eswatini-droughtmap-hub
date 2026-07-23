@@ -4,7 +4,7 @@
 **Target page**: `frontend/src/app/(auth)/validations/[id]/page.js` + `PublishModal.js`
 **App**: `backend/api/v1/v1_publication`
 **Date**: 2026-07-21
-**Status**: Draft
+**Status**: Implemented (2026-07-22)
 **Related**: [`drought-review-queue.md`](drought-review-queue.md) (the reviewer-side twin — this reuses its aggregation core) · [`drought-validation-decision.md`](drought-validation-decision.md) (**amends this doc** — see the amendment log below) · [`../track-1/national-overview.md`](../track-1/national-overview.md) (will consume what the publish modal writes — separate change, §10)
 
 > **Amended 2026-07-22** by [`drought-validation-decision.md`](drought-validation-decision.md) §12, after PR [#140](https://github.com/akvo/eswatini-droughtmap-hub/pull/140) shipped the Validation Decision page. Six changes, applied in place: **D-9 is superseded** (the row action opens the decision page, not `ValidationModal`), the last-write-wins hazard is **closed** rather than deferred (§8), queue filters move into the **URL** and rows order by **`Administration.name`** (§4, §6), `View` is **enabled** for validated rows (§6), and the consensus **band thresholds are now fixed** at 80/60/40 (§10).
@@ -43,8 +43,8 @@ Currently (/validations/[id]):
   which reads `validated > 0 && awaiting === 0` from the mock — a proxy that is
   wrong: "no Inkhundla is awaiting reviews" is not "every Inkhundla is validated".
 - PublishModal collects Drought / Exposure / Vulnerability — three read-only Tag
-  rows carried over from an earlier design. The AC asks for a title, a
-  description and four sector narratives. onPublish console.logs the payload.
+  rows carried over from an earlier design. They collect nothing, and none of
+  the three is what the AC asks for. onPublish console.logs the payload.
 - The reviewer-side twin of this screen is already real: build_rows / build_stats
   in review/utils.py aggregate Publication + Review into per-Inkhundla rows, and
   four endpoints serve them. None of that is reachable from the admin side.
@@ -61,8 +61,10 @@ Goal:
    Technical Working Groups, not a magic number (D-2).
 3. Move search, status filter and pagination to the server so the table is
    correct past the first page.
-4. Persist what the publish modal collects, so Track 1's National Overview has a
-   real editorial headline, description and four sector narratives to read (D-4).
+4. Give Track 1's National Overview a real source for its hero and sector cards
+   WITHOUT inventing new columns: the headline is templated from year_month, the
+   description is the existing `narrative`, and the sector cards are derived from
+   the activity library (D-4, D-5). This design adds no model change at all.
 5. Let the server — not the client — decide whether publishing is allowed, and
    enforce it on write, not just in the UI (D-6, §8).
 ```
@@ -83,9 +85,11 @@ Goal:
 - [ ] The admin can **filter by status** via the tabs **All · Ready · Awaiting review · Validated**.
 - [ ] The admin can **paginate** the list at the bottom; page + search + status all resolve server-side.
 - [ ] **Publish validation** is enabled only once **every** Inkhundla in the publication carries a real, admin-assigned D-class, and renders disabled with the remaining count until then. An Inkhundla the CDI raster could not classify (`-9999`, "No Data") still requires a decision — a published map never carries No Data (D-11).
-- [ ] Clicking it opens a modal collecting **Title**, **Description**, and a narrative for each of **Water & Sanitation**, **Food & Agriculture**, **Health & Nutrition**, **Environment & Energy**. On submit the publication becomes `published` and those six values are persisted and served by the publication API.
+- [ ] Clicking it opens a modal that collects the **Description** and shows, read-only, the **title** that will be generated and the **sector information** that will be published. On submit the publication becomes `published`.
 
-> The AC's phrasing *"will be placed at the national overview after publication"* is **not** satisfied by this doc alone. This change makes the six values available; Track 1's National Overview still renders `mocks/national-overview/hero.js` and `response-activities.js`, and re-pointing it is a separate Track 1 change (§10). Do not tick that box off this work.
+> **The AC asked for six authored fields; only one is authored.** The title is a template over `year_month`, and the four sector narratives come from the activity library — see D-4 and D-5. The modal therefore writes exactly one value, `narrative`, which already exists on `Publication`.
+>
+> The AC's phrasing *"will be placed at the national overview after publication"* is **not** satisfied by this doc alone. Track 1's National Overview still renders `mocks/national-overview/hero.js` and `response-activities.js`; re-pointing it is a separate Track 1 change (§10). Do not tick that box off this work.
 
 ### Technical Acceptance Criteria
 
@@ -101,47 +105,33 @@ Goal:
 
 ## 3. Data Model Changes
 
-### Modified Models
+**None. No new fields, no migration.**
 
-Five new fields on `Publication`. `narrative` already exists and becomes the modal's **Description** — no new field for it.
+An earlier draft of this design added six columns to `Publication` — `title` plus four `sector_*` `TextField`s — to hold what the publish modal collected. That is no longer needed, because five of those six values are not authored at all (D-4, D-5). The one that is, the Description, has a home already: **`Publication.narrative`** (`models.py:62`, existing `TextField`).
 
-| Model | Change | Reason |
+| The modal's field | Where it lives | Migration |
 |---|---|---|
-| `Publication` | Add `title` (`CharField(max_length=255, null=True, blank=True)`) | Modal "Title for this month overview" → National Overview hero headline |
-| `Publication` | **Reuse** `narrative` (`TextField`, exists, `models.py:69`) | Modal "Description" → hero summary |
-| `Publication` | Add `sector_wash` (`TextField(null=True, blank=True)`) | Water & Sanitation narrative |
-| `Publication` | Add `sector_food` (`TextField(null=True, blank=True)`) | Food & Agriculture narrative |
-| `Publication` | Add `sector_health` (`TextField(null=True, blank=True)`) | Health & Nutrition narrative |
-| `Publication` | Add `sector_env` (`TextField(null=True, blank=True)`) | Environment & Energy narrative |
+| Title | **Not stored.** Templated in the frontend from `year_month` (D-4) | — |
+| Description | `Publication.narrative` — **exists** | — |
+| Water & Sanitation | Derived from `v1_activity` (D-5) | — |
+| Food & Agriculture | Derived from `v1_activity` (D-5) | — |
+| Health & Nutrition | Derived from `v1_activity` (D-5) | — |
+| Environment & Energy | Derived from `v1_activity` (D-5) | — |
 
-Field suffixes are the **member names of `ActivitySector`** (`wash=3`, `food=1`, `health=2`, `env=5` in `api/v1/v1_activity/constants.py:20-32`) so the column ↔ sector mapping is mechanical and labels come from one place platform-wide (D-5).
+> **`narrative` has two authoring modes.** The legacy publish page writes **TinyMCE HTML** into it (`publications/[id]/publish/page.js:249-262`); this modal writes **plain text**. Both are valid states of the column and nothing here changes that — but anything rendering it must handle both (§8).
 
-```python
-# api/v1/v1_publication/models.py — Publication
-title = models.CharField(max_length=255, null=True, blank=True)
-# narrative (existing TextField) carries the description
-sector_wash = models.TextField(null=True, blank=True)    # ActivitySector.wash
-sector_food = models.TextField(null=True, blank=True)    # ActivitySector.food
-sector_health = models.TextField(null=True, blank=True)  # ActivitySector.health
-sector_env = models.TextField(null=True, blank=True)     # ActivitySector.env
+### On migrations generally
+
+`backend/api/v1/v1_publication/models.py` is **not** hand-migrated: any edit to it must be followed by a generated migration, or the app and CI diverge from the schema.
+
+```bash
+docker compose exec backend ./manage.py makemigrations v1_publication
+# or, locally:  cd backend && python manage.py makemigrations v1_publication
 ```
 
-> **`narrative` now has two authoring modes.** The legacy publish page writes **TinyMCE HTML** into it (`publications/[id]/publish/page.js:249-262`); this modal writes **plain text**. Both are valid states of the column. Whatever renders it must handle both — see §8.
+The generated file lands as `migrations/000N_<autoname>.py` (the app is at `0004_publicationraster_and_more.py` today) and **must be committed with the model change**. `backend/test.sh` runs `./manage.py migrate` before the suite, so a missing migration fails CI rather than passing quietly.
 
-### New Models
-
-**None.**
-
-### Migration Strategy
-
-```python
-# One additive migration, five AddField operations.
-# - Every field is null=True: existing published rows are untouched and stay valid.
-# - No data migration. Publications published before this ship have title=None;
-#   consumers fall back to their current derived headline and render the sector
-#   boxes' empty state.
-# - Rollback: RemoveField x5. No dependent data, no FK, no constraint.
-```
+**This design touches no model, so it generates no migration.** The note is here because the sibling [`drought-validation-decision.md`](drought-validation-decision.md) adds a `ValidationDecision` table and does need one.
 
 ---
 
@@ -153,7 +143,7 @@ sector_env = models.TextField(null=True, blank=True)     # ActivitySector.env
 |---|---|---|---|
 | GET | `/api/v1/admin/validation/{publication_id}/stats` | The 4 summary cards + the publish gate | `IsAuthenticated, IsAdmin` |
 | GET | `/api/v1/admin/validation/{publication_id}/administrations` | Queue table — searched, status-filtered, paginated | `IsAuthenticated, IsAdmin` |
-| PUT | `/api/v1/admin/publication/{id}` | **Existing.** Row validate (`validated_values`) *and* publish (`status` + the six editorial fields) | `IsAuthenticated, IsAdmin` |
+| PUT | `/api/v1/admin/publication/{id}` | **Existing, unchanged shape.** Publish — `status` + `narrative` | `IsAuthenticated, IsAdmin` |
 
 ### `GET /admin/validation/{publication_id}/stats`
 
@@ -205,13 +195,16 @@ Query params: `search` (Administration **name**, case-insensitive contains), `st
       "administration_id": 12,
       "label": "Piggs Peak",              // Administration.name
       "group": "Hhohho",                  // Administration.region  (NOT zone)
+      "zone": "middleveld",               // Administration.zone
+      "confidence": 2.0,                  // mock until a real formula exists
+      "confidence_band": "low",           //   (review queue D-6)
       "reviews_completed": 4,             // distinct TWGs that have submitted
       "reviews_total": 5,                 // = meta.reviewers_required
       "reviewers": [                      // reviewers who SUBMITTED, not assignees
-        { "id": 7,  "label": "AR", "group": "met"  },
-        { "id": 11, "label": "OK", "group": "dwa"  },
-        { "id": 14, "label": "SL", "group": "ndma" },
-        { "id": 19, "label": "OR", "group": "moag" }
+        { "id": 7,  "label": "AR", "group": 3 },   // TechnicalWorkingGroup int
+        { "id": 11, "label": "OK", "group": 4 },   // frontend maps via
+        { "id": 14, "label": "SL", "group": 1 },   // TWG_OPTIONS (config.js:304)
+        { "id": 19, "label": "OR", "group": 2 }
       ],
       "dclass_spread": [3, 3, 2, 4],      // one per entry in `reviewers`, same order
       "consensus": 80,                    // % agreement, distance-aware — D-8
@@ -226,28 +219,26 @@ Query params: `search` (Administration **name**, case-insensitive contains), `st
 
 **`reviewers`, `dclass_spread` and `reviews_completed` are three views of the same list** and are always mutually consistent: `len(reviewers) == len(dclass_spread)`, and `reviews_completed == len({r.group for r in reviewers if r.group})`. They differ only when two submitters share a TWG.
 
+`zone`, `confidence` and `confidence_band` are carried for the decision page, which needs them and is built from the same rows — one builder rather than a second lookup. The queue table ignores them.
+
 Keys match the current mock in `static/mocks/validation/queue.js`, with two changes: `reviewers[]` gains `group`, and the mock's unused `key` field is dropped (the table already keys on `administration_id`, `page.js:337`). The mock's `group` values mix regions ("Manzini") and zones ("Highveld"); the API returns **`region`** consistently.
 
 ### `PUT /admin/publication/{id}` — publish
 
 ```jsonc
-// Request
+// Request — two fields. `narrative` is the modal's Description; everything
+// else the National Overview shows is templated or derived (D-4, D-5).
 {
   "status": 3,                                  // PublicationStatus.published
-  "title": "Severe drought conditions emerging across eastern Eswatini",
-  "narrative": "The composite CDI-E shows significant moisture deficits …",
-  "sector_wash":   "Borehole reinforcement and water-trucking pre-positioning …",
-  "sector_food":   "Maize stress is confirmed in multiple Tinkhundla …",
-  "sector_health": "Nutrition surveillance is stepped up in Lubombo …",
-  "sector_env":    "Rangeland rehabilitation continues in the Lowveld …"
+  "narrative": "The composite CDI-E shows significant moisture deficits …"
 }
 
-// Response 200 — the PublicationSerializer payload, now carrying the six fields
+// Response 200 — the existing PublicationSerializer payload, unchanged shape
 // Response 400 when any Inkhundla is unvalidated:
 { "status": ["Cannot publish: 12 of 59 Tinkhundla are not validated yet."] }
 ```
 
-Reads emit the sectors as a list (D-4).
+**The serializer gains one method (`validate`, §8) and no fields.** `narrative` and `status` are already writable.
 
 **Row ordering is `Administration.name` ascending** on `/administrations`, and on the row set behind the decision page's Previous/Next. `build_rows` iterates `initial_values` in JSON insertion order, which is arbitrary; an undefined order makes pagination unstable and Previous/Next non-deterministic.
 
@@ -267,18 +258,20 @@ Reads emit the sectors as a list (D-4).
 
 ```python
 "submissions": [
-    {"user_id": 7, "label": "AR", "group": "met", "category": 3},
+    {"user_id": 7, "label": "AR", "group": 3, "category": 3},
     …  # one per reviewer who has marked this Inkhundla reviewed
-]
+]   # `group` is the TechnicalWorkingGroup int; `category` is DroughtCategory
 ```
 
 — and derive `disputed` from it instead of the throwaway list. A thin `validation/utils.py` then computes `reviewers`, `dclass_spread`, `reviews_completed`, `consensus`, `status` and `awaiting_count` from `submissions`, and `build_validation_stats` tallies the four cards.
 
-`label` is initials derived from `SystemUser.name`; `group` is the `TechnicalWorkingGroup` **member name** (`"met"`), or `null` for a reviewer with none set.
+`label` is initials derived from `SystemUser.name`; `group` is the **`TechnicalWorkingGroup` integer** (`3`), or `null` for a reviewer with none set.
+
+**The integer is the wire format — no string name is added anywhere.** `frontend/src/static/config.js:304` already carries `TWG_OPTIONS` (`{value: 1, label: "NDMA (…)"}`), so the frontend maps `group` exactly as it maps `category` through `DROUGHT_CATEGORY_LABEL`. Deriving a slug from `FieldStr` (`"MET (Meteorological Office)".split()[0].lower()`) happens to work for all five members today, but it makes the **API contract depend on display copy** — rewording a label to "Meteorological Office (MET)" would silently change the key from `met` to `meteorological`. And a second `Names` dict duplicates what `FieldStr` already keys. `v1_jobs/constants.py` shows the house pattern: when a machine-readable name is wanted, `FieldStr` **is** that map.
 
 **Rationale**: two screens over one dataset. If the rules for "reviewed" change, both screens change together. A parallel `validation/build_rows` would duplicate the `initial_values` / `validated_values` / `reviews` join and guarantee the two queues eventually disagree.
 
-**Impact — the leak, and where to plug it.** `build_rows` output is returned as **raw dicts from three reviewer endpoints**: `ReviewAdministrationsAPI` (through `Pagination`), `ReviewMapAPI` (`"data": rows`) and `ReviewAdministrationDetailAPI` (`"administration": row`). The reviewer queue deliberately shows a reviewer only `my_suggestion`; exposing every colleague's score there would change what reviewers see mid-review. There is **no single existing chokepoint** — `_filtered_rows` is not used by the detail endpoint. Add one `_public_row(row)` helper that pops `submissions`, and apply it at all three response sites. §9 tests all three.
+**Impact — the leak, and where to plug it.** `build_rows` output is returned as **raw dicts from three reviewer endpoints**: `ReviewAdministrationsAPI` (through `Pagination`), `ReviewMapAPI` (`"data": rows`) and `ReviewAdministrationDetailAPI` (`"administration": row`). The reviewer queue deliberately shows a reviewer only `my_suggestion`; exposing every colleague's score there would change what reviewers see mid-review. There is **no single existing chokepoint** — `_filtered_rows` is not used by the detail endpoint. Add one `public_row(row)` helper — in `review/utils.py`, beside `build_rows`, so the field's whole lifecycle reads in one place — and apply it at all three response sites. §9 tests all three.
 
 **Rejected**: a database view or aggregate query — `suggestion_values` is JSON (prior decision: it stays JSON until Track 3 needs it normalized), so the tally happens in Python either way.
 
@@ -318,49 +311,42 @@ Changing the **mount point** is what fixes this; those paths cannot match `^v1/a
 
 **Rejected**: adding `$` to `publication-details` — correct, but a behaviour change to a shipped route with unknown callers. Worth a follow-up, not this task's risk.
 
-### D-4: Editorial fields are columns on `Publication`, not a JSON blob or a child table
+### D-4: The title is a template over `year_month`, not a stored field ✅ **resolved**
 
-Per the product decision: `title` + the existing `narrative` + four `sector_*` `TextField`s.
+The AC asks the admin to type "a title for this month's overview". In practice the only thing that varies month to month **is the month** — the rest is standing copy, and asking an admin to retype it every cycle invites drift, typos and an empty hero when someone skips the field.
 
-**Rationale**: consumers read exactly these six values for exactly one publication at a time — the latest published one. Columns give that a plain `.only()`, keep DRF validation and `max_length` for free, and surface the fields in Django admin and `manage.py dbml` without custom code.
+**Decision**: no `title` column. The National Overview renders a template, with `year_month` as the only substitution:
 
-**Impact**: the sector list is now **schema**, so a fifth sector is a migration. Accepted — the four come from the national response framework and have been stable across Tracks 1 and 3. If they start moving, promote to a `PublicationSectorNarrative` child table; the read shape below is designed so that change is invisible to the frontend.
-
-**Serializer shape** — reads emit a list so consumers iterate; writes take the flat keys because writing is a form:
-
-```jsonc
-"sectors": [
-  { "key": "wash",   "label": "Water & Sanitation",   "value": "…" },
-  { "key": "food",   "label": "Food & Agriculture",   "value": "…" },
-  { "key": "health", "label": "Health & Nutrition",   "value": "…" },
-  { "key": "env",    "label": "Environment & Energy", "value": "…" }
-]
+```js
+`Drought situation overview — ${dayjs(year_month).format("MMMM YYYY")}`
 ```
 
-`sectors` goes on **`PublicationSerializer` only** (detail + write), not on `PublicationInfoSerializer` (the list endpoint the validations index page uses). The list has no use for four paragraphs per row.
+`year_month` is already on every publication and already on the wire.
 
-### D-5: Sector vocabulary comes from `ActivitySector`, not a new enum
+**Rationale**: a stored title is a field that can be blank, stale, or inconsistent with the map beside it, and it needs a migration plus a form control plus validation to hold a string that is derivable. Templating gives every month the same voice for free and cannot be forgotten.
 
-`ActivitySector` (`v1_activity/constants.py:20-32`) already defines `food=1`, `health=2`, `wash=3`, `env=5` with labels, and already drives Track 3's sector features and `frontend/src/static/config.js:333`.
+**Impact**: the modal shows the generated title **read-only**, so the admin sees exactly what will be published without being able to typo it. If per-month editorial headlines are genuinely wanted later, `title` becomes a nullable column and the template becomes the fallback — additive, and the frontend call site does not move.
 
-**Decision**: `v1_publication` imports it. The four columns are named after its member names, and one module-level map drives the serializer:
+**Rejected**: a `title` column with the template as a placeholder — the placeholder would be saved as literal text by anyone who tabbed past it, which is worse than not having the field.
 
-```python
-from api.v1.v1_activity.constants import ActivitySector
+### D-5: Sector information is derived from `v1_activity`, not authored in the modal ✅ **resolved**
 
-OVERVIEW_SECTORS = [
-    ("wash",   ActivitySector.wash),
-    ("food",   ActivitySector.food),
-    ("health", ActivitySector.health),
-    ("env",    ActivitySector.env),
-]  # order = the modal's field order = the National Overview's card order
-```
+The AC asks for a narrative per sector — Water & Sanitation, Food & Agriculture, Health & Nutrition, Environment & Energy. **That content already exists, and it is not editorial prose.**
 
-**Impact**: one cross-app import (constants only, no model dependency). Labels change in one place, and the frontend hardcodes no sector label.
+`v1_activity.ResponseActivity` (`models.py:13-72`) carries `sector` (`ActivitySector`), a `description`, D-class-based `triggers`, an owner and a lifecycle. `trigger_evaluation.py:128-129` already evaluates those triggers **against `publication.validated_values`** — the very map this screen is validating. Track 1's own mock says the same thing out loud: `response-activities.js` shows per-sector `activities` and `tinkhundla` counts, which are tallies, not paragraphs.
 
-Three vocabularies exist today and this picks a winner: the AC ("Water and Sanitation"), `ActivitySector` ("Water & Sanitation"), and Track 1's mock `response-activities.js` (keys `water`/`agriculture`/`environment`/`health`, label "Agriculture and Food security"). **`ActivitySector` wins.** Track 1's mock keys do not match and its per-sector `activities`/`tinkhundla` counts are not editorial text the modal collects — remapping that is part of the Track 1 wiring in §10, not a blocker here.
+**Decision**: the publish modal does not collect sector text. The National Overview's sector cards are computed from the activity library evaluated against the freshly validated map — activities triggered, Tinkhundla affected, and the activities' own descriptions.
 
-**Rejected**: a 4-value `OverviewSector` local to `v1_publication` — no import, but a fourth vocabulary.
+**Rationale**: it is the difference between a number that is *true* and a paragraph that *was* true. An admin typing "3 activities across 18 Tinkhundla" at publish time is transcribing a query result by hand, and it is stale the moment an activity is added. Deriving it also means the sector cards stay correct for a publication nobody re-edits.
+
+**Impact**:
+- **Five of the six modal fields disappear**, and with them the migration, `OVERVIEW_SECTORS`, the `sectors` serializer field and the cross-app `ActivitySector` import this design previously needed (§3).
+- The modal shows the derived sector summary **read-only**, so the admin confirms what will be published rather than authoring it.
+- The vocabulary question resolves itself: `ActivitySector` is the only vocabulary, because the data comes from the app that owns it. Track 1's mock keys (`water` / `agriculture` / `environment` / `health`) still need remapping to `wash` / `food` / `env` / `health` when that page is wired — Track 1 work (§10).
+
+**Owned elsewhere**: the exact aggregation — which activity statuses count, whether a Tinkhundla is counted once per sector or once per activity — belongs to the Track 3 activity work and the Track 1 wiring, not here. This design's only obligation is to **not** invent a competing store for it.
+
+**Rejected**: authored per-sector text on `Publication` (six columns, one migration, and four paragraphs that go stale against a live activity library); a hybrid where the derived summary seeds an editable box (two sources of truth for one card, and no way to tell which the reader is seeing).
 
 ### D-6: The publish gate is a server boolean, not a client derivation
 
@@ -385,18 +371,19 @@ D-classes are an **ordinal** scale, so distance has to count: D1-vs-D2 is a roun
 **Decision**: mean absolute deviation from the median, normalized against the worst case on the 0–5 scale.
 
 ```python
-from statistics import median
+# constants.py — beside DroughtCategory, which it interprets
+DROUGHT_SCALE_SPAN = DroughtCategory.d4 - DroughtCategory.normal   # 5
+CONSENSUS_MAX_DEV = DROUGHT_SCALE_SPAN / 2   # 2.5 — half the panel at each end
 
-SCALE_SPAN = DroughtCategory.d4 - DroughtCategory.normal   # 5
-MAX_DEV = SCALE_SPAN / 2                                   # 2.5 — half the panel at each end
-
-def consensus(cats):
-    """Percentage agreement over submitted D-classes. None when nothing submitted."""
-    if not cats:
+# validation/utils.py
+def consensus(categories):
+    """Percentage agreement over submitted D-classes. None when nothing
+    usable was submitted."""
+    if not categories:
         return None
-    mid = median(cats)
-    dev = sum(abs(c - mid) for c in cats) / len(cats)
-    return round(100 * (1 - dev / MAX_DEV))
+    mid = median(categories)
+    dev = sum(abs(c - mid) for c in categories) / len(categories)
+    return round(100 * (1 - dev / CONSENSUS_MAX_DEV))
 ```
 
 | spread | consensus | reading |
@@ -498,7 +485,9 @@ A published map must not carry `-9999` for any Inkhundla. `DroughtCategory.none`
 **Decision**: one predicate, used everywhere a category is judged "settled":
 
 ```python
-# api/v1/v1_publication/validation/utils.py
+# api/v1/v1_publication/constants.py — beside the enum it interprets, so
+# neither serializers.py nor validation/utils.py gains a module dependency
+# on the other to share one definition.
 def is_validated(category):
     """A real, admin-assigned D-class. Not null, not No Data."""
     return category is not None and category != DroughtCategory.none
@@ -559,7 +548,7 @@ app/(auth)/validations/[id]/page.js         "use client" (unchanged kind) — ow
 | `:248-253` | Title / subtitle from the publication's `year_month`; drop the lorem ipsum |
 | `:259-265` | Disabled tooltip from `meta.pending_validation` |
 | `:341-353` | Pagination `total` ← `administrations.total`; **drop the `<= PAGE_SIZE` early-out** — with server pagination `data.length` is never more than one page, so that check would hide the pager entirely |
-| `:366-369` | `onPublish` → `PUT /admin/publication/{id}`, then refetch; replaces the `console.log` |
+| `:366-369` | `onPublish` → `PUT /admin/publication/{id}` with `{status: 3, narrative}`, then refetch; replaces the `console.log` |
 
 Search debounces at 400 ms; search and status changes reset `page` to 1 (the handlers at `:303-306` and `:327-330` already do).
 
@@ -569,15 +558,23 @@ Search debounces at 400 ms; search and status changes reset `page` to 1 (the han
 
 ### Changes to `PublishModal.js`
 
-The three `SECTOR_FIELDS` rows (`:7-16`) — Drought / Exposure / Vulnerability, rendered as read-only `Tag`s with an inert chevron — are **deleted**. They collect nothing and belong to a superseded design. The subtitle at `:66` ("the three sector-context boxes") becomes four.
+**The modal collects one field.** Title is templated (D-4) and sector information is derived (D-5), so both are shown **read-only** — the admin confirms what will be published rather than authoring it.
 
-Replace with four `Input.TextArea` fields driven by the sector list (D-4), keeping the title + description fields and the modal chrome. `onPublish` emits the flat write shape:
+| Location | Change |
+|---|---|
+| `:7-16` | Delete `SECTOR_FIELDS` (Drought / Exposure / Vulnerability) — read-only `Tag`s with an inert chevron, from a superseded design; they collect nothing |
+| `:66` | Subtitle: "the three sector-context boxes" no longer describes anything the admin edits — reword to say the title and sector cards are generated |
+| `:72-85` | **Delete the Title `Input`.** Render the generated title as read-only text (D-4) |
+| `:86-101` | Keep the Description `TextArea` → `narrative`. The only editable field |
+| `:105-133` | Replace the three sector rows with the derived per-sector summary, read-only (D-5) |
+
+`onPublish` emits:
 
 ```js
-{ title, narrative, sector_wash, sector_food, sector_health, sector_env }
+{ narrative }        // status: 3 is added by the caller
 ```
 
-Title and description are required; sector narratives are optional. The Publish button disables while the `PUT` is in flight.
+Description is required. The Publish button disables while the `PUT` is in flight.
 
 **Error handling — do not use `try/catch`.** Per §0.5, `api()` resolves on a 400 with the error body. The modal must check the resolved payload the way the legacy page does:
 
@@ -591,7 +588,9 @@ if (res?.status !== PUBLICATION_STATUS.published) {
 
 The modal stays open with the message inline. An admin must not lose four paragraphs of typing to a race with a colleague's un-validated Inkhundla.
 
-### Adjacent fix: the legacy publish page's guard falls through
+### Adjacent fix: the legacy publish page's guard falls through — ⚠️ **NOT APPLIED**
+
+> Specified but deliberately left out of the #136 commit: the one-word change was made, then stashed rather than shipped. `publish/page.js` still falls through its redirect. Carry it into a follow-up — it is unrelated to the validation queue and does not belong in this diff.
 
 `publications/[id]/publish/page.js` is touched by this design already — §8's `validate_status` closes its unguarded `status: published` write. While in there, fix a second defect in the same file's `fetchData` (`:122-153`).
 
@@ -618,13 +617,13 @@ The genuine `null`-array trap is documented in §0.2 and is handled correctly by
 
 | File | Change |
 |---|---|
-| `v1_publication/review/utils.py` | `build_rows` gains `submissions`; `disputed` derives from it (D-1) |
-| `v1_publication/review/view.py` | `_public_row` helper; applied at all **three** reviewer response sites (D-1) |
-| `v1_publication/validation/utils.py` | **New** — `reviewers_required`, `build_validation_rows`, `filter_validation_rows`, `ordered_rows`, `build_validation_stats` |
+| `v1_publication/review/utils.py` | `build_rows` gains `submissions`; `disputed` derives from it; new `public_row` + `initials` helpers (D-1) |
+| `v1_publication/review/view.py` | Apply `public_row` at all **three** reviewer response sites (D-1) |
+| `v1_publication/constants.py` | `ValidationStatus`, `is_validated`, `DROUGHT_SCALE_SPAN`, `CONSENSUS_MAX_DEV`, `DISAGREEMENT_THRESHOLD` |
+| `v1_publication/validation/utils.py` | **New** — `reviewers_required`, `row_status`, `scale_categories`, `consensus`, `build_validation_rows`, `filter_validation_rows`, `ordered_rows`, `build_validation_stats` |
 | `v1_publication/validation/view.py` | **New** — `ValidationStatsAPI`, `ValidationAdministrationsAPI` |
 | `v1_publication/validation/serializers.py` | **New** — filter + response serializers for the schema |
-| `v1_publication/models.py` | Five new fields (§3) |
-| `v1_publication/serializers.py` | `PublicationSerializer` gains the six write fields, the `sectors` read field, and `validate_status` (§8, D-11) |
+| `v1_publication/serializers.py` | `PublicationSerializer` gains **`validate` only** — no new fields (§8, D-11) |
 | `components/Modals/ValidationModal.js` | Replace the positional `.slice(0, length - 1)` with a value filter on `DROUGHT_CATEGORY_VALUE.none` (D-11 hardening). The new queue no longer opens this modal (D-9 superseded), but the **legacy** `/publications/{id}/validation` page still does, and that page can still write `-9999` today |
 | `v1_publication/urls.py` | Two routes under `/admin/validation/` (D-3) |
 
@@ -642,11 +641,7 @@ The genuine `null`-array trap is documented in §0.2 and is handled correctly by
 | `dclass_spread[i]` | `DroughtCategory`, with `None`/`none` filtered out (D-8) | `0`–`5` |
 | `validated_category` | `DroughtCategory`, never `none` (D-11) | `0`–`5` |
 | `initial_values[…].category` | `DroughtCategory` — `-9999` **is** valid here | `0`–`5`, `-9999` |
-| `reviewers[].group: "met"` | `TechnicalWorkingGroup.met` | `3` |
-| `sectors[].key: "wash"` | `ActivitySector.wash` | `3` |
-| `sectors[].key: "food"` | `ActivitySector.food` | `1` |
-| `sectors[].key: "health"` | `ActivitySector.health` | `2` |
-| `sectors[].key: "env"` | `ActivitySector.env` | `5` |
+| `reviewers[].group: 3` | `TechnicalWorkingGroup.met` — int on the wire, labelled by `TWG_OPTIONS` | `3` |
 | Publish `status: 3` | `PublicationStatus.published` | `3` |
 
 Row `status` is **computed, never stored** — there is no per-Inkhundla status column, and the precedence in D-10 is the only definition. `Publication.status` (`in_review` / `in_validation` / `published`) is a different axis: this feature reads it only to render the header and writes it only at publish. The page does **not** require `status == in_validation` to open.
@@ -656,30 +651,39 @@ Row `status` is **computed, never stored** — there is no per-Inkhundla status 
 ## 8. Security Considerations
 
 - [x] **Permission model**: both new endpoints are `IsAuthenticated, IsAdmin`, matching `PublicationViewSet` (`views.py:480`). Reviewers must not reach the validation queue — it exposes every colleague's submitted D-class, which the reviewer queue deliberately withholds (D-1).
-- [x] **Publish is enforced server-side.** `PublicationSerializer.validate_status` rejects a transition to `published` unless every `initial_values` entry has a non-null `category` in `validated_values`:
+- [x] **Publish is enforced server-side.** `PublicationSerializer.validate` rejects a transition to `published` unless every `initial_values` entry has a real `category` in `validated_values`:
 
   ```python
-  def validate_status(self, value):
-      if value != PublicationStatus.published or self.instance is None:
-          return value
+  def validate(self, attrs):
+      if attrs.get("status") != PublicationStatus.published:
+          return attrs
+
+      def after_write(field):
+          return attrs.get(field, getattr(self.instance, field, None))
+
       validated = {
-          v["administration_id"] for v in (self.instance.validated_values or [])
+          v["administration_id"]
+          for v in (after_write("validated_values") or [])
           if is_validated(v.get("category"))     # D-11: not null, not -9999
       }
-      missing = len(self.instance.initial_values) - len(validated)
+      total = len(after_write("initial_values") or [])
+      missing = total - len(validated)
       if missing > 0:
-          raise serializers.ValidationError(
-              f"Cannot publish: {missing} of "
-              f"{len(self.instance.initial_values)} Tinkhundla "
-              "are not validated yet."
-          )
-      return value
+          raise serializers.ValidationError({
+              "status": (
+                  f"Cannot publish: {missing} of {total} Tinkhundla "
+                  "are not validated yet."
+              )
+          })
+      return attrs
   ```
+
+  **Object-level, not `validate_status` — and the test suite is why.** A field-level validator cannot see sibling fields, so it could only read the *stored* `validated_values`. But a single PUT may set the categories **and** publish in one request, which `test_update_publication` does: written as `validate_status` it rejected a payload that validated everything, because it checked the state *before* the write. `after_write` reads the state the request will leave behind.
 
   `is_validated` — **not** a bare `is not None` — is what keeps `-9999` out of a published map (D-11). The same predicate backs `can_publish`, so the button and the endpoint never disagree.
 
   The disabled button is a courtesy; this is the control. It also closes the same hole on the **legacy** `/publications/{id}/publish` page, which today PUTs `status: published` with no such check (`publish/page.js:60-64`) — a root-cause fix at the shared write path rather than a guard on the new screen only.
-- [x] **Input validation**: `title` is `max_length=255`. The four sector narratives are plain `TextField` and must be **rendered as text, never as HTML** — unlike `narrative`, which the legacy page authors through TinyMCE and which therefore already holds markup (§3). Anything rendering `narrative` must keep whatever sanitisation it has today; do not route the new `sector_*` fields through a rich-text editor without an explicit decision, and do not `dangerouslySetInnerHTML` them.
+- [x] **Input validation**: the publish path writes one user-supplied field, `narrative`, which already exists and already has whatever sanitisation the legacy TinyMCE flow gave it (§3). No new free-text column is introduced, so this design adds **no new stored-XSS surface**. The generated title (D-4) and the derived sector summary (D-5) are not user input on this path.
 - [x] **No new attack surface**: both endpoints are read-only, publication-scoped via `get_object_or_404`, and take no user-supplied SQL, path or URL.
 - [x] **Closed**: the last-write-wins hazard on `validated_values` is gone. Per-Inkhundla validation writes a single entry server-side (decision doc D-11), so two admins validating different Tinkhundla no longer overwrite each other.
 - [ ] **Known, accepted**: the legacy `/publications/{id}/validation` page still replaces the whole array and so retains the hazard among its own users. Bounded by it being admin-only and superseded in practice.
@@ -708,16 +712,15 @@ Row `status` is **computed, never stored** — there is no per-Inkhundla status 
 | Django API | `?status=` returns each subset and the subsets partition the unfiltered set; `?page=2` is consistent with `total_page` |
 | Django API | Both endpoints 403 for a reviewer, 404 for an unknown publication id |
 | Django API | `submissions` is absent from **all three** reviewer endpoints — `/administrations`, `/administrations/{id}` and `/map` (D-1 leak guard) |
-| Django API | `PUT status=published` 400s with the missing count while unvalidated; 200s and persists all six editorial fields when complete (§8) |
+| Django API | `PUT status=published` 400s with the missing count while unvalidated; 200s and persists `narrative` when complete (§8) |
 | Django API | `PUT status=published` 400s when every Inkhundla has a category but one of them is `-9999` (D-11) |
 | Jest | `ValidationModal`'s validated-CDI `Select` offers no "No data" option, and still offers Normal (D-11 hardening) |
 | Django API | The legacy publish page's PUT is subject to the same 400 (shared-path regression) |
-| Django API | `sectors` is present on the detail response and absent from the list response (D-4) |
 | Jest | Search input debounces and issues one request with `?search=` + `page=1` |
 | Jest | Status tabs map to `?status=` and reset the page |
 | Jest | Pagination total comes from the response, and the pager renders on page 2+ |
 | Jest | Publish button disabled when `can_publish` is false, with the `pending_validation` tooltip |
-| Jest | `PublishModal` submits the flat `sector_*` payload; on a resolved 400 body it **stays open** and shows the message, and the typed values survive (§0.5) |
+| Jest | `PublishModal` submits `{narrative}` and renders the generated title + derived sectors read-only; on a resolved 400 body it **stays open** and shows the message, and the typed description survives (§0.5, D-4, D-5) |
 | Jest | Consensus cell renders `—` and an empty bar for `consensus: null` |
 | Jest | `publish/page.js` `fetchData` **stops** after the redirect: given an empty/404 response body (`apiData === null`), it calls `router.replace` and neither throws nor calls `setPublication` (§6 adjacent fix) |
 | Manual | A publication with two reviewers in the same TWG shows `reviews_total` = 1, not 2 |
@@ -733,7 +736,7 @@ Row `status` is **computed, never stored** — there is no per-Inkhundla status 
 | 2b | Calibrating a threshold on consensus (D-8) | **No banding this iteration.** The doc records the provable anchors (`< 100 − 20·s` ⟹ two reviewers more than `s` classes apart) so a future threshold is picked from `80/60/40/20`, not invented. A header tooltip ships now so the number is interpretable. |
 | 2c | May a publication carry `-9999`? (D-11) | **No.** "No Data" is a raster output, not a validation decision. One `is_validated` predicate gates publish, `can_publish`, row status and `validated_category`; `initial_values` is unaffected. |
 | 3 | Reviewer anonymity | **Admin sees attribution.** `reviewers[]` carries `id`, initials and TWG alongside `dclass_spread`, per the AC. Admin-only (§8) — this must not leak to the reviewer queue (D-1). |
-| 4 | Track 1 wiring | **Proceed as scoped.** This change persists and serves the six values; re-pointing `hero.js` / `response-activities.js` is separate Track 1 work with its own key remapping (D-5). |
+| 4 | Track 1 wiring | **Proceed as scoped.** Re-pointing `hero.js` / `response-activities.js` is separate Track 1 work: the hero reads `year_month` + `narrative`, the sector cards aggregate `v1_activity` and need the mock's keys remapped to `ActivitySector` (D-4, D-5). |
 | 5 | Two legacy admin screens | **Keep both**, but neither is reused: the row action opens the Validation Decision page (D-9 superseded). §8's `validate_status` protects every write path, legacy included. |
 | 6 | Export CSV (`page.js:311-320`) | **Out of scope.** Button stays rendered and `disabled`; no endpoint. |
 | 7 | Methodology button (`page.js:256-258`) | **Keep, inert.** No target page yet — same treatment as the reviewer queue's. |
@@ -749,20 +752,89 @@ These are known, accepted debts with a named upgrade path — not gaps:
 | `publication-details` route left un-anchored | D-3 | Its callers are known → add `$` |
 | No `delta` on the validation cards | D-7 | Design asks for trend arrows → additive on both sides |
 | No colour band **on this page's** consensus column | D-8 | A threshold is wanted → start at `< 60`, one `className`, anchors already derived. The band **names and thresholds are now fixed** by the decision page — `high` ≥80 · `moderate` 60–79 · `low` 40–59 · `none` <40 — so any banding added here must use that scale |
-| Sector list is schema, not data | D-4 | A fifth sector appears → `PublicationSectorNarrative` child table, read shape unchanged |
+| Editorial title is templated, not authored | D-4 | Per-month headlines are genuinely wanted → nullable `title` column, template becomes the fallback |
 
 ---
 
 ## 11. References
 
 - Page: `frontend/src/app/(auth)/validations/[id]/page.js`, `PublishModal.js`
-- Mocks being replaced: `frontend/src/static/mocks/validation/{summary,queue}.js`
+- Mocks: `summary.js` **deleted** (no consumers left). `queue.js` **survives** — the Validation Decision page still imports `validationQueue` for prev/next, so it goes with `decision.js` when that page is wired, not here.
 - Aggregation core: `backend/api/v1/v1_publication/review/{utils,view,serializers}.py`
-- Models / constants: `v1_publication/{models,constants,serializers,urls}.py`, `v1_users/constants.py:16-29`, `v1_activity/constants.py:20-32`
+- Models / constants: `v1_publication/{models,constants,serializers,urls}.py`, `v1_users/constants.py:16-29`
+- Sector source (D-5): `v1_activity/models.py:13-72` (`ResponseActivity`), `v1_activity/trigger_evaluation.py:128-129`, `v1_activity/constants.py:20-32`
 - Reused frontend: `lib/api.js`, `components/DS/MetricCard.js`
 - Legacy flows (kept, not reused): `app/(auth)/publications/[id]/validation/page.js`, `app/(auth)/publications/[id]/publish/page.js` (§8)
 - Per-Inkhundla validation: [`drought-validation-decision.md`](drought-validation-decision.md) (supersedes D-9)
 - Sibling designs: [`drought-review-queue.md`](drought-review-queue.md), [`cdi-publication-backend.md`](cdi-publication-backend.md), [`../track-1/national-overview.md`](../track-1/national-overview.md)
+
+---
+
+## 12. As built (2026-07-22)
+
+Verified: **507 backend tests**, **106 frontend tests**, ESLint clean, production build green. Coverage on the new code — `validation/utils.py` **100%**, `validation/view.py` **100%**, `validation/serializers.py` **100%**, `v1_publication/constants.py` **100%**; project total 88.6%.
+
+### Shipped
+
+| Area | Files |
+|---|---|
+| Aggregation | `review/utils.py` (`submissions`, `public_row`, `initials`), `review/view.py` (3 strip sites) |
+| New package | `validation/{__init__,utils,serializers,view}.py` |
+| Constants | `constants.py` — `ValidationStatus`, `is_validated`, `DROUGHT_SCALE_SPAN`, `CONSENSUS_MAX_DEV`, `DISAGREEMENT_THRESHOLD` |
+| Routes | `urls.py` — `validation-queue-stats`, `validation-queue-administrations` |
+| Publish gate | `serializers.py` — `PublicationSerializer.validate` |
+| Frontend | `validations/[id]/page.js` (URL-synced, server-driven), `PublishModal.js` (rewritten), `Modals/ValidationModal.js` (No-Data hardening), `mocks/validation/summary.js` deleted |
+| Tests | `tests_admin_validation_queue_apis.py` (38), `__tests__/PublishModal.test.js` (5), `__tests__/ValidationQueuePage.test.js` (8) |
+
+### Deviations from the plan, and why
+
+| Plan said | Built | Why |
+|---|---|---|
+| `validate_status` (field-level) | `validate` (object-level) | A single PUT can set `validated_values` **and** publish; field-level could only see the pre-write state and rejected valid payloads (§8) |
+| `is_validated` in `validation/utils.py` | `constants.py` | Beside the enum it interprets, so `serializers.py` needs no dependency on the validation package |
+| `public_row` in `review/view.py` | `review/utils.py` | Beside `build_rows`, so the field's add-and-strip lifecycle reads in one place |
+| — | `row_status`, `scale_categories` extracted | Testable in isolation; the D-10 precedence and the D-8 filter are the two rules most likely to be got wrong |
+| Delete both queue mocks | Only `summary.js` | `queue.js` still has a consumer in the decision page (§11) |
+| Adjacent `return` fix | **Not applied** (§6) | Unrelated to this feature; kept out of the diff |
+
+### Known-good behaviours worth not regressing
+
+- `submissions` is stripped at **all three** `/reviewer/*` shapes — there is no single chokepoint, so a new reviewer endpoint must call `public_row` explicitly.
+- The disagreement card's `> 3` boundary is pinned by five unit tests, including `[1,1,2,2,3,3]` (six submissions, three distinct → **not** disagreement).
+- `PublishModal` must never use `try/catch` for the publish result: `api()` resolves on 4xx, so a rejected publish is a value. A test asserts the modal stays open with the typed description intact.
+
+### Follow-ups, in priority order
+
+1. **Pre-deploy**: any in-flight publication whose `validated_values` already holds `-9999` becomes unpublishable until reassigned (D-11).
+2. `publish/page.js` redirect fall-through (§6, stashed).
+3. `ReviewAdmModal.test.js` has latent timing sensitivity — failed once under full-parallel + coverage, passed 7 runs otherwise. Not touched by this work.
+4. Track 1 wiring of `hero.js` / `response-activities.js` (D-4, D-5, §10 row 4).
+
+---
+
+## 13. Amended by the agreement-filters work (2026-07-22)
+
+[`drought-validation-bulk-filters.md`](drought-validation-bulk-filters.md) changes three things this document specified. Recorded here so the queue's own rules are not read as still current.
+
+### D-8 amended — `consensus` is `None` below two submissions
+
+As shipped, `consensus([3])` returned **100**: one reviewer is trivially unanimous with themselves. That made a publication assigned a single Technical Working Group report *maximum agreement on every Inkhundla*, and made any row still waiting on four other TWGs look settled while sitting in the Awaiting tab.
+
+`consensus()` now returns `None` below `MIN_SUBMISSIONS_FOR_AGREEMENT` (2). The distance-aware formula, its bounds and its outlier robustness are unchanged — only the floor is new. The queue already renders `null` as "—", so no display work followed. See bulk-filters D-9.
+
+### The "High disagreement" card became a control
+
+The card is now a clickable toggle that filters the queue to exactly the rows it counts, and both the card and the `?agreement=disagreement` filter read one predicate (`agreement_of`) rather than two copies of `DISAGREEMENT_THRESHOLD`. Its `key` is now `AgreementFilter.disagreement` rather than the string literal `"disagreement"` — same wire value.
+
+`MetricCard` gained optional `onClick` + `active`; without them it renders exactly as before, so the other three cards are unchanged.
+
+### §12 "Shipped" table — file locations moved
+
+`PublishModal.js` and its test now live in `frontend/src/components/Validation/`, not beside the route. The route folders hold only `page.js` and their page tests. Imports go through `@/components/Validation`.
+
+### Still true
+
+The D-10 status partition, the D-2 TWG coverage definition, the D-6 server-side publish gate and the D-11 "No Data is not an outcome" predicate are all unchanged. The agreement filter deliberately **cross-cuts** the status partition rather than extending it, precisely so the card-equals-tab arithmetic D-10 established keeps holding (bulk-filters D-6).
 
 ---
 
@@ -775,8 +847,8 @@ These are known, accepted debts with a named upgrade path — not gaps:
 | Product | | | |
 
 - [x] D-2 (5 reviewers = 5 TWGs) resolved
-- [x] D-4 (columns on `Publication`) resolved
-- [x] D-5 (`ActivitySector` vocabulary) resolved
+- [x] D-4 (title is templated — no column) resolved
+- [x] D-5 (sector info derived from `v1_activity` — no column) resolved
 - [x] D-8 (distance-aware consensus) resolved
 - [x] ~~D-9 (reuse the existing PUT + `ValidationModal`)~~ — **superseded** by [`drought-validation-decision.md`](drought-validation-decision.md) D-11
 - [x] D-10 (status partition, validated wins; card 1 = `ready`) resolved
@@ -784,4 +856,4 @@ These are known, accepted debts with a named upgrade path — not gaps:
 - [x] §10 — all questions answered, no open items
 - [ ] **Pre-deploy check**: any in-flight publication whose `validated_values` already holds `-9999` becomes unpublishable until reassigned (D-11)
 - [x] Amendments from [`drought-validation-decision.md`](drought-validation-decision.md) §12 applied (2026-07-22)
-- [ ] Design approved → proceed with `/sc:implement`
+- [x] Implemented — see §12 (2026-07-22)

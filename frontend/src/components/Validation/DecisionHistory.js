@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Avatar } from "antd";
 import { DownOutlined, UpOutlined } from "@ant-design/icons";
-import { DroughtScore, ConfidenceBadge } from "@/components/DS";
+import { DroughtScore } from "@/components/DS";
 import dayjs from "dayjs";
 
 const DecisionHistory = ({ history = [] }) => {
@@ -54,13 +54,23 @@ const DecisionHistory = ({ history = [] }) => {
                     : "—"}
                 </span>
                 <DroughtScore level={entry.category} size="sm" />
-                {entry.confidence_band && (
-                  <ConfidenceBadge band={entry.confidence_band} />
-                )}
+                {/* A past decision has no confidence — what matters is
+                    whether the validator accepted the panel or overrode it. */}
+                <span
+                  title={
+                    entry.is_override
+                      ? "Overrode the reviewer majority"
+                      : "Accepted the reviewer majority"
+                  }
+                  className="text-sm"
+                  style={{ color: entry.is_override ? "#e60000" : "#12b76a" }}
+                >
+                  {entry.is_override ? "\u2934" : "\u2713"}
+                </span>
               </div>
-              {entry.comment && (
+              {entry.reasoning && (
                 <div className="px-4 py-3 text-sm text-[#606060] leading-relaxed">
-                  &ldquo;{entry.comment}&rdquo;
+                  &ldquo;{entry.reasoning}&rdquo;
                 </div>
               )}
             </div>
