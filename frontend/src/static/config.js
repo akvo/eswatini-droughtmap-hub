@@ -190,6 +190,9 @@ export const PUBLICATION_DISPLAY_STATUS = {
 
 export const PUBLICATION_TAB_FILTERS = [
   { label: "All", value: "all" },
+  // Backend sentinel: GeoNode resources with no Publication yet. Must be a
+  // real string — a null value serializes to "null" and the API rejects it.
+  { label: "Not yet started", value: "not_yet_started" },
   { label: "Awaiting review", value: PUBLICATION_STATUS.in_review },
   { label: "Ready", value: PUBLICATION_STATUS.in_validation },
   { label: "Validated", value: PUBLICATION_STATUS.published },

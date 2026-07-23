@@ -205,7 +205,8 @@ describe("PublicationsPage", () => {
     render(<PublicationsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Not yet started")).toBeInTheDocument();
+      // "Not yet started" appears twice: the status tab button and the tag.
+      expect(screen.getAllByText("Not yet started").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Awaiting review").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Ready").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Validated").length).toBeGreaterThan(0);
@@ -213,7 +214,8 @@ describe("PublicationsPage", () => {
 
     // Check color classes/style or element properties
     const notStartedTag = screen
-      .getByText("Not yet started")
+      .getAllByText("Not yet started")
+      .find((el) => el.closest(".ant-tag"))
       .closest(".ant-tag");
     expect(notStartedTag).toHaveStyle("background-color: rgb(102, 112, 133)"); // #667085 equivalent
 
