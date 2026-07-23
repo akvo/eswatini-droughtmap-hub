@@ -1,5 +1,11 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Modal } from "antd";
 import { api } from "@/lib";
 import ValidationDetailPage from "../page";
@@ -132,7 +138,11 @@ beforeEach(() => {
 // Modal.confirm renders imperatively into document.body, outside the React
 // tree RTL cleans up. A dialog left open by one test is otherwise still there
 // for the next one to find — and click.
-afterEach(() => Modal.destroyAll());
+afterEach(() => {
+  Modal.destroyAll();
+  cleanup();
+  document.body.innerHTML = "";
+});
 
 describe("Validation queue page", () => {
   it("reads filters from the URL and sends them to the server", async () => {
@@ -298,7 +308,7 @@ describe("Validation queue page", () => {
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /High disagreement: 3/ }),
+      await screen.findByRole("button", { name: /High disagreement\s*:\s*3/ }),
     );
 
     await waitFor(() => expect(replace).toHaveBeenCalled());
@@ -316,7 +326,7 @@ describe("Validation queue page", () => {
     render(<ValidationDetailPage />);
 
     const card = await screen.findByRole("button", {
-      name: /High disagreement: 3/,
+      name: /High disagreement\s*:\s*3/,
     });
     expect(card).toHaveAttribute("aria-pressed", "true");
 
@@ -330,7 +340,7 @@ describe("Validation queue page", () => {
     render(<ValidationDetailPage />);
 
     const card = await screen.findByRole("button", {
-      name: /High disagreement: 3/,
+      name: /High disagreement\s*:\s*3/,
     });
     expect(card).toHaveAttribute("aria-pressed", "false");
   });
@@ -343,6 +353,7 @@ describe("Validation queue page", () => {
     ).not.toBeInTheDocument();
 
     currentParams = new URLSearchParams("agreement=undisputed&status=ready");
+    cleanup();
     render(<ValidationDetailPage />);
 
     expect(
