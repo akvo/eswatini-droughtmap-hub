@@ -1,24 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-// import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Button,
-  Flex,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
-import { Can, FeedbackSection } from "@/components";
+import { Button, Modal, Select, Table, Tag } from "antd";
+import { FileOutlined } from "@ant-design/icons";
+import { Can, FeedbackSection, PageHeader, TabButtons } from "@/components";
 import {
   MAP_CATEGORY_OPTIONS,
   PAGE_SIZE,
+  PUBLICATION_DISPLAY_STATUS,
   PUBLICATION_STATUS,
-  PUBLICATION_STATUS_OPTIONS,
+  PUBLICATION_TAB_FILTERS,
 } from "@/static/config";
 import { api } from "@/lib";
 import dayjs from "dayjs";
@@ -26,7 +18,7 @@ import advancedFormat from "dayjs/plugin/advancedFormat";
 
 dayjs.extend(advancedFormat);
 
-const { Title } = Typography;
+const SHOW_GEONODE_LINK = false;
 
 const PublicationsPage = () => {
   const [publications, setPublications] = useState([]);
@@ -36,7 +28,7 @@ const PublicationsPage = () => {
   const [totalData, setTotalData] = useState(0);
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
-  const [status, setStatus] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortField, setSortField] = useState("year_month");
   const [sortOrder, setSortOrder] = useState("descend");
   const router = useRouter();
@@ -46,24 +38,41 @@ const PublicationsPage = () => {
       title: "CREATED AT",
       dataIndex: "created",
       key: "created",
+      width: "15%",
       sorter: true,
       render: (_, { created }) =>
-        dayjs(created).format("MMMM Do, YYYY - h:mm A"),
+        created ? dayjs(created).format("DD/MM/YY") : "-",
     },
     {
       title: "PREVIEW",
-      dataIndex: "thumbnail_url",
-      key: "thumbnail_url",
+      key: "preview",
+      width: "35%",
       render: (_, record) => {
+        const titleText = record?.title || "";
+        const formattedTitle =
+          titleText.length > 100 ? `${titleText.slice(0, 75)}.....` : titleText;
         return (
-          <a role="button" onClick={() => setPreview(record)}>
-            <img
-              width={100}
-              height={100}
-              src={record?.thumbnail_url || "/images/no-thumbnail.png"}
-              alt={record?.title}
-            />
-            <small>{record?.title}</small>
+          <a
+            role="button"
+            onClick={() => setPreview(record)}
+            className="flex gap-3 items-center cursor-pointer w-full"
+          >
+            <div className="bg-[#eceff8] rounded-full w-10 h-10 flex items-center justify-center shrink-0">
+              <FileOutlined style={{ fontSize: 18, color: "#3e5eb9" }} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span
+                className="text-sm font-medium text-[#333] leading-5"
+                title={titleText}
+              >
+                {formattedTitle}
+              </span>
+              {record?.file_size && (
+                <span className="text-sm text-[#606060] leading-5">
+                  {record.file_size}
+                </span>
+              )}
+            </div>
           </a>
         );
       },
@@ -72,60 +81,75 @@ const PublicationsPage = () => {
       title: "PUBLICATION DATE",
       dataIndex: "year_month",
       key: "year_month",
-      defaultSortOrder: "descend",
+      width: "18%",
       sorter: true,
-      render: (_, { year_month }) => dayjs(year_month).format("MMMM YYYY"),
+      render: (_, { year_month }) =>
+        year_month ? dayjs(year_month).format("MMMM YYYY") : "-",
     },
     {
       title: "STATUS",
       dataIndex: "status",
       key: "status",
+      width: "12%",
       render: (_, { status }) => {
-        const findStatus = PUBLICATION_STATUS_OPTIONS.find(
-          (s) => s?.value === status,
-        );
+        const displayStatus = PUBLICATION_DISPLAY_STATUS[
+          String(status ?? null)
+        ] || {
+          label: "Unknown",
+          color: "#999",
+        };
         return (
-          <Tag color={findStatus?.color}>
-            {findStatus?.label || "Not yet started"}
+          <Tag className="edm-reviews-status-tag" color={displayStatus.color}>
+            {displayStatus.label}
           </Tag>
         );
       },
     },
     {
-      title: "ACTION",
-      dataIndex: "publication_id",
-      key: "id",
-      render: (_, { pk, publication_id, detail_url, status }) => {
+      title: "ACTIONS",
+      key: "actions",
+      width: "20%",
+      align: "right",
+      render: (_, record) => {
+        const { pk, publication_id, detail_url, status } = record;
+        const isInValidation = status === PUBLICATION_STATUS.in_validation;
         const routeURL = publication_id
-          ? status === PUBLICATION_STATUS.in_validation
-            ? `/publications/${publication_id}/validation`
+          ? isInValidation
+            ? `/validations/${publication_id}`
             : `/publications/${publication_id}`
           : `/publications/create?cdi_geonode_id=${pk}`;
-        return (
-          <Space>
-            <Button type="link" href={detail_url} target="_blank">
-              Open in Geonode
-            </Button>
 
+        const actionLabel = publication_id
+          ? "Validate"
+          : "Start new publication";
+
+        return (
+          <div className="flex gap-3 justify-end items-center">
+            {SHOW_GEONODE_LINK && (
+              <Button
+                type="link"
+                href={detail_url}
+                target="_blank"
+                className="edm-reviews-action"
+              >
+                Open in Geonode
+              </Button>
+            )}
             <Button
-              type="primary"
-              onClick={() => {
+              type="link"
+              className="edm-reviews-action"
+              onClick={(e) => {
+                e.stopPropagation();
                 router.push(routeURL);
               }}
             >
-              {publication_id ? "View" : "Start new Publication"}
+              {actionLabel}
             </Button>
-          </Space>
+          </div>
         );
       },
     },
   ];
-
-  const onChangeStatus = (value) => {
-    setPage(1);
-    setStatus(value);
-    setPreload(true);
-  };
 
   const handleTableChange = (pagination, filters, sorter) => {
     if (sorter && sorter.field) {
@@ -138,23 +162,36 @@ const PublicationsPage = () => {
   const fetchData = useCallback(async () => {
     try {
       if (preload) {
+        setLoading(true);
         setPreload(false);
-        // Convert sortOrder from "descend"/"ascend" to "desc"/"asc"
         const sort_order =
           sortOrder === "descend"
             ? "desc"
             : sortOrder === "ascend"
               ? "asc"
               : "desc";
-        const apiURL = status
-          ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}&sort=${sortField}&sort_order=${sort_order}`
-          : `/admin/cdi-geonode?page=${page}&category=${category}&sort=${sortField}&sort_order=${sort_order}`;
-        const { data, total } = await api("GET", apiURL);
-        if (total) {
+
+        const params = new URLSearchParams({
+          page,
+          category,
+          sort: sortField,
+          sort_order,
+        });
+
+        if (statusFilter !== "all") {
+          params.set("status", statusFilter);
+        }
+
+        const { data, total } = await api(
+          "GET",
+          `/admin/cdi-geonode?${params.toString()}`,
+        );
+
+        if (total !== undefined) {
           setTotalData(total);
         }
         if (data) {
-          const _publications = data.map((d) => ({ key: d?.id, ...d }));
+          const _publications = data.map((d) => ({ key: d?.pk, ...d }));
           setPublications(_publications);
         }
         setLoading(false);
@@ -164,72 +201,104 @@ const PublicationsPage = () => {
       setLoading(false);
       setPreload(false);
     }
-  }, [preload, page, status, category, sortField, sortOrder]);
+  }, [preload, page, statusFilter, category, sortField, sortOrder]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const headerDate = useMemo(() => {
+    const first = publications?.[0];
+    if (first?.created) {
+      return dayjs(first.created).format("D MMMM YYYY");
+    }
+    return null;
+  }, [publications]);
+
   return (
-    <div className="w-full h-auto space-y-4 pt-6">
-      <Flex align="center" justify="space-between">
-        <div className="w-2/3">
-          <Title level={2}>CDI Publication</Title>
-        </div>
-        <Space className="w-1/3 flex justify-end">
-          <Select
-            options={MAP_CATEGORY_OPTIONS}
-            className="w-48"
-            placeholder="Filter by Category"
-            onChange={(value) => {
-              setPage(1);
-              if (value) {
-                setCategory(value);
-              } else {
-                setCategory(MAP_CATEGORY_OPTIONS[0].value);
-              }
-              setPreload(true);
-            }}
-            value={category}
-            allowClear
-          />
-          <Select
-            onChange={onChangeStatus}
-            options={PUBLICATION_STATUS_OPTIONS}
-            className="w-48"
-            placeholder="Filter by Status"
-            allowClear
-          />
-        </Space>
-      </Flex>
-      <Can I="read" a="Publication">
-        <Table
-          columns={columns}
-          dataSource={publications}
-          loading={loading}
-          rowClassName={"cursor-pointer"}
-          onChange={handleTableChange}
-          pagination={
-            totalData < PAGE_SIZE
-              ? false
-              : {
-                  current: page,
-                  pageSize: PAGE_SIZE,
-                  total: totalData,
-                  responsive: true,
-                  align: "center",
-                  position: ["bottomCenter"],
-                  onChange: (_page) => {
-                    setPage(_page);
-                    setPreload(true);
-                  },
-                }
-          }
-          rowKey="pk"
+    <div className="w-full h-auto">
+      <PageHeader
+        title="CDI publication"
+        description="Manage and track CDI map publications."
+        date={headerDate}
+      />
+
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
         />
-      </Can>
+        <Can I="read" a="Publication">
+          <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
+            <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+              <h2 className="text-xl font-semibold leading-7 text-[#333333]">
+                Reviews
+              </h2>
+            </div>
+            <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+              <TabButtons
+                options={PUBLICATION_TAB_FILTERS}
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setPage(1);
+                  setPreload(true);
+                }}
+              />
+              <Select
+                options={MAP_CATEGORY_OPTIONS}
+                className="w-full lg:w-48"
+                placeholder="Filter by Category"
+                onChange={(value) => {
+                  setPage(1);
+                  if (value) {
+                    setCategory(value);
+                  } else {
+                    setCategory(MAP_CATEGORY_OPTIONS[0].value);
+                  }
+                  setPreload(true);
+                }}
+                value={category}
+                allowClear={false}
+              />
+            </div>
+            <Table
+              className="edm-reviews-table"
+              columns={columns}
+              dataSource={publications}
+              loading={loading}
+              tableLayout="fixed"
+              scroll={{ x: 900 }}
+              onChange={handleTableChange}
+              pagination={
+                totalData < PAGE_SIZE
+                  ? false
+                  : {
+                      current: page,
+                      pageSize: PAGE_SIZE,
+                      total: totalData,
+                      responsive: true,
+                      align: "center",
+                      position: ["bottomCenter"],
+                      showSizeChanger: false,
+                      onChange: (_page) => {
+                        setPage(_page);
+                        setPreload(true);
+                      },
+                    }
+              }
+              rowKey="pk"
+            />
+          </section>
+        </Can>
+        <div className="mx-auto w-full max-w-[1280px] py-8">
+          <FeedbackSection />
+        </div>
+      </div>
+
       <Modal
         title={preview?.title}
-        open={preview?.pk}
+        open={!!preview?.pk}
         onOk={() => {
           setPreview(null);
         }}
@@ -241,18 +310,17 @@ const PublicationsPage = () => {
         className="w-full flex flex-col items-center"
         closable
       >
-        {preview?.embed_url && (
+        {preview?.embed_url ? (
           <iframe
             width={"100%"}
             height={600}
             src={preview.embed_url}
             className="min-w-[640px]"
           />
+        ) : (
+          <p className="py-8 text-center text-gray-500">No preview available</p>
         )}
       </Modal>
-      <div className="py-8">
-        <FeedbackSection />
-      </div>
     </div>
   );
 };

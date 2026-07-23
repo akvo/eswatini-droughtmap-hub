@@ -112,6 +112,40 @@ class CDIGeonodeAPITestCase(APITestCase):
             response.data["data"][0]["status"], PublicationStatus.in_review
         )
 
+    def test_filter_not_yet_started(self, _):
+        # gn1 has a publication; gn2 has none -> only gn2 is "not_yet_started".
+        Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month=date(2024, 12, 1),
+            due_date=date(2025, 1, 31),
+            initial_values=[],
+        )
+        response = self.client.get(f"{self.url}?status=not_yet_started")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["data"]), 1)
+        self.assertEqual(response.data["data"][0]["pk"], 2)
+        self.assertIsNone(response.data["data"][0]["publication_id"])
+        self.assertIsNone(response.data["data"][0]["status"])
+
+    def test_filter_not_yet_started_all_started(self, _):
+        # Every resource has a publication -> "not_yet_started" is empty.
+        for gid in (1, 2):
+            Publication.objects.create(
+                cdi_geonode_id=gid,
+                year_month=date(2024, 12, 1),
+                due_date=date(2025, 1, 31),
+                initial_values=[],
+            )
+        response = self.client.get(f"{self.url}?status=not_yet_started")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["data"]), 0)
+
+    def test_filter_status_null_string_rejected(self, _):
+        # The old broken frontend sent the literal "null"; it must 400, not
+        # silently behave like "not_yet_started".
+        response = self.client.get(f"{self.url}?status=null")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_empty_results_publication_filtering_by_status(self, _):
         # Filter for status=in_validation, but no such publications exist
         response = self.client.get(

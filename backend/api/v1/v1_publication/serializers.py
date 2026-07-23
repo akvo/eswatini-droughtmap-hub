@@ -29,6 +29,7 @@ from api.v1.v1_publication.constants import (
     CDIGeonodeCategory,
     PublicationStatus,
     RasterIndicatorTypes,
+    FilterStatus,
     is_validated,
 )
 
@@ -264,8 +265,13 @@ class CDIGeonodeFilterSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    # Numeric publication statuses plus the "not_yet_started" sentinel, which
+    # the CDI list uses for GeoNode resources that have no Publication yet.
     status = CustomChoiceField(
-        choices=list(PublicationStatus.FieldStr.keys()),
+        choices=(
+            list(PublicationStatus.FieldStr.keys())
+            + [FilterStatus.not_yet_started]
+        ),
         required=False,
         allow_null=False,
     )

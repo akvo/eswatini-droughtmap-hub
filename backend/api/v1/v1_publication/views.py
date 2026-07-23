@@ -257,9 +257,16 @@ class CDIGeonodeAPI(APIView):
             OpenApiParameter(
                 name="status",
                 required=False,
-                enum=PublicationStatus.FieldStr.keys(),
-                type=OpenApiTypes.NUMBER,
+                enum=(
+                    list(PublicationStatus.FieldStr.keys())
+                    + [FilterStatus.not_yet_started]
+                ),
+                type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
+                description=(
+                    "Publication status (1/2/3), or 'not_yet_started' for "
+                    "GeoNode resources without a publication yet."
+                ),
             ),
             OpenApiParameter(
                 name="id",
@@ -349,7 +356,13 @@ class CDIGeonodeAPI(APIView):
         qs = PublicationGeonode.objects.filter(category=category)
 
         # Optional: Status filter. Join/query mapping from Publication status.
-        if publication_status is not None:
+        if publication_status == FilterStatus.not_yet_started:
+            # "Not yet started" = GeoNode resource with no Publication yet.
+            started_ids = Publication.objects.values_list(
+                "cdi_geonode_id", flat=True
+            )
+            qs = qs.exclude(geonode_id__in=started_ids)
+        elif publication_status is not None:
             matching_ids = Publication.objects.filter(
                 status=publication_status
             ).values_list("cdi_geonode_id", flat=True)
