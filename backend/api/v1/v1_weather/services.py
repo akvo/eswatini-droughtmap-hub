@@ -257,6 +257,9 @@ def resolve_administration_latest(administration) -> dict:
             "network": NETWORK,
             "period": period,
             "resolution": resolution,
+            # Review-page map marker (Track 2 #146 / G2): station location.
+            "station_lat": station.latitude,
+            "station_lon": station.longitude,
         }
         if resolution == "nearest_station_fallback":
             meta["station_region"] = station.region
@@ -385,6 +388,8 @@ def _resolution_meta(station, resolution, distance_km) -> dict:
         "station_code": _station_code(station),
         "network": NETWORK,
         "resolution": resolution,
+        "station_lat": station.latitude,
+        "station_lon": station.longitude,
     }
     if resolution == "nearest_station_fallback":
         meta["station_region"] = station.region
