@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Citizen Science Weather · design mockup</title>
+<style>
+  :root {
+    --navy:#1C2B3A;
+    --navy-d:#0F1926;
+    --green:#00B98E;
+    --green-d:#0E8F6E;
+    --gold:#F5B840;
+    --terra:#B85042;
+    --sage:#5FA085;
+    --text:#1F2937;
+    --text2:#4B5563;
+    --text3:#94A3B8;
+    --bg:#F5F5F0;
+    --card:#FFFFFF;
+    --border:#E5E7EB;
+    --rule:#F1F5F9;
+    --cream:#FBF8F1;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --serif:"Cambria","Georgia",serif;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:var(--font); background:var(--bg); color:var(--text); line-height:1.5; padding:20px; min-height:100vh; }
+
+  /* ── View switcher ── */
+  .switcher {
+    max-width:1200px; margin:0 auto 24px; background:var(--navy-d); border-radius:12px;
+    padding:14px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  }
+  .switcher .brand {
+    color:#fff; font-family:var(--serif); font-size:18px; font-weight:700;
+    display:flex; align-items:center; gap:10px;
+  }
+  .switcher .brand .dot { width:10px; height:10px; border-radius:50%; background:var(--green); }
+  .switcher .tabs { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  .switcher .tabs button {
+    background:transparent; color:#CBD5E1; border:1px solid transparent;
+    padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer;
+    font-family:var(--font); transition:all .15s;
+  }
+  .switcher .tabs button:hover { color:#fff; background:rgba(255,255,255,.06); }
+  .switcher .tabs button.active { background:var(--green); color:#fff; }
+  .switcher .note { color:#94A3B8; font-size:11px; font-style:italic; margin-left:auto; }
+
+  /* ── Views ── */
+  .view { max-width:1200px; margin:0 auto; display:none; }
+  .view.active { display:block; }
+
+  /* ── App chrome (post-login views) ── */
+  .app-header {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:16px 22px; display:flex; align-items:center; gap:16px; margin-bottom:16px;
+  }
+  .app-header .logo {
+    width:36px; height:36px; background:var(--green); border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:18px;
+  }
+  .app-header .title { font-family:var(--serif); font-weight:700; font-size:17px; color:var(--navy); }
+  .app-header .sub { font-size:12px; color:var(--text3); }
+  .app-header .who {
+    margin-left:auto; display:flex; align-items:center; gap:10px;
+    padding:6px 12px; background:var(--cream); border:1px solid var(--border); border-radius:20px;
+    font-size:12.5px; color:var(--text);
+  }
+  .app-header .who .avatar {
+    width:24px; height:24px; border-radius:50%; background:var(--gold);
+    color:#fff; font-weight:700; font-size:11px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .app-header .signout { color:var(--text3); font-size:12px; cursor:pointer; text-decoration:underline; }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 1 — SIGN-IN FALLBACK
+     ═══════════════════════════════════════════════ */
+  .signin-wrap {
+    min-height:calc(100vh - 130px); display:flex; align-items:center; justify-content:center;
+    padding:40px 20px;
+  }
+  .signin-card {
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:36px 40px; max-width:440px; width:100%;
+    box-shadow:0 20px 40px rgba(15,25,38,.06);
+  }
+  .signin-card .logo-lg {
+    width:56px; height:56px; background:var(--green); border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:28px; margin-bottom:22px;
+  }
+  .signin-card h1 { font-family:var(--serif); font-size:26px; color:var(--navy); margin-bottom:8px; }
+  .signin-card .lead { font-size:14px; color:var(--text2); margin-bottom:26px; }
+  .signin-card .lead b { color:var(--text); }
+  .signin-card label { display:block; font-size:12px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .signin-card input {
+    width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px;
+    font-family:var(--font); font-size:14px; color:var(--text);
+    transition:border-color .15s;
+  }
+  .signin-card input:focus { outline:none; border-color:var(--green); }
+  .signin-card .btn {
+    width:100%; margin-top:16px; padding:13px; background:var(--green); color:#fff;
+    border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-family:var(--font);
+  }
+  .signin-card .btn:hover { background:var(--green-d); }
+  .signin-card .hint {
+    margin-top:20px; padding:14px 16px; background:var(--cream); border-radius:8px;
+    font-size:12px; color:var(--text2); line-height:1.55;
+  }
+  .signin-card .hint b { color:var(--text); }
+  .signin-card .foot { margin-top:24px; text-align:center; font-size:11px; color:var(--text3); }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 2 — OBSERVER FORM
+     ═══════════════════════════════════════════════ */
+  .obs-hero {
+    background:linear-gradient(135deg,var(--navy-d) 0%,var(--navy) 100%); color:#fff;
+    border-radius:12px; padding:24px 28px; margin-bottom:16px;
+    position:relative; overflow:hidden;
+  }
+  .obs-hero::after {
+    content:""; position:absolute; right:-40px; bottom:-40px; width:180px; height:180px;
+    background:radial-gradient(circle,rgba(0,185,142,.15),transparent 70%); border-radius:50%;
+  }
+  .obs-hero .month-pill {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(0,185,142,.15); color:var(--green); padding:5px 12px;
+    border-radius:20px; font-size:11.5px; font-weight:600; letter-spacing:.04em;
+    text-transform:uppercase; margin-bottom:14px;
+  }
+  .obs-hero h1 { font-family:var(--serif); font-size:24px; margin-bottom:6px; }
+  .obs-hero p { font-size:14px; color:#CBD5E1; margin-bottom:18px; }
+  .obs-hero .progress-line {
+    display:flex; align-items:center; gap:14px; position:relative; z-index:1;
+  }
+  .obs-hero .progress-bar {
+    flex:1; height:6px; background:rgba(255,255,255,.15); border-radius:3px; overflow:hidden;
+  }
+  .obs-hero .progress-fill { height:100%; background:var(--green); border-radius:3px; }
+  .obs-hero .progress-label { font-size:12.5px; color:#fff; font-weight:600; }
+
+  .obs-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .obs-field {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px;
+  }
+  .obs-field .row1 { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .obs-field .icon {
+    width:36px; height:36px; border-radius:9px; display:flex; align-items:center;
+    justify-content:center; font-size:18px;
+  }
+  .obs-field.tmin .icon { background:#DBEAFE; color:#1E40AF; }
+  .obs-field.tmax .icon { background:#FEE2E2; color:#B91C1C; }
+  .obs-field.rain .icon { background:#DBEAFE; color:#0369A1; }
+  .obs-field.smoist .icon { background:#F3E8FF; color:#7C3AED; }
+  .obs-field.stemp .icon { background:#FEF3C7; color:#B45309; }
+  .obs-field .row1 .label {
+    font-size:13px; font-weight:600; color:var(--text);
+  }
+  .obs-field .row1 .unit {
+    margin-left:auto; font-size:10.5px; color:var(--text3); font-weight:600;
+    padding:3px 8px; background:var(--rule); border-radius:4px; letter-spacing:.03em;
+  }
+  .obs-field input {
+    width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:6px;
+    font-family:var(--font); font-size:14px; color:var(--text);
+  }
+  .obs-field input:focus { outline:none; border-color:var(--green); }
+  .obs-field .skip { font-size:11px; color:var(--text3); margin-top:6px; }
+
+  .obs-notes {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px; margin-bottom:16px;
+  }
+  .obs-notes .row1 { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .obs-notes .icon {
+    width:36px; height:36px; border-radius:9px; background:#F1F5F9; color:var(--navy);
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .obs-notes label { font-size:13px; font-weight:600; color:var(--text); }
+  .obs-notes textarea {
+    width:100%; min-height:90px; padding:10px 12px; border:1.5px solid var(--border); border-radius:6px;
+    font-family:var(--font); font-size:14px; color:var(--text); resize:vertical;
+  }
+  .obs-notes textarea:focus { outline:none; border-color:var(--green); }
+
+  .obs-actions {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:16px 20px; display:flex; align-items:center; gap:12px; margin-bottom:24px;
+  }
+  .obs-actions .note { font-size:12px; color:var(--text3); flex:1; }
+  .obs-actions .btn { padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; font-family:var(--font); }
+  .obs-actions .btn.draft { background:var(--card); border:1.5px solid var(--border); color:var(--text2); }
+  .obs-actions .btn.submit { background:var(--green); color:#fff; }
+  .obs-actions .btn.submit:hover { background:var(--green-d); }
+
+  /* history section */
+  .obs-history {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:22px 24px; margin-bottom:20px;
+  }
+  .obs-history h3 {
+    font-family:var(--serif); font-size:17px; color:var(--navy); margin-bottom:6px;
+  }
+  .obs-history .sub { font-size:12.5px; color:var(--text3); margin-bottom:16px; }
+  .obs-history .completeness {
+    display:flex; align-items:center; gap:12px; padding:12px 16px;
+    background:linear-gradient(135deg,rgba(0,185,142,.06),rgba(0,185,142,.02));
+    border:1px solid rgba(0,185,142,.2); border-radius:8px; margin-bottom:18px;
+  }
+  .obs-history .completeness .pct {
+    font-family:var(--serif); font-size:26px; font-weight:700; color:var(--green-d);
+  }
+  .obs-history .completeness .text { flex:1; font-size:12.5px; color:var(--text); }
+  .obs-history .completeness .text b { color:var(--green-d); }
+
+  .obs-history table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .obs-history th {
+    text-align:left; padding:10px 12px; background:var(--rule);
+    color:var(--text2); font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em;
+  }
+  .obs-history th:first-child { border-top-left-radius:6px; }
+  .obs-history th:last-child { border-top-right-radius:6px; text-align:center; }
+  .obs-history td { padding:9px 12px; border-bottom:1px solid var(--rule); color:var(--text); }
+  .obs-history td.miss { color:var(--text3); font-style:italic; }
+  .obs-history td.status { text-align:center; }
+  .obs-history .badge {
+    display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:600;
+  }
+  .obs-history .badge.full { background:rgba(0,185,142,.15); color:var(--green-d); }
+  .obs-history .badge.partial { background:rgba(245,184,64,.2); color:#8A5A0B; }
+  .obs-history .badge.miss { background:#F1F5F9; color:var(--text3); }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 3 — ADMIN DASHBOARD
+     ═══════════════════════════════════════════════ */
+  .admin-header h1 { font-family:var(--serif); font-size:22px; color:var(--navy); margin-bottom:4px; }
+  .admin-header .lead { font-size:13px; color:var(--text3); margin-bottom:20px; }
+
+  .admin-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .stat-card {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px;
+  }
+  .stat-card .label {
+    font-size:10.5px; font-weight:700; color:var(--text3);
+    text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+  }
+  .stat-card .val {
+    font-family:var(--serif); font-size:28px; font-weight:700; color:var(--navy);
+    line-height:1.1; margin-bottom:4px;
+  }
+  .stat-card .sub { font-size:11.5px; color:var(--text3); }
+  .stat-card.good .val { color:var(--green-d); }
+  .stat-card.warn .val { color:var(--gold); }
+
+  .admin-toolbar {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:14px 18px; margin-bottom:14px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .admin-toolbar .filters { display:flex; gap:6px; flex-wrap:wrap; }
+  .admin-toolbar .chip {
+    padding:6px 12px; border:1px solid var(--border); border-radius:20px;
+    font-size:12px; cursor:pointer; background:var(--card); color:var(--text2);
+  }
+  .admin-toolbar .chip.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .admin-toolbar .spacer { flex:1; }
+  .admin-toolbar .actions { display:flex; gap:8px; }
+  .admin-toolbar .btn {
+    padding:8px 14px; border-radius:6px; font-size:12.5px; font-weight:600;
+    border:none; cursor:pointer; font-family:var(--font);
+  }
+  .admin-toolbar .btn.primary { background:var(--green); color:#fff; }
+  .admin-toolbar .btn.ghost { background:var(--card); border:1px solid var(--border); color:var(--text2); }
+
+  .admin-table {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; margin-bottom:20px;
+  }
+  .admin-table table { width:100%; border-collapse:collapse; font-size:13px; }
+  .admin-table th {
+    text-align:left; padding:12px 14px; background:var(--navy);
+    color:#fff; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em;
+  }
+  .admin-table td { padding:12px 14px; border-bottom:1px solid var(--rule); color:var(--text); vertical-align:middle; }
+  .admin-table tr:last-child td { border-bottom:none; }
+  .admin-table .station { font-weight:600; }
+  .admin-table .region { color:var(--text3); font-size:11.5px; }
+  .admin-table .observer { color:var(--text2); }
+  .admin-table .observer .email { display:block; font-size:11px; color:var(--text3); }
+  .admin-table .last { font-family:monospace; color:var(--text2); font-size:12px; }
+  .admin-table .compl { display:flex; align-items:center; gap:10px; min-width:130px; }
+  .admin-table .compl .bar {
+    flex:1; height:8px; background:var(--rule); border-radius:4px; overflow:hidden;
+  }
+  .admin-table .compl .fill { height:100%; border-radius:4px; }
+  .admin-table .compl .fill.good { background:var(--green); }
+  .admin-table .compl .fill.warn { background:var(--gold); }
+  .admin-table .compl .fill.bad { background:var(--terra); }
+  .admin-table .compl .pct { font-weight:700; font-size:12px; min-width:40px; text-align:right; }
+  .admin-table .actions-cell { text-align:right; }
+  .admin-table .row-btn {
+    display:inline-block; margin-left:4px; padding:4px 9px; font-size:11px;
+    border:1px solid var(--border); background:var(--card); color:var(--text2);
+    border-radius:5px; cursor:pointer; font-family:var(--font);
+  }
+  .admin-table .row-btn:hover { background:var(--cream); border-color:var(--gold); }
+  .admin-table .row-btn.primary { background:var(--green); color:#fff; border-color:var(--green); }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 4 — REMINDER EMAIL PREVIEW
+     ═══════════════════════════════════════════════ */
+  .email-wrap {
+    max-width:640px; margin:0 auto;
+  }
+  .email-envelope {
+    background:#F1F5F9; padding:18px 22px; border-radius:12px 12px 0 0;
+    display:flex; align-items:center; gap:12px; border:1px solid var(--border); border-bottom:none;
+  }
+  .email-envelope .from-avatar {
+    width:40px; height:40px; border-radius:50%; background:var(--green);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:15px;
+  }
+  .email-envelope .meta { flex:1; font-size:12.5px; color:var(--text2); }
+  .email-envelope .meta b { color:var(--text); font-size:13px; }
+  .email-envelope .time { font-size:11px; color:var(--text3); }
+
+  .email-body {
+    background:var(--card); border:1px solid var(--border); border-top:none;
+    border-radius:0 0 12px 12px; padding:34px 38px 30px;
+  }
+  .email-body .subject-line {
+    font-family:var(--serif); font-size:22px; color:var(--navy); font-weight:700;
+    margin-bottom:22px; line-height:1.3;
+  }
+  .email-body p { font-size:15px; color:var(--text); margin-bottom:14px; line-height:1.6; }
+  .email-body p b { color:var(--navy); }
+  .email-body .station-card {
+    background:var(--cream); border:1px solid var(--gold); border-radius:10px;
+    padding:14px 18px; margin:18px 0;
+    display:flex; align-items:center; gap:14px;
+  }
+  .email-body .station-card .weather-icon {
+    width:44px; height:44px; background:#fff; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; font-size:22px;
+    border:1px solid var(--gold);
+  }
+  .email-body .station-card .info { flex:1; }
+  .email-body .station-card .info .name { font-size:15px; font-weight:700; color:var(--navy); }
+  .email-body .station-card .info .loc { font-size:12.5px; color:var(--text2); }
+  .email-body .cta-btn {
+    display:block; width:100%; padding:16px; background:var(--green); color:#fff;
+    text-align:center; text-decoration:none; border-radius:10px;
+    font-size:15px; font-weight:700; margin:22px 0;
+    letter-spacing:.02em;
+  }
+  .email-body .cta-btn .arrow { font-size:13px; margin-left:6px; }
+  .email-body .small { font-size:12px; color:var(--text3); text-align:center; margin-top:-14px; margin-bottom:22px; }
+  .email-body ul { list-style:none; padding:0; margin:0 0 18px; }
+  .email-body ul li {
+    padding:8px 14px; background:#F9FAFB; border-left:3px solid var(--green);
+    margin-bottom:6px; font-size:13px; color:var(--text);
+    display:flex; align-items:center; gap:10px;
+  }
+  .email-body ul li .field-icon {
+    width:22px; height:22px; border-radius:5px;
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+    background:#fff; border:1px solid var(--border);
+  }
+  .email-body .not-mandatory {
+    background:rgba(245,184,64,.1); border:1px solid rgba(245,184,64,.4);
+    border-radius:8px; padding:12px 15px; font-size:12.5px; color:#8A5A0B;
+    margin:14px 0; line-height:1.55;
+  }
+  .email-body .not-mandatory b { color:#5F3C05; }
+  .email-body .foot {
+    border-top:1px solid var(--rule); padding-top:16px; margin-top:22px;
+    font-size:11.5px; color:var(--text3); line-height:1.6;
+  }
+  .email-body .foot b { color:var(--text2); }
+
+  .field-icon.tmin { color:#1E40AF; }
+  .field-icon.tmax { color:#B91C1C; }
+  .field-icon.rain { color:#0369A1; }
+  .field-icon.smoist { color:#7C3AED; }
+  .field-icon.stemp { color:#B45309; }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 5 — ADD STATION + OBSERVER
+     ═══════════════════════════════════════════════ */
+  .add-header { display:flex; align-items:center; gap:14px; margin-bottom:6px; }
+  .add-header .back {
+    padding:8px 14px; background:var(--card); border:1px solid var(--border);
+    border-radius:6px; font-size:12.5px; color:var(--text2); cursor:pointer;
+    font-family:var(--font);
+  }
+  .add-header h1 { font-family:var(--serif); font-size:22px; color:var(--navy); }
+  .add-header .steps {
+    margin-left:auto; display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text3);
+  }
+  .add-header .step-dot {
+    width:8px; height:8px; border-radius:50%; background:var(--border);
+  }
+  .add-header .step-dot.active { background:var(--green); }
+  .add-lead { font-size:13px; color:var(--text3); margin-bottom:20px; }
+
+  .add-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .add-section {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:22px 24px;
+  }
+  .add-section h3 {
+    font-family:var(--serif); font-size:16px; color:var(--navy); margin-bottom:4px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .add-section h3 .num {
+    width:24px; height:24px; border-radius:50%; background:var(--green);
+    color:#fff; font-family:var(--font); font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .add-section .section-sub { font-size:12px; color:var(--text3); margin-bottom:18px; padding-left:34px; }
+
+  .add-field { margin-bottom:14px; }
+  .add-field label {
+    display:block; font-size:11.5px; font-weight:700; color:var(--text2);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px;
+  }
+  .add-field label .req { color:var(--terra); margin-left:2px; }
+  .add-field label .hint { text-transform:none; letter-spacing:0; font-weight:500; color:var(--text3); font-size:11px; }
+  .add-field input, .add-field select, .add-field textarea {
+    width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:7px;
+    font-family:var(--font); font-size:13.5px; color:var(--text);
+    background:var(--card);
+  }
+  .add-field select { cursor:pointer; padding-right:32px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%23475569' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center;
+    appearance:none; -webkit-appearance:none;
+  }
+  .add-field input:focus, .add-field select:focus, .add-field textarea:focus {
+    outline:none; border-color:var(--green);
+  }
+  .add-field .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .add-field .autofill {
+    background:var(--rule); color:var(--text2); font-style:italic;
+  }
+
+  .sensor-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px; }
+  .sensor-chip {
+    display:flex; align-items:center; gap:8px; padding:9px 12px;
+    border:1.5px solid var(--border); border-radius:7px; cursor:pointer;
+    font-size:12.5px; color:var(--text2); background:var(--card);
+    transition:all .12s;
+  }
+  .sensor-chip.on { border-color:var(--green); background:rgba(0,185,142,.06); color:var(--text); }
+  .sensor-chip .sensor-check {
+    width:16px; height:16px; border-radius:4px; border:1.5px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:10px;
+  }
+  .sensor-chip.on .sensor-check { background:var(--green); border-color:var(--green); color:#fff; }
+
+  .map-preview {
+    background:linear-gradient(135deg,#DBEAFE 0%,#FEF3C7 100%);
+    border:1px solid var(--border); border-radius:8px;
+    height:200px; margin-top:10px; position:relative; overflow:hidden;
+  }
+  .map-preview .country-svg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+  .map-preview .pin {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-100%);
+    color:var(--terra); font-size:26px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));
+  }
+  .map-preview .coords {
+    position:absolute; bottom:8px; left:10px; right:10px;
+    background:rgba(255,255,255,.9); padding:6px 10px; border-radius:5px;
+    font-size:11px; color:var(--text2); font-family:monospace;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .map-preview .coords .verified {
+    background:var(--green); color:#fff; padding:2px 8px; border-radius:10px;
+    font-size:10px; font-weight:700; font-family:var(--font); letter-spacing:.04em;
+  }
+
+  .lang-toggle { display:flex; gap:8px; }
+  .lang-toggle .lang-opt {
+    flex:1; padding:9px 12px; border:1.5px solid var(--border); border-radius:7px;
+    text-align:center; cursor:pointer; font-size:12.5px; color:var(--text2);
+    background:var(--card);
+  }
+  .lang-toggle .lang-opt.on { border-color:var(--green); background:rgba(0,185,142,.06); color:var(--text); font-weight:600; }
+
+  .add-preview {
+    background:var(--cream); border:1px solid var(--gold);
+    border-radius:12px; padding:20px 22px; margin-bottom:16px;
+  }
+  .add-preview h4 {
+    font-family:var(--serif); font-size:15px; color:var(--navy); margin-bottom:4px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .add-preview .p-sub { font-size:12px; color:var(--text2); margin-bottom:14px; }
+  .add-preview .email-preview {
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    padding:14px 16px; font-size:12.5px; color:var(--text); line-height:1.6;
+  }
+  .add-preview .email-preview .subject { font-weight:700; color:var(--navy); margin-bottom:6px; }
+  .add-preview .email-preview .btn-mini {
+    display:inline-block; margin-top:8px; padding:7px 14px;
+    background:var(--green); color:#fff; border-radius:5px; font-size:12px; font-weight:600;
+  }
+
+  .add-actions {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:18px 24px; display:flex; align-items:center; gap:14px;
+  }
+  .add-actions .send-note { flex:1; font-size:12.5px; color:var(--text2); }
+  .add-actions .send-note b { color:var(--text); }
+  .add-actions .toggle {
+    display:flex; align-items:center; gap:10px; margin-right:16px;
+    font-size:12.5px; color:var(--text2);
+  }
+  .add-actions .toggle-sw {
+    width:36px; height:20px; background:var(--green); border-radius:12px; position:relative;
+  }
+  .add-actions .toggle-sw::after {
+    content:""; position:absolute; top:2px; right:2px; width:16px; height:16px;
+    background:#fff; border-radius:50%;
+  }
+  .add-actions .btn {
+    padding:11px 20px; border-radius:8px; font-size:13px; font-weight:600;
+    border:none; cursor:pointer; font-family:var(--font);
+  }
+  .add-actions .btn.cancel { background:var(--card); border:1.5px solid var(--border); color:var(--text2); }
+  .add-actions .btn.primary { background:var(--green); color:#fff; }
+  .add-actions .btn.primary:hover { background:var(--green-d); }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 6 — STATION DETAIL (opens when admin clicks "View")
+     ═══════════════════════════════════════════════ */
+  .detail-hero {
+    background:linear-gradient(135deg,var(--navy-d) 0%,var(--navy) 100%); color:#fff;
+    border-radius:12px; padding:24px 28px; margin-bottom:16px;
+    display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center;
+  }
+  .detail-hero .breadcrumb {
+    font-size:11.5px; color:#94A3B8; margin-bottom:8px;
+  }
+  .detail-hero .breadcrumb a { color:var(--green); cursor:pointer; text-decoration:none; }
+  .detail-hero h1 { font-family:var(--serif); font-size:26px; margin-bottom:6px; }
+  .detail-hero .place { font-size:13.5px; color:#CBD5E1; margin-bottom:16px; }
+  .detail-hero .meta-row { display:flex; gap:14px; flex-wrap:wrap; }
+  .detail-hero .meta-chip {
+    background:rgba(255,255,255,.08); padding:6px 12px; border-radius:20px;
+    font-size:12px; color:#fff;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .detail-hero .meta-chip b { color:var(--green); font-weight:600; }
+  .detail-hero .completeness-big {
+    text-align:center; padding:20px 24px;
+    background:rgba(255,255,255,.08); border-radius:12px;
+  }
+  .detail-hero .completeness-big .pct {
+    font-family:var(--serif); font-size:38px; font-weight:700; color:var(--green); line-height:1;
+  }
+  .detail-hero .completeness-big .sub {
+    font-size:11px; color:#CBD5E1; margin-top:6px; letter-spacing:.04em; text-transform:uppercase;
+  }
+
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+
+  .detail-card {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:20px 22px;
+  }
+  .detail-card h3 {
+    font-family:var(--serif); font-size:15px; color:var(--navy); margin-bottom:14px;
+    padding-bottom:10px; border-bottom:1px solid var(--rule);
+    display:flex; align-items:center; gap:8px;
+  }
+  .detail-card h3 .h3-actions {
+    margin-left:auto; font-size:11px; color:var(--text3);
+    text-decoration:underline; cursor:pointer; font-weight:400;
+  }
+  .kv { display:flex; padding:8px 0; border-bottom:1px solid var(--rule); font-size:13px; }
+  .kv:last-child { border-bottom:none; }
+  .kv .k { color:var(--text3); flex:0 0 130px; font-size:12px; }
+  .kv .v { color:var(--text); flex:1; font-weight:500; }
+  .kv .v .mono { font-family:monospace; font-size:12px; color:var(--text2); }
+
+  .sensor-list { display:flex; flex-wrap:wrap; gap:6px; }
+  .sensor-pill {
+    padding:4px 10px; border-radius:14px; font-size:11.5px; font-weight:600;
+    background:rgba(0,185,142,.12); color:var(--green-d);
+  }
+  .sensor-pill.off { background:var(--rule); color:var(--text3); }
+
+  .detail-timeline {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:22px 24px; margin-bottom:16px;
+  }
+  .detail-timeline h3 {
+    font-family:var(--serif); font-size:15px; color:var(--navy); margin-bottom:14px;
+    padding-bottom:10px; border-bottom:1px solid var(--rule);
+  }
+  .timeline-strip {
+    display:grid; grid-template-columns:repeat(12,1fr); gap:4px; margin-bottom:8px;
+  }
+  .timeline-cell {
+    aspect-ratio:1/1; border-radius:6px; position:relative; cursor:pointer;
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:4px; font-size:9px; font-weight:600;
+  }
+  .timeline-cell.full { background:var(--green); color:#fff; }
+  .timeline-cell.partial { background:var(--gold); color:#fff; }
+  .timeline-cell.miss { background:var(--rule); color:var(--text3); }
+  .timeline-cell.current { outline:2px solid var(--navy); outline-offset:2px; }
+  .timeline-key { display:flex; gap:14px; margin-top:12px; font-size:11.5px; color:var(--text3); flex-wrap:wrap; }
+  .timeline-key .k-item { display:flex; align-items:center; gap:6px; }
+  .timeline-key .k-dot { width:12px; height:12px; border-radius:4px; }
+  .timeline-key .k-dot.full { background:var(--green); }
+  .timeline-key .k-dot.partial { background:var(--gold); }
+  .timeline-key .k-dot.miss { background:var(--rule); border:1px solid var(--border); }
+
+  .detail-actions {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:18px 24px;
+    display:flex; align-items:center; gap:12px; margin-bottom:20px;
+  }
+  .detail-actions .info { flex:1; font-size:12.5px; color:var(--text2); }
+  .detail-actions .info b { color:var(--text); }
+  .detail-actions .btn {
+    padding:10px 16px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;
+    border:none; font-family:var(--font);
+  }
+  .detail-actions .btn.ghost { background:var(--card); border:1.5px solid var(--border); color:var(--text2); }
+  .detail-actions .btn.warn { background:var(--card); border:1.5px solid var(--terra); color:var(--terra); }
+  .detail-actions .btn.primary { background:var(--green); color:#fff; }
+
+  /* ═══════════════════════════════════════════════
+     VIEW 7 — NUDGE MODAL (opens when admin clicks "Nudge")
+     ═══════════════════════════════════════════════ */
+  .nudge-backdrop {
+    background:rgba(15,25,38,.55);
+    min-height:calc(100vh - 130px);
+    display:flex; align-items:center; justify-content:center;
+    padding:40px 20px;
+    border-radius:12px;
+  }
+  .nudge-modal {
+    background:var(--card); border-radius:16px; max-width:560px; width:100%;
+    box-shadow:0 24px 48px rgba(15,25,38,.28);
+    overflow:hidden;
+  }
+  .nudge-header {
+    padding:22px 28px 8px;
+    border-bottom:1px solid var(--rule);
+  }
+  .nudge-header .eyebrow {
+    font-size:10.5px; font-weight:700; color:var(--gold); letter-spacing:.06em;
+    text-transform:uppercase; margin-bottom:6px;
+  }
+  .nudge-header h2 { font-family:var(--serif); font-size:20px; color:var(--navy); margin-bottom:4px; }
+  .nudge-header .who { font-size:12.5px; color:var(--text3); padding-bottom:14px; }
+  .nudge-body { padding:20px 28px; }
+  .nudge-body .row { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:10px 14px;
+    background:var(--cream); border-radius:8px; }
+  .nudge-body .row .icon {
+    width:34px; height:34px; border-radius:8px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .nudge-body .row .row-text { font-size:12.5px; color:var(--text); flex:1; }
+  .nudge-body .row .row-text b { color:var(--navy); }
+
+  .nudge-body label {
+    font-size:11px; font-weight:700; color:var(--text2);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
+    display:block;
+  }
+  .nudge-body .tone-toggle { display:flex; gap:6px; margin-bottom:16px; }
+  .nudge-body .tone-toggle .tone-opt {
+    flex:1; padding:9px 10px; border:1.5px solid var(--border); border-radius:7px;
+    text-align:center; cursor:pointer; font-size:12px; color:var(--text2);
+    background:var(--card);
+  }
+  .nudge-body .tone-toggle .tone-opt.on { border-color:var(--green); background:rgba(0,185,142,.06); color:var(--text); font-weight:600; }
+  .nudge-body textarea {
+    width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:7px;
+    font-family:var(--font); font-size:13px; color:var(--text); resize:vertical;
+    min-height:100px;
+  }
+  .nudge-body textarea:focus { outline:none; border-color:var(--green); }
+  .nudge-body .subject-preview {
+    background:var(--rule); padding:8px 12px; border-radius:6px;
+    font-size:12px; color:var(--text2); margin-top:14px;
+  }
+  .nudge-body .subject-preview b { color:var(--navy); }
+  .nudge-footer {
+    background:#F9FAFB; padding:16px 28px;
+    display:flex; align-items:center; gap:10px; border-top:1px solid var(--rule);
+  }
+  .nudge-footer .note { font-size:11.5px; color:var(--text3); flex:1; }
+  .nudge-footer .btn {
+    padding:10px 18px; border-radius:7px; font-size:13px; font-weight:600;
+    border:none; cursor:pointer; font-family:var(--font);
+  }
+  .nudge-footer .btn.ghost { background:var(--card); border:1.5px solid var(--border); color:var(--text2); }
+  .nudge-footer .btn.primary { background:var(--green); color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     Top switcher — jumps between the four screens
+     ══════════════════════════════════════════════════ -->
+<div class="switcher">
+  <div class="brand"><span class="dot"></span> Citizen Science Weather · design mockup</div>
+  <div class="tabs">
+    <button data-view="v4" class="active">Reminder email</button>
+    <button data-view="v1">Sign-in fallback</button>
+    <button data-view="v2">Observer form</button>
+    <button data-view="v3">Admin dashboard</button>
+    <button data-view="v5">Add station + observer</button>
+    <button data-view="v6">Station detail (View)</button>
+    <button data-view="v7">Nudge modal</button>
+    <button data-view="v8">Reminder schedule</button>
+  </div>
+  <div class="note">Click a tab to preview each screen</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 4 — Reminder email (default open)
+     ═══════════════════════════════════════════════ -->
+<div class="view active" id="v4">
+  <div class="email-wrap">
+    <div class="email-envelope">
+      <div class="from-avatar">DIH</div>
+      <div class="meta">
+        <div><b>Citizen Science Weather · DIH Eswatini</b> &lt;weather@dih.gov.sz&gt;</div>
+        <div>To: Sipho Dlamini &lt;sipho.dlamini@example.sz&gt;</div>
+      </div>
+      <div class="time">1 June 2026 · 07:00</div>
+    </div>
+    <div class="email-body">
+      <div class="subject-line">Your Big Bend weather reading for May is due</div>
+
+      <p>Sanibonani Sipho,</p>
+      <p>It's the first of the month — time to share what your weather station observed in <b>May 2026</b>. Thank you for continuing to record and share your readings.</p>
+
+      <div class="station-card">
+        <div class="weather-icon">🌦</div>
+        <div class="info">
+          <div class="name">Big Bend Community Weather Station</div>
+          <div class="loc">Big Bend Inkhundla · Lubombo region</div>
+        </div>
+      </div>
+
+      <a href="#" class="cta-btn">Submit May 2026 reading <span class="arrow">→</span></a>
+      <div class="small">One click. No password to remember. This link is valid for 7 days.</div>
+
+      <p><b>What to fill in — if you have it:</b></p>
+      <ul>
+        <li><span class="field-icon tmin">▼</span> Monthly minimum temperature (°C)</li>
+        <li><span class="field-icon tmax">▲</span> Monthly maximum temperature (°C)</li>
+        <li><span class="field-icon rain">💧</span> Total rainfall for the month (mm)</li>
+        <li><span class="field-icon smoist">◒</span> Average soil moisture</li>
+        <li><span class="field-icon stemp">🌡</span> Average soil temperature (°C)</li>
+      </ul>
+
+      <div class="not-mandatory">
+        <b>You do not need to fill in every field.</b> Share whatever your station recorded this month. If a gauge was broken, or you missed a reading, leave that field blank and add a short note — it still helps us learn.
+      </div>
+
+      <p>If you have anything else worth telling the team — an unusual event, a broken sensor, a story from your Inkhundla — there's a space at the bottom of the form for that too.</p>
+
+      <p>Thank you for what you do,<br/><b>The Citizen Science Weather team · UNESWA + NDRMA</b></p>
+
+      <div class="foot">
+        <b>Not the right person?</b> If you no longer look after this station, forward this email to whoever does, and reply to let us know so we can update your account.<br/><br/>
+        <b>Questions?</b> Reply to this email, or call <b>+268 24 XX XXXX</b> during office hours.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 1 — Sign-in fallback (magic-link resend)
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v1">
+  <div class="signin-wrap">
+    <div class="signin-card">
+      <div class="logo-lg">🌦</div>
+      <h1>Citizen Science Weather</h1>
+      <p class="lead">Enter the email address linked to your weather station and we'll send you a fresh sign-in link. <b>No password to remember.</b></p>
+
+      <label for="email">Email address</label>
+      <input type="email" id="email" placeholder="sipho.dlamini@example.sz" value="sipho.dlamini@example.sz">
+
+      <button class="btn">Send me a sign-in link →</button>
+
+      <div class="hint">
+        <b>How this works</b> · Each observer looks after one weather station. You receive a monthly reminder email with a one-click link — no password. If you've lost that email, request a new link here.
+      </div>
+
+      <div class="foot">If you don't have an account yet, contact UNESWA or NDRMA.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 2 — Observer form (post magic-link)
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v2">
+  <div class="app-header">
+    <div class="logo">🌦</div>
+    <div>
+      <div class="title">Citizen Science Weather</div>
+      <div class="sub">Your station · Big Bend Community · Lubombo region</div>
+    </div>
+    <div class="who">
+      <div class="avatar">SD</div>
+      <div>Sipho Dlamini</div>
+      <div class="signout">Sign out</div>
+    </div>
+  </div>
+
+  <div class="obs-hero">
+    <div class="month-pill">📅 Reading for May 2026</div>
+    <h1>Sanibonani Sipho — let's log May's weather.</h1>
+    <p>Fill in whatever your station recorded. You can skip any field you don't have a value for.</p>
+    <div class="progress-line">
+      <div class="progress-bar"><div class="progress-fill" style="width:40%"></div></div>
+      <div class="progress-label">2 of 5 fields filled in</div>
+    </div>
+  </div>
+
+  <div class="obs-grid">
+    <div class="obs-field tmin">
+      <div class="row1">
+        <div class="icon">▼</div>
+        <div class="label">Monthly minimum temperature</div>
+        <div class="unit">°C</div>
+      </div>
+      <input type="number" placeholder="e.g. 11.4" value="12.1">
+      <div class="skip">The lowest temperature reading you recorded this month.</div>
+    </div>
+
+    <div class="obs-field tmax">
+      <div class="row1">
+        <div class="icon">▲</div>
+        <div class="label">Monthly maximum temperature</div>
+        <div class="unit">°C</div>
+      </div>
+      <input type="number" placeholder="e.g. 29.6" value="28.4">
+      <div class="skip">The highest temperature reading you recorded this month.</div>
+    </div>
+
+    <div class="obs-field rain">
+      <div class="row1">
+        <div class="icon">💧</div>
+        <div class="label">Total rainfall for the month</div>
+        <div class="unit">mm</div>
+      </div>
+      <input type="number" placeholder="e.g. 42">
+      <div class="skip">The total rain your gauge measured across the month.</div>
+    </div>
+
+    <div class="obs-field smoist">
+      <div class="row1">
+        <div class="icon">◒</div>
+        <div class="label">Average soil moisture</div>
+        <div class="unit">% or m³/m³</div>
+      </div>
+      <input type="number" placeholder="e.g. 0.21">
+      <div class="skip">Skip if your station doesn't have a soil moisture probe.</div>
+    </div>
+
+    <div class="obs-field stemp">
+      <div class="row1">
+        <div class="icon">🌡</div>
+        <div class="label">Average soil temperature</div>
+        <div class="unit">°C</div>
+      </div>
+      <input type="number" placeholder="e.g. 18.7">
+      <div class="skip">Skip if your station doesn't have a soil temperature probe.</div>
+    </div>
+
+    <div class="obs-field">
+      <div class="row1">
+        <div class="icon" style="background:#F1F5F9;color:var(--navy)">✓</div>
+        <div class="label" style="color:var(--text3)">All fields are optional</div>
+      </div>
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.6">
+        You don't have to fill every field. Share what you recorded, leave the rest blank, and add a note if something was unusual or if a gauge stopped working.
+      </div>
+    </div>
+  </div>
+
+  <div class="obs-notes">
+    <div class="row1">
+      <div class="icon">📝</div>
+      <label>Anything else worth telling us? (optional)</label>
+    </div>
+    <textarea placeholder="Broken sensor? Unusual event? A quick observation from around your Inkhundla? Write it here.">The rain gauge overflowed on the 14th — a very heavy storm, about 55mm in one afternoon. My reading for that day is approximate.</textarea>
+  </div>
+
+  <div class="obs-actions">
+    <div class="note">You can save what you have and come back later, or submit now.</div>
+    <button class="btn draft">Save draft</button>
+    <button class="btn submit">Submit May 2026 reading</button>
+  </div>
+
+  <div class="obs-history">
+    <h3>Your reporting history</h3>
+    <div class="sub">The last 12 months at a glance.</div>
+
+    <div class="completeness">
+      <div class="pct">83%</div>
+      <div class="text">
+        You've submitted a reading in <b>10 of the last 12 months</b>. Well above average — thank you for keeping it consistent.
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>T min</th>
+          <th>T max</th>
+          <th>Rainfall</th>
+          <th>Soil moist</th>
+          <th>Soil temp</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>May 2026</td><td colspan="5" class="miss">In progress — draft saved</td><td class="status"><span class="badge partial">Draft</span></td></tr>
+        <tr><td>Apr 2026</td><td>13.2 °C</td><td>27.8 °C</td><td>28 mm</td><td>0.19</td><td>17.4 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Mar 2026</td><td>15.6 °C</td><td>31.2 °C</td><td>112 mm</td><td>0.28</td><td>21.1 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Feb 2026</td><td>16.8 °C</td><td>32.4 °C</td><td>88 mm</td><td class="miss">—</td><td>22.5 °C</td><td class="status"><span class="badge partial">Partial</span></td></tr>
+        <tr><td>Jan 2026</td><td>16.9 °C</td><td>33.1 °C</td><td>142 mm</td><td>0.31</td><td>22.9 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Dec 2025</td><td>15.4 °C</td><td>30.9 °C</td><td>76 mm</td><td>0.25</td><td>21.7 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Nov 2025</td><td colspan="5" class="miss">No submission</td><td class="status"><span class="badge miss">Missed</span></td></tr>
+        <tr><td>Oct 2025</td><td>13.8 °C</td><td>29.2 °C</td><td>18 mm</td><td>0.14</td><td>18.9 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Sep 2025</td><td>11.9 °C</td><td>26.4 °C</td><td>12 mm</td><td class="miss">—</td><td class="miss">—</td><td class="status"><span class="badge partial">Partial</span></td></tr>
+        <tr><td>Aug 2025</td><td>9.2 °C</td><td>23.6 °C</td><td>4 mm</td><td>0.09</td><td>15.2 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Jul 2025</td><td>7.8 °C</td><td>22.1 °C</td><td>0 mm</td><td>0.08</td><td>13.4 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+        <tr><td>Jun 2025</td><td>8.6 °C</td><td>24.3 °C</td><td>3 mm</td><td>0.11</td><td>14.7 °C</td><td class="status"><span class="badge full">Complete</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 3 — Admin dashboard
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v3">
+  <div class="app-header">
+    <div class="logo" style="background:var(--navy);">⚙</div>
+    <div>
+      <div class="title">Citizen Science Weather · Admin</div>
+      <div class="sub">Manage stations, observers and monthly reminders</div>
+    </div>
+    <div class="who">
+      <div class="avatar" style="background:var(--navy)">LO</div>
+      <div>Dr Felix Motsa · UNESWA admin</div>
+      <div class="signout">Sign out</div>
+    </div>
+  </div>
+
+  <div class="admin-header">
+    <h1>Network overview</h1>
+    <div class="lead">Snapshot of all citizen-science weather stations reporting into the DIH. Data as of June 2026.</div>
+  </div>
+
+  <div class="admin-stats">
+    <div class="stat-card">
+      <div class="label">Total stations</div>
+      <div class="val">28</div>
+      <div class="sub">4 regions · 27 Tinkhundla</div>
+    </div>
+    <div class="stat-card good">
+      <div class="label">Reporting well</div>
+      <div class="val">19</div>
+      <div class="sub">≥ 10 of last 12 months</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="label">At risk</div>
+      <div class="val">6</div>
+      <div class="sub">Missed 3+ of last 12 months</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Reminders sent this month</div>
+      <div class="val">28</div>
+      <div class="sub">Auto-scheduled · 1 June, 07:00</div>
+    </div>
+  </div>
+
+  <div class="admin-toolbar">
+    <div class="filters">
+      <span class="chip active">All (28)</span>
+      <span class="chip">Reporting well (19)</span>
+      <span class="chip">Partial (3)</span>
+      <span class="chip">At risk (6)</span>
+      <span class="chip">Hhohho</span>
+      <span class="chip">Manzini</span>
+      <span class="chip">Lubombo</span>
+      <span class="chip">Shiselweni</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn ghost">📤 Export CSV</button>
+      <button class="btn ghost" onclick="document.querySelector('[data-view=v8]').click()">📧 Reminder schedule</button>
+      <button class="btn primary" onclick="document.querySelector('[data-view=v5]').click()">+ Add station / observer</button>
+    </div>
+  </div>
+
+  <div class="admin-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Station</th>
+          <th>Observer</th>
+          <th>Last submission</th>
+          <th>12-month completeness</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="station">Big Bend Community</div>
+            <div class="region">Big Bend · Lubombo</div>
+          </td>
+          <td>
+            <div class="observer">Sipho Dlamini</div>
+            <div class="observer email">sipho.dlamini@example.sz</div>
+          </td>
+          <td class="last">Apr 2026 · 3 May</td>
+          <td>
+            <div class="compl">
+              <div class="bar"><div class="fill good" style="width:83%"></div></div>
+              <div class="pct" style="color:var(--green-d)">83%</div>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <button class="row-btn" onclick="document.querySelector('[data-view=v6]').click()">View</button>
+            <button class="row-btn" onclick="document.querySelector('[data-view=v7]').click()">Nudge</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="station">Nhlangano Highveld</div>
+            <div class="region">Nhlangano · Shiselweni</div>
+          </td>
+          <td>
+            <div class="observer">Nomsa Mabuza</div>
+            <div class="observer email">nomsa.mabuza@example.sz</div>
+          </td>
+          <td class="last">May 2026 · 2 June</td>
+          <td>
+            <div class="compl">
+              <div class="bar"><div class="fill good" style="width:100%"></div></div>
+              <div class="pct" style="color:var(--green-d)">100%</div>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <button class="row-btn">View</button>
+            <button class="row-btn">Nudge</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="station">Mhlume Sugarbelt</div>
+            <div class="region">Mhlume · Lubombo</div>
+          </td>
+          <td>
+            <div class="observer">Thabo Nkambule</div>
+            <div class="observer email">thabo.nkambule@example.sz</div>
+          </td>
+          <td class="last">Feb 2026 · 8 Mar</td>
+          <td>
+            <div class="compl">
+              <div class="bar"><div class="fill warn" style="width:58%"></div></div>
+              <div class="pct" style="color:#8A5A0B">58%</div>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <button class="row-btn">View</button>
+            <button class="row-btn">Nudge</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="station">Piggs Peak Forestry</div>
+            <div class="region">Piggs Peak · Hhohho</div>
+          </td>
+          <td>
+            <div class="observer">Bongani Simelane</div>
+            <div class="observer email">bongani.s@example.sz</div>
+          </td>
+          <td class="last">May 2026 · 1 June</td>
+          <td>
+            <div class="compl">
+              <div class="bar"><div class="fill good" style="width:92%"></div></div>
+              <div class="pct" style="color:var(--green-d)">92%</div>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <button class="row-btn">View</button>
+            <button class="row-btn">Nudge</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="station">Siphofaneni Middleveld</div>
+            <div class="region">Siphofaneni · Lubombo</div>
+          </td>
+          <td>
+            <div class="observer">Zanele Ngcobo</div>
+            <div class="observer email">zanele.ngcobo@example.sz</div>
+          </td>
+          <td class="last">Nov 2025 · 4 Dec</td>
+          <td>
+            <div class="compl">
+              <div class="bar"><div class="fill bad" style="width:33%"></div></div>
+              <div class="pct" style="color:var(--terra)">33%</div>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <button class="row-btn">View</button>
+            <button class="row-btn">Nudge</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="station">Manzini Central</div>
+            <div class="region">Manzini · Manzini</div>
+          </td>
+          <td>
+            <div class="observer">Sibusiso Vilakati</div>
+            <div class="observer email">sibusiso.v@example.sz</div>
+          </td>
+          <td class="last">May 2026 · 4 June</td>
+          <td>
+            <div class="compl">
+              <div class="bar"><div class="fill good" style="width:75%"></div></div>
+              <div class="pct" style="color:var(--green-d)">75%</div>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <button class="row-btn">View</button>
+            <button class="row-btn">Nudge</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--text3);text-align:center;padding:10px;font-style:italic">
+    Showing 6 of 28 stations · admin actions logged in the audit trail
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 5 — Add station + observer
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v5">
+  <div class="app-header">
+    <div class="logo" style="background:var(--navy);">⚙</div>
+    <div>
+      <div class="title">Citizen Science Weather · Admin</div>
+      <div class="sub">Register a new weather station and its observer</div>
+    </div>
+    <div class="who">
+      <div class="avatar" style="background:var(--navy)">LO</div>
+      <div>Dr Felix Motsa · UNESWA admin</div>
+      <div class="signout">Sign out</div>
+    </div>
+  </div>
+
+  <div class="add-header">
+    <button class="back" onclick="document.querySelector('[data-view=v3]').click()">← Back to admin</button>
+    <h1>Add station + observer</h1>
+    <div class="steps">
+      <span>Fill in details</span>
+      <span class="step-dot active"></span>
+      <span class="step-dot active"></span>
+      <span class="step-dot"></span>
+      <span>Send welcome email</span>
+    </div>
+  </div>
+  <div class="add-lead">One observer per station. The observer receives a welcome email with their first sign-in link and the monthly reminder from the following month onwards.</div>
+
+  <div class="add-form">
+    <!-- ── Station details ── -->
+    <div class="add-section">
+      <h3><span class="num">1</span> Weather station details</h3>
+      <div class="section-sub">Where the station is and what it can measure.</div>
+
+      <div class="add-field">
+        <label>Station name <span class="req">*</span></label>
+        <input type="text" placeholder="e.g. Big Bend Community Weather Station" value="Sithobela Community Station">
+      </div>
+
+      <div class="add-field">
+        <label>Inkhundla <span class="req">*</span> <span class="hint">· search or scroll to find</span></label>
+        <select id="inkhundla-select">
+          <option value="">— Select the Inkhundla —</option>
+          <optgroup label="Hhohho region">
+            <option>Piggs Peak</option>
+            <option>Ntfonjeni</option>
+            <option>Nkhaba</option>
+            <option>Hhukwini</option>
+            <option>Mbabane East</option>
+            <option>Mbabane West</option>
+            <option>Ndzingeni</option>
+            <option>Timphisini</option>
+            <option>Motshane</option>
+            <option>Mhlangatane</option>
+            <option>Mayiwane</option>
+            <option>Maphalaleni</option>
+            <option>Lobamba</option>
+            <option>Madlangempisi</option>
+            <option>Nhlambeni</option>
+          </optgroup>
+          <optgroup label="Manzini region">
+            <option>Manzini North</option>
+            <option>Manzini South</option>
+            <option>Ludzeludze</option>
+            <option>Mkhiweni</option>
+            <option>Ngwempisi</option>
+            <option>Kwaluseni</option>
+            <option>Lobamba Lomdzala</option>
+            <option>Mtfongwaneni</option>
+            <option>Sigombeni</option>
+            <option>Ntondozi</option>
+            <option>Mafutseni</option>
+            <option>Mhlambanyatsi</option>
+            <option>Phondo</option>
+            <option>Mkhweni</option>
+            <option>Mtsambama</option>
+            <option>Bhekinkhosi</option>
+          </optgroup>
+          <optgroup label="Lubombo region">
+            <option>Big Bend</option>
+            <option>Mhlume</option>
+            <option>Siphofaneni</option>
+            <option>Lugongolweni</option>
+            <option>Nkilongo</option>
+            <option selected>Sithobela</option>
+            <option>Matsanjeni North</option>
+            <option>Lomahasha</option>
+            <option>Dvokodvweni</option>
+            <option>Mpolonjeni</option>
+            <option>Gilgal</option>
+            <option>Mtsetsafitsi (Siteki)</option>
+            <option>Vuvulane</option>
+          </optgroup>
+          <optgroup label="Shiselweni region">
+            <option>Nhlangano</option>
+            <option>Hluti</option>
+            <option>Kubuta</option>
+            <option>Lavumisa</option>
+            <option>Sigwe</option>
+            <option>Matsanjeni South</option>
+            <option>Zombodze Emuva</option>
+            <option>Somntongo</option>
+            <option>Sandleni</option>
+            <option>Ngudzeni</option>
+            <option>Gege</option>
+            <option>Shiselweni I</option>
+            <option>Shiselweni II</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="add-field">
+        <label>Region <span class="hint">· auto-filled from Inkhundla</span></label>
+        <input type="text" id="region-autofill" class="autofill" value="Lubombo" readonly>
+      </div>
+
+      <div class="add-field">
+        <label>Agro-ecological zone <span class="hint">· auto-filled from Inkhundla</span></label>
+        <input type="text" id="aez-autofill" class="autofill" value="Lowveld" readonly>
+      </div>
+
+      <div class="add-field">
+        <label>Coordinates <span class="req">*</span> <span class="hint">· decimal degrees, WGS84</span></label>
+        <div class="row-2">
+          <input type="number" step="0.000001" placeholder="Latitude · e.g. −26.6812" value="-26.6812">
+          <input type="number" step="0.000001" placeholder="Longitude · e.g. 31.7245" value="31.7245">
+        </div>
+
+        <div class="map-preview">
+          <svg class="country-svg" viewBox="0 0 200 260" width="140" height="180" xmlns="http://www.w3.org/2000/svg">
+            <path d="M110 20 L130 25 L145 35 L155 55 L160 80 L165 105 L170 130 L172 155 L170 180 L162 205 L150 225 L130 240 L105 245 L80 240 L58 230 L42 210 L32 185 L28 160 L30 135 L36 110 L42 85 L52 60 L70 40 L90 25 Z"
+                  fill="#F5F5F0" stroke="#94A3B8" stroke-width="1.5" opacity="0.85"/>
+            <path d="M75 100 Q80 120 90 145 Q95 170 88 195" fill="none" stroke="#00B98E" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+          </svg>
+          <div class="pin">📍</div>
+          <div class="coords">
+            <span>−26.6812, 31.7245</span>
+            <span class="verified">✓ inside Eswatini</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="add-field">
+        <label>Sensors this station has <span class="hint">· determines which fields the observer sees</span></label>
+        <div class="sensor-grid">
+          <div class="sensor-chip on">
+            <span class="sensor-check">✓</span>
+            <span>▼ Min temperature</span>
+          </div>
+          <div class="sensor-chip on">
+            <span class="sensor-check">✓</span>
+            <span>▲ Max temperature</span>
+          </div>
+          <div class="sensor-chip on">
+            <span class="sensor-check">✓</span>
+            <span>💧 Rain gauge</span>
+          </div>
+          <div class="sensor-chip on">
+            <span class="sensor-check">✓</span>
+            <span>◒ Soil moisture</span>
+          </div>
+          <div class="sensor-chip">
+            <span class="sensor-check"></span>
+            <span>🌡 Soil temperature</span>
+          </div>
+          <div class="sensor-chip">
+            <span class="sensor-check"></span>
+            <span>💨 Wind speed</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="add-field">
+        <label>Station type or model <span class="hint">· optional</span></label>
+        <select>
+          <option>— Not specified —</option>
+          <option selected>Davis Vantage Pro2</option>
+          <option>Manual gauge + digital thermometer</option>
+          <option>Automatic weather station (other)</option>
+          <option>School-built station</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ── Observer details ── -->
+    <div class="add-section">
+      <h3><span class="num">2</span> Observer details</h3>
+      <div class="section-sub">The person who will submit monthly readings. One observer per station.</div>
+
+      <div class="add-field">
+        <label>Full name <span class="req">*</span></label>
+        <input type="text" placeholder="e.g. Sipho Dlamini" value="Nomsa Simelane">
+      </div>
+
+      <div class="add-field">
+        <label>Email address <span class="req">*</span> <span class="hint">· this is where reminders + sign-in links go</span></label>
+        <input type="email" placeholder="e.g. name@example.sz" value="nomsa.simelane@example.sz">
+      </div>
+
+      <div class="add-field">
+        <label>Phone number <span class="hint">· optional · used only as fallback</span></label>
+        <input type="tel" placeholder="e.g. +268 76 XX XXXX" value="+268 76 12 3456">
+      </div>
+
+      <div class="add-field">
+        <label>Preferred language for reminders</label>
+        <div class="lang-toggle">
+          <div class="lang-opt on">🇬🇧 English</div>
+          <div class="lang-opt">🇸🇿 siSwati</div>
+        </div>
+      </div>
+
+      <div class="add-field">
+        <label>Notes about this observer <span class="hint">· optional · admin-only</span></label>
+        <textarea placeholder="e.g. teaches at the local school, best contacted after 15:00" style="min-height:70px">Chairs the Inkhundla DRMC. Best contacted in the mornings.</textarea>
+      </div>
+
+      <div class="add-field">
+        <label>Assigned admin <span class="hint">· who follows up if this observer stops reporting</span></label>
+        <select>
+          <option>Dr Felix Motsa · UNESWA (you)</option>
+          <option>Coli Mbanjwa · NDRMA</option>
+          <option>Ntombi Zwane · UNESWA</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview of the welcome email that will be sent -->
+  <div class="add-preview">
+    <h4>📬 Welcome email preview</h4>
+    <div class="p-sub">This is what <b>Nomsa Simelane</b> will receive as soon as you click "Save + send welcome email".</div>
+    <div class="email-preview">
+      <div class="subject">Welcome to Citizen Science Weather — your first sign-in link</div>
+      <div>Sanibonani Nomsa,</div>
+      <br/>
+      <div>You've been registered as the observer for the <b>Sithobela Community Station</b> in Lubombo. On the 1st of every month, we'll email you a link to submit that month's weather reading — no password to remember, just click and fill in what your station measured.</div>
+      <br/>
+      <div>To confirm your account and set up your first monthly submission, click below:</div>
+      <div class="btn-mini">Confirm your account →</div>
+      <br/><br/>
+      <div style="color:var(--text3);font-size:11.5px">This link is valid for 14 days. If you didn't expect this email, please ignore it — no account has been created yet without your confirmation.</div>
+    </div>
+  </div>
+
+  <div class="add-actions">
+    <div class="send-note">
+      <b>Save + send welcome email</b> creates the observer + station and sends the confirmation link above. You can also save the station without an observer if the observer will be assigned later.
+    </div>
+    <div class="toggle">
+      <span>Send welcome email now</span>
+      <div class="toggle-sw"></div>
+    </div>
+    <button class="btn cancel" onclick="document.querySelector('[data-view=v3]').click()">Cancel</button>
+    <button class="btn primary">Save + send welcome email</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 6 — Station detail (opens on View click)
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v6">
+  <div class="app-header">
+    <div class="logo" style="background:var(--navy);">⚙</div>
+    <div>
+      <div class="title">Citizen Science Weather · Admin</div>
+      <div class="sub">Station profile</div>
+    </div>
+    <div class="who">
+      <div class="avatar" style="background:var(--navy)">LO</div>
+      <div>Dr Felix Motsa · UNESWA admin</div>
+      <div class="signout">Sign out</div>
+    </div>
+  </div>
+
+  <div class="detail-hero">
+    <div>
+      <div class="breadcrumb"><a onclick="document.querySelector('[data-view=v3]').click()">← Admin</a> / Stations / Big Bend Community</div>
+      <h1>Big Bend Community Weather Station</h1>
+      <div class="place">Big Bend · Lubombo region · Lowveld · <span class="mono" style="font-family:monospace">−26.6812, 31.7245</span></div>
+      <div class="meta-row">
+        <div class="meta-chip">👤 Observer: <b>Sipho Dlamini</b></div>
+        <div class="meta-chip">📧 sipho.dlamini@example.sz</div>
+        <div class="meta-chip">📞 +268 76 12 3456</div>
+        <div class="meta-chip">🔧 Davis Vantage Pro2</div>
+      </div>
+    </div>
+    <div class="completeness-big">
+      <div class="pct">83%</div>
+      <div class="sub">12-month completeness</div>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="detail-card">
+      <h3>Station <span class="h3-actions">Edit</span></h3>
+      <div class="kv"><div class="k">Registered</div><div class="v">14 August 2025</div></div>
+      <div class="kv"><div class="k">Coordinates</div><div class="v"><span class="mono">−26.6812, 31.7245</span></div></div>
+      <div class="kv"><div class="k">Inkhundla</div><div class="v">Big Bend</div></div>
+      <div class="kv"><div class="k">Region</div><div class="v">Lubombo</div></div>
+      <div class="kv"><div class="k">Agro-ecological zone</div><div class="v">Lowveld</div></div>
+      <div class="kv"><div class="k">Station type</div><div class="v">Davis Vantage Pro2</div></div>
+      <div class="kv"><div class="k">Sensors</div><div class="v">
+        <div class="sensor-list">
+          <span class="sensor-pill">Min temp</span>
+          <span class="sensor-pill">Max temp</span>
+          <span class="sensor-pill">Rain gauge</span>
+          <span class="sensor-pill">Soil moisture</span>
+          <span class="sensor-pill off">Soil temp</span>
+          <span class="sensor-pill off">Wind speed</span>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="detail-card">
+      <h3>Observer <span class="h3-actions">Edit</span></h3>
+      <div class="kv"><div class="k">Name</div><div class="v">Sipho Dlamini</div></div>
+      <div class="kv"><div class="k">Email</div><div class="v"><span class="mono">sipho.dlamini@example.sz</span></div></div>
+      <div class="kv"><div class="k">Phone</div><div class="v"><span class="mono">+268 76 12 3456</span></div></div>
+      <div class="kv"><div class="k">Preferred language</div><div class="v">🇬🇧 English</div></div>
+      <div class="kv"><div class="k">Assigned admin</div><div class="v">Dr Felix Motsa · UNESWA</div></div>
+      <div class="kv"><div class="k">Admin notes</div><div class="v" style="color:var(--text2);font-weight:400;font-size:12.5px">Chairs the Inkhundla DRMC. Best contacted in the mornings.</div></div>
+      <div class="kv"><div class="k">Last sign-in</div><div class="v"><span class="mono">3 May 2026 · 14:22</span></div></div>
+    </div>
+  </div>
+
+  <div class="detail-timeline">
+    <h3>Submission timeline — last 12 months</h3>
+    <div class="timeline-strip">
+      <div class="timeline-cell full">Jun</div>
+      <div class="timeline-cell full">Jul</div>
+      <div class="timeline-cell full">Aug</div>
+      <div class="timeline-cell partial">Sep</div>
+      <div class="timeline-cell full">Oct</div>
+      <div class="timeline-cell miss">Nov</div>
+      <div class="timeline-cell full">Dec</div>
+      <div class="timeline-cell full">Jan</div>
+      <div class="timeline-cell partial">Feb</div>
+      <div class="timeline-cell full">Mar</div>
+      <div class="timeline-cell full">Apr</div>
+      <div class="timeline-cell partial current">May</div>
+    </div>
+    <div class="timeline-key">
+      <div class="k-item"><span class="k-dot full"></span>Complete (all sensors reported)</div>
+      <div class="k-item"><span class="k-dot partial"></span>Partial (some fields skipped)</div>
+      <div class="k-item"><span class="k-dot miss"></span>Missed</div>
+      <div class="k-item" style="margin-left:auto;font-style:italic">Click a cell to see the submitted values.</div>
+    </div>
+  </div>
+
+  <div class="detail-actions">
+    <div class="info">Admin actions on this station. All actions are logged in the audit trail with your identity + timestamp.</div>
+    <button class="btn ghost">📊 Export CSV</button>
+    <button class="btn ghost">👤 Reassign observer</button>
+    <button class="btn warn">🗄 Archive station</button>
+    <button class="btn primary" onclick="document.querySelector('[data-view=v7]').click()">📧 Nudge observer</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 7 — Nudge modal (opens on Nudge click)
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v7">
+  <div class="app-header">
+    <div class="logo" style="background:var(--navy);">⚙</div>
+    <div>
+      <div class="title">Citizen Science Weather · Admin</div>
+      <div class="sub">Sending an ad-hoc reminder</div>
+    </div>
+    <div class="who">
+      <div class="avatar" style="background:var(--navy)">LO</div>
+      <div>Dr Felix Motsa · UNESWA admin</div>
+      <div class="signout">Sign out</div>
+    </div>
+  </div>
+  <div class="nudge-backdrop">
+    <div class="nudge-modal">
+      <div class="nudge-header">
+        <div class="eyebrow">Send a nudge</div>
+        <h2>Send Sipho a friendly reminder</h2>
+        <div class="who">Big Bend Community Weather Station · sipho.dlamini@example.sz</div>
+      </div>
+      <div class="nudge-body">
+        <div class="row">
+          <div class="icon">📅</div>
+          <div class="row-text">
+            <b>Last submission:</b> April 2026 · 3 May. May 2026 reading is <b>3 days overdue</b>.
+          </div>
+        </div>
+
+        <label>Tone</label>
+        <div class="tone-toggle">
+          <div class="tone-opt on">Friendly nudge</div>
+          <div class="tone-opt">Formal follow-up</div>
+          <div class="tone-opt">Concerned check-in</div>
+        </div>
+
+        <label>Message</label>
+        <textarea>Sanibonani Sipho, hope you're well. Just a gentle reminder that we haven't received your May 2026 reading yet — no pressure, just checking that everything is OK at the station. Click the link below to submit whenever it suits you. Siyabonga.</textarea>
+
+        <div class="subject-preview">
+          <b>Subject preview:</b> Just checking in — your Big Bend May reading
+        </div>
+      </div>
+      <div class="nudge-footer">
+        <div class="note">The magic sign-in link is added automatically. Also logged in the audit trail.</div>
+        <button class="btn ghost" onclick="document.querySelector('[data-view=v3]').click()">Cancel</button>
+        <button class="btn primary">Send nudge</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VIEW 8 — Reminder schedule (admin controls when reminders go)
+     ═══════════════════════════════════════════════ -->
+<div class="view" id="v8">
+  <div class="app-header">
+    <div class="logo" style="background:var(--navy);">⚙</div>
+    <div>
+      <div class="title">Citizen Science Weather · Admin</div>
+      <div class="sub">Reminder schedule</div>
+    </div>
+    <div class="who">
+      <div class="avatar" style="background:var(--navy)">LO</div>
+      <div>Dr Felix Motsa · UNESWA admin</div>
+      <div class="signout">Sign out</div>
+    </div>
+  </div>
+
+  <div class="add-header">
+    <button class="back" onclick="document.querySelector('[data-view=v3]').click()">← Back to admin</button>
+    <h1>Reminder schedule</h1>
+  </div>
+  <div class="add-lead">Configure when the automated monthly reminder goes out to every observer. Changes apply from next month onwards.</div>
+
+  <div class="add-form">
+    <!-- ── Left: main schedule ── -->
+    <div class="add-section">
+      <h3><span class="num">1</span> Main monthly reminder</h3>
+      <div class="section-sub">Sent once a month to every active observer.</div>
+
+      <div class="add-field">
+        <label>Day of the month</label>
+        <select id="rem-day">
+          <option>1st of the month</option>
+          <option selected>1st of the month (default)</option>
+          <option>2nd of the month</option>
+          <option>3rd of the month</option>
+          <option>5th of the month</option>
+          <option>Last day of the previous month</option>
+          <option>Custom</option>
+        </select>
+      </div>
+
+      <div class="add-field">
+        <label>Time of day (SAST · UTC+2)</label>
+        <div class="row-2">
+          <select>
+            <option>06:00</option>
+            <option selected>07:00</option>
+            <option>08:00</option>
+            <option>09:00</option>
+            <option>12:00</option>
+            <option>17:00</option>
+          </select>
+          <input type="text" class="autofill" value="Local time — SAST (UTC+2)" readonly>
+        </div>
+      </div>
+
+      <div class="add-field">
+        <label>Subject line template <span class="hint">· use {name}, {station}, {month}</span></label>
+        <input type="text" value="Your {station} weather reading for {month} is due">
+      </div>
+
+      <div class="add-field">
+        <label>Submission deadline <span class="hint">· used in the email copy + as the nudge trigger</span></label>
+        <select>
+          <option>3 days after reminder</option>
+          <option selected>5 days after reminder</option>
+          <option>7 days after reminder</option>
+          <option>10 days after reminder</option>
+          <option>No hard deadline</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ── Right: follow-up nudges + overrides ── -->
+    <div class="add-section">
+      <h3><span class="num">2</span> Automatic follow-ups</h3>
+      <div class="section-sub">Extra reminders sent if the observer hasn't submitted yet.</div>
+
+      <div class="add-field">
+        <label>First follow-up</label>
+        <div class="lang-toggle">
+          <div class="lang-opt on">3 days after deadline</div>
+          <div class="lang-opt">5 days after deadline</div>
+          <div class="lang-opt">Off</div>
+        </div>
+      </div>
+
+      <div class="add-field">
+        <label>Second follow-up (final)</label>
+        <div class="lang-toggle">
+          <div class="lang-opt">7 days after deadline</div>
+          <div class="lang-opt on">10 days after deadline</div>
+          <div class="lang-opt">Off</div>
+        </div>
+      </div>
+
+      <div class="add-field">
+        <label>After that</label>
+        <div style="padding:10px 14px;background:var(--cream);border:1px solid var(--gold);border-radius:7px;font-size:12.5px;color:var(--text);line-height:1.55">
+          The observer is marked <b>at risk</b> in the admin dashboard and their assigned admin is notified. From there, admins can send an ad-hoc nudge or reassign the station.
+        </div>
+      </div>
+
+      <div class="add-field" style="margin-top:20px;padding-top:18px;border-top:1px solid var(--rule)">
+        <label>Per-region overrides <span class="hint">· optional</span></label>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Use this if a specific region needs a different day or time (e.g. observers in Lubombo prefer earlier reminders due to farm hours).</div>
+        <div class="row-2">
+          <select>
+            <option>All regions use the default</option>
+            <option>Hhohho: override</option>
+            <option>Manzini: override</option>
+            <option>Lubombo: override</option>
+            <option>Shiselweni: override</option>
+          </select>
+          <button class="btn" style="padding:9px 14px;background:var(--card);border:1.5px solid var(--border);color:var(--text2);border-radius:7px;font-family:var(--font);font-size:12.5px;cursor:pointer">+ Add override</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next scheduled preview -->
+  <div class="add-preview">
+    <h4>📆 Next scheduled reminder</h4>
+    <div class="p-sub">Based on your current settings.</div>
+    <div class="email-preview">
+      <b style="color:var(--navy)">Sunday 1 June 2026 · 07:00 SAST</b> → <b>28 observers</b> across all 4 regions receive their May 2026 reminder.<br/>
+      <span style="color:var(--text3);font-size:12px">Follow-up 1: Wed 10 June · 07:00 · sent only to observers who haven't submitted yet.<br/>Follow-up 2 (final): Sun 15 June · 07:00 · sent only to observers still missing.</span>
+    </div>
+  </div>
+
+  <div class="add-actions">
+    <div class="send-note">
+      Schedule changes take effect from the next monthly cycle. Observers currently mid-cycle will finish under the previous schedule.
+    </div>
+    <button class="btn cancel" onclick="document.querySelector('[data-view=v3]').click()">Cancel</button>
+    <button class="btn primary">Save schedule</button>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.switcher .tabs button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.switcher .tabs button').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+    btn.classList.add('active');
+    var target = btn.getAttribute('data-view');
+    document.getElementById(target).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+
+// Inkhundla → region + agro-ecological zone auto-fill
+// Region comes from the optgroup; AEZ is a lookup table (Eswatini AEZs:
+// Highveld · Middleveld · Lowveld · Lubombo Plateau).
+var AEZ_BY_INKHUNDLA = {
+  // Hhohho
+  "Piggs Peak":"Highveld","Ntfonjeni":"Highveld","Nkhaba":"Highveld","Hhukwini":"Highveld",
+  "Mbabane East":"Highveld","Mbabane West":"Highveld","Ndzingeni":"Middleveld",
+  "Timphisini":"Middleveld","Motshane":"Highveld","Mhlangatane":"Middleveld",
+  "Mayiwane":"Middleveld","Maphalaleni":"Highveld","Lobamba":"Middleveld",
+  "Madlangempisi":"Highveld","Nhlambeni":"Middleveld",
+  // Manzini
+  "Manzini North":"Middleveld","Manzini South":"Middleveld","Ludzeludze":"Middleveld",
+  "Mkhiweni":"Middleveld","Ngwempisi":"Middleveld","Kwaluseni":"Middleveld",
+  "Lobamba Lomdzala":"Middleveld","Mtfongwaneni":"Middleveld","Sigombeni":"Middleveld",
+  "Ntondozi":"Middleveld","Mafutseni":"Middleveld","Mhlambanyatsi":"Highveld",
+  "Phondo":"Lowveld","Mkhweni":"Middleveld","Mtsambama":"Middleveld","Bhekinkhosi":"Lowveld",
+  // Lubombo
+  "Big Bend":"Lowveld","Mhlume":"Lowveld","Siphofaneni":"Lowveld",
+  "Lugongolweni":"Lubombo Plateau","Nkilongo":"Lubombo Plateau","Sithobela":"Lowveld",
+  "Matsanjeni North":"Lowveld","Lomahasha":"Lubombo Plateau","Dvokodvweni":"Lowveld",
+  "Mpolonjeni":"Lubombo Plateau","Gilgal":"Lowveld",
+  "Mtsetsafitsi (Siteki)":"Lubombo Plateau","Vuvulane":"Lowveld",
+  // Shiselweni
+  "Nhlangano":"Highveld","Hluti":"Middleveld","Kubuta":"Middleveld","Lavumisa":"Lowveld",
+  "Sigwe":"Middleveld","Matsanjeni South":"Lowveld","Zombodze Emuva":"Middleveld",
+  "Somntongo":"Lowveld","Sandleni":"Middleveld","Ngudzeni":"Middleveld",
+  "Gege":"Highveld","Shiselweni I":"Highveld","Shiselweni II":"Middleveld"
+};
+var inkSel = document.getElementById('inkhundla-select');
+if (inkSel) {
+  inkSel.addEventListener('change', function(){
+    var opt = inkSel.options[inkSel.selectedIndex];
+    var parent = opt.parentElement;
+    var region = (parent && parent.tagName === 'OPTGROUP') ? parent.label.replace(' region','') : '';
+    var aez = AEZ_BY_INKHUNDLA[opt.value] || AEZ_BY_INKHUNDLA[opt.text] || '';
+    var regionInput = document.getElementById('region-autofill');
+    var aezInput = document.getElementById('aez-autofill');
+    if (regionInput) regionInput.value = region || 'Select an Inkhundla to auto-fill';
+    if (aezInput) aezInput.value = aez || 'Select an Inkhundla to auto-fill';
+  });
+}
+
+// Sensor chip toggle
+document.querySelectorAll('#v5 .sensor-chip').forEach(function(chip){
+  chip.addEventListener('click', function(){
+    chip.classList.toggle('on');
+    var check = chip.querySelector('.sensor-check');
+    if (check) check.textContent = chip.classList.contains('on') ? '✓' : '';
+  });
+});
+
+// Language toggle
+document.querySelectorAll('#v5 .lang-opt').forEach(function(opt){
+  opt.addEventListener('click', function(){
+    document.querySelectorAll('#v5 .lang-opt').forEach(function(o){ o.classList.remove('on'); });
+    opt.classList.add('on');
+  });
+});
+</script>
+
+</body>
+</html>
