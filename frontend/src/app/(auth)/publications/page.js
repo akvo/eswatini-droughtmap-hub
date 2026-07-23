@@ -115,7 +115,7 @@ const PublicationsPage = () => {
         const isInValidation = status === PUBLICATION_STATUS.in_validation;
         const routeURL = publication_id
           ? isInValidation
-            ? `/publications/${publication_id}/validation`
+            ? `/validations/${publication_id}`
             : `/publications/${publication_id}`
           : `/publications/create?cdi_geonode_id=${pk}`;
 

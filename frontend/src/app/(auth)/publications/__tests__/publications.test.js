@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import PublicationsPage from "../page";
 import { api } from "@/lib";
 import { useRouter } from "next/navigation";
-import { PUBLICATION_STATUS, MAP_CATEGORY_OPTIONS } from "@/static/config";
+import { PUBLICATION_STATUS } from "@/static/config";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
@@ -258,7 +258,7 @@ describe("PublicationsPage", () => {
 
     // Click "Validate" for row in_validation status (redirects to validation workflow page)
     fireEvent.click(validateButtons[1]); // row with id 102, status 2
-    expect(mockPush).toHaveBeenCalledWith("/publications/102/validation");
+    expect(mockPush).toHaveBeenCalledWith("/validations/102");
   });
 
   it("opens preview modal on preview link click", async () => {

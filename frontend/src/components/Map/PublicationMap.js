@@ -215,10 +215,10 @@ const PublicationMap = ({
         await api("PUT", `/admin/publication/${publication?.id}`, {
           status: PUBLICATION_STATUS.in_validation,
         });
-        router.replace(`/publications/${publication?.id}/validation`);
+        router.replace(`/validations/${publication?.id}`);
         setLoading(false);
       } else {
-        router.push(`/publications/${publication?.id}/validation`);
+        router.push(`/validations/${publication?.id}`);
         setLoading(false);
       }
     } catch (err) {
