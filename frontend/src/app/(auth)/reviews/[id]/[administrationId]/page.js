@@ -3,17 +3,18 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Input } from "antd";
-import { CalendarOutlined, HomeOutlined, WarningFilled } from "@ant-design/icons";
+import {
+  CalendarOutlined,
+  HomeOutlined,
+  WarningFilled,
+} from "@ant-design/icons";
 import { FeedbackSection } from "@/components";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
 } from "@/static/config";
-import {
-  individualReview,
-  reviewDecisionHistory,
-} from "@/static/mocks/review";
+import { individualReview, reviewDecisionHistory } from "@/static/mocks/review";
 import dayjs from "dayjs";
 import ReviewDecisionHistory from "./ReviewDecisionHistory";
 import InkhundlaMap from "./InkhundlaMap";
@@ -130,7 +131,9 @@ const CDIColumn = ({ cdi }) => {
       <div className="border border-[#eaecf0] rounded p-4">
         <div className="flex items-center justify-between mb-1">
           <h4 className="text-sm font-bold text-[#333333]">
-            CDI-E in the last<br />12 months
+            CDI-E in the last
+            <br />
+            12 months
           </h4>
           <span className="inline-flex items-center gap-1.5 text-xs text-[#606060] border border-[#d2d2d2] rounded px-2.5 py-1.5">
             <CalendarOutlined style={{ fontSize: 12 }} />
@@ -230,36 +233,46 @@ const WeatherColumn = ({ weather }) => {
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]">
-          <span className="text-sm text-[#333333]">Rain gauge precipitation</span>
+          <span className="text-sm text-[#333333]">
+            Rain gauge precipitation
+          </span>
           <span className="text-sm font-semibold text-[#333333]">
-            {met_office?.last_precipitation_mm != null
-              ? `${met_office.last_precipitation_mm} mm`
-              : <span className="text-[#a4a4a4]">&mdash;</span>}
+            {met_office?.last_precipitation_mm != null ? (
+              `${met_office.last_precipitation_mm} mm`
+            ) : (
+              <span className="text-[#a4a4a4]">&mdash;</span>
+            )}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]">
           <span className="text-sm text-[#333333]">Soil temperature</span>
           <span className="text-sm font-semibold text-[#333333]">
-            {met_office?.soil_temperature != null
-              ? met_office.soil_temperature
-              : <span className="text-[#a4a4a4]">pending sensor</span>}
+            {met_office?.soil_temperature != null ? (
+              met_office.soil_temperature
+            ) : (
+              <span className="text-[#a4a4a4]">pending sensor</span>
+            )}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]">
           <span className="text-sm text-[#333333]">Soil moisture</span>
           <span className="text-sm font-semibold text-[#333333]">
-            {met_office?.soil_moisture != null
-              ? met_office.soil_moisture
-              : <span className="text-[#a4a4a4]">pending sensor</span>}
+            {met_office?.soil_moisture != null ? (
+              met_office.soil_moisture
+            ) : (
+              <span className="text-[#a4a4a4]">pending sensor</span>
+            )}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]">
           <span className="text-sm text-[#333333]">Air temperature</span>
           <span className="text-sm font-semibold text-[#333333]">
             {met_office?.air_temperature_min != null &&
-            met_office?.air_temperature_max != null
-              ? `${met_office.air_temperature_min} – ${met_office.air_temperature_max} °C`
-              : <span className="text-[#a4a4a4]">&mdash;</span>}
+            met_office?.air_temperature_max != null ? (
+              `${met_office.air_temperature_min} – ${met_office.air_temperature_max} °C`
+            ) : (
+              <span className="text-[#a4a4a4]">&mdash;</span>
+            )}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]">
@@ -371,7 +384,7 @@ const IndividualReviewPage = () => {
   const history = reviewDecisionHistory;
 
   const [selectedCategory, setSelectedCategory] = useState(
-    data.cdi?.category ?? null
+    data.cdi?.category ?? null,
   );
   const [reasoning, setReasoning] = useState("");
   const [saving, setSaving] = useState(false);
@@ -443,7 +456,10 @@ const IndividualReviewPage = () => {
                 <span className="inline-flex items-center gap-1.5 text-xs text-[#606060]">
                   <CalendarOutlined style={{ fontSize: 13 }} />
                   last updated:
-                  <span className="border border-[#d2d2d2] px-2.5 py-0.5 text-[#333333]" style={{ borderRadius: 4 }}>
+                  <span
+                    className="border border-[#d2d2d2] px-2.5 py-0.5 text-[#333333]"
+                    style={{ borderRadius: 4 }}
+                  >
                     {dayjs(data.period_end).format("D/M/YY")}
                   </span>
                 </span>

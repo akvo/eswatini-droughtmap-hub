@@ -184,9 +184,8 @@ const ReviewQueue = ({
           <div className="flex flex-col gap-4 sm:flex-row">
             <MetricCard
               label="Pending review"
-              value={summary?.pending_review?.value ?? 0}
-              delta={summary?.pending_review?.delta}
-              sublabel={summary?.pending_review?.label}
+              value={remaining}
+              sublabel={`${remaining} of ${totalAdm} Tinkhundla awaiting your review`}
             />
             <MetricCard
               label="High confidence"
@@ -224,7 +223,7 @@ const ReviewQueue = ({
             state={state}
             isCompleted={isCompleted}
             onChange={onChange}
-            onOpen={onOpen}
+            reviewId={initialReview?.id}
           >
             {!isCompleted && (
               <BulkAcceptBanner

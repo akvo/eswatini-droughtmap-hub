@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button, Input, Progress, Select, Table } from "antd";
 import { TabButtons } from "@/components";
 import { ConfidenceBadge, DroughtScore } from "@/components/DS";
@@ -40,8 +41,8 @@ const ReviewQueueTable = ({
   loading = false,
   state,
   isCompleted = false,
+  reviewId,
   onChange,
-  onOpen,
   children,
 }) => {
   const columns = [
@@ -76,7 +77,19 @@ const ReviewQueueTable = ({
       key: "confidence",
       width: 150,
       render: (confidence) => (
-        <ConfidenceBadge band={confidence?.band} isMock={confidence?.is_mock} />
+        <span className="flex items-center gap-2">
+          <ConfidenceBadge band={confidence?.band} />
+          {confidence?.value != null && (
+            <span
+              className="text-sm text-[#606060]"
+              title={
+                confidence.is_mock ? "Provisional confidence value" : undefined
+              }
+            >
+              {confidence.value}
+            </span>
+          )}
+        </span>
       ),
     },
     {
@@ -104,15 +117,16 @@ const ReviewQueueTable = ({
       title: "ACTIONS",
       key: "actions",
       width: 100,
-      render: (_, record) => (
-        <Button
-          type="link"
-          className="edm-reviews-action"
-          onClick={() => onOpen(record)}
-        >
-          {isCompleted ? "View" : "Review"}
-        </Button>
-      ),
+      render: (_, record) => {
+        console.log("record", record);
+        return (
+          <Link href={`/reviews/${reviewId}/${record?.administration_id}`}>
+            <Button type="link" className="edm-reviews-action">
+              {isCompleted ? "View" : "Review"}
+            </Button>
+          </Link>
+        );
+      },
     },
     {
       title: "D-CLASS",
@@ -120,6 +134,9 @@ const ReviewQueueTable = ({
       key: "my_suggestion",
       width: 110,
       align: "right",
+      // Final column — set off with a faint brand tint from the rest of the row.
+      onHeaderCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
+      onCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
       // The reviewer's own class — what they approved or suggested. NOT
       // assigned_score, which stays empty until a validator signs the month off.
       render: (mine, { cdi_class }) => {

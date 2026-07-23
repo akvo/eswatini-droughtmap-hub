@@ -27,7 +27,7 @@ const InkhundlaMap = ({ administrationId }) => {
   const adminId = Number(administrationId);
 
   const selectedFeature = geoData.features?.find(
-    (f) => f.properties?.administration_id === adminId
+    (f) => f.properties?.administration_id === adminId,
   );
 
   const getBounds = (feature) => {
@@ -57,7 +57,10 @@ const InkhundlaMap = ({ administrationId }) => {
   };
 
   return (
-    <div className="w-full h-full inkhundla-map" style={{ background: "#F2F2F2" }}>
+    <div
+      className="w-full h-full inkhundla-map"
+      style={{ background: "#F2F2F2" }}
+    >
       <Map
         center={DEFAULT_CENTER}
         zoom={9}

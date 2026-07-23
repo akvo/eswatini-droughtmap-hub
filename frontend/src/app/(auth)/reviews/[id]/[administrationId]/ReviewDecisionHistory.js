@@ -38,9 +38,7 @@ const ReviewDecisionHistory = ({ history = [] }) => {
                   <div className="text-sm text-[#333333]">
                     {dayjs(entry.period).format("MMMM YYYY")}
                   </div>
-                  <div className="text-xs text-[#606060]">
-                    {entry.comment}
-                  </div>
+                  <div className="text-xs text-[#606060]">{entry.comment}</div>
                 </div>
               </div>
               <span className="text-xs text-[#a4a4a4] shrink-0">
