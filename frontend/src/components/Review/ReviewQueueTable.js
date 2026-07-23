@@ -5,7 +5,7 @@ import { Button, Input, Progress, Select, Table } from "antd";
 import { TabButtons } from "@/components";
 import { ConfidenceBadge, DroughtScore } from "@/components/DS";
 import { PAGE_SIZE, REGION_OPTIONS, ZONE_OPTIONS } from "@/static/config";
-import { QUEUE_FILTERS } from "./query";
+import { QUEUE_FILTERS, buildQueueQuery } from "./query";
 
 /** SPI / LST readings. Mock until station data exists (backend is_mock). */
 const StationSignals = ({ stations }) => {
@@ -118,9 +118,15 @@ const ReviewQueueTable = ({
       key: "actions",
       width: 100,
       render: (_, record) => {
-        console.log("record", record);
+        // Carry the active queue filters so the individual page's Prev/Next
+        // walks the same filtered order the reviewer sees (D-6).
+        const qs = buildQueueQuery(state);
         return (
-          <Link href={`/reviews/${reviewId}/${record?.administration_id}`}>
+          <Link
+            href={`/reviews/${reviewId}/${record?.administration_id}${
+              qs ? `?${qs}` : ""
+            }`}
+          >
             <Button type="link" className="edm-reviews-action">
               {isCompleted ? "View" : "Review"}
             </Button>

@@ -455,6 +455,51 @@ export const TWG_LOGOS = [
   },
 ];
 
+// CDI-E sub-indicator display labels for the individual review page.
+// API sends { key, value } only (WX-3 D-4); the label/order live here.
+// G9: EVI2 is shown as "NDVI" (its equivalent successor) per product.
+export const CDI_SUBINDICATOR_LABELS = {
+  spi: "Precipitation (CHIRPS — SPI)",
+  sm: "Soil moisture",
+  evi2: "NDVI",
+  esi: "Evaporative Stress Index",
+};
+
+// The AC's "5 most important" IKS indicators for the review card — a curated
+// subset of the 29 Kobo choices. `slugs` are the Kobo choice names that count
+// as this indicator being reported; the backend returns `indicators_present`
+// (reported slugs) and the card ticks each row whose slug set intersects it.
+export const IKS_REVIEW_INDICATORS = [
+  {
+    key: "crescent_moon",
+    label: "Crescent moon tilt",
+    slugs: ["17__m_c___moon__crescent__appears_tilted"],
+  },
+  {
+    key: "butterfly",
+    label: "Mass butterfly emergence",
+    slugs: ["4__b___too_many_butterfly__bunch___emavi"],
+  },
+  {
+    key: "siganganyane",
+    label: "Siganganyane fruiting",
+    slugs: [
+      "16__ll___live_long_lannea_discolor_high_",
+      "6__ll___live_long_high_fruitage__kutsela",
+    ],
+  },
+  {
+    key: "frog",
+    label: "Frog croaking",
+    slugs: ["9__f___frogs_calling_singing__emacoco_ak"],
+  },
+  {
+    key: "umfuku",
+    label: "Umfuku calling",
+    slugs: ["4__bc___burchell_s_couca_calling_singing"],
+  },
+];
+
 export const IKS_INDICATOR_CATALOGUE = {
   "1__bs___blue_swallows_appearance__tinkon": {
     code: "BS",
