@@ -142,15 +142,18 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
 
         {/* Form Body Area */}
         <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
-          <p className="text-[#606060] text-sm">
+          <p className="text-[#606060] text-sm border-b border-neutral-100 pb-4">
             Pick the sector and write a clear title + description. The Protocol
             ID is auto-generated from the sector on save.
           </p>
 
           <Form form={form} onFinish={onFinish} layout="vertical">
             {fetchingReviewers ? (
-              <div className="flex justify-center items-center py-8">
-                <Spin tip="Loading reviewers..." />
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <Spin />
+                <span className="text-neutral-500 text-sm">
+                  Loading reviewers...
+                </span>
               </div>
             ) : (
               <>
@@ -270,7 +273,7 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
                         <TinyEditor
                           value={getFieldValue("message")}
                           setValue={(v) => setFieldValue("message", v)}
-                          height={200}
+                          height={325}
                         />
                       )}
                     </Form.Item>
@@ -293,6 +296,7 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
           <SubmitButton
             form={form}
             loading={loading}
+            disabled={fetchingReviewers}
             onClick={() => form.submit()}
           >
             Create

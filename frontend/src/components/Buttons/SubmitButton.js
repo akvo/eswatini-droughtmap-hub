@@ -31,8 +31,8 @@ const SubmitButton = ({
       type={type}
       size={size}
       htmlType="submit"
-      disabled={!submittable}
       {...props}
+      disabled={!submittable || props.disabled}
     >
       {children}
     </Button>
