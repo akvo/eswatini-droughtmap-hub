@@ -12,6 +12,11 @@ export const HOME_PAGE = {
 
 export const PAGE_SIZE = 10;
 
+// Mirrors backend MIN_TWGS_PER_PUBLICATION. A publication whose reviewers all
+// sit in one Technical Working Group has reviewers_required = 1, so every
+// Inkhundla reaches "ready" on a single institution's response.
+export const MIN_TWGS_PER_PUBLICATION = 2;
+
 export const ACTIVITY_STATUS = {
   draft: 1,
   active: 2,

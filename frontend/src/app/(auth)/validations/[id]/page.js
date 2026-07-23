@@ -1,19 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Avatar, Button, Input, Progress, Table, Tag, Tooltip } from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  Alert,
+  Avatar,
+  Button,
+  Checkbox,
+  Input,
+  Modal,
+  Progress,
+  Table,
+  Tag,
+  Tooltip,
+  message,
+} from "antd";
 import {
   CalendarOutlined,
   SearchOutlined,
   LeftOutlined,
 } from "@ant-design/icons";
 import { Can, FeedbackSection, TabButtons } from "@/components";
-import { MetricCard } from "@/components/DS";
-import { PAGE_SIZE, DROUGHT_CATEGORY_CODE } from "@/static/config";
-import { validationSummary, validationQueue } from "@/static/mocks/validation";
+import { DroughtScore, MetricCard } from "@/components/DS";
+import { api } from "@/lib";
+import {
+  MIN_TWGS_PER_PUBLICATION,
+  PAGE_SIZE,
+  PUBLICATION_STATUS,
+} from "@/static/config";
 import dayjs from "dayjs";
-import PublishModal from "./PublishModal";
+import { PublishModal, ReviewerPanelModal } from "@/components/Validation";
 
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
@@ -21,6 +42,16 @@ const STATUS_FILTERS = [
   { label: "Awaiting review", value: "awaiting" },
   { label: "Validated", value: "validated" },
 ];
+
+/**
+ * Mirrors backend AgreementFilter. Cross-cuts the status tabs rather than
+ * extending them: the tabs are a partition whose counts must keep summing to
+ * the total, and agreement is orthogonal to all three (design D-6).
+ */
+const AGREEMENT = {
+  undisputed: "undisputed",
+  disagreement: "disagreement",
+};
 
 const STATUS_CONFIG = {
   ready: { label: "Ready", color: "#f39c12" },
@@ -71,75 +102,183 @@ const ReviewerAvatars = ({ reviewers = [] }) => (
   </div>
 );
 
-const VALIDATION_DCLASS_COLOR = {
-  0: "#CAF3DB", // Normal — Success-100
-  1: "#CAF3DB", // D0 — Success-100
-  2: "#FBEFBF", // D1 — Primary-100
-  3: "#F7D4B5", // D2 — Accent-100 (close to D3 design)
-  4: "#F7D4B5", // D3 — Accent-100
-  5: "#F7C3BE", // D4 — Error-100
-};
-
-const DClassBadge = ({ level }) => {
-  const bg = VALIDATION_DCLASS_COLOR[level] ?? "#f3f4f6";
-  const code = DROUGHT_CATEGORY_CODE?.[level] ?? "—";
-  return (
-    <span
-      className="inline-flex items-center justify-center rounded font-semibold h-[22px] min-w-[40px] px-1.5 text-xs"
-      style={{ backgroundColor: bg, color: "#20232D" }}
-    >
-      {code}
-    </span>
-  );
-};
-
+/**
+ * The D-classes the reviewers submitted. Hue and copy come from
+ * DROUGHT_CATEGORY_* in config.js via DroughtScore, so these chips can never
+ * disagree with the map, the legend or the decision page.
+ */
 const DClassSpread = ({ levels = [] }) => (
   <div className="flex items-center gap-1">
     {levels.map((level, i) => (
-      <DClassBadge key={i} level={level} />
+      <DroughtScore key={i} level={level} size="sm" />
     ))}
   </div>
 );
 
+const SEARCH_DEBOUNCE_MS = 400;
+
 const ValidationDetailPage = () => {
   const { id } = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  /**
+   * Filters live in the URL, not in local state: the Validation Decision page
+   * has to send the admin back to the same tab, search and page, and local
+   * state does not survive navigating away.
+   */
+  const statusFilter = searchParams.get("status") || "all";
+  const search = searchParams.get("search") || "";
+  const agreement = searchParams.get("agreement") || "";
+  const page = Number(searchParams.get("page")) || 1;
+  const nonDisputedOnly = agreement === AGREEMENT.undisputed;
 
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [error, setError] = useState(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [queue, setQueue] = useState({ data: [], total: 0 });
+  const [searchDraft, setSearchDraft] = useState(search);
 
-  // TODO: replace mock with API call: GET /admin/publication/{id}/validation-summary
-  const summary = validationSummary;
-  // TODO: replace mock with API call: GET /admin/publication/{id}/validation-queue
-  const queue = validationQueue;
+  const meta = summary?.meta;
+  const cards = summary?.data || [];
 
-  const allValidated = useMemo(() => {
-    const validated = summary.data.find((d) => d.key === "validated");
-    const awaiting = summary.data.find((d) => d.key === "awaiting");
-    return validated?.value > 0 && awaiting?.value === 0;
-  }, [summary]);
+  const setQuery = useCallback(
+    (patch) => {
+      const next = new URLSearchParams(searchParams.toString());
+      Object.entries(patch).forEach(([key, value]) => {
+        if (value === null || value === "" || value === "all") {
+          next.delete(key);
+        } else {
+          next.set(key, String(value));
+        }
+      });
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
-  const filteredData = useMemo(() => {
-    let rows = queue.data;
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page) });
     if (statusFilter !== "all") {
-      rows = rows.filter((r) => r.status === statusFilter);
+      params.set("status", statusFilter);
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.label.toLowerCase().includes(q) ||
-          r.group.toLowerCase().includes(q),
-      );
+    if (search) {
+      params.set("search", search);
     }
-    return rows;
-  }, [queue.data, statusFilter, search]);
+    if (agreement) {
+      params.set("agreement", agreement);
+    }
+    return params.toString();
+  }, [agreement, page, search, statusFilter]);
 
-  const publishedDate = summary.published_at
-    ? dayjs(summary.published_at).format("D MMMM YYYY")
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [stats, administrations] = await Promise.all([
+        api("GET", `/admin/validation/${id}/stats`),
+        api("GET", `/admin/validation/${id}/administrations?${queryString}`),
+      ]);
+      setSummary(stats);
+      setQueue({
+        data: administrations?.data || [],
+        total: administrations?.total || 0,
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Could not load the validation queue.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, queryString]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Debounce typing into ?search=, while staying in sync when the URL changes
+  // underneath us — the back button, or a return from the decision page.
+  const searchRef = useRef(search);
+  useEffect(() => {
+    if (searchRef.current !== search) {
+      searchRef.current = search;
+      setSearchDraft(search);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    if (searchDraft === search) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      searchRef.current = searchDraft;
+      setQuery({ search: searchDraft, page: 1 });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search, searchDraft, setQuery]);
+
+  const decisionQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") {
+      params.set("status", statusFilter);
+    }
+    if (search) {
+      params.set("search", search);
+    }
+    // Carried too, or Previous/Next would walk the unfiltered queue and the
+    // admin would land on rows the filter had just excluded (AC-3.1).
+    if (agreement) {
+      params.set("agreement", agreement);
+    }
+    return params.toString();
+  }, [agreement, search, statusFilter]);
+
+  /**
+   * The bulk action is scoped to the filter, never to a selection (D-3). The
+   * server re-derives the set at write time and re-applies status=ready
+   * whatever we send, so a stale count here can only ever write less than it
+   * promised — never more.
+   */
+  const runBulkValidation = useCallback(() => {
+    Modal.confirm({
+      title: "Validate all non-disputed Tinkhundla?",
+      content: (
+        <span>
+          <strong>{queue.total}</strong>{" "}
+          {queue.total === 1 ? "Inkhundla has" : "Tinkhundla have"} the same
+          D-class from every reviewer. Each will be validated at that class and
+          recorded against your name.
+        </span>
+      ),
+      okText: "Validate all",
+      onOk: async () => {
+        setBulkRunning(true);
+        try {
+          // api() resolves on 4xx, so a refusal arrives as a body — it must be
+          // detected from the payload, not from a catch block.
+          const res = await api("POST", `/admin/validation/${id}/bulk`, {
+            search,
+          });
+          if (typeof res?.validated !== "number") {
+            message.error("Bulk validation failed.");
+            return;
+          }
+          message.success(res.message);
+          fetchData();
+        } finally {
+          setBulkRunning(false);
+        }
+      },
+    });
+  }, [fetchData, id, queue.total, search]);
+
+  const publishedDate = meta?.published_at
+    ? dayjs(meta.published_at).format("D MMMM YYYY")
     : null;
 
   const columns = [
@@ -179,20 +318,24 @@ const ValidationDetailPage = () => {
       render: (_, record) => <DClassSpread levels={record.dclass_spread} />,
     },
     {
-      title: "CONSENSUS",
+      title: (
+        <Tooltip title="Agreement between reviewers, weighted by how far apart their D-classes are. 100% = unanimous.">
+          <span>CONSENSUS</span>
+        </Tooltip>
+      ),
       key: "consensus",
       width: 140,
       render: (_, record) => (
         <div className="flex items-center gap-2">
           <Progress
-            percent={record.consensus}
+            percent={record.consensus ?? 0}
             showInfo={false}
             size={["100%", 6]}
             strokeColor="#3E5EB9"
             className="flex-1"
           />
           <span className="text-sm text-[#606060] whitespace-nowrap">
-            {record.consensus}%
+            {record.consensus === null ? "—" : `${record.consensus}%`}
           </span>
         </div>
       ),
@@ -201,9 +344,22 @@ const ValidationDetailPage = () => {
       title: "STATUS",
       dataIndex: "status",
       key: "status",
-      width: 160,
+      width: 200,
       render: (value, record) => (
-        <StatusBadge status={value} total={record.awaiting_count} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={value} total={record.awaiting_count} />
+          {/* The final class the admin assigned. The D-CLASS SPREAD column
+              shows what the reviewers submitted; without this the outcome of
+              a validated row is invisible until you open it. */}
+          {record.validated_category !== null &&
+            record.validated_category !== undefined && (
+              <Tooltip title="Final validated D-class">
+                <span>
+                  <DroughtScore level={record.validated_category} size="sm" />
+                </span>
+              </Tooltip>
+            )}
+        </div>
       ),
     },
     {
@@ -216,8 +372,14 @@ const ValidationDetailPage = () => {
           type="link"
           className="edm-reviews-action"
           onClick={() => {
+            // Carry status + search so the decision page can resolve
+            // Previous/Next and send the admin back to the same tab. `page`
+            // is deliberately NOT carried — it is derived server-side and a
+            // copy here goes stale as soon as Next crosses a page boundary.
             router.push(
-              `/validations/${id}/${record.administration_id}`,
+              `/validations/${id}/${record.administration_id}${
+                decisionQuery ? `?${decisionQuery}` : ""
+              }`,
             );
           }}
         >
@@ -250,23 +412,40 @@ const ValidationDetailPage = () => {
           <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-col gap-3">
               <h1 className="text-[34px] font-bold leading-10 text-[#333333]">
-                This month drought validation
+                {meta?.year_month
+                  ? `${dayjs(meta.year_month, "YYYY-MM").format("MMMM YYYY")} drought validation`
+                  : "Drought validation"}
               </h1>
               <p className="text-base leading-6 text-[#606060]">
-                Lorem ipsum dolor sit amet consectetur.
+                Sign off the final drought class for every Inkhundla, then
+                publish the validated map.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
+              <Button
+                className="edm-reviews-action"
+                onClick={() => setPanelOpen(true)}
+              >
+                Reviewer panel
+              </Button>
               <Button type="link" className="edm-reviews-action">
                 Methodology
               </Button>
-              <Button
-                type="primary"
-                disabled={!allValidated}
-                onClick={() => setPublishOpen(true)}
+              <Tooltip
+                title={
+                  meta && !meta.can_publish
+                    ? `${meta.pending_validation} Tinkhundla still need validation`
+                    : ""
+                }
               >
-                Publish validated map
-              </Button>
+                <Button
+                  type="primary"
+                  disabled={!meta?.can_publish}
+                  onClick={() => setPublishOpen(true)}
+                >
+                  Publish validated map
+                </Button>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -281,7 +460,7 @@ const ValidationDetailPage = () => {
         <Can I="read" a="Publication">
           {/* Summary cards */}
           <div className="relative z-10 mx-auto -mt-16 grid w-full max-w-[1280px] grid-cols-1 gap-0 sm:grid-cols-2 lg:grid-cols-4">
-            {summary.data.map((card) => (
+            {cards.map((card) => (
               <MetricCard
                 key={card.key}
                 label={card.label}
@@ -289,9 +468,56 @@ const ValidationDetailPage = () => {
                 delta={card.delta || null}
                 deltaSuffix={card.delta_suffix || ""}
                 sublabel={card.meta}
+                // Only the disagreement card drills through. The other three
+                // mirror the status tabs, which are already one click away —
+                // and this card had no way in at all until now.
+                active={
+                  card.key === AGREEMENT.disagreement &&
+                  agreement === AGREEMENT.disagreement
+                }
+                onClick={
+                  card.key === AGREEMENT.disagreement
+                    ? () =>
+                        // Toggles. Applying a filter with no way back out of
+                        // it strands the admin on a subset of the queue with
+                        // nothing on screen admitting why.
+                        setQuery({
+                          agreement:
+                            agreement === AGREEMENT.disagreement
+                              ? null
+                              : AGREEMENT.disagreement,
+                          status: "all",
+                          page: 1,
+                        })
+                    : null
+                }
               />
             ))}
           </div>
+
+          {/* A single Technical Working Group makes every Inkhundla "ready"
+              off one institution's response, so the queue looks finished when
+              nothing has been cross-checked. Sits BELOW the cards: they carry
+              `-mt-16` to overlap the hero, so anything above them is drawn
+              underneath and clipped. */}
+          {meta && meta.reviewers_required < MIN_TWGS_PER_PUBLICATION && (
+            // The centring lives on a plain div, not on the Alert: antd 5
+            // injects its component CSS at runtime, after Tailwind's sheet, so
+            // `mx-auto` on `.ant-alert` itself is not dependable.
+            <div className="relative z-10 mx-auto mt-6 w-full max-w-[1280px]">
+              <Alert
+                type="warning"
+                showIcon
+                message="This publication has only one Technical Working Group reviewing it."
+                description="Every Inkhundla counts as fully reviewed after that one response, so no row can show consensus or be bulk-validated. Add reviewers from another working group to cross-check."
+                action={
+                  <Button size="small" onClick={() => setPanelOpen(true)}>
+                    Reviewer panel
+                  </Button>
+                }
+              />
+            </div>
+          )}
 
           {/* Validation queue */}
           <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
@@ -303,11 +529,8 @@ const ValidationDetailPage = () => {
                 <Input
                   placeholder="Search"
                   prefix={<SearchOutlined className="text-[#a4a4a4]" />}
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
                   className="w-48"
                   style={{ height: 40 }}
                   allowClear
@@ -328,33 +551,76 @@ const ValidationDetailPage = () => {
               <TabButtons
                 options={STATUS_FILTERS}
                 value={statusFilter}
-                onChange={(value) => {
-                  setStatusFilter(value);
-                  setPage(1);
-                }}
+                onChange={(value) =>
+                  // Picking a tab clears the agreement filter: leaving it on
+                  // would silently intersect two filters while only one of
+                  // them looks active.
+                  setQuery({ status: value, agreement: null, page: 1 })
+                }
               />
+              <div className="flex items-center gap-4">
+                <Checkbox
+                  checked={nonDisputedOnly}
+                  onChange={(e) =>
+                    // Sets the Ready tab too, so what the admin sees is
+                    // exactly what "Validate all N" will write (D-3).
+                    setQuery(
+                      e.target.checked
+                        ? {
+                            agreement: AGREEMENT.undisputed,
+                            status: "ready",
+                            page: 1,
+                          }
+                        : { agreement: null, page: 1 },
+                    )
+                  }
+                >
+                  Non-disputed only
+                </Checkbox>
+                {nonDisputedOnly && (
+                  <Button
+                    type="primary"
+                    disabled={!queue.total}
+                    loading={bulkRunning}
+                    onClick={runBulkValidation}
+                  >
+                    Validate all {queue.total} non-disputed
+                  </Button>
+                )}
+              </div>
             </div>
+            {error && (
+              <Alert
+                type="error"
+                message={error}
+                showIcon
+                className="m-4"
+                action={
+                  <Button size="small" onClick={fetchData}>
+                    Retry
+                  </Button>
+                }
+              />
+            )}
             <Table
               className="edm-reviews-table"
               columns={columns}
-              dataSource={filteredData}
+              dataSource={queue.data}
               rowKey="administration_id"
               loading={loading}
               tableLayout="fixed"
               scroll={{ x: 1000 }}
-              pagination={
-                filteredData.length <= PAGE_SIZE
-                  ? false
-                  : {
-                      current: page,
-                      pageSize: PAGE_SIZE,
-                      total: filteredData.length,
-                      responsive: true,
-                      align: "center",
-                      position: ["bottomCenter"],
-                      onChange: (_page) => setPage(_page),
-                    }
-              }
+              pagination={{
+                current: page,
+                pageSize: PAGE_SIZE,
+                total: queue.total,
+                responsive: true,
+                align: "center",
+                position: ["bottomCenter"],
+                hideOnSinglePage: true,
+                showSizeChanger: false,
+                onChange: (_page) => setQuery({ page: _page }),
+              }}
             />
           </section>
         </Can>
@@ -364,12 +630,32 @@ const ValidationDetailPage = () => {
         </div>
       </div>
 
+      <ReviewerPanelModal
+        open={panelOpen}
+        publicationId={id}
+        onClose={() => setPanelOpen(false)}
+        // Adding a reviewer changes reviewers_required, which moves rows
+        // between Ready and Awaiting — refetch so the queue is not stale.
+        onChanged={fetchData}
+      />
+
       <PublishModal
         open={publishOpen}
+        yearMonth={meta?.year_month}
         onCancel={() => setPublishOpen(false)}
-        onPublish={(values) => {
-          console.log("Publish:", values);
+        onPublish={async ({ narrative }) => {
+          // api() resolves on 4xx rather than rejecting, so a failed publish
+          // has to be detected from the body — never from a catch block.
+          const res = await api("PUT", `/admin/publication/${id}`, {
+            status: PUBLICATION_STATUS.published,
+            narrative,
+          });
+          if (res?.status !== PUBLICATION_STATUS.published) {
+            return res?.status?.[0] ?? "Publish failed.";
+          }
           setPublishOpen(false);
+          fetchData();
+          return null;
         }}
       />
     </div>

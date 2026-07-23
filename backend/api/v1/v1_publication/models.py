@@ -6,6 +6,7 @@ from api.v1.v1_publication.constants import (
     PublicationStatus,
     AdministrationZones,
     RasterIndicatorTypes,
+    VALIDATABLE_CATEGORIES,
 )
 
 
@@ -101,6 +102,65 @@ class Review(models.Model):
 
     class Meta:
         db_table = "reviews"
+
+
+class ValidationDecision(models.Model):
+    """One NDRMA validation decision per (publication, Inkhundla).
+
+    Created as a draft on first save and promoted in place on submit.
+    `Publication.validated_values` stays the *published projection* of the
+    submitted rows: it is what the map, the exports and the National Overview
+    read, so this table is purely additive and nothing downstream changes.
+
+    This table is authoritative for history and audit; validated_values is
+    authoritative for what is published. They agree whenever the decision
+    endpoint is the writer.
+    """
+
+    publication = models.ForeignKey(
+        Publication,
+        on_delete=models.CASCADE,
+        related_name="validation_decisions",
+    )
+    administration = models.ForeignKey(
+        Administration,
+        on_delete=models.CASCADE,
+        related_name="validation_decisions",
+    )
+    # Null only while a draft has no pick yet.
+    category = models.IntegerField(
+        choices=VALIDATABLE_CATEGORIES, null=True, blank=True
+    )
+    reasoning = models.TextField(null=True, blank=True)
+    is_draft = models.BooleanField(default=True)
+
+    # Snapshot of the reviewer majority at submit time — never recomputed.
+    # Recomputing would let a late review flip a historical decision from
+    # "accepted" to "overridden", rewriting an audit record after the fact.
+    majority_category = models.IntegerField(null=True, blank=True)
+    is_override = models.BooleanField(default=False)
+
+    validated_by = models.ForeignKey(
+        SystemUser, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    validated_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return (
+            f"ValidationDecision: {self.publication_id}"
+            f"/{self.administration_id}"
+        )
+
+    class Meta:
+        db_table = "validation_decisions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["publication", "administration"],
+                name="uniq_validation_decision_per_inkhundla",
+            )
+        ]
 
 
 class PublicationRaster(models.Model):

@@ -29,6 +29,7 @@ from api.v1.v1_publication.review.utils import (
     build_rows,
     build_stats,
     filter_rows,
+    public_row,
 )
 from api.v1.v1_publication.review.serializers import (
     ReviewQueueFilterSerializer,
@@ -71,7 +72,10 @@ def _filtered_rows(publication, request):
     serializer = ReviewQueueFilterSerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
     rows = build_rows(publication, user=request.user)
-    return filter_rows(rows, **serializer.filters())
+    return [
+        public_row(r)
+        for r in filter_rows(rows, **serializer.filters())
+    ]
 
 
 def _previous_rows(publication, user=None):
@@ -164,7 +168,8 @@ class ReviewAdministrationDetailAPI(APIView):
         administration_id = int(administration_id)
         row = next(
             (
-                r for r in build_rows(publication, user=request.user)
+                public_row(r)
+                for r in build_rows(publication, user=request.user)
                 if r["administration_id"] == administration_id
             ),
             None,
