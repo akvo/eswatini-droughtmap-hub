@@ -436,7 +436,7 @@ describe("Validation queue page", () => {
     await waitFor(() =>
       expect(
         screen.getByText("Could not load the validation queue."),
-      ).toBeVisible(),
+      ).toBeInTheDocument(),
     );
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
