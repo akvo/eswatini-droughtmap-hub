@@ -280,7 +280,7 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
                   )}
                 </Form.Item>
 
-                <div className="mt-4 border-t pt-4">
+                <div className="mt-4 border-t border-neutral-100 pt-4">
                   <ComponentRasterPreview yearMonth={yearMonth} />
                 </div>
               </>
