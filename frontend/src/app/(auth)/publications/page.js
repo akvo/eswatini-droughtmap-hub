@@ -8,7 +8,7 @@ import {
   Can,
   FeedbackSection,
   PageHeader,
-  StartPublicationModal,
+  StartPublicationSlideIn,
   TabButtons,
 } from "@/components";
 import {
@@ -333,9 +333,9 @@ const PublicationsPage = () => {
         )}
       </Modal>
 
-      <StartPublicationModal
+      <StartPublicationSlideIn
         geonode={selectedGeonode}
-        open={!!selectedGeonode && !selectedGeonode.publication_id}
+        visible={!!selectedGeonode && !selectedGeonode.publication_id}
         onClose={() => setSelectedGeonode(null)}
         onSuccess={() => {
           setSelectedGeonode(null);
