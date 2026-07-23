@@ -22,8 +22,8 @@ jest.mock("@/components", () => {
     ...actual,
     Can: ({ children }) => <>{children}</>,
     FeedbackSection: () => <div data-testid="feedback-section" />,
-    StartPublicationModal: jest.fn(() => (
-      <div data-testid="mock-start-publication-modal" />
+    StartPublicationSlideIn: jest.fn(() => (
+      <div data-testid="mock-start-publication-slidein" />
     )),
   };
 });
@@ -242,7 +242,7 @@ describe("PublicationsPage", () => {
   });
 
   it("renders proper action links and routes on click", async () => {
-    const { StartPublicationModal: MockModal } = require("@/components");
+    const { StartPublicationSlideIn: MockSlideIn } = require("@/components");
     render(<PublicationsPage />);
 
     await waitFor(() => {
@@ -253,9 +253,9 @@ describe("PublicationsPage", () => {
     // Click "Start new publication" for first row
     const startNewBtn = screen.getByText("Start new publication");
     fireEvent.click(startNewBtn);
-    expect(MockModal).toHaveBeenCalledWith(
+    expect(MockSlideIn).toHaveBeenCalledWith(
       expect.objectContaining({
-        open: true,
+        visible: true,
         geonode: expect.objectContaining({ pk: 4021 }),
       }),
       expect.anything(),
@@ -397,8 +397,8 @@ describe("PublicationsPage", () => {
     consoleErrorMock.mockRestore();
   });
 
-  it("opens StartPublicationModal when 'Start new publication' is clicked", async () => {
-    const { StartPublicationModal: MockModal } = require("@/components");
+  it("opens StartPublicationSlideIn when 'Start new publication' is clicked", async () => {
+    const { StartPublicationSlideIn: MockSlideIn } = require("@/components");
     render(<PublicationsPage />);
 
     await waitFor(() => {
@@ -410,9 +410,9 @@ describe("PublicationsPage", () => {
     const startBtn = screen.getAllByText("Start new publication")[0];
     fireEvent.click(startBtn);
 
-    expect(MockModal).toHaveBeenCalledWith(
+    expect(MockSlideIn).toHaveBeenCalledWith(
       expect.objectContaining({
-        open: true,
+        visible: true,
         geonode: expect.objectContaining({
           pk: 4021,
           title: "step_0303_cdi_pct_rank_eswatini_202605",

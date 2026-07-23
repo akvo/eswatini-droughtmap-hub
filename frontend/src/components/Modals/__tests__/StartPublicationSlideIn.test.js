@@ -1,7 +1,7 @@
 /* eslint-disable react/display-name */
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import StartPublicationModal from "../StartPublicationModal";
+import StartPublicationSlideIn from "../StartPublicationSlideIn";
 import { api } from "@/lib";
 import dayjs from "dayjs";
 
@@ -197,7 +197,7 @@ const mockGeonode = {
   download_url: "https://geonode.org/cdi_202605/download",
 };
 
-describe("StartPublicationModal", () => {
+describe("StartPublicationSlideIn", () => {
   let onClose;
   let onSuccess;
 
@@ -213,31 +213,29 @@ describe("StartPublicationModal", () => {
     });
   });
 
-  it("does not render when open is false", () => {
+  it("does not render when visible is false", () => {
     render(
-      <StartPublicationModal
+      <StartPublicationSlideIn
         geonode={mockGeonode}
-        open={false}
+        visible={false}
         onClose={onClose}
         onSuccess={onSuccess}
       />,
     );
-    expect(
-      screen.queryByText("Create new publication"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Start new publication")).not.toBeInTheDocument();
   });
 
-  it("renders form elements and fetches reviewer tree when open is true", async () => {
+  it("renders form elements and fetches reviewer tree when visible is true", async () => {
     render(
-      <StartPublicationModal
+      <StartPublicationSlideIn
         geonode={mockGeonode}
-        open={true}
+        visible={true}
         onClose={onClose}
         onSuccess={onSuccess}
       />,
     );
 
-    expect(screen.getByText("Create new publication")).toBeInTheDocument();
+    expect(screen.getByText("Start new publication")).toBeInTheDocument();
     expect(api).toHaveBeenCalledWith("GET", "/admin/reviewers-tree");
 
     await waitFor(() => {
@@ -261,9 +259,9 @@ describe("StartPublicationModal", () => {
     });
 
     render(
-      <StartPublicationModal
+      <StartPublicationSlideIn
         geonode={mockGeonode}
-        open={true}
+        visible={true}
         onClose={onClose}
         onSuccess={onSuccess}
       />,
@@ -311,9 +309,9 @@ describe("StartPublicationModal", () => {
 
   it("calls onClose when Cancel is clicked", async () => {
     render(
-      <StartPublicationModal
+      <StartPublicationSlideIn
         geonode={mockGeonode}
-        open={true}
+        visible={true}
         onClose={onClose}
         onSuccess={onSuccess}
       />,
