@@ -261,7 +261,8 @@ StartPublicationModal (AntD Modal)
 │     errors        {}    — field-level errors from POST
 ├── AntD Form (layout="vertical"):
 │     name="reviewers"    TreeSelect (treeData, multiple, treeCheckable)
-│                         labelRender: (label, value) => `${label} (${TWG_ABBREV[twgOf(value)]})`
+│                         labelRender: (label, value) => `${label} (${abbrevOf(value)})`
+│                         abbrev derived from the group title already in treeData
 │     name="year_month"   DatePicker (picker="month")
 │     name="due_date"     DatePicker
 │     name="subject"      Input
@@ -274,25 +275,16 @@ StartPublicationModal (AntD Modal)
 
 ### TreeSelect configuration
 
-Each selected chip must show **name + TWG abbreviation** (Q1 resolved). Use `labelRender` to build the chip label from the node `value` (user ID) → look up TWG from the tree data.
+Each selected chip must show **name + TWG abbreviation** (Q1 resolved). Use `labelRender` to build the chip label. No `TWG_ABBREV` constant is needed: the group `title` (e.g. `"NDMA (National Disaster Management Agency)"`) is already in `treeData`, and the abbreviation is its first token — `title.split(" (")[0]`. This keeps TWG identity in one authoritative place (the backend tree / `TWG_OPTIONS`) instead of re-encoding the `"twg-N" → abbrev` mapping in a third location.
 
 ```jsx
-// TWG_ABBREV map (frontend constant)
-const TWG_ABBREV = {
-  "twg-1": "NDMA",
-  "twg-2": "MoAg",
-  "twg-3": "MET",
-  "twg-4": "DWA",
-  "twg-5": "UNESWA",
-  "twg-unassigned": "—",
-};
-
-// Build a userId→twgKey lookup from treeData on fetch
+// Build userId → group title from treeData on fetch. The group title carries
+// the abbrev as its first token, so no separate abbreviation map is required.
 const userTwgMap = useMemo(() => {
   const map = {};
   reviewerTree.forEach((group) => {
     group.children?.forEach((leaf) => {
-      map[leaf.value] = group.value; // e.g. 12 → "twg-1"
+      map[leaf.value] = group.title; // e.g. 12 → "NDMA (National Disaster…)"
     });
   });
   return map;
@@ -309,8 +301,8 @@ const userTwgMap = useMemo(() => {
   showSearch
   style={{ width: "100%" }}
   labelRender={({ value, label }) => {
-    const twgKey = userTwgMap[value];
-    const abbrev = TWG_ABBREV[twgKey] || "";
+    // "NDMA (National Disaster…)" → "NDMA"; "Unassigned" → "Unassigned"
+    const abbrev = (userTwgMap[value] || "").split(" (")[0];
     return abbrev ? `${label} (${abbrev})` : label;
   }}
 />
@@ -506,6 +498,6 @@ sequenceDiagram
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Developer | | | |
-| Tech Lead | | | |
+| Developer | Galih | | |
+| Tech Lead | Iwan | | |
 | Product | | | |
