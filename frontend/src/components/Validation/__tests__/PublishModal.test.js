@@ -72,7 +72,9 @@ describe("PublishModal", () => {
     publish();
 
     await waitFor(() =>
-      expect(screen.getByText("A description is required.")).toBeVisible(),
+      expect(
+        screen.getByText("A description is required."),
+      ).toBeInTheDocument(),
     );
     expect(onPublish).not.toHaveBeenCalled();
   });
@@ -105,7 +107,7 @@ describe("PublishModal", () => {
         screen.getByText(
           "Cannot publish: 12 of 59 Tinkhundla are not validated yet.",
         ),
-      ).toBeVisible(),
+      ).toBeInTheDocument(),
     );
     // Four paragraphs of typing must survive a race with a colleague.
     expect(

@@ -123,6 +123,12 @@ const respond = (rows = [ROW], total = 59) =>
     ),
   );
 
+const renderPage = async () => {
+  const result = render(<ValidationDetailPage />);
+  await screen.findByText("Kubuta");
+  return result;
+};
+
 const urlsRequested = () =>
   api.mock.calls
     .map(([, url]) => url)
@@ -147,7 +153,7 @@ afterEach(() => {
 describe("Validation queue page", () => {
   it("reads filters from the URL and sends them to the server", async () => {
     currentParams = new URLSearchParams("status=ready&search=kub&page=2");
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
     const url = urlsRequested()[0];
@@ -158,7 +164,7 @@ describe("Validation queue page", () => {
 
   it("writes the status tab into the URL and resets to page 1", async () => {
     currentParams = new URLSearchParams("page=3");
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     fireEvent.click(screen.getByRole("button", { name: "Validated" }));
@@ -172,7 +178,7 @@ describe("Validation queue page", () => {
   it("debounces typing into ?search= and resets to page 1", async () => {
     jest.useFakeTimers();
     try {
-      render(<ValidationDetailPage />);
+      await renderPage();
       const input = screen.getByPlaceholderText("Search");
 
       fireEvent.change(input, { target: { value: "k" } });
@@ -194,14 +200,14 @@ describe("Validation queue page", () => {
   it("paginates on the server total, not the rows it was handed", async () => {
     // One row on the page but 59 in the publication: the pager must still
     // render, which it would not if it counted data.length.
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     await waitFor(() => expect(screen.getByTitle("2")).toBeInTheDocument());
   });
 
   it("disables Publish until the server says every Inkhundla is validated", async () => {
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     expect(
@@ -220,7 +226,7 @@ describe("Validation queue page", () => {
           : { data: [ROW], total: 59, current: 1 },
       ),
     );
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     await waitFor(() =>
@@ -236,7 +242,7 @@ describe("Validation queue page", () => {
     respond([
       { ...ROW, status: "validated", awaiting_count: 0, validated_category: 3 },
     ]);
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     // Assert the thing itself inside waitFor. Gating on a different element
     // and then asserting bare is what made this flake under parallel load.
@@ -254,7 +260,7 @@ describe("Validation queue page", () => {
 
   it("shows no final D-class while a row is still awaiting", async () => {
     respond([{ ...ROW, status: "awaiting", validated_category: null }]);
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
     await waitFor(() => expect(screen.getAllByText("D2")).toHaveLength(1));
@@ -262,7 +268,7 @@ describe("Validation queue page", () => {
 
   it("renders an em dash for a null consensus rather than 0%", async () => {
     respond([{ ...ROW, consensus: null }]);
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
     expect(screen.queryByText("null%")).not.toBeInTheDocument();
@@ -270,7 +276,7 @@ describe("Validation queue page", () => {
 
   it("sends ?agreement= straight through to the server", async () => {
     currentParams = new URLSearchParams("agreement=undisputed&status=ready");
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
     expect(urlsRequested()[0]).toContain("agreement=undisputed");
@@ -280,7 +286,7 @@ describe("Validation queue page", () => {
     // The bulk button's N is this table's count, so the filter the admin sees
     // has to be the set the server will write (D-3). Without status=ready the
     // count would include rows bulk refuses to touch.
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     fireEvent.click(screen.getByRole("checkbox", { name: /non-disputed/i }));
@@ -294,7 +300,7 @@ describe("Validation queue page", () => {
 
   it("clears the agreement filter when a status tab is picked", async () => {
     currentParams = new URLSearchParams("agreement=disagreement");
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     fireEvent.click(screen.getByRole("button", { name: "Ready" }));
@@ -304,7 +310,7 @@ describe("Validation queue page", () => {
   });
 
   it("drills into the disagreement card", async () => {
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     fireEvent.click(
@@ -323,7 +329,7 @@ describe("Validation queue page", () => {
     // A one-way filter strands the admin on a subset of the queue with
     // nothing on screen saying why, and no way back except editing the URL.
     currentParams = new URLSearchParams("agreement=disagreement");
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     const card = await screen.findByRole("button", {
       name: /High disagreement\s*:\s*3/,
@@ -337,7 +343,7 @@ describe("Validation queue page", () => {
   });
 
   it("shows the disagreement card as unpressed when its filter is off", async () => {
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     const card = await screen.findByRole("button", {
       name: /High disagreement\s*:\s*3/,
@@ -346,7 +352,7 @@ describe("Validation queue page", () => {
   });
 
   it("offers bulk validation only while the non-disputed filter is on", async () => {
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
     expect(
       screen.queryByRole("button", { name: /validate all/i }),
@@ -354,7 +360,7 @@ describe("Validation queue page", () => {
 
     currentParams = new URLSearchParams("agreement=undisputed&status=ready");
     cleanup();
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     expect(
       await screen.findByRole("button", { name: /validate all 59/i }),
@@ -363,7 +369,7 @@ describe("Validation queue page", () => {
 
   it("writes nothing until the confirmation is accepted", async () => {
     currentParams = new URLSearchParams("agreement=undisputed&status=ready");
-    render(<ValidationDetailPage />);
+    await renderPage();
     const before = api.mock.calls.length;
 
     fireEvent.click(
@@ -381,7 +387,7 @@ describe("Validation queue page", () => {
     currentParams = new URLSearchParams(
       "agreement=undisputed&status=ready&search=kub",
     );
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     fireEvent.click(
       await screen.findByRole("button", { name: /validate all 59/i }),
@@ -407,7 +413,7 @@ describe("Validation queue page", () => {
           : { data: [ROW], total: 59, current: 1 },
       ),
     );
-    render(<ValidationDetailPage />);
+    await renderPage();
 
     expect(
       await screen.findByText(/only one Technical Working Group/i),
@@ -415,7 +421,7 @@ describe("Validation queue page", () => {
   });
 
   it("does not warn when the panel spans two working groups", async () => {
-    render(<ValidationDetailPage />);
+    await renderPage();
     await waitFor(() => expect(urlsRequested()).toHaveLength(1));
 
     expect(
