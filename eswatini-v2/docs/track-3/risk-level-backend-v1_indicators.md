@@ -10,7 +10,7 @@
 **Track**: Track 3 — Operational Response
 **Author**: Galih Pratama
 **Date**: 2026-07-21
-**Status**: IMPLEMENTED
+**Status**: IMPLEMENTED — **SUPERSEDED** by [`risk-level-v2-risk-scoring-redesign.md`](./risk-level-v2-risk-scoring-redesign.md) (built against the old `priority_areas.csv` prototype; the new DIH Risk Dataset Handover methodology replaces this model).
 
 **Related specs**:
 - Previous draft: [`eswatini-v2/docs/specs/PA-1_v1_indicators.md`](../specs/PA-1_v1_indicators.md) _(terminology updated: "Priority Area" → "Risk Level")_
