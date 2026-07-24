@@ -236,7 +236,7 @@ const IksTab = ({
       name: "Rainfall Predictors (Section B)",
       type: "line",
       data: rainLeaningData,
-      itemStyle: { color: "#4F679B" },
+      itemStyle: { color: "#3E5EB9" },
       lineStyle: { width: 2 },
       symbol: "circle",
       symbolSize: 6,
@@ -249,8 +249,8 @@ const IksTab = ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(79, 103, 155, 0.15)" },
-            { offset: 1, color: "rgba(79, 103, 155, 0.01)" },
+            { offset: 0, color: "rgba(62, 94, 185, 0.15)" },
+            { offset: 1, color: "rgba(62, 94, 185, 0.01)" },
           ],
         },
       },
@@ -259,7 +259,7 @@ const IksTab = ({
       name: "Extreme Weather (Section C)",
       type: "line",
       data: extremeWeatherData,
-      itemStyle: { color: "#C05C5C" },
+      itemStyle: { color: "#B10D0B" },
       lineStyle: { width: 2 },
       symbol: "circle",
       symbolSize: 6,
@@ -272,8 +272,8 @@ const IksTab = ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(192, 92, 92, 0.15)" },
-            { offset: 1, color: "rgba(192, 92, 92, 0.01)" },
+            { offset: 0, color: "rgba(177, 13, 11, 0.15)" },
+            { offset: 1, color: "rgba(177, 13, 11, 0.01)" },
           ],
         },
       },
@@ -388,24 +388,26 @@ const IksTab = ({
         />
 
         {/* 2 KPI metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-[#D2D2D2] overflow-hidden border-b border-[#D2D2D2]">
-          <KpiMetricCard
-            title="Reporting consistency"
-            value={`${formatPercentage(consistency)}%`}
-            subtitle={`${reportedMonthsCount} / 12 months reported`}
-            locked={isLocked}
-          />
-          <KpiMetricCard
-            title="Form completion"
-            value={`${formatPercentage(completionRate)}%`}
-            subtitle="Sections B + C + D filled"
-            locked={isLocked}
-          />
-        </div>
+        {!isLocked && (
+          <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-[#D2D2D2] overflow-hidden border-b border-[#D2D2D2]">
+            <KpiMetricCard
+              title="Reporting consistency"
+              value={`${formatPercentage(consistency)}%`}
+              subtitle={`${reportedMonthsCount} / 12 months reported`}
+              locked={isLocked}
+            />
+            <KpiMetricCard
+              title="Form completion"
+              value={`${formatPercentage(completionRate)}%`}
+              subtitle="Sections B + C + D filled"
+              locked={isLocked}
+            />
+          </div>
+        )}
 
         {/* Line Chart Panel */}
         <div className="px-4 py-6 border-b border-[#D2D2D2]">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between border-b border-[#D2D2D2] pb-4 mb-6">
             <div>
               <h4 className="text-sm font-bold text-neutral-800">
                 Indicator activity per monthly report
@@ -419,10 +421,9 @@ const IksTab = ({
               {dateRange}
             </span>
           </div>
-
           {/* Interactive Checkbox Filters */}
           <div className="flex items-center gap-6 mb-4">
-            <ConfigProvider theme={{ token: { colorPrimary: "#4F679B" } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: "#3E5EB9" } }}>
               <Checkbox
                 checked={showRain}
                 onChange={(e) => setShowRain(e.target.checked)}
@@ -432,7 +433,7 @@ const IksTab = ({
                 </span>
               </Checkbox>
             </ConfigProvider>
-            <ConfigProvider theme={{ token: { colorPrimary: "#C05C5C" } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: "#B10D0B" } }}>
               <Checkbox
                 checked={showDrought}
                 onChange={(e) => setShowDrought(e.target.checked)}
@@ -463,7 +464,7 @@ const IksTab = ({
               <div
                 className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showRain ? "opacity-100" : "opacity-35"}`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#4F679B] block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#3E5EB9] block" />
                 <span className="font-medium text-neutral-500">
                   Rain-leaning
                 </span>
@@ -471,7 +472,7 @@ const IksTab = ({
               <div
                 className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showDrought ? "opacity-100" : "opacity-35"}`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#C05C5C] block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#B10D0B] block" />
                 <span className="font-medium text-neutral-500">
                   Extreme weather-leaning
                 </span>

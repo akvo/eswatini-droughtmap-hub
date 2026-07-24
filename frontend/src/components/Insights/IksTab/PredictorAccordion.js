@@ -33,7 +33,9 @@ const PredictorAccordion = ({
         </div>
       </div>
     </div>
-    <div className="border-t border-[#D2D2D2] bg-white">
+    <div
+      className={`${section === "B" ? "border-y" : "border-t"} border-[#D2D2D2] bg-white`}
+    >
       <Collapse
         bordered={false}
         expandIconPosition="end"
