@@ -25,7 +25,7 @@ const Gauge = ({ percent = 0 }) => {
             fill="none"
             stroke={color}
             strokeWidth="16"
-            strokeLinecap="round"
+            strokeLinecap="butt"
             strokeDasharray={`${length} ${arc}`}
           />
         ))}
@@ -53,9 +53,11 @@ const Gauge = ({ percent = 0 }) => {
 const AssessmentSummary = ({ summary }) => {
   const collected = summary?.reviews_collected || { value: 0, total: 0 };
   const breakdown = summary?.status_breakdown || [];
+  // One continuous panel: the breakdown cards sit flush against the summary,
+  // separated by a hairline rather than a gap (Figma).
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-col gap-4 border border-[#eaecf0] bg-white p-4">
+    <div className="flex w-full flex-col border border-[#eaecf0] bg-white">
+      <div className="flex flex-col gap-4 p-4">
         <h3 className="text-base font-semibold leading-6 text-[#333333]">
           Assessment summary
         </h3>
@@ -81,13 +83,18 @@ const AssessmentSummary = ({ summary }) => {
       </div>
 
       {breakdown.map(({ key, label, value, note, delta }) => (
-        <MetricCard
-          key={key}
-          label={label}
-          value={value}
-          delta={delta}
-          sublabel={note}
-        />
+        // The wrapper carries the separator so the card itself stays
+        // borderless — `border-none` kills border-style, which a `divide-y`
+        // on the parent would then be unable to draw.
+        <div key={key} className="border-t border-[#eaecf0]">
+          <MetricCard
+            className="border-none"
+            label={label}
+            value={value}
+            delta={delta}
+            sublabel={note}
+          />
+        </div>
       ))}
     </div>
   );

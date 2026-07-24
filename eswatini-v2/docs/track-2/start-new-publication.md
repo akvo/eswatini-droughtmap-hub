@@ -1,4 +1,4 @@
-# Feature Design: CDI Publication — Start New Publication (Modal)
+# Feature Design: CDI Publication — Start New Publication (Slide-In)
 
 **Task ID**: Track 2 — Start New Publication (no issue number yet)
 **Author**: Team
@@ -23,12 +23,12 @@ Currently:
   not a quick action.
 
 Goal:
-- Convert "Start new publication" from a full-page route into an AntD Modal
+- Convert "Start new publication" from a full-page route into a Slide-In drawer panel
   launched directly from the publications list row action button.
 - Replace the flat checkbox-list reviewer selection with an AntD TreeSelect
   grouped by TechnicalWorkingGroup (ndma / moag / met / dwa / uneswa + an
   "Unassigned" group for reviewers with no TWG). Multi-select enabled.
-- Move ComponentRasterPreview to the bottom of the modal (below the Message
+- Move ComponentRasterPreview to the bottom of the slide-in panel (below the Message
   textarea), so the critical inputs (reviewer, dates, subject, message) are
   front-and-centre.
 - Backend: add GET /admin/reviewers-tree that returns the reviewer list
@@ -45,7 +45,7 @@ Goal:
 **Page**: Version 4 (`3019:7977`)
 **Link**: https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=4252-172162&m=dev
 
-### Modal layout (604 × 840 px)
+### Slide-In layout (604 × 100% height px)
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -74,7 +74,7 @@ Goal:
 │                                                      │
 ├─────────────────────────────────────────────────────┤
 │                      [ Cancel ]  [ Create ]          │
-└─────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────┘ (Sticky Footer)
 ```
 
 ---
@@ -82,15 +82,15 @@ Goal:
 ## 3. Requirements
 
 ### User Acceptance Criteria
-- [ ] Clicking "Start new publication" on a list row opens the **AntD Modal** — no navigation.
+- [ ] Clicking "Start new publication" on a list row opens the **Slide-In panel** — no navigation.
 - [ ] "Select the reviewer" is an AntD **TreeSelect** in multi-select mode, reviewers grouped by TWG (NDMA / MoAg / MET / DWA / UNESWA / Unassigned).
 - [ ] Each leaf shows reviewer name; expandable to see email.
 - [ ] Publication Date and Review Deadline are **side-by-side** (flex row).
 - [ ] Subject pre-filled from `CREATE_PUBLICATION_MAIL.subject + year_month`.
 - [ ] Message is a **TinyEditor** (rich-text) pre-filled from `CREATE_PUBLICATION_MAIL.message`.
 - [ ] Each selected reviewer chip in the TreeSelect shows **name + TWG abbreviation**, e.g. `Jane Dlamini (NDMA)`.
-- [ ] `ComponentRasterPreview` is rendered **at the bottom** of the modal content.
-- [ ] Cancel closes the modal; Create submits and refreshes the list.
+- [ ] `ComponentRasterPreview` is rendered **at the bottom** of the slide-in content.
+- [ ] Cancel closes the slide-in; Create submits and refreshes the list.
 - [ ] Success toast: "New publication successfully created".
 - [ ] All existing field validations are preserved (reviewer required, dates required, subject required).
 
@@ -98,9 +98,9 @@ Goal:
 - [ ] New `GET /api/v1/admin/reviewers-tree` endpoint returns TWG-grouped tree (§4).
 - [ ] No changes to `POST /admin/publications` payload.
 - [ ] `/publications/create` page route **kept** (not removed).
-- [ ] New `StartPublicationModal` component at `frontend/src/components/Modals/StartPublicationModal.js`.
-- [ ] `publications/page.js` opens modal instead of `router.push(...)` for new publications.
-- [ ] Jest covers: modal open/close, tree shape, form submit, onSuccess refresh.
+- [ ] New `StartPublicationSlideIn` component at `frontend/src/components/Modals/StartPublicationSlideIn.js`.
+- [ ] `publications/page.js` opens slide-in instead of `router.push(...)` for new publications.
+- [ ] Jest covers: slide-in open/close, tree shape, form submit, onSuccess refresh.
 
 ---
 
@@ -244,15 +244,15 @@ re_path(
 
 ## 6. Frontend: Component Design
 
-### `StartPublicationModal` component
+### `StartPublicationSlideIn` component
 
-**Path**: `frontend/src/components/Modals/StartPublicationModal.js`
+**Path**: `frontend/src/components/Modals/StartPublicationSlideIn.js`
 
 ```
-StartPublicationModal (AntD Modal)
+StartPublicationSlideIn (Slide-In panel)
 ├── Props:
 │     geonode    — PublicationGeonode row {pk, title, year_month, download_url}
-│     open       — boolean
+│     visible    — boolean
 │     onClose    — () => void
 │     onSuccess  — () => void (triggers list refresh)
 ├── Local state:
@@ -311,7 +311,7 @@ const userTwgMap = useMemo(() => {
 ### Changes to `publications/page.js`
 
 ```diff
-+ import StartPublicationModal from "@/components/Modals/StartPublicationModal";
++ import StartPublicationSlideIn from "@/components/Modals/StartPublicationSlideIn";
 + const [selectedGeonode, setSelectedGeonode] = useState(null);
 
   // In ACTIONS column — "Start new publication" button:
@@ -319,9 +319,9 @@ const userTwgMap = useMemo(() => {
 +   onClick={() => setSelectedGeonode(record)}
 
   // At bottom of JSX (alongside existing embed Modal):
-+ <StartPublicationModal
++ <StartPublicationSlideIn
 +   geonode={selectedGeonode}
-+   open={!!selectedGeonode && !selectedGeonode.publication_id}
++   visible={!!selectedGeonode && !selectedGeonode.publication_id}
 +   onClose={() => setSelectedGeonode(null)}
 +   onSuccess={() => { setSelectedGeonode(null); setPreload(true); }}
 + />
@@ -333,11 +333,11 @@ const userTwgMap = useMemo(() => {
 
 ## 7. Decision Log
 
-### D-1: Modal over page navigation
+### D-1: Slide-In panel over page navigation
 
-**Decision**: Replace `/publications/create` navigation with an inline AntD Modal.
+**Decision**: Replace `/publications/create` navigation with a Slide-In drawer panel.
 
-**Rationale**: Figma design shows a compact modal. The form is short (5 fields). Keeps the admin in context (filter state, scroll position).
+**Rationale**: Figma design matches slide-ins used elsewhere. The form is short (5 fields). Keeps the admin in context (filter state, scroll position).
 
 **Retained**: `/publications/create` route is NOT removed — kept as fallback.
 
@@ -351,11 +351,11 @@ const userTwgMap = useMemo(() => {
 
 **Rationale**: Flat `/admin/reviewers` is paginated; fetching all pages client-side is fragile. Backend grouping is clean and the reviewer count is small (O(10–50)). Logic lives in one authoritative place.
 
-### D-3: TinyEditor is kept in the modal — ✅ **confirmed**
+### D-3: TinyEditor is kept in the slide-in — ✅ **confirmed**
 
-**Decision**: Keep `TinyEditor` for the Message field inside the modal (same as `PublicationForm.js`).
+**Decision**: Keep `TinyEditor` for the Message field inside the slide-in panel (same as `PublicationForm.js`).
 
-**Rationale**: Product confirmed rich-text is required for the notification email body. TinyEditor is already a project dependency; the added weight is acceptable. Height set to `200` for modal ergonomics (vs `300` on the full-page form).
+**Rationale**: Product confirmed rich-text is required for the notification email body. TinyEditor is already a project dependency; the added weight is acceptable. Height set to `200` for ergonomics (vs `300` on the full-page form).
 
 **Rejected**: `Input.TextArea` — plain text insufficient for formatted email body.
 
@@ -369,7 +369,7 @@ const userTwgMap = useMemo(() => {
 
 **Decision**: `onSuccess` → `setPreload(true)` to re-fetch the table.
 
-**Rationale**: No redirect needed when the form is in a modal. Refreshing the table is the clean SPA pattern.
+**Rationale**: No redirect needed when the form is in a slide-in. Refreshing the table is the clean SPA pattern.
 
 ---
 
@@ -392,22 +392,21 @@ const userTwgMap = useMemo(() => {
 sequenceDiagram
     actor Admin
     participant List as PublicationsPage
-    participant Modal as StartPublicationModal
-    participant BE as Backend
+    participant SlideIn as StartPublicationSlideIn
+    participant BE as Django API
 
     Admin->>List: Click "Start new publication" on row
-    List->>Modal: open=true, geonode={pk, year_month, ...}
-    Modal->>BE: GET /admin/reviewers-tree
-    BE-->>Modal: [{value:"twg-1", title:"NDMA", children:[...]}, ...]
-    Modal->>Admin: Render modal with TreeSelect + form
-    Admin->>Modal: Select reviewers, set dates, subject, message
-    Admin->>Modal: Click "Create"
-    Modal->>BE: POST /admin/publications {reviewers:[id,...], ...}
-    BE-->>Modal: 201 {id: 42}
-    Modal->>List: onSuccess() → setPreload(true)
-    List->>BE: GET /admin/cdi-geonode (refresh)
-    BE-->>List: updated rows
-    Modal-->>Admin: toast "New publication successfully created" + modal closes
+    List->>SlideIn: visible=true, geonode={pk, year_month, ...}
+    SlideIn->>BE: GET /admin/reviewers-tree
+    BE-->>SlideIn: [{value:"twg-1", title:"NDMA", children:[...]}, ...]
+    SlideIn->>Admin: Render slide-in with TreeSelect + form
+    Admin->>SlideIn: Select reviewers, set dates, subject, message
+    Admin->>SlideIn: Click "Create"
+    SlideIn->>BE: POST /admin/publications {reviewers:[id,...], ...}
+    BE-->>SlideIn: 201 {id: 42}
+    SlideIn->>List: onSuccess() → setPreload(true)
+    List-->>Admin: Reload table data
+    SlideIn-->>Admin: toast "New publication successfully created" + slide-in closes
 ```
 
 ---
@@ -419,6 +418,16 @@ sequenceDiagram
 - [ ] `POST /admin/publications` payload — **unchanged**.
 - [ ] `UserReviewerSerializer` — **unchanged**.
 - [ ] No DB migration required.
+
+---
+
+## 9.2 Manual Validation Checklist
+- [ ] Slide-In opens from list row; TreeSelect shows TWG groups + search
+- [ ] Selected chips display as `Name (TWG Abbrev)`
+- [ ] `ComponentRasterPreview` at bottom of slide-in
+- [ ] Multi-select enforces `>= 2` distinct TWGs validation rule
+- [ ] Successful submit → slide-in closes, list refreshes, toast shown
+- [ ] `/publications/create?cdi_geonode_id=<pk>` still works (regression)
 
 ---
 
@@ -442,8 +451,8 @@ sequenceDiagram
 
 | Test file | Cases |
 |-----------|-------|
-| `StartPublicationModal.test.js` (new) | Modal renders when `open=true`; TreeSelect renders grouped nodes; submit calls POST with `reviewers=[id,...]`; `onSuccess` called on 201; Cancel closes modal without submit |
-| `publications.test.js` (regression) | "Start new publication" click opens modal (not router.push); Validate click still routes |
+| `StartPublicationSlideIn.test.js` (new) | Slide-In renders when `visible=true`; TreeSelect renders grouped nodes; submit calls POST with `reviewers=[id,...]`; `onSuccess` called on 201; Cancel closes slide-in without submit |
+| `publications.test.js` (regression) | "Start new publication" click opens slide-in (not router.push); Validate click still routes |
 
 ### Manual
 
@@ -463,9 +472,9 @@ sequenceDiagram
 |------|-----|-----|-----------|
 | BE-1: `ReviewerTreeAPI` view + URL | 1h | 2h | High |
 | BE-2: Backend tests (`reviewers-tree`) | 1h | 1.5h | High |
-| FE-1: `StartPublicationModal` component | 3h | 5h | Medium |
-| FE-2: Wire modal into `publications/page.js` | 0.5h | 1h | High |
-| FE-3: Jest tests (modal + regression) | 1.5h | 2.5h | Medium |
+| FE-1: `StartPublicationSlideIn` component | 3h | 5h | Medium |
+| FE-2: Wire slide-in into `publications/page.js` | 0.5h | 1h | High |
+| FE-3: Jest tests (slide-in + regression) | 1.5h | 2.5h | Medium |
 | **Total** | **7h** | **12h** | |
 
 ---
@@ -475,7 +484,7 @@ sequenceDiagram
 | # | Question | Decision |
 |---|---|---|
 | Q1 | TreeSelect chip label | ✅ **Name + TWG abbreviation** — e.g. `Jane Dlamini (NDMA)` — via `labelRender` + `userTwgMap` |
-| Q2 | Message field in modal: TextArea or TinyEditor? | ✅ **TinyEditor kept** — same as full-page form, height=200 |
+| Q2 | Message field in slide-in: TextArea or TinyEditor? | ✅ **TinyEditor kept** — same as full-page form, height=200 |
 | Q3 | Issue number for commit | ⏳ **To be provided by team** before any `git commit` |
 
 ---

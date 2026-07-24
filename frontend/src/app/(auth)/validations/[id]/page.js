@@ -382,6 +382,7 @@ const ValidationDetailPage = () => {
               }`,
             );
           }}
+          disabled={record.reviews_completed === 0}
         >
           {record.status === "validated" ? "View" : "Validate"}
         </Button>
@@ -422,12 +423,12 @@ const ValidationDetailPage = () => {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <Button
+              {/* <Button
                 className="edm-reviews-action"
                 onClick={() => setPanelOpen(true)}
               >
                 Reviewer panel
-              </Button>
+              </Button> */}
               <Button type="link" className="edm-reviews-action">
                 Methodology
               </Button>

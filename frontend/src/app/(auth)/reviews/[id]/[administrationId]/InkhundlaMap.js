@@ -19,7 +19,11 @@ const FitBounds = ({ bounds, ReactLeaflet }) => {
   return null;
 };
 
-const InkhundlaMap = ({ administrationId }) => {
+const InkhundlaMap = ({
+  administrationId,
+  stationMarker = null,
+  iksMarkers = [],
+}) => {
   const { geoData } = useAppContext();
 
   if (!geoData) return null;
@@ -71,6 +75,35 @@ const InkhundlaMap = ({ administrationId }) => {
         {(ReactLeaflet) => (
           <>
             <ReactLeaflet.GeoJSON data={geoData} style={style} />
+            {stationMarker && (
+              <ReactLeaflet.CircleMarker
+                center={[stationMarker.lat, stationMarker.lon]}
+                radius={6}
+                pathOptions={{
+                  color: "#1E40AF",
+                  fillColor: "#3E5EB9",
+                  fillOpacity: 1,
+                  weight: 2,
+                }}
+              >
+                <ReactLeaflet.Tooltip>Weather station</ReactLeaflet.Tooltip>
+              </ReactLeaflet.CircleMarker>
+            )}
+            {iksMarkers.map((m, i) => (
+              <ReactLeaflet.CircleMarker
+                key={`iks-${i}`}
+                center={[m.lat, m.lon]}
+                radius={5}
+                pathOptions={{
+                  color: "#0E8F6E",
+                  fillColor: "#00B98E",
+                  fillOpacity: 1,
+                  weight: 2,
+                }}
+              >
+                <ReactLeaflet.Tooltip>IKS submission</ReactLeaflet.Tooltip>
+              </ReactLeaflet.CircleMarker>
+            ))}
             {boundsCoords && (
               <FitBounds bounds={boundsCoords} ReactLeaflet={ReactLeaflet} />
             )}

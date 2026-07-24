@@ -22,6 +22,9 @@ jest.mock("@/components", () => {
     ...actual,
     Can: ({ children }) => <>{children}</>,
     FeedbackSection: () => <div data-testid="feedback-section" />,
+    StartPublicationSlideIn: jest.fn(() => (
+      <div data-testid="mock-start-publication-slidein" />
+    )),
   };
 });
 
@@ -239,6 +242,7 @@ describe("PublicationsPage", () => {
   });
 
   it("renders proper action links and routes on click", async () => {
+    const { StartPublicationSlideIn: MockSlideIn } = require("@/components");
     render(<PublicationsPage />);
 
     await waitFor(() => {
@@ -249,14 +253,18 @@ describe("PublicationsPage", () => {
     // Click "Start new publication" for first row
     const startNewBtn = screen.getByText("Start new publication");
     fireEvent.click(startNewBtn);
-    expect(mockPush).toHaveBeenCalledWith(
-      "/publications/create?cdi_geonode_id=4021",
+    expect(MockSlideIn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visible: true,
+        geonode: expect.objectContaining({ pk: 4021 }),
+      }),
+      expect.anything(),
     );
 
     // Click "Validate" for row in_review status (redirects to publication detail page)
     const validateButtons = screen.getAllByText("Validate");
     fireEvent.click(validateButtons[0]); // row with id 101, status 1
-    expect(mockPush).toHaveBeenCalledWith("/publications/101");
+    expect(mockPush).toHaveBeenCalledWith("/validations/101");
 
     // Click "Validate" for row in_validation status (redirects to validation workflow page)
     fireEvent.click(validateButtons[1]); // row with id 102, status 2
@@ -387,5 +395,47 @@ describe("PublicationsPage", () => {
       expect(consoleErrorMock).toHaveBeenCalled();
     });
     consoleErrorMock.mockRestore();
+  });
+
+  it("opens StartPublicationSlideIn when 'Start new publication' is clicked", async () => {
+    const { StartPublicationSlideIn: MockSlideIn } = require("@/components");
+    render(<PublicationsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("step_0303_cdi_pct_rank_eswatini_202605"),
+      ).toBeInTheDocument();
+    });
+
+    const startBtn = screen.getAllByText("Start new publication")[0];
+    fireEvent.click(startBtn);
+
+    expect(MockSlideIn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visible: true,
+        geonode: expect.objectContaining({
+          pk: 4021,
+          title: "step_0303_cdi_pct_rank_eswatini_202605",
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("navigates to validation page when 'Validate' is clicked", async () => {
+    render(<PublicationsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("step_0305_cdi_pct_rank_eswatini_202607"),
+      ).toBeInTheDocument();
+    });
+
+    const validateBtn = screen.getAllByText("Validate")[1];
+    fireEvent.click(validateBtn);
+
+    const { useRouter } = require("next/navigation");
+    const router = useRouter();
+    expect(router.push).toHaveBeenCalledWith("/validations/102");
   });
 });

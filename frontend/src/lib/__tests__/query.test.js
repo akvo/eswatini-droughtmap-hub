@@ -65,12 +65,12 @@ describe("mergeAcceptedRows", () => {
 
   it("accepts the computed class for every high-confidence Inkhundla", () => {
     const merged = mergeAcceptedRows(base, highConfidence);
-    expect(merged[0]).toEqual({
+    expect(merged).toContainEqual({
       administration_id: 1,
       category: 3,
       reviewed: true,
     });
-    expect(merged[2]).toEqual({
+    expect(merged).toContainEqual({
       administration_id: 3,
       category: 5,
       reviewed: true,
@@ -79,7 +79,29 @@ describe("mergeAcceptedRows", () => {
 
   it("preserves existing suggestions for the other Tinkhundla", () => {
     const merged = mergeAcceptedRows(base, highConfidence);
-    expect(merged[1]).toEqual(base[1]);
+    expect(merged).toContainEqual(base[1]);
     expect(merged).toHaveLength(base.length);
+  });
+
+  // The bug: bulk accept adds nothing for Tinkhundla the reviewer has not
+  // touched yet — which is exactly the set bulk accept exists to clear.
+  it("appends accepted Tinkhundla that have no prior suggestion", () => {
+    const merged = mergeAcceptedRows(base, [
+      { administration_id: 9, cdi_class: 4 },
+    ]);
+    expect(merged).toHaveLength(base.length + 1);
+    expect(merged).toContainEqual({
+      administration_id: 9,
+      category: 4,
+      reviewed: true,
+    });
+  });
+
+  it("accepts everything from an empty base (first pass)", () => {
+    const merged = mergeAcceptedRows([], highConfidence);
+    expect(merged).toEqual([
+      { administration_id: 1, category: 3, reviewed: true },
+      { administration_id: 3, category: 5, reviewed: true },
+    ]);
   });
 });

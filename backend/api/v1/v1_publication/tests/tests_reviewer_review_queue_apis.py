@@ -46,13 +46,90 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertEqual(
             set(summary),
             {
-                "pending_review", "high_confidence", "tinkhundla_reviewed",
-                "overall_readiness", "reviews_collected", "status_breakdown",
+                "pending_review", "disagreements", "high_confidence",
+                "tinkhundla_reviewed", "overall_readiness",
+                "reviews_collected", "status_breakdown",
             },
         )
         self.assertTrue(summary["high_confidence"]["is_mock"])
         breakdown = {b["key"]: b["value"] for b in summary["status_breakdown"]}
         self.assertEqual(sum(breakdown.values()), self.total)
+
+    def _mark_reviewed(self, review, administration_ids):
+        review.suggestion_values = [
+            {"administration_id": a, "category": DroughtCategory.d1,
+             "reviewed": True}
+            for a in administration_ids
+        ]
+        review.save()
+
+    def test_tinkhundla_reviewed_is_my_own_not_the_validator_output(self):
+        """The card is the requesting reviewer's progress.
+
+        It used to read Publication.validated_values — the NDRMA validator's
+        output, which is empty for the whole review stage, so the card sat at
+        0 exactly when reviewers were using it.
+        """
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        self._mark_reviewed(
+            self.publication.reviews.get(user_id=self.user.id), adm_ids[:3]
+        )
+        # Validator output on every Inkhundla must not feed this card.
+        self.publication.validated_values = [
+            {"administration_id": a, "category": DroughtCategory.d2}
+            for a in adm_ids
+        ]
+        self.publication.save()
+
+        card = self.client.get(self.stats_url).data["summary"][
+            "tinkhundla_reviewed"
+        ]
+        self.assertEqual(card["value"], 3)
+        self.assertEqual(card["total"], self.total)
+
+    def test_pending_review_and_reviewed_are_halves_of_the_total(self):
+        """`pending_review` is outstanding review work, not the disagreement
+        count it used to carry under that title."""
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        self._mark_reviewed(
+            self.publication.reviews.get(user_id=self.user.id), adm_ids[:5]
+        )
+        summary = self.client.get(self.stats_url).data["summary"]
+        self.assertEqual(summary["tinkhundla_reviewed"]["value"], 5)
+        self.assertEqual(summary["pending_review"]["value"], self.total - 5)
+        self.assertEqual(
+            summary["pending_review"]["value"]
+            + summary["tinkhundla_reviewed"]["value"],
+            self.total,
+        )
+        # the disagreement signal keeps its own key
+        self.assertIn("disagreements", summary)
+
+    def test_reviews_collected_is_my_own_progress(self):
+        """Reviews collected + overall readiness are the requesting reviewer's
+        own progress out of the 59 Tinkhundla (Figma 25/59), never crossed with
+        other reviewers — a colleague finishing everything changes nothing.
+        """
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        self._mark_reviewed(
+            self.publication.reviews.get(user_id=self.user.id), adm_ids[:25]
+        )
+        other = self.publication.reviews.exclude(user_id=self.user.id).first()
+        if other:  # a reviewer who has done everything
+            self._mark_reviewed(other, adm_ids)
+
+        summary = self.client.get(self.stats_url).data["summary"]
+        self.assertEqual(summary["reviews_collected"]["value"], 25)
+        self.assertEqual(summary["reviews_collected"]["total"], self.total)
+        self.assertEqual(
+            summary["overall_readiness"], round(25 / self.total * 100)
+        )
 
     def test_stats_delta_is_null_without_previous_publication(self):
         earliest = Publication.objects.order_by("year_month").first()
@@ -108,7 +185,10 @@ class ReviewQueueAPIsTestCase(APITestCase):
         )
         self.assertEqual(
             res.data["summary"]["tinkhundla_reviewed"]["delta"]["direction"],
-            "flat",  # neither month is validated yet
+            # The card tracks THIS reviewer's own sign-offs (it used to track
+            # the validator's output): the new publication carries none yet,
+            # so their progress is down against last month.
+            "down",
         )
 
     # ---- administrations table ------------------------------------------
@@ -149,27 +229,46 @@ class ReviewQueueAPIsTestCase(APITestCase):
             all(r["confidence"]["band"] == "high" for r in res.data["data"])
         )
 
-    def test_table_reviewed_filter_counts_in_progress_reviews(self):
-        # The reviewer marks Tinkhundla one by one and submits the review only
-        # once they are all done — an Inkhundla reviewed inside a review that
-        # is still open must already count as reviewed.
-        review = self.publication.reviews.get(user_id=self.user.id)
-        adm_id = self.publication.initial_values[0]["administration_id"]
-        review.suggestion_values = [{
-            "administration_id": adm_id,
-            "category": DroughtCategory.d2,
-            "reviewed": True,
-        }]
-        review.is_completed = False
-        review.completed_at = None
+    def _submit(self, review, administration_id, category, reviewed=True):
+        vals = list(review.suggestion_values or [])
+        vals = [
+            v for v in vals if v["administration_id"] != administration_id
+        ]
+        vals.append({
+            "administration_id": administration_id,
+            "category": category,
+            "reviewed": reviewed,
+        })
+        review.suggestion_values = vals
         review.save()
+
+    def test_table_reviewed_filter_is_fully_reviewed(self):
+        """"Review completed" lists Tinkhundla EVERY assigned reviewer has
+        submitted (progress N/N) — not ones only some reviewers touched, which
+        made the chip identical to "All".
+        """
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        full, partial = adm_ids[0], adm_ids[1]
+        reviewers = list(self.publication.reviews.all())
+        for review in reviewers:  # everyone submits `full`
+            self._submit(review, full, DroughtCategory.d2)
+        # only the first reviewer submits `partial`
+        self._submit(reviewers[0], partial, DroughtCategory.d1)
 
         res = self.client.get(f"{self.table_url}?reviewed=true&page_size=100")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        rows = {r["administration_id"]: r for r in res.data["data"]}
-        self.assertIn(adm_id, rows)
-        self.assertEqual(rows[adm_id]["reviews"]["completed"], 1)
-        self.assertNotEqual(rows[adm_id]["review_status"], "not_started")
+        ids = {r["administration_id"] for r in res.data["data"]}
+        self.assertIn(full, ids)
+        if len(reviewers) > 1:
+            self.assertNotIn(partial, ids)  # N/N only; partial is excluded
+        self.assertTrue(
+            all(
+                r["review_status"] == "fully_reviewed"
+                for r in res.data["data"]
+            )
+        )
 
     def test_table_carries_my_own_suggestion(self):
         # D-Class shows the reviewer's own class; assigned_score is the
@@ -244,25 +343,68 @@ class ReviewQueueAPIsTestCase(APITestCase):
         res = self.client.get(self.detail_url(1))
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
-    # ---- map -------------------------------------------------------------
-    def test_map_reviewed_filter(self):
-        review = self.publication.reviews.first()
+    def test_detail_includes_cdi_block(self):
         adm_id = self.publication.initial_values[0]["administration_id"]
-        review.suggestion_values = [
+        res = self.client.get(self.detail_url(adm_id))
+        cdi = res.data["administration"]["cdi"]
+        self.assertEqual(
+            set(cdi), {"score", "category", "indicators", "history"}
+        )
+        self.assertEqual(
+            cdi["category"], res.data["administration"]["cdi_class"]
+        )
+        self.assertIsInstance(cdi["indicators"], list)
+        # history plots oldest -> newest: current month is the last point.
+        self.assertEqual(
+            cdi["history"][-1]["period"],
+            self.publication.year_month.strftime("%Y-%m"),
+        )
+
+    def test_detail_decision_history_is_own_reviewer_only(self):
+        adm_id = self.publication.initial_values[0]["administration_id"]
+        mine = self.publication.reviews.get(user_id=self.user.id)
+        mine.suggestion_values = [
             {"administration_id": adm_id, "category": DroughtCategory.d2,
-             "reviewed": True}
+             "reviewed": True, "comment": "mine"}
         ]
-        review.is_completed = True
-        review.completed_at = timezone.now()
-        review.save()
+        mine.save()
+        other = self.publication.reviews.exclude(
+            user_id=self.user.id
+        ).first()
+        if other:
+            other.suggestion_values = [
+                {"administration_id": adm_id, "category": DroughtCategory.d4,
+                 "reviewed": True, "comment": "theirs"}
+            ]
+            other.save()
+        res = self.client.get(self.detail_url(adm_id))
+        history = res.data["administration"]["decision_history"]
+        cats = [h["category"] for h in history]
+        self.assertIn(DroughtCategory.d2, cats)          # my own pick
+        self.assertNotIn(DroughtCategory.d4, cats)       # other reviewer's
+
+    # ---- map -------------------------------------------------------------
+    def test_map_reviewed_filter_is_fully_reviewed(self):
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        full, partial = adm_ids[0], adm_ids[1]
+        reviewers = list(self.publication.reviews.all())
+        for review in reviewers:
+            self._submit(review, full, DroughtCategory.d2)
+        self._submit(reviewers[0], partial, DroughtCategory.d1)
 
         res = self.client.get(f"{self.map_url}?reviewed=true")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+        ids = {r["administration_id"] for r in res.data["data"]}
+        self.assertIn(full, ids)
+        if len(reviewers) > 1:
+            self.assertNotIn(partial, ids)
         self.assertTrue(
-            all(r["review_status"] != "not_started" for r in res.data["data"])
-        )
-        self.assertIn(
-            adm_id, [r["administration_id"] for r in res.data["data"]]
+            all(
+                r["review_status"] == "fully_reviewed"
+                for r in res.data["data"]
+            )
         )
 
     # ---- auth ------------------------------------------------------------
