@@ -62,13 +62,10 @@ export const REGION_OPTIONS = Object.keys(REGION_COLOR).map((r) => ({
   label: r,
 }));
 
-// Climatic zones — values must match backend AdministrationZones.
-export const ZONE_OPTIONS = [
-  { value: "highveld", label: "Highveld" },
-  { value: "middleveld", label: "Middleveld" },
-  { value: "lowveld", label: "Lowveld" },
-  { value: "lubombo_plateau", label: "Lubombo Plateau" },
-];
+// Agro-ecological zones are NOT defined here. The backend owns the vocabulary
+// (AdministrationZones) and ships it on /config.js as `window.zones`, which
+// DynamicScript puts in AppContext. A hardcoded copy here had drifted to four
+// zones while the agro-ecological layer defines six.
 
 // Short D-code for the review-queue badges. The long-form drought copy lives in
 // DROUGHT_CATEGORY_LABEL; these are the chips (Figma 3117-42637).
