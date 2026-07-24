@@ -193,7 +193,9 @@ const InsightsShell = ({ children }) => {
               <SelectInkhundlaEmptyState />
             </div>
           )}
-          <FeedbackSection />
+          <div className="mt-6 [&>div]:mt-0">
+            <FeedbackSection />
+          </div>
         </div>
       </div>
     </div>

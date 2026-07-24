@@ -43,7 +43,7 @@ const PredictorAccordion = ({
       <Collapse
         bordered={false}
         expandIconPosition="end"
-        className="bg-transparent"
+        className="bg-transparent [&_.ant-collapse-content-box]:p-0"
       >
         {items.map((item) => (
           <Panel

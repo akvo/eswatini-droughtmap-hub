@@ -65,7 +65,7 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
       </div>
       <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
         <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 bg-[#9ca3af] block rounded-full"></span>{" "}
+          <span className="w-2.5 h-2.5 bg-brandTint block rounded-full border border-[#D2D2D2]"></span>{" "}
           No submission
         </span>
         {legend.map((item, idx) => (

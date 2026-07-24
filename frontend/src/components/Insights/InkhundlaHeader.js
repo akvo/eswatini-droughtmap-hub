@@ -57,7 +57,7 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   // "No data" overflows the fixed-width chip, so it shortens to N/A.
   const code = isNoData ? "N/A" : DROUGHT_CATEGORY_CODE[category];
   // none's configured colour is white — invisible behind the white glyph.
-  const chipBg = isNoData ? "#9ca3af" : DROUGHT_CATEGORY_COLOR[category];
+  const chipBg = isNoData ? "#ecf0f8" : DROUGHT_CATEGORY_COLOR[category];
   const label = zoneLabel(zone);
 
   return (
