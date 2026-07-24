@@ -82,14 +82,18 @@ All endpoints exist. **The queue endpoints are keyed by `publication_id`, the ro
 {
   "meta": { "publication_id": 4, "year_month": "2026-05", "total": 59 },
   "summary": {
-    "pending_review":      { "value": 37, "label": "disagreement detected / sign-off needed",
+    // reviewer-scoped: pending_review + tinkhundla_reviewed == total (D-9)
+    "pending_review":      { "value": 37, "label": "awaiting review / sign-off",
                              "delta": { "value": -4, "direction": "down" } },
+    "disagreements":       { "value": 3, "label": "disagreement detected",
+                             "delta": { "value": 1, "direction": "up" } },
     "high_confidence":     { "value": 18, "label": "ready to bulk-accept", "is_mock": true,
                              "delta": { "value": 2, "direction": "up" } },
-    "tinkhundla_reviewed": { "value": 4, "total": 59,
+    "tinkhundla_reviewed": { "value": 22, "total": 59,   // THIS reviewer's own sign-offs
                              "delta": { "value": 7, "direction": "up" } },
-    "overall_readiness":   43,
-    "reviews_collected":   { "value": 25, "total": 59 },
+    // submissions received / expected (rows x assigned reviewers) — NOT rows touched
+    "overall_readiness":   34,
+    "reviews_collected":   { "value": 61, "total": 177 },
     "status_breakdown": [
       { "key": "fully_reviewed",     "label": "Fully reviewed",     "value": 4,  "note": "ready to validate",
         "delta": { "value": 1, "direction": "up" } },
@@ -173,6 +177,27 @@ The metric cards render a trend arrow ("↑ 7%"). Nothing in `/stats` supports o
 `delta.value` is the change in the metric versus the previous publication (percentage points for `tinkhundla_reviewed`, absolute count otherwise); `direction` is `up` / `down` / `flat`. **`delta` is `null` when there is no previous publication** — the first month of the platform, or a deleted predecessor — and the card then renders no arrow at all. `build_stats` is already a pure function of a publication, so this is one extra call to it plus a lookup; no new query patterns.
 
 > ⚠️ Worth a second look with design: the Figma's arrow captions actually read **"of queue"** ("↑ 71% of queue | in progress"), which is a *share of the total*, not a period-over-period change — and a share is derivable client-side from `value / total` with no backend change. The card is built to render either: it shows `delta` when present, and the share is computed in the frontend for the caption. If the arrows turn out to mean share-of-queue only, D-8 can be dropped and the backend left alone.
+
+### D-9: Summary cards were measuring the wrong things — corrected 2026-07-24
+
+Found live on publications 316 (in review, 1 reviewer) and 317 (in validation, 3
+reviewers). Three defects in `build_stats`, all of the same shape: a card that
+looked plausible while reading a signal that wasn't what its title said.
+
+| Card | Was | Now |
+|---|---|---|
+| `tinkhundla_reviewed` | `validated_values` — the **NDRMA validator's** output, empty for the whole review stage (316 read **0** with 22 reviewed; 317 read **4** to a reviewer who had reviewed 0) | the requesting reviewer's own sign-offs |
+| `overall_readiness` / `reviews_collected` | rows with **≥1** submission (317 read **100%** with 1 of 3 reviewers started) | submissions received / expected (rows × assigned reviewers) → 317 = **34%** |
+| `pending_review` | the **disputed** count, under a title reading "not yet reviewed" (structurally 0 until two reviewers differ) | outstanding review work; disagreement moved to its own `disagreements` key so the signal is not lost |
+
+**Reviewer-scoped by design**: `pending_review + tinkhundla_reviewed == total`,
+and both agree with the queue header's `progress_review`. Team-level progress is
+what `status_breakdown` and readiness express — the two are no longer conflated.
+
+The readiness fix is deliberately *not* "rows fully reviewed": a row 2/3 reviewed
+should read as partial progress, not zero. Note the single-reviewer caveat from
+`#136` still applies — on a one-TWG publication one submission is 100% coverage,
+which is arithmetically right and editorially thin.
 
 ---
 

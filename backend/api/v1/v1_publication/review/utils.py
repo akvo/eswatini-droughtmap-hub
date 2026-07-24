@@ -285,6 +285,13 @@ def _tally(rows):
         "disputed": 0,
         "high_confidence": 0,
         "validated": 0,
+        "mine_reviewed": 0,
+        # Submissions actually received vs. expected (rows x assigned
+        # reviewers). Counting rows with *any* submission as "collected"
+        # reported 100% readiness on a publication where only one of three
+        # reviewers had started.
+        "submissions": 0,
+        "expected_submissions": 0,
     }
     for row in rows:
         counts[row["review_status"]] += 1
@@ -297,10 +304,16 @@ def _tally(rows):
             tally["high_confidence"] += 1
         if row["assigned_score"] is not None:
             tally["validated"] += 1
+        if is_mine_reviewed(row):
+            tally["mine_reviewed"] += 1
+        tally["submissions"] += row["reviews"]["completed"]
+        tally["expected_submissions"] += row["reviews"]["total"]
     tally.update(counts)
-    tally["reviews_collected"] = (
-        counts["fully_reviewed"] + counts["partially_reviewed"]
-    )
+    # The requesting reviewer's own outstanding rows, so `pending_review` and
+    # `tinkhundla_reviewed` are the two halves of one total (and agree with the
+    # queue header, which derives the same figure from `progress_review`).
+    # Team-level progress is expressed by `status_breakdown` / readiness.
+    tally["pending"] = tally["total"] - tally["mine_reviewed"]
     return tally
 
 
@@ -336,9 +349,18 @@ def build_stats(rows, previous_rows=None):
         return _delta(now[key], was[key] if was else None)
 
     return {
+        # Outstanding review work — NOT the disagreement count, which the card
+        # used to show while being titled "Pending review".
         "pending_review": {
+            "value": now["pending"],
+            "label": "awaiting review / sign-off",
+            "delta": delta("pending"),
+        },
+        # The disagreement signal keeps its own key so it is not lost now that
+        # `pending_review` means what its title says.
+        "disagreements": {
             "value": now["disputed"],
-            "label": "disagreement detected / sign-off needed",
+            "label": "disagreement detected",
             "delta": delta("disputed"),
         },
         "high_confidence": {
@@ -347,18 +369,22 @@ def build_stats(rows, previous_rows=None):
             "is_mock": True,
             "delta": delta("high_confidence"),
         },
+        # THIS reviewer's own progress. Previously read `validated`, i.e. the
+        # NDRMA validator's output, which is empty for the whole review stage.
         "tinkhundla_reviewed": {
-            "value": now["validated"],
+            "value": now["mine_reviewed"],
             "total": now["total"],
             "delta": _delta(
-                _pct(now["validated"], now["total"]),
-                _pct(was["validated"], was["total"]) if was else None,
+                _pct(now["mine_reviewed"], now["total"]),
+                _pct(was["mine_reviewed"], was["total"]) if was else None,
             ),
         },
-        "overall_readiness": _pct(now["reviews_collected"], now["total"]),
+        "overall_readiness": _pct(
+            now["submissions"], now["expected_submissions"]
+        ),
         "reviews_collected": {
-            "value": now["reviews_collected"],
-            "total": now["total"],
+            "value": now["submissions"],
+            "total": now["expected_submissions"],
         },
         "status_breakdown": [
             {

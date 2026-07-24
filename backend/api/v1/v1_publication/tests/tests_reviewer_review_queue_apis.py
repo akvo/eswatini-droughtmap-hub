@@ -46,13 +46,92 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertEqual(
             set(summary),
             {
-                "pending_review", "high_confidence", "tinkhundla_reviewed",
-                "overall_readiness", "reviews_collected", "status_breakdown",
+                "pending_review", "disagreements", "high_confidence",
+                "tinkhundla_reviewed", "overall_readiness",
+                "reviews_collected", "status_breakdown",
             },
         )
         self.assertTrue(summary["high_confidence"]["is_mock"])
         breakdown = {b["key"]: b["value"] for b in summary["status_breakdown"]}
         self.assertEqual(sum(breakdown.values()), self.total)
+
+    def _mark_reviewed(self, review, administration_ids):
+        review.suggestion_values = [
+            {"administration_id": a, "category": DroughtCategory.d1,
+             "reviewed": True}
+            for a in administration_ids
+        ]
+        review.save()
+
+    def test_tinkhundla_reviewed_is_my_own_not_the_validator_output(self):
+        """The card is the requesting reviewer's progress.
+
+        It used to read Publication.validated_values — the NDRMA validator's
+        output, which is empty for the whole review stage, so the card sat at
+        0 exactly when reviewers were using it.
+        """
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        self._mark_reviewed(
+            self.publication.reviews.get(user_id=self.user.id), adm_ids[:3]
+        )
+        # Validator output on every Inkhundla must not feed this card.
+        self.publication.validated_values = [
+            {"administration_id": a, "category": DroughtCategory.d2}
+            for a in adm_ids
+        ]
+        self.publication.save()
+
+        card = self.client.get(self.stats_url).data["summary"][
+            "tinkhundla_reviewed"
+        ]
+        self.assertEqual(card["value"], 3)
+        self.assertEqual(card["total"], self.total)
+
+    def test_pending_review_and_reviewed_are_halves_of_the_total(self):
+        """`pending_review` is outstanding review work, not the disagreement
+        count it used to carry under that title."""
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        self._mark_reviewed(
+            self.publication.reviews.get(user_id=self.user.id), adm_ids[:5]
+        )
+        summary = self.client.get(self.stats_url).data["summary"]
+        self.assertEqual(summary["tinkhundla_reviewed"]["value"], 5)
+        self.assertEqual(summary["pending_review"]["value"], self.total - 5)
+        self.assertEqual(
+            summary["pending_review"]["value"]
+            + summary["tinkhundla_reviewed"]["value"],
+            self.total,
+        )
+        # the disagreement signal keeps its own key
+        self.assertIn("disagreements", summary)
+
+    def test_overall_readiness_is_submission_coverage(self):
+        """One reviewer signing off every Inkhundla is 1/N of the work.
+
+        Readiness used to count any row with at least one submission as
+        collected, so a publication where one of three reviewers had started
+        reported 100% ready.
+        """
+        reviewers = self.publication.reviews.count()
+        self.publication.reviews.exclude(user_id=self.user.id).update(
+            suggestion_values=[]
+        )
+        self._mark_reviewed(
+            self.publication.reviews.get(user_id=self.user.id),
+            [v["administration_id"] for v in self.publication.initial_values],
+        )
+        summary = self.client.get(self.stats_url).data["summary"]
+        self.assertEqual(
+            summary["overall_readiness"], round(100 / reviewers)
+        )
+        self.assertEqual(summary["reviews_collected"]["value"], self.total)
+        self.assertEqual(
+            summary["reviews_collected"]["total"], self.total * reviewers
+        )
 
     def test_stats_delta_is_null_without_previous_publication(self):
         earliest = Publication.objects.order_by("year_month").first()
@@ -108,7 +187,10 @@ class ReviewQueueAPIsTestCase(APITestCase):
         )
         self.assertEqual(
             res.data["summary"]["tinkhundla_reviewed"]["delta"]["direction"],
-            "flat",  # neither month is validated yet
+            # The card tracks THIS reviewer's own sign-offs (it used to track
+            # the validator's output): the new publication carries none yet,
+            # so their progress is down against last month.
+            "down",
         )
 
     # ---- administrations table ------------------------------------------
