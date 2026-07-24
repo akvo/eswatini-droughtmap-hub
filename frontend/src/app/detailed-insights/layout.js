@@ -174,7 +174,7 @@ const InsightsShell = ({ children }) => {
                     onClick={() => router.push(opt.href)}
                     className={`py-3.5 text-sm font-bold relative transition-colors focus:outline-none -mb-px ${
                       active
-                        ? "text-[#3e5eb9] border-b-2 border-[#3e5eb9]"
+                        ? "text-primary border-b-2 border-primary"
                         : "text-neutral-400 hover:text-neutral-600"
                     }`}
                   >

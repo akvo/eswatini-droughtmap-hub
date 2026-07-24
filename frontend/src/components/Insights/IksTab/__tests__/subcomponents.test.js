@@ -88,16 +88,16 @@ describe("IksTab Subcomponents", () => {
           title="Soil moisture"
           subtitle="One answer per month"
           statesMap={() => "-"}
-          legend={[{ label: "Dry", color: "bg-[#b10d0b]" }]}
+          legend={[{ label: "Dry", color: "bg-[#B10D0B]" }]}
           weeks={["Jan"]}
         />,
       );
 
-      // #3e5eb9 is --primary-color: an unreported month must not read as the
+      // brandTint is the brand-grey: an unreported month must not read as the
       // most prominent thing on the row.
       const cell = screen.getByText("-").parentElement;
-      expect(cell).toHaveClass("bg-[#9ca3af]");
-      expect(cell).not.toHaveClass("bg-[#3e5eb9]");
+      expect(cell).toHaveClass("bg-brandTint");
+      expect(cell).not.toHaveClass("bg-primary");
     });
   });
 
@@ -121,7 +121,7 @@ describe("IksTab Subcomponents", () => {
       expect(screen.getByText("Blue swallows appearance")).toBeInTheDocument();
     });
 
-    it("renders ticked months as blue bg-[#3e5eb9] for Section B", () => {
+    it("renders ticked months as blue bg-primary for Section B", () => {
       const { container } = render(
         <IndicatorRow
           name="Indicator B"
@@ -131,11 +131,11 @@ describe("IksTab Subcomponents", () => {
         />,
       );
       const dot = container.querySelector(".rounded-\\[2px\\]");
-      expect(dot).toHaveClass("bg-[#3e5eb9]");
-      expect(dot).not.toHaveClass("bg-[#b10d0b]");
+      expect(dot).toHaveClass("bg-primary");
+      expect(dot).not.toHaveClass("bg-[#B10D0B]");
     });
 
-    it("renders ticked months as red bg-[#b10d0b] for Section C", () => {
+    it("renders ticked months as red bg-[#B10D0B] for Section C", () => {
       const { container } = render(
         <IndicatorRow
           name="Indicator C"
@@ -145,8 +145,8 @@ describe("IksTab Subcomponents", () => {
         />,
       );
       const dot = container.querySelector(".rounded-\\[2px\\]");
-      expect(dot).toHaveClass("bg-[#b10d0b]");
-      expect(dot).not.toHaveClass("bg-[#3e5eb9]");
+      expect(dot).toHaveClass("bg-[#B10D0B]");
+      expect(dot).not.toHaveClass("bg-primary");
     });
   });
 

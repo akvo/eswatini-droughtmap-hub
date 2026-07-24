@@ -26,7 +26,7 @@ const PredictorAccordion = ({
         <div className="flex items-center gap-1.5">
           <span
             className={`w-3.5 h-3.5 rounded-[1px] ${
-              section === "B" ? "bg-[#3E5EB9]" : "bg-[#B10D0B]"
+              section === "B" ? "bg-primary" : "bg-[#B10D0B]"
             }`}
           />
           <span className="text-neutral-500">Predictor observed</span>

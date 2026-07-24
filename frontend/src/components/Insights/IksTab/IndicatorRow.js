@@ -47,7 +47,7 @@ const IndicatorRow = ({
 
   // Section specific colors when observed (case-insensitive for safety)
   const activeBgColor =
-    (section || "").toUpperCase() === "B" ? "bg-[#3E5EB9]" : "bg-[#B10D0B]";
+    (section || "").toUpperCase() === "B" ? "bg-primary" : "bg-[#B10D0B]";
   // Inactive background is light blue/gray
   const inactiveBgColor = "bg-brandTint";
 
