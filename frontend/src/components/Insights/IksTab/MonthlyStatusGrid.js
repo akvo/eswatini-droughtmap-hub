@@ -22,7 +22,7 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
       <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
       <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
       <div
-        className="flex flex-wrap gap-2 border-y border-neutral-100 py-4"
+        className="flex flex-wrap gap-2 border-y border-[#D2D2D2] py-4"
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))`,

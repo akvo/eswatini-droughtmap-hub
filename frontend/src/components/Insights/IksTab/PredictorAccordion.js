@@ -12,7 +12,7 @@ const PredictorAccordion = ({
   indicatorsData = {},
   section,
 }) => (
-  <div className="pb-6">
+  <div>
     <div className="px-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white py-1">
       <div>
         <h4 className="text-sm font-bold text-neutral-700">{title}</h4>
@@ -28,12 +28,12 @@ const PredictorAccordion = ({
           <span className="text-neutral-500">Predictor observed</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded-[1px] bg-neutral-100 border border-neutral-200" />
+          <span className="w-3.5 h-3.5 rounded-[1px] bg-neutral-100 border border-[#D2D2D2]" />
           <span className="text-neutral-500">Predictor not observed</span>
         </div>
       </div>
     </div>
-    <div className="border-y border-neutral-200 bg-white">
+    <div className="border-t border-[#D2D2D2] bg-white">
       <Collapse
         bordered={false}
         expandIconPosition="end"
@@ -47,9 +47,9 @@ const PredictorAccordion = ({
               </span>
             }
             key={item.key}
-            className="border-b border-neutral-100 last:border-0 bg-white"
+            className="border-b border-[#D2D2D2] last:border-0 bg-white"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 border-t border-neutral-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 border-t border-[#D2D2D2]">
               {item.indicators.map((ind, i) => (
                 <IndicatorRow
                   key={i}

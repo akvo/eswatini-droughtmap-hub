@@ -52,7 +52,7 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   const label = zoneLabel(zone);
 
   return (
-    <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-6">
+    <div className="flex items-center justify-between border-b border-[#D2D2D2] px-4 py-6">
       <div>
         <h2 className="text-2xl font-bold text-neutral-800">
           {name} Inkhundla
