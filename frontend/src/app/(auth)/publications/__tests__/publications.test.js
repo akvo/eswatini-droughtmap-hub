@@ -264,7 +264,7 @@ describe("PublicationsPage", () => {
     // Click "Validate" for row in_review status (redirects to publication detail page)
     const validateButtons = screen.getAllByText("Validate");
     fireEvent.click(validateButtons[0]); // row with id 101, status 1
-    expect(mockPush).toHaveBeenCalledWith("/publications/101");
+    expect(mockPush).toHaveBeenCalledWith("/validations/101");
 
     // Click "Validate" for row in_validation status (redirects to validation workflow page)
     fireEvent.click(validateButtons[1]); // row with id 102, status 2

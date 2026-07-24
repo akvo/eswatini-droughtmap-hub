@@ -118,12 +118,9 @@ const PublicationsPage = () => {
       width: "20%",
       align: "right",
       render: (_, record) => {
-        const { pk, publication_id, detail_url, status } = record;
-        const isInValidation = status === PUBLICATION_STATUS.in_validation;
+        const { pk, publication_id, detail_url } = record;
         const routeURL = publication_id
-          ? isInValidation
-            ? `/validations/${publication_id}`
-            : `/publications/${publication_id}`
+          ? `/validations/${publication_id}`
           : `/publications/create?cdi_geonode_id=${pk}`;
 
         const actionLabel = publication_id
