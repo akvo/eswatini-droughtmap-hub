@@ -12,6 +12,7 @@ from api.v1.v1_iks.views import (
     IKSAdministrationListView,
     IKSPhotosView,
     IKSPhotoFileView,
+    IKSReviewSummaryView,
 )
 
 urlpatterns = [
@@ -24,6 +25,11 @@ urlpatterns = [
         r"^(?P<version>(v1))/iks/(?P<administration_id>[0-9]+)/stats$",
         IKSStatsView.as_view(),
         name="iks-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/iks/(?P<administration_id>[0-9]+)/review-summary$",
+        IKSReviewSummaryView.as_view(),
+        name="iks-review-summary",
     ),
     re_path(
         r"^(?P<version>(v1))/iks/(?P<administration_id>[0-9]+)/series$",

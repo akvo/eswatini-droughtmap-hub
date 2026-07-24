@@ -5,7 +5,6 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_VALUE,
-  ZONE_OPTIONS,
 } from "@/static/config";
 
 // Tint behind the D-code chip (Figma 4116:96303). Per-band derivations of
@@ -20,19 +19,16 @@ const BADGE_PARENT_BG = {
   [DROUGHT_CATEGORY_VALUE.none]: "#f9fafb",
 };
 
-const zoneLabel = (zone) => {
-  if (!zone) {
-    return "";
-  }
-  const normalized = zone.toLowerCase().trim();
-  const known = ZONE_OPTIONS.find((o) => o.value === normalized);
-  return known
-    ? known.label
-    : zone
-        .split("_")
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ");
-};
+// Zone slugs are their own label: "upper_middleveld" -> "Upper Middleveld".
+// No lookup table needed, so this component stays independent of the zone list.
+const zoneLabel = (zone) =>
+  (zone || "")
+    .toLowerCase()
+    .trim()
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
 /**
  * Inkhundla name + region · zone + validated CDI drought chip. Shared by the

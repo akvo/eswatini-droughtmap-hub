@@ -240,16 +240,54 @@ class RasterIndicatorTypes:
 
 
 class AdministrationZones(Enum):
-    # Highveld, Middleveld, Lowveld, Lubombo Plateau
+    """The six Eswatini agro-ecological zones.
+
+    These mirror the `LEVEL1` classes in
+    ``source/eswatini-ecological_regions.topojson``, which is the authoritative
+    layer. An earlier four-zone model merged Upper/Lower Middleveld and
+    Western/Eastern Lowveld, which no source actually distinguishes that way.
+    """
+
     HIGHVELD = "highveld"
-    MIDDLEVELD = "middleveld"
-    LOWVELD = "lowveld"
-    LUBOMBO_PLATEAU = "lubombo_plateau"
+    UPPER_MIDDLEVELD = "upper_middleveld"
+    LOWER_MIDDLEVELD = "lower_middleveld"
+    WESTERN_LOWVELD = "western_lowveld"
+    EASTERN_LOWVELD = "eastern_lowveld"
+    LUBOMBO_RANGE = "lubombo_range"
 
     @classmethod
     def choices(cls):
-        return [(tag.value, tag.name.capitalize()) for tag in cls]
+        return [(tag.value, ZONE_LABELS[tag.value]) for tag in cls]
 
     @classmethod
     def values(cls):
         return [tag.value for tag in cls]
+
+
+# Display labels — `name.capitalize()` cannot render "Upper Middleveld".
+ZONE_LABELS = {
+    AdministrationZones.HIGHVELD.value: "Highveld",
+    AdministrationZones.UPPER_MIDDLEVELD.value: "Upper Middleveld",
+    AdministrationZones.LOWER_MIDDLEVELD.value: "Lower Middleveld",
+    AdministrationZones.WESTERN_LOWVELD.value: "Western Lowveld",
+    AdministrationZones.EASTERN_LOWVELD.value: "Eastern Lowveld",
+    AdministrationZones.LUBOMBO_RANGE.value: "Lubombo Range",
+}
+
+# `LEVEL1` code in the agro-ecological topojson -> zone value.
+AGRO_LEVEL1_ZONES = {
+    "HV": AdministrationZones.HIGHVELD.value,
+    "MU": AdministrationZones.UPPER_MIDDLEVELD.value,
+    "ML": AdministrationZones.LOWER_MIDDLEVELD.value,
+    "LW": AdministrationZones.WESTERN_LOWVELD.value,
+    "LE": AdministrationZones.EASTERN_LOWVELD.value,
+    "LR": AdministrationZones.LUBOMBO_RANGE.value,
+}
+
+# The agro topojson carries no CRS. Its coordinates are metres in a Transverse
+# Mercator centred on 31E (verified: reprojecting to WGS84 reproduces the
+# Tinkhundla extent to ~0.004 deg).
+AGRO_TOPOJSON_CRS = (
+    "+proj=tmerc +lat_0=0 +lon_0=31 +k=1 +x_0=0 +y_0=0 "
+    "+datum=WGS84 +units=m +no_defs"
+)
