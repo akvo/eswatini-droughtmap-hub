@@ -266,3 +266,63 @@ docker compose exec backend python manage.py sync_publication_geonodes --categor
 # Run in dry-run mode (does not modify the database cache)
 docker compose exec backend python manage.py sync_publication_geonodes --dry-run
 ```
+
+### **Agro-ecological Zones: `assign_administration_zones`**
+
+Each Inkhundla carries an agro-ecological `zone`. There are **six** zones —
+Highveld, Upper/Lower Middleveld, Western/Eastern Lowveld and Lubombo Range —
+matching the `LEVEL1` classes in `backend/source/eswatini-ecological_regions.topojson`,
+which is the authoritative layer.
+
+The assignment is **derived from the polygons**, not curated by hand: the command
+overlays each Inkhundla with the agro layer and assigns the zone holding the
+largest share of its area.
+
+> ⚠️ **40 of 59 Tinkhundla straddle more than one zone** (Ngudzeni is ML 34% /
+> HV 33% / MU 25% / LW 8%), so the stored zone is the *dominant* one, not the
+> only one. The `share` recorded in the seed file is how dominant it is —
+> anything well under 90% is a genuinely mixed Inkhundla.
+
+```bash
+# Report what would change, touching nothing
+docker compose exec backend python manage.py assign_administration_zones --dry-run
+
+# Update Administration.zone in the database
+docker compose exec backend python manage.py assign_administration_zones
+
+# Also rewrite source/climatic-zones.json (the seed cache)
+docker compose exec backend python manage.py assign_administration_zones --write-seed
+```
+
+`source/climatic-zones.json` is a **generated cache**, not a source of truth. It
+exists so `generate_administrations_seeder` (and every test `setUp`) can read the
+assignment without running a spatial overlay. Regenerate it with `--write-seed`
+whenever the agro layer or the Inkhundla boundaries change — never edit it by hand.
+
+#### **Frontend zone vocabulary**
+
+The zone list is owned by the backend (`AdministrationZones`) and shipped to the
+browser on `/config.js` as `window.zones`, alongside the topojson. The frontend
+keeps **no** hardcoded copy. This means:
+
+> ⚠️ **After changing zones you must re-run `generate_config`**, or the browser
+> will keep serving the previous vocabulary from the cached `config.min.js`.
+
+```bash
+docker compose exec backend python manage.py generate_config
+```
+
+#### **Production setup order**
+
+Run these in order after deploying a release that changes zones or boundaries:
+
+```bash
+python manage.py migrate
+python manage.py assign_administration_zones --write-seed   # recompute + refresh the cache
+python manage.py generate_config                            # republish window.zones + topojson
+```
+
+`generate_config` writes `source/config/config.min.js`. If that file is stored on
+a container-local filesystem it is regenerated on demand by the `/config.js`
+endpoint, but running the command explicitly keeps the first request cheap and
+makes the zone change take effect immediately.

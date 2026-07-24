@@ -1,415 +1,415 @@
 [
   {
-    "administration_id": 3895892,
-    "name": "Piggs Peak",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 2331619,
-    "name": "Nkhaba",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 2408937,
-    "name": "Ntfonjeni",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 2254118,
-    "name": "Timphisini",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 9441820,
-    "name": "Motshane",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4564328,
-    "name": "Mbabane West",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 8661594,
-    "name": "Mbabane East",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 7642320,
-    "name": "Siphocosini",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "review"
-  },
-  {
-    "administration_id": 1992934,
-    "name": "Mayiwane",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 6836470,
-    "name": "Maphalaleni",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "review"
-  },
-  {
-    "administration_id": 6040072,
-    "name": "Madlangempisi",
-    "region": "Hhohho",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 5076096,
-    "name": "Ndzingeni",
-    "region": "Hhohho",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4588078,
-    "name": "Hhukwini",
-    "region": "Hhohho",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 1143153,
-    "name": "Lobamba",
-    "region": "Hhohho",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 1127026,
-    "name": "Mhlangatane",
-    "region": "Hhohho",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4291122,
-    "name": "Mhlambanyatsi",
-    "region": "Manzini",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4772971,
-    "name": "Mahlangatsha",
-    "region": "Manzini",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 5447814,
-    "name": "Mangcongco",
-    "region": "Manzini",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
     "administration_id": 1013010,
     "name": "Ngwempisi",
     "region": "Manzini",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 2765522,
-    "name": "Nkomiyahlaba",
-    "region": "Manzini",
-    "zone": "Highveld",
-    "confidence": "review"
-  },
-  {
-    "administration_id": 3984633,
-    "name": "Lamgabhi",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4448517,
-    "name": "Ludzeludze",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 3798015,
-    "name": "Lobamba Lomdzala",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 5084027,
-    "name": "Kukhanyeni",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 2042786,
-    "name": "Kwaluseni",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 6232782,
-    "name": "Manzini North",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 8370212,
-    "name": "Manzini South",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 7671430,
-    "name": "Mafutseni",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 1162668,
-    "name": "Mkhiweni",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 5085602,
-    "name": "Mtfongwaneni",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 2361184,
-    "name": "Ntondozi",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 3359886,
-    "name": "Nhlambeni",
-    "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "high"
+    "zone": "highveld",
+    "share": 100.0
   },
   {
     "administration_id": 1100004,
     "name": "Phondo",
     "region": "Manzini",
-    "zone": "Middleveld",
-    "confidence": "review"
-  },
-  {
-    "administration_id": 7130003,
-    "name": "Mhlume",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 5926129,
-    "name": "Dvokodvweni",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4867549,
-    "name": "Mpolonjeni",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 4871142,
-    "name": "Siphofaneni",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 8994467,
-    "name": "Sithobela",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 7408595,
-    "name": "Nkilongo",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 6513561,
-    "name": "Lubuli",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 3269571,
-    "name": "Gilgal",
-    "region": "Lubombo",
-    "zone": "Lowveld",
-    "confidence": "review"
-  },
-  {
-    "administration_id": 6372964,
-    "name": "Lomahasha",
-    "region": "Lubombo",
-    "zone": "Lubombo Plateau",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 1698924,
-    "name": "Matsanjeni North",
-    "region": "Lubombo",
-    "zone": "Lubombo Plateau",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 8303156,
-    "name": "Lugongolweni",
-    "region": "Lubombo",
-    "zone": "Lubombo Plateau",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 6207225,
-    "name": "Gege",
-    "region": "Shiselweni",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 1577102,
-    "name": "Maseyisini",
-    "region": "Shiselweni",
-    "zone": "Highveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 3359662,
-    "name": "Mbangweni",
-    "region": "Shiselweni",
-    "zone": "Highveld",
-    "confidence": "high"
+    "zone": "highveld",
+    "share": 100.0
   },
   {
     "administration_id": 1102838,
     "name": "Zombodze Emuva",
     "region": "Shiselweni",
-    "zone": "Highveld",
-    "confidence": "review"
+    "zone": "highveld",
+    "share": 93.9
   },
   {
-    "administration_id": 4387750,
-    "name": "Kubuta",
-    "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
+    "administration_id": 1127026,
+    "name": "Mhlangatane",
+    "region": "Hhohho",
+    "zone": "western_lowveld",
+    "share": 86.8
   },
   {
-    "administration_id": 1621199,
-    "name": "Nkwene",
-    "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
+    "administration_id": 1143153,
+    "name": "Lobamba",
+    "region": "Hhohho",
+    "zone": "upper_middleveld",
+    "share": 53.6
   },
   {
-    "administration_id": 5180809,
-    "name": "Mtsambama",
-    "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 1561472,
-    "name": "Ngudzeni",
-    "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 9690592,
-    "name": "Hosea",
-    "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
-  },
-  {
-    "administration_id": 6477278,
-    "name": "Shiselweni",
-    "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
+    "administration_id": 1162668,
+    "name": "Mkhiweni",
+    "region": "Manzini",
+    "zone": "lower_middleveld",
+    "share": 69.5
   },
   {
     "administration_id": 1318071,
     "name": "Sandleni",
     "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "high"
+    "zone": "upper_middleveld",
+    "share": 59.5
   },
   {
-    "administration_id": 9727196,
-    "name": "Kumethula",
+    "administration_id": 1561472,
+    "name": "Ngudzeni",
     "region": "Shiselweni",
-    "zone": "Middleveld",
-    "confidence": "review"
+    "zone": "lower_middleveld",
+    "share": 34.2
+  },
+  {
+    "administration_id": 1577102,
+    "name": "Maseyisini",
+    "region": "Shiselweni",
+    "zone": "highveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 1621199,
+    "name": "Nkwene",
+    "region": "Shiselweni",
+    "zone": "highveld",
+    "share": 47.7
+  },
+  {
+    "administration_id": 1698924,
+    "name": "Matsanjeni North",
+    "region": "Lubombo",
+    "zone": "lubombo_range",
+    "share": 91.5
+  },
+  {
+    "administration_id": 1992934,
+    "name": "Mayiwane",
+    "region": "Hhohho",
+    "zone": "lower_middleveld",
+    "share": 50.2
+  },
+  {
+    "administration_id": 2042786,
+    "name": "Kwaluseni",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 2254118,
+    "name": "Timphisini",
+    "region": "Hhohho",
+    "zone": "lower_middleveld",
+    "share": 67.5
+  },
+  {
+    "administration_id": 2331619,
+    "name": "Nkhaba",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 93.9
+  },
+  {
+    "administration_id": 2361184,
+    "name": "Ntondozi",
+    "region": "Manzini",
+    "zone": "highveld",
+    "share": 53.7
+  },
+  {
+    "administration_id": 2408937,
+    "name": "Ntfonjeni",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 49.9
+  },
+  {
+    "administration_id": 2765522,
+    "name": "Nkomiyahlaba",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 96.6
+  },
+  {
+    "administration_id": 3269571,
+    "name": "Gilgal",
+    "region": "Lubombo",
+    "zone": "western_lowveld",
+    "share": 78.9
+  },
+  {
+    "administration_id": 3359662,
+    "name": "Mbangweni",
+    "region": "Shiselweni",
+    "zone": "highveld",
+    "share": 99.5
+  },
+  {
+    "administration_id": 3359886,
+    "name": "Nhlambeni",
+    "region": "Manzini",
+    "zone": "lower_middleveld",
+    "share": 74.0
+  },
+  {
+    "administration_id": 3798015,
+    "name": "Lobamba Lomdzala",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 85.5
+  },
+  {
+    "administration_id": 3895892,
+    "name": "Piggs Peak",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 77.6
+  },
+  {
+    "administration_id": 3984633,
+    "name": "Lamgabhi",
+    "region": "Manzini",
+    "zone": "highveld",
+    "share": 77.0
+  },
+  {
+    "administration_id": 4291122,
+    "name": "Mhlambanyatsi",
+    "region": "Manzini",
+    "zone": "highveld",
+    "share": 99.1
+  },
+  {
+    "administration_id": 4387750,
+    "name": "Kubuta",
+    "region": "Shiselweni",
+    "zone": "upper_middleveld",
+    "share": 76.0
+  },
+  {
+    "administration_id": 4448517,
+    "name": "Ludzeludze",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 79.7
+  },
+  {
+    "administration_id": 4564328,
+    "name": "Mbabane West",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 95.1
+  },
+  {
+    "administration_id": 4588078,
+    "name": "Hhukwini",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 96.9
+  },
+  {
+    "administration_id": 4772971,
+    "name": "Mahlangatsha",
+    "region": "Manzini",
+    "zone": "highveld",
+    "share": 97.8
+  },
+  {
+    "administration_id": 4867549,
+    "name": "Mpolonjeni",
+    "region": "Lubombo",
+    "zone": "eastern_lowveld",
+    "share": 55.9
+  },
+  {
+    "administration_id": 4871142,
+    "name": "Siphofaneni",
+    "region": "Lubombo",
+    "zone": "western_lowveld",
+    "share": 89.4
+  },
+  {
+    "administration_id": 5076096,
+    "name": "Ndzingeni",
+    "region": "Hhohho",
+    "zone": "lower_middleveld",
+    "share": 44.7
+  },
+  {
+    "administration_id": 5084027,
+    "name": "Kukhanyeni",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 79.1
+  },
+  {
+    "administration_id": 5085602,
+    "name": "Mtfongwaneni",
+    "region": "Manzini",
+    "zone": "lower_middleveld",
+    "share": 79.6
+  },
+  {
+    "administration_id": 5180809,
+    "name": "Mtsambama",
+    "region": "Shiselweni",
+    "zone": "highveld",
+    "share": 64.8
+  },
+  {
+    "administration_id": 5447814,
+    "name": "Mangcongco",
+    "region": "Manzini",
+    "zone": "highveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 5926129,
+    "name": "Dvokodvweni",
+    "region": "Lubombo",
+    "zone": "western_lowveld",
+    "share": 59.0
+  },
+  {
+    "administration_id": 6040072,
+    "name": "Madlangempisi",
+    "region": "Hhohho",
+    "zone": "western_lowveld",
+    "share": 56.3
   },
   {
     "administration_id": 6083691,
     "name": "Sigwe",
     "region": "Shiselweni",
-    "zone": "Lowveld",
-    "confidence": "review"
+    "zone": "western_lowveld",
+    "share": 60.3
   },
   {
-    "administration_id": 9450137,
-    "name": "Matsanjeni South",
+    "administration_id": 6207225,
+    "name": "Gege",
     "region": "Shiselweni",
-    "zone": "Lowveld",
-    "confidence": "high"
+    "zone": "highveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 6232782,
+    "name": "Manzini North",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 6372964,
+    "name": "Lomahasha",
+    "region": "Lubombo",
+    "zone": "lubombo_range",
+    "share": 99.2
+  },
+  {
+    "administration_id": 6477278,
+    "name": "Shiselweni",
+    "region": "Shiselweni",
+    "zone": "upper_middleveld",
+    "share": 72.2
+  },
+  {
+    "administration_id": 6513561,
+    "name": "Lubuli",
+    "region": "Lubombo",
+    "zone": "eastern_lowveld",
+    "share": 93.7
+  },
+  {
+    "administration_id": 6836470,
+    "name": "Maphalaleni",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 57.8
+  },
+  {
+    "administration_id": 7130003,
+    "name": "Mhlume",
+    "region": "Lubombo",
+    "zone": "western_lowveld",
+    "share": 61.1
+  },
+  {
+    "administration_id": 7408595,
+    "name": "Nkilongo",
+    "region": "Lubombo",
+    "zone": "eastern_lowveld",
+    "share": 80.7
+  },
+  {
+    "administration_id": 7642320,
+    "name": "Siphocosini",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 7671430,
+    "name": "Mafutseni",
+    "region": "Manzini",
+    "zone": "lower_middleveld",
+    "share": 97.2
   },
   {
     "administration_id": 7689210,
     "name": "Somntongo",
     "region": "Shiselweni",
-    "zone": "Lowveld",
-    "confidence": "high"
+    "zone": "eastern_lowveld",
+    "share": 82.6
+  },
+  {
+    "administration_id": 8303156,
+    "name": "Lugongolweni",
+    "region": "Lubombo",
+    "zone": "lubombo_range",
+    "share": 77.9
+  },
+  {
+    "administration_id": 8370212,
+    "name": "Manzini South",
+    "region": "Manzini",
+    "zone": "upper_middleveld",
+    "share": 91.1
+  },
+  {
+    "administration_id": 8661594,
+    "name": "Mbabane East",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 99.9
+  },
+  {
+    "administration_id": 8994467,
+    "name": "Sithobela",
+    "region": "Lubombo",
+    "zone": "western_lowveld",
+    "share": 81.3
+  },
+  {
+    "administration_id": 9441820,
+    "name": "Motshane",
+    "region": "Hhohho",
+    "zone": "highveld",
+    "share": 100.0
+  },
+  {
+    "administration_id": 9450137,
+    "name": "Matsanjeni South",
+    "region": "Shiselweni",
+    "zone": "western_lowveld",
+    "share": 80.3
+  },
+  {
+    "administration_id": 9690592,
+    "name": "Hosea",
+    "region": "Shiselweni",
+    "zone": "lower_middleveld",
+    "share": 55.9
+  },
+  {
+    "administration_id": 9727196,
+    "name": "Kumethula",
+    "region": "Shiselweni",
+    "zone": "highveld",
+    "share": 83.5
   }
 ]

@@ -20,7 +20,7 @@ import AssessmentSummary from "./AssessmentSummary";
 import BulkAcceptBanner from "./BulkAcceptBanner";
 import BulkAcceptModal from "./BulkAcceptModal";
 import ReviewQueueTable from "./ReviewQueueTable";
-import { buildQueueQuery, mergeAcceptedRows } from "./query";
+import { buildQueueQuery, mergeAcceptedRows } from "@/lib/query";
 
 const ReviewerMap = dynamic(() => import("@/components/Map/ReviewerMap"), {
   ssr: false,
@@ -130,9 +130,10 @@ const ReviewQueue = ({
     }
     try {
       setBulkLoading(true);
-      const base = review?.suggestion_values?.length
-        ? review.suggestion_values
-        : review?.publication?.initial_values || [];
+      // The reviewer's own current suggestions; the accepted high-confidence
+      // rows are appended by mergeAcceptedRows (upsert), so `base` no longer
+      // needs to be pre-seeded from initial_values.
+      const base = review?.suggestion_values || [];
       const suggestion_values = mergeAcceptedRows(base, highRows);
       await api("PUT", `/reviewer/review/${review.id}`, { suggestion_values });
       setBulkOpen(false);

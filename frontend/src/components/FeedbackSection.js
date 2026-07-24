@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Button } from "antd";
 
+// No outer margin: spacing to the previous section is the layout's job, so the
+// CTA sits at whatever gap its container sets (24px on the review queue). The
+// old `mt-4` stacked on top of that gap and pushed it to 40px.
 const FeedbackSection = () => {
   return (
-    <div className="relative w-full overflow-hidden bg-primary p-8 flex items-start justify-between gap-8 mt-4">
+    <div className="relative w-full overflow-hidden bg-primary p-8 flex items-start justify-between gap-8">
       {/* Topo pattern: source is gray lines on white, so invert + screen
           drops the white bg (blue preserved) and shows lines as faint highlights */}
       <div
