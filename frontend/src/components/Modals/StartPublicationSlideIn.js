@@ -12,6 +12,7 @@ import {
   Row,
   Spin,
 } from "antd";
+import { CalendarOutlined } from "@ant-design/icons";
 import { SubmitButton } from "../Buttons";
 import TinyEditor from "../TinyEditor";
 import ComponentRasterPreview from "../ComponentRasterPreview";
@@ -126,9 +127,9 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
       />
 
       {/* Slide-in Container */}
-      <div className="relative w-[604px] h-screen bg-white flex flex-col shadow-2xl z-10 border-l border-neutral-300">
+      <div className="relative w-[604px] h-screen bg-white flex flex-col shadow-2xl z-10 border-l border-[#D2D2D2]">
         {/* Sticky Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#D2D2D2] sticky top-0 bg-white z-10">
           <span className="text-base font-semibold text-neutral-800">
             Start new publication
           </span>
@@ -142,7 +143,7 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
 
         {/* Form Body Area */}
         <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
-          <p className="text-[#606060] text-sm border-b border-neutral-100 pb-4">
+          <p className="text-[#606060] text-sm border-b border-[#D2D2D2] pb-4">
             Pick the sector and write a clear title + description. The Protocol
             ID is auto-generated from the sector on save.
           </p>
@@ -218,6 +219,10 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
                       <DatePicker
                         picker="month"
                         style={{ width: "100%" }}
+                        prefix={
+                          <CalendarOutlined className="text-neutral-300" />
+                        }
+                        suffixIcon={null}
                         onChange={(date) => {
                           if (date) {
                             form.setFieldValue(
@@ -248,7 +253,13 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
                       help={errors?.due_date?.join(", ")}
                       validateStatus={errors?.due_date ? "error" : null}
                     >
-                      <DatePicker style={{ width: "100%" }} />
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        prefix={
+                          <CalendarOutlined className="text-neutral-300" />
+                        }
+                        suffixIcon={null}
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -280,7 +291,7 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
                   )}
                 </Form.Item>
 
-                <div className="mt-4 border-t border-neutral-100 pt-4">
+                <div className="mt-4 border-t border-[#D2D2D2] pt-4">
                   <ComponentRasterPreview yearMonth={yearMonth} />
                 </div>
               </>
@@ -289,7 +300,7 @@ const StartPublicationSlideIn = ({ geonode, visible, onClose, onSuccess }) => {
         </div>
 
         {/* Sticky Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-200 sticky bottom-0 bg-white z-10">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#D2D2D2] sticky bottom-0 bg-white z-10">
           <Button onClick={onClose} disabled={loading}>
             Cancel
           </Button>
