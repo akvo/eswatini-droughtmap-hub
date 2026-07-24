@@ -15,20 +15,24 @@ const PredictorAccordion = ({
   <div>
     <div className="px-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white py-1">
       <div>
-        <h4 className="text-sm font-bold text-neutral-700">{title}</h4>
-        <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>
+        <h4 className="text-[16px] font-bold text-neutral-800 leading-[24px] mb-0">
+          {title}
+        </h4>
+        <p className="text-[14px] text-[#606060] font-normal mt-1 mb-0 leading-[21px]">
+          {subtitle}
+        </p>
       </div>
       <div className="flex items-center gap-4 text-xs font-medium self-start sm:self-center">
         <div className="flex items-center gap-1.5">
           <span
             className={`w-3.5 h-3.5 rounded-[1px] ${
-              section === "B" ? "bg-[#3e5eb9]" : "bg-[#b10d0b]"
+              section === "B" ? "bg-[#3E5EB9]" : "bg-[#B10D0B]"
             }`}
           />
           <span className="text-neutral-500">Predictor observed</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded-[1px] bg-neutral-100 border border-[#D2D2D2]" />
+          <span className="w-3.5 h-3.5 rounded-[1px] bg-brandTint border border-[#D2D2D2]" />
           <span className="text-neutral-500">Predictor not observed</span>
         </div>
       </div>

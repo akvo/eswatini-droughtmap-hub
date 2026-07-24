@@ -19,8 +19,12 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
   const labels = weeks && weeks.length > 0 ? weeks : MONTHS;
   return (
     <div className="p-4 bg-white">
-      <h4 className="text-sm font-bold text-neutral-800 mb-1">{title}</h4>
-      <p className="text-xs text-neutral-400 mb-3">{subtitle}</p>
+      <h4 className="text-[16px] font-bold text-neutral-800 leading-[24px] mb-0">
+        {title}
+      </h4>
+      <p className="text-[14px] text-[#606060] font-normal mt-1 mb-3 leading-[21px]">
+        {subtitle}
+      </p>
       <div
         className="flex flex-wrap gap-2 border-y border-[#D2D2D2] py-4"
         style={{
@@ -33,7 +37,7 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
           // No submission: grey, not the brand blue — an empty month must not
           // outrank a reported one for attention. Same grey as the No-data
           // drought badge in IksTab.
-          let colorClass = "bg-[#9ca3af] text-white";
+          let colorClass = "bg-brandTint text-neutral-400";
           if (state === "W" || state === "G") {
             colorClass = "bg-[#12b76a] text-white";
           } else if (state === "M" || state === "S") {

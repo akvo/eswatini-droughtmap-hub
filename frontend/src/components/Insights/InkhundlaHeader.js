@@ -42,6 +42,15 @@ const zoneLabel = (zone) => {
  * `dclass` is the raw category from the latest published publication, or null
  * when no published month covers this inkhundla — which renders as No data.
  */
+const readableInk = (hex = "#ffffff") => {
+  const value = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) =>
+    parseInt(value.slice(i, i + 2) || "0", 16),
+  );
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#000000" : "#ffffff";
+};
+
 const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   const category = dclass ?? DROUGHT_CATEGORY_VALUE.none;
   const isNoData = category === DROUGHT_CATEGORY_VALUE.none;
@@ -52,12 +61,12 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   const label = zoneLabel(zone);
 
   return (
-    <div className="flex items-center justify-between border-b border-[#D2D2D2] px-4 py-6">
-      <div>
-        <h2 className="text-2xl font-bold text-neutral-800">
+    <div className="flex items-start justify-between border-b border-[#D2D2D2] px-4 py-6">
+      <div className="flex flex-col gap-[12px]">
+        <h2 className="text-2xl font-bold text-neutral-800 leading-[30px] mb-0">
           {name} Inkhundla
         </h2>
-        <p className="text-sm text-neutral-400 font-medium">
+        <p className="text-[20px] font-medium text-[#606060] leading-[30px] mb-0">
           {region}
           {label ? ` · ${label}` : ""}
         </p>
@@ -70,7 +79,10 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
           style={{ backgroundColor: chipBg }}
           className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
         >
-          <p className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center text-white whitespace-nowrap mb-0">
+          <p
+            style={{ color: readableInk(chipBg) }}
+            className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center whitespace-nowrap mb-0"
+          >
             {code}
           </p>
         </div>

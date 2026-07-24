@@ -23,6 +23,7 @@ import TabLoader from "../TabLoader";
 import KpiMetricCard from "./KpiMetricCard";
 import MonthlyStatusGrid from "./MonthlyStatusGrid";
 import { formatMonthLabel } from "./IndicatorRow";
+import { CalendarOutlined, DownOutlined } from "@ant-design/icons";
 
 import PredictorAccordion from "./PredictorAccordion";
 import {
@@ -310,7 +311,7 @@ const IksTab = ({
       type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { lineStyle: { color: "#f3f4f6" } },
+      splitLine: { lineStyle: { color: "#e5e7eb", type: "dashed" } },
       axisLabel: { color: "#6b7280" },
     },
     series: activitySeries.filter(
@@ -405,21 +406,24 @@ const IksTab = ({
           </div>
         )}
 
-        {/* Line Chart Panel */}
-        <div className="px-4 py-6 border-b border-[#D2D2D2]">
-          <div className="flex items-center justify-between border-b border-[#D2D2D2] pb-4 mb-6">
+        <div className="px-4 py-4 border-b border-[#D2D2D2]">
+          <div className="flex items-center justify-between border-b border-[#D2D2D2] pb-4 mb-4">
             <div>
-              <h4 className="text-sm font-bold text-neutral-800">
+              <h4 className="text-[16px] font-bold text-neutral-800 leading-[30px] mb-0">
                 Indicator activity per monthly report
               </h4>
-              <p className="text-xs text-neutral-400">
+              <p className="text-[14px] text-[#606060] font-normal mt-1 mb-0">
                 How many rain-leaning vs extreme weather-leaning indicators the
                 citizen scientist ticked each month
               </p>
             </div>
-            <span className="text-xs text-neutral-400 font-medium border border-[#D2D2D2] px-2 py-1 rounded bg-neutral-50">
-              {dateRange}
-            </span>
+            <div className="flex items-center gap-2 border border-[#D2D2D2] px-3 py-1.5 rounded bg-white text-sm text-[#333] shrink-0 select-none">
+              <CalendarOutlined className="text-neutral-400" />
+              <span className="font-normal text-[14px] leading-none">
+                {dateRange}
+              </span>
+              {/* <DownOutlined className="text-neutral-400 text-[10px] ml-1" /> */}
+            </div>
           </div>
           {/* Interactive Checkbox Filters */}
           <div className="flex items-center gap-6 mb-4">
@@ -533,15 +537,14 @@ const IksTab = ({
         </div>
       </div>
 
-      {/* Photos Grid Carousel */}
-      <div className="bg-white border border-[#D2D2D2] py-6">
-        <div className="flex items-center justify-between border-b border-[#D2D2D2] px-4 pb-4 mb-6">
+      <div className="bg-white border border-[#D2D2D2] py-4">
+        <div className="flex items-center justify-between border-b border-[#D2D2D2] px-4 pb-4 mb-4">
           <div>
-            <h4 className="text-sm font-bold text-neutral-800">
+            <h4 className="text-[20px] font-bold text-neutral-800 leading-[30px] mb-0">
               Submitted photos
             </h4>
-            <p className="text-xs text-neutral-400 mb-0">
-              Photos uploaded with monthly Kobo reports | click to view full |{" "}
+            <p className="text-sm text-[#606060] font-normal mt-1 mb-0">
+              Photos uploaded with monthly Kobo reports · click to view full ·{" "}
               {photos.length} photos found
             </p>
           </div>

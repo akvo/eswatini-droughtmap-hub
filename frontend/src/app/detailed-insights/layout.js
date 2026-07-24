@@ -135,10 +135,10 @@ const InsightsShell = ({ children }) => {
               still overlaps the header by the same 48px as before. */}
           <div className="relative z-10 bg-white border border-[#D2D2D2] border-b-0 -mt-20">
             {/* Card Header (Explore insights title + Inkhundla select + Export) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-[#D2D2D2] gap-4 bg-white">
-              <span className="text-neutral-800 font-extrabold text-base">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-4 border-b border-[#D2D2D2] gap-4 bg-white">
+              <h3 className="text-[20px] font-bold text-neutral-800 leading-[30px] mb-0">
                 Explore insights
-              </span>
+              </h3>
               <div className="flex items-center gap-3">
                 <Select
                   showSearch
