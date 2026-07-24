@@ -12,6 +12,11 @@ export const HOME_PAGE = {
 
 export const PAGE_SIZE = 10;
 
+// Mirrors backend MIN_TWGS_PER_PUBLICATION. A publication whose reviewers all
+// sit in one Technical Working Group has reviewers_required = 1, so every
+// Inkhundla reaches "ready" on a single institution's response.
+export const MIN_TWGS_PER_PUBLICATION = 2;
+
 export const ACTIVITY_STATUS = {
   draft: 1,
   active: 2,
@@ -57,13 +62,10 @@ export const REGION_OPTIONS = Object.keys(REGION_COLOR).map((r) => ({
   label: r,
 }));
 
-// Climatic zones — values must match backend AdministrationZones.
-export const ZONE_OPTIONS = [
-  { value: "highveld", label: "Highveld" },
-  { value: "middleveld", label: "Middleveld" },
-  { value: "lowveld", label: "Lowveld" },
-  { value: "lubombo_plateau", label: "Lubombo Plateau" },
-];
+// Agro-ecological zones are NOT defined here. The backend owns the vocabulary
+// (AdministrationZones) and ships it on /config.js as `window.zones`, which
+// DynamicScript puts in AppContext. A hardcoded copy here had drifted to four
+// zones while the agro-ecological layer defines six.
 
 // Short D-code for the review-queue badges. The long-form drought copy lives in
 // DROUGHT_CATEGORY_LABEL; these are the chips (Figma 3117-42637).
@@ -163,6 +165,34 @@ export const PUBLICATION_STATUS_OPTIONS = [
     label: "Published",
     color: "green",
   },
+];
+
+// Display-only mapping for the CDI publication list page (D-4, D-6).
+// Key is String(record.status ?? null); not used by any other consumer.
+export const PUBLICATION_DISPLAY_STATUS = {
+  null: { label: "Not yet started", color: "#667085" },
+  [String(PUBLICATION_STATUS.in_review)]: {
+    label: "Awaiting review",
+    color: "#f39c12",
+  },
+  [String(PUBLICATION_STATUS.in_validation)]: {
+    label: "Ready",
+    color: "#ffcd37",
+  },
+  [String(PUBLICATION_STATUS.published)]: {
+    label: "Validated",
+    color: "#12b76a",
+  },
+};
+
+export const PUBLICATION_TAB_FILTERS = [
+  { label: "All", value: "all" },
+  // Backend sentinel: GeoNode resources with no Publication yet. Must be a
+  // real string — a null value serializes to "null" and the API rejects it.
+  { label: "Not yet started", value: "not_yet_started" },
+  { label: "Awaiting review", value: PUBLICATION_STATUS.in_review },
+  { label: "Ready", value: PUBLICATION_STATUS.in_validation },
+  { label: "Validated", value: PUBLICATION_STATUS.published },
 ];
 
 export const REVIEWER_MAP_FILTER = [
@@ -419,6 +449,51 @@ export const TWG_LOGOS = [
     image: "/images/logo-met-2.jpg",
     alt: "MET (Meteorological Office) 2",
     url: "https://www.uneswa.sz/",
+  },
+];
+
+// CDI-E sub-indicator display labels for the individual review page.
+// API sends { key, value } only (WX-3 D-4); the label/order live here.
+// G9: EVI2 is shown as "NDVI" (its equivalent successor) per product.
+export const CDI_SUBINDICATOR_LABELS = {
+  spi: "Precipitation (CHIRPS — SPI)",
+  sm: "Soil moisture",
+  evi2: "NDVI",
+  esi: "Evaporative Stress Index",
+};
+
+// The AC's "5 most important" IKS indicators for the review card — a curated
+// subset of the 29 Kobo choices. `slugs` are the Kobo choice names that count
+// as this indicator being reported; the backend returns `indicators_present`
+// (reported slugs) and the card ticks each row whose slug set intersects it.
+export const IKS_REVIEW_INDICATORS = [
+  {
+    key: "crescent_moon",
+    label: "Crescent moon tilt",
+    slugs: ["17__m_c___moon__crescent__appears_tilted"],
+  },
+  {
+    key: "butterfly",
+    label: "Mass butterfly emergence",
+    slugs: ["4__b___too_many_butterfly__bunch___emavi"],
+  },
+  {
+    key: "siganganyane",
+    label: "Siganganyane fruiting",
+    slugs: [
+      "16__ll___live_long_lannea_discolor_high_",
+      "6__ll___live_long_high_fruitage__kutsela",
+    ],
+  },
+  {
+    key: "frog",
+    label: "Frog croaking",
+    slugs: ["9__f___frogs_calling_singing__emacoco_ak"],
+  },
+  {
+    key: "umfuku",
+    label: "Umfuku calling",
+    slugs: ["4__bc___burchell_s_couca_calling_singing"],
   },
 ];
 

@@ -8,7 +8,11 @@ are deterministic placeholders
 until the Δ-based confidence formula and station data exist. See CLAUDE.md
 "Frontend Mock Data" — these responses are the backend contract.
 """
-from api.v1.v1_publication.models import Administration
+from api.v1.v1_publication.models import (
+    Administration,
+    Publication,
+    Review,
+)
 from api.v1.v1_publication.constants import (
     DroughtCategory,
     MOCK_STATIONS,
@@ -16,10 +20,117 @@ from api.v1.v1_publication.constants import (
 )
 
 
+def initials(name):
+    """'Ayanda Ropa' -> 'AR'. Avatar label for the validation queue."""
+    parts = [p for p in (name or "").split() if p]
+    return "".join(p[0] for p in parts[:2]).upper() or "?"
+
+
 def _category_map(values):
     return {
         v["administration_id"]: v.get("category")
         for v in (values or [])
+    }
+
+
+def _value_map(values):
+    """administration_id -> raw CDI-E value (initial_values carries both a
+    ``category`` and the composite ``value``; the queue only needs category,
+    the individual page also needs the score)."""
+    return {
+        v["administration_id"]: v.get("value")
+        for v in (values or [])
+    }
+
+
+def recent_publications(anchor, limit=12):
+    """The anchor publication plus its ``limit-1`` predecessors by month
+    (newest first). Anchors the 12-month CDI-E history + decision history to
+    the publication being reviewed, not to "now"."""
+    return list(
+        Publication.objects.filter(year_month__lte=anchor.year_month)
+        .order_by("-year_month")[:limit]
+    )
+
+
+def indicator_values(publication, administration_id):
+    """Raw percentile ranks for each attached indicator raster, this admin.
+    Labels/colours are frontend config (WX-3 D-4) — API sends key+value only.
+    ``value`` is null when the raster has no entry for the Inkhundla."""
+    out = []
+    for raster in publication.rasters.all():
+        value = next(
+            (
+                item.get("value")
+                for item in (raster.values or [])
+                if item.get("administration_id") == administration_id
+            ),
+            None,
+        )
+        out.append({"key": raster.indicator, "value": value})
+    return out
+
+
+def cdi_history(administration_id, publications):
+    """CDI-E composite value for this admin across ``publications``,
+    oldest -> newest (the chart plots the current month on the far right)."""
+    history = []
+    for pub in reversed(publications):
+        history.append({
+            "period": pub.year_month.strftime("%Y-%m"),
+            "value": _value_map(pub.initial_values).get(administration_id),
+        })
+    return history
+
+
+def reviewer_decision_history(user, administration_id, publications):
+    """THIS reviewer's own submitted drought-class picks for this admin,
+    newest first. AC-critical: request.user's Review only — never other
+    reviewers, never the validator's ValidationDecision table."""
+    if user is None or not user.is_authenticated:
+        return []
+    reviews = {
+        r.publication_id: r
+        for r in Review.objects.filter(
+            publication__in=publications, user_id=user.id
+        )
+    }
+    out = []
+    for pub in publications:  # newest first
+        review = reviews.get(pub.id)
+        if not review:
+            continue
+        suggestion = next(
+            (
+                s for s in (review.suggestion_values or [])
+                if s.get("administration_id") == administration_id
+                and s.get("reviewed")
+            ),
+            None,
+        )
+        if suggestion is None:
+            continue
+        decided = review.completed_at or review.updated_at
+        out.append({
+            "period": pub.year_month.strftime("%Y-%m"),
+            "category": suggestion.get("category"),
+            "comment": suggestion.get("comment") or "",
+            "decided_at": decided.isoformat() if decided else None,
+        })
+    return out
+
+
+def build_administration_cdi(publication, administration_id, cdi_class,
+                             publications):
+    """The individual review page's CDI-E block: composite score+category,
+    per-indicator percentile ranks, and the 12-month history."""
+    return {
+        "score": _value_map(publication.initial_values).get(
+            administration_id
+        ),
+        "category": cdi_class,
+        "indicators": indicator_values(publication, administration_id),
+        "history": cdi_history(administration_id, publications),
     }
 
 
@@ -69,21 +180,29 @@ def build_rows(publication, user=None):
     admins = Administration.objects.in_bulk(list(initial.keys()))
     mine = _my_suggestions(publication, user)
 
-    # Categories reviewed per administration, across every review — including
-    # reviews still in progress. A reviewer marks Tinkhundla one by one and only
+    # Submissions per administration, across every review — including reviews
+    # still in progress. A reviewer marks Tinkhundla one by one and only
     # submits the review once all of them are done, so waiting for is_completed
     # would leave the queue showing "not started" for work already done.
-    reviewed = {}
-    for review in publication.reviews.all():
+    #
+    # Who submitted what is kept, not just the category: the validation queue
+    # shows the reviewer mix and the D-class spread. It must NOT reach the
+    # reviewer-facing endpoints — see _public_row in review/view.py.
+    submissions = {}
+    for review in publication.reviews.select_related("user").all():
         for s in (review.suggestion_values or []):
             if s.get("reviewed"):
-                reviewed.setdefault(
-                    s["administration_id"], []
-                ).append(s.get("category"))
+                submissions.setdefault(s["administration_id"], []).append({
+                    "user_id": review.user_id,
+                    "label": initials(review.user.name),
+                    "group": review.user.technical_working_group,
+                    "category": s.get("category"),
+                })
 
     rows = []
     for administration_id, cdi_class in initial.items():
-        categories = reviewed.get(administration_id, [])
+        row_submissions = submissions.get(administration_id, [])
+        categories = [s["category"] for s in row_submissions]
         reviewed_count = len(categories)
         status = _review_status(reviewed_count, total_reviewers)
         admin = admins.get(administration_id)
@@ -110,19 +229,46 @@ def build_rows(publication, user=None):
             "disputed": (
                 len({c for c in categories if c is not None}) > 1
             ),
+            # Admin-only (validation queue). Stripped from every /reviewer/*
+            # response by _public_row — see review/view.py.
+            "submissions": row_submissions,
         })
     return rows
 
 
+def public_row(row):
+    """Drop admin-only fields before a row reaches a reviewer.
+
+    ``submissions`` (added by build_rows) carries every colleague's D-class.
+    The review queue deliberately shows a reviewer only their own
+    ``my_suggestion``: seeing what four others chose before submitting turns
+    five independent judgements into one plus four echoes, which is what the
+    TWG-coverage threshold exists to prevent.
+
+    Lives here, next to build_rows, so the field's whole lifecycle — added in
+    one function, stripped in the next — reads in one place. Applied at all
+    three /reviewer/* response sites; there is no single chokepoint, because
+    the detail endpoint does not go through the filtered-rows helper.
+    """
+    return {k: v for k, v in row.items() if k != "submissions"}
+
+
 def filter_rows(rows, search=None, confidence=None,
                 reviewed=None, region=None, zone=None):
-    """Apply the review-queue table / map filters over pre-built rows."""
+    """Apply the review-queue table / map filters over pre-built rows.
+
+    ``reviewed`` (the "Review completed" chip) keeps only Tinkhundla that
+    **every assigned reviewer** has submitted — review progress N/N,
+    ``review_status == fully_reviewed``. It previously kept anything with a
+    single submission (``!= not_started``), so one reviewer's activity made the
+    chip identical to "All".
+    """
     def keep(row):
         if search and search.lower() not in (row["name"] or "").lower():
             return False
         if confidence and row["confidence"]["band"] != confidence:
             return False
-        if reviewed and row["review_status"] == "not_started":
+        if reviewed and row["review_status"] != "fully_reviewed":
             return False
         if region and row["region"] != region:
             return False
@@ -139,13 +285,22 @@ def is_mine_reviewed(row):
 
 
 def _tally(rows):
-    """Raw counters behind the summary — for this month and the previous."""
+    """Raw counters behind the summary — for this month and the previous.
+
+    The top cards + Assessment summary (mine_reviewed, pending, readiness,
+    reviews_collected) are scoped to the requesting reviewer: their own
+    submissions out of the 59 Tinkhundla, never crossed with other reviewers.
+    The fully/partially/not_started breakdown stays team-level — queue
+    validation-readiness ("ready to validate" / "awaiting first review") — as
+    the design shows.
+    """
     counts = {"fully_reviewed": 0, "partially_reviewed": 0, "not_started": 0}
     tally = {
         "total": len(rows),
         "disputed": 0,
         "high_confidence": 0,
         "validated": 0,
+        "mine_reviewed": 0,
     }
     for row in rows:
         counts[row["review_status"]] += 1
@@ -158,10 +313,12 @@ def _tally(rows):
             tally["high_confidence"] += 1
         if row["assigned_score"] is not None:
             tally["validated"] += 1
+        if is_mine_reviewed(row):
+            tally["mine_reviewed"] += 1
     tally.update(counts)
-    tally["reviews_collected"] = (
-        counts["fully_reviewed"] + counts["partially_reviewed"]
-    )
+    # The requesting reviewer's own outstanding rows: pending + reviewed == the
+    # 59 Tinkhundla, and both agree with the queue header's progress_review.
+    tally["pending"] = tally["total"] - tally["mine_reviewed"]
     return tally
 
 
@@ -197,9 +354,18 @@ def build_stats(rows, previous_rows=None):
         return _delta(now[key], was[key] if was else None)
 
     return {
+        # Outstanding review work — NOT the disagreement count, which the card
+        # used to show while being titled "Pending review".
         "pending_review": {
+            "value": now["pending"],
+            "label": "awaiting review / sign-off",
+            "delta": delta("pending"),
+        },
+        # The disagreement signal keeps its own key so it is not lost now that
+        # `pending_review` means what its title says.
+        "disagreements": {
             "value": now["disputed"],
-            "label": "disagreement detected / sign-off needed",
+            "label": "disagreement detected",
             "delta": delta("disputed"),
         },
         "high_confidence": {
@@ -208,17 +374,21 @@ def build_stats(rows, previous_rows=None):
             "is_mock": True,
             "delta": delta("high_confidence"),
         },
+        # THIS reviewer's own progress. Previously read `validated`, i.e. the
+        # NDRMA validator's output, which is empty for the whole review stage.
         "tinkhundla_reviewed": {
-            "value": now["validated"],
+            "value": now["mine_reviewed"],
             "total": now["total"],
             "delta": _delta(
-                _pct(now["validated"], now["total"]),
-                _pct(was["validated"], was["total"]) if was else None,
+                _pct(now["mine_reviewed"], now["total"]),
+                _pct(was["mine_reviewed"], was["total"]) if was else None,
             ),
         },
-        "overall_readiness": _pct(now["reviews_collected"], now["total"]),
+        # The requesting reviewer's own progress out of the 59 Tinkhundla
+        # (Figma "Reviews collected 25/59") — not crossed with other reviewers.
+        "overall_readiness": _pct(now["mine_reviewed"], now["total"]),
         "reviews_collected": {
-            "value": now["reviews_collected"],
+            "value": now["mine_reviewed"],
             "total": now["total"],
         },
         "status_breakdown": [
@@ -226,21 +396,21 @@ def build_stats(rows, previous_rows=None):
                 "key": "fully_reviewed",
                 "label": "Fully reviewed",
                 "value": now["fully_reviewed"],
-                "note": "ready to validate",
+                "note": "of queue | ready to validate",
                 "delta": delta("fully_reviewed"),
             },
             {
                 "key": "partially_reviewed",
                 "label": "Partially reviewed",
                 "value": now["partially_reviewed"],
-                "note": "in progress",
+                "note": "of queue | in progress",
                 "delta": delta("partially_reviewed"),
             },
             {
                 "key": "not_started",
                 "label": "Not started",
                 "value": now["not_started"],
-                "note": "awaiting first review",
+                "note": "of queue | awaiting first review",
                 "delta": delta("not_started"),
             },
         ],

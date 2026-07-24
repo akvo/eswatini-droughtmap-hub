@@ -136,3 +136,17 @@ Ensure the local mock fallback interceptors match the updated `iks_data.json` st
 | T3: Update mock files and api.js mappings | 0.5 | 1.0 | High |
 | T4: Run verification test suites | 0.5 | 1.0 | High |
 | **Total** | **2.5** | **5.0** | **High** |
+
+---
+
+## 6. Phase 2 Feedback: Gating, Grid Layout, Zone Lookup & Timelines
+
+In the second feedback loop, additional QA requirements were introduced to secure TWG stats, fix zone name lookups, and align indicator panels with the visual layout mockup:
+
+### Additional Acceptance Criteria
+
+- [x] **Agro-Ecological Zone Display**: Normalizes zone strings (`zone.toLowerCase().trim()`) next to the region in `InkhundlaHeader.js` for correct resolution.
+- [x] **Dynamic Consistency Subtitle**: Computes unique submission months in backend views and renders the exact `reportedMonths / 12 months reported` ratio (showing `100%` when 12/12 months have reviews).
+- [x] **TWG Lock Placeholder**: If the user is anonymous, locks reporting consistency and form completion fields, displaying: `"🔒 - Sign in as TWG member to see data on report completness and consistency."`.
+- [x] **Grid Cards Layout**: Refactored Section B & C accordion collapsible panels into a 2-column responsive grid layout with custom month boxes, checkmark overlays for observed ticks, and chronological month text labels underneath each card.
+- [x] **Max 2 Decimals**: Formats metrics to a maximum of 2 decimal places when decimals are present, omitting `.00` on whole integers.

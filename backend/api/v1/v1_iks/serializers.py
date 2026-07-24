@@ -4,10 +4,10 @@ from rest_framework import serializers
 class IKSStatsSerializer(serializers.Serializer):
     total_reports_received = serializers.IntegerField()
     total_months_drought = serializers.IntegerField()
-    reporting_consistency_percentage = serializers.FloatField()
+    reporting_consistency_percentage = serializers.FloatField(allow_null=True)
     validation_rate_percentage = serializers.FloatField()
     average_validation_time_days = serializers.FloatField()
-    form_completion_percentage = serializers.FloatField()
+    form_completion_percentage = serializers.FloatField(allow_null=True)
     zone = serializers.CharField(required=False, allow_null=True)
     indicator_activity = serializers.DictField(required=False)
     # Validated CDI drought category from the latest published publication for

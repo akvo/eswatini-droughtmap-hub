@@ -128,10 +128,7 @@ def verify_email(request, version):
 @permission_classes([IsAuthenticated])
 def resend_verification_email(request, version):
     serializer = ResendVerificationEmailSerializer(
-        data=request.data,
-        context={
-            "user": request.user
-        }
+        data=request.data, context={"user": request.user}
     )
     if not serializer.is_valid():
         return Response(
@@ -141,10 +138,7 @@ def resend_verification_email(request, version):
     user = request.user
     # Response 400 when email_verification_expiry less than 1 hour
     code_expiry = user.email_verification_expiry
-    if (
-        code_expiry and
-        code_expiry > timezone.now()
-    ):
+    if code_expiry and code_expiry > timezone.now():
         return Response(
             {
                 "message": (
@@ -188,7 +182,7 @@ class ProfileView(APIView):
     def get(self, request, version):
         return Response(
             UserSerializer(instance=request.user).data,
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
     @extend_schema(
@@ -199,8 +193,7 @@ class ProfileView(APIView):
     )
     def put(self, request, version):
         serializer = UpdateUserSerializer(
-            instance=request.user,
-            data=request.data
+            instance=request.user, data=request.data
         )
         if not serializer.is_valid():
             return Response(  # pragma: no cover
@@ -209,8 +202,8 @@ class ProfileView(APIView):
             )
 
         if (
-            serializer.validated_data.get("email") and
-            serializer.validated_data["email"] != request.user.email
+            serializer.validated_data.get("email")
+            and serializer.validated_data["email"] != request.user.email
         ):
             request.user.email_verified = False
             request.user.email_verification_code = uuid4()
@@ -232,8 +225,7 @@ class ProfileView(APIView):
             job.save()
         user = serializer.save()
         return Response(
-            UserSerializer(instance=user).data,
-            status=status.HTTP_200_OK
+            UserSerializer(instance=user).data, status=status.HTTP_200_OK
         )
 
 
@@ -357,16 +349,18 @@ class ReviewerListAPI(GenericAPIView):
     permission_classes = [IsAuthenticated, IsAdmin]
     serializer_class = UserReviewerSerializer
     pagination_class = Pagination
-    queryset = SystemUser.objects.filter(
-        role=UserRoleTypes.reviewer,
-        # email_verified=True
-    ).order_by("name").all()
+    queryset = (
+        SystemUser.objects.filter(
+            role=UserRoleTypes.reviewer,
+            # email_verified=True
+        )
+        .order_by("name")
+        .all()
+    )
 
     @extend_schema(
         summary="Get all reviewers",
-        description=(
-            "Fetch all reviewers to start new publication"
-        ),
+        description=("Fetch all reviewers to start new publication"),
         parameters=[
             OpenApiParameter(
                 name="page",
@@ -403,9 +397,78 @@ class ReviewerListAPI(GenericAPIView):
         search = request.GET.get("search")
         if search:
             queryset = queryset.filter(
-                Q(name__icontains=search) |
-                Q(email__icontains=search)
+                Q(name__icontains=search) | Q(email__icontains=search)
             )
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
+
+
+class ReviewerTreeAPI(GenericAPIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        summary="Get reviewers tree",
+        description=(
+            "Fetch all reviewers grouped by TechnicalWorkingGroup for TreeSelect"
+        ),
+        tags=["Admin"],
+        responses={200: inline_serializer("ReviewerTreeResponse", fields={})},
+    )
+    def get(self, request, *args, **kwargs):
+        from api.v1.v1_users.constants import TechnicalWorkingGroup
+
+        qs = SystemUser.objects.filter(
+            role=UserRoleTypes.reviewer,
+        ).order_by("technical_working_group", "name")
+
+        groups = {}
+        unassigned = []
+        for user in qs:
+            twg = user.technical_working_group
+            if twg:
+                groups.setdefault(twg, []).append(user)
+            else:
+                unassigned.append(user)
+
+        tree = []
+        for twg_int, label in TechnicalWorkingGroup.FieldStr.items():
+            members = groups.get(twg_int, [])
+            if not members:
+                continue
+            tree.append(
+                {
+                    "value": f"twg-{twg_int}",
+                    "title": label,
+                    "selectable": False,
+                    "children": [
+                        {
+                            "value": u.id,
+                            "title": u.name,
+                            "subtitle": u.email,
+                            "email_verified": u.email_verified,
+                            "selectable": True,
+                        }
+                        for u in members
+                    ],
+                }
+            )
+        if unassigned:
+            tree.append(
+                {
+                    "value": "twg-unassigned",
+                    "title": "Unassigned",
+                    "selectable": False,
+                    "children": [
+                        {
+                            "value": u.id,
+                            "title": u.name,
+                            "subtitle": u.email,
+                            "email_verified": u.email_verified,
+                            "selectable": True,
+                        }
+                        for u in unassigned
+                    ],
+                }
+            )
+        return Response(tree)

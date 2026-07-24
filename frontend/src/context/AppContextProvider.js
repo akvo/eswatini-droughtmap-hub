@@ -7,6 +7,9 @@ const AppDispatchContext = createContext(null);
 const initialValues = {
   administrations: [],
   geoData: null,
+  // Agro-ecological zones, delivered by /config.js (window.zones) so the
+  // backend stays the single owner of the vocabulary.
+  zones: [],
   activeAdm: null,
   selectedAdms: [],
   isBulkAction: false,
@@ -77,6 +80,11 @@ const appReducer = (state, action) => {
       return {
         ...state,
         geoData: action.payload,
+      };
+    case "SET_ZONES":
+      return {
+        ...state,
+        zones: action.payload,
       };
     default:
       throw Error(

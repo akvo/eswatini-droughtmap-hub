@@ -10,6 +10,14 @@ const DynamicScript = () => {
     <Script
       src="/config.js"
       onLoad={() => {
+        // Zone vocabulary ships on the same script as the topojson, so the
+        // backend owns it and the frontend keeps no second copy.
+        if (window?.zones) {
+          appDispatch({
+            type: "SET_ZONES",
+            payload: window.zones,
+          });
+        }
         if (window?.topojson) {
           const geoData = feature(
             window.topojson,

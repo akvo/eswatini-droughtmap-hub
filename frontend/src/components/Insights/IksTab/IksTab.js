@@ -23,8 +23,13 @@ import TabLoader from "../TabLoader";
 import KpiMetricCard from "./KpiMetricCard";
 import MonthlyStatusGrid from "./MonthlyStatusGrid";
 import { formatMonthLabel } from "./IndicatorRow";
+
 import PredictorAccordion from "./PredictorAccordion";
-import { getRainfallPredictors, getSeasonalPredictors } from "./iksUtils";
+import {
+  getRainfallPredictors,
+  getSeasonalPredictors,
+  formatPercentage,
+} from "./iksUtils";
 
 // const IksHeatmap = dynamic(() => import("./IksHeatmap"), { ssr: false });
 
@@ -179,10 +184,12 @@ const IksTab = ({
     );
   }
 
-  const consistency = stats.reporting_consistency_percentage || 0;
-  const validationRate = stats.validation_rate_percentage || 0;
-  const validationTime = stats.average_validation_time_days || 0;
-  const completionRate = stats.form_completion_percentage || 0;
+  const consistency = stats.reporting_consistency_percentage;
+  const isLocked = consistency === null || consistency === undefined;
+  const reportedMonthsCount = isLocked
+    ? 0
+    : Math.round((consistency / 100) * 12);
+  const completionRate = stats.form_completion_percentage;
 
   // Derive date range from first and last weeks in the DB payload
   const dbWeeks = data.netSignal?.weeks || [];
@@ -384,13 +391,15 @@ const IksTab = ({
         <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-neutral-100 overflow-hidden shadow-sm border-b border-neutral-100">
           <KpiMetricCard
             title="Reporting consistency"
-            value={`${consistency}%`}
-            subtitle="12 / 12 months reported"
+            value={`${formatPercentage(consistency)}%`}
+            subtitle={`${reportedMonthsCount} / 12 months reported`}
+            locked={isLocked}
           />
           <KpiMetricCard
             title="Form completion"
-            value={`${completionRate}%`}
+            value={`${formatPercentage(completionRate)}%`}
             subtitle="Sections B + C + D filled"
+            locked={isLocked}
           />
         </div>
 

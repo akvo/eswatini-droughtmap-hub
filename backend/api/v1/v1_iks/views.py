@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from django.conf import settings
 from django.core.management import call_command
 from django.db.models import Count
 from django.db.models.functions import TruncMonth
@@ -9,7 +8,7 @@ from django.utils.timezone import localtime
 from rest_framework import status
 from rest_framework.permissions import (
     AllowAny,
-    BasePermission,
+    IsAuthenticated,
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,9 +20,30 @@ from drf_spectacular.utils import (
 )
 from drf_spectacular.types import OpenApiTypes
 
-from api.v1.v1_publication.models import Administration, Publication
-from api.v1.v1_publication.constants import PublicationStatus
-from api.v1.v1_iks.models import KoboData, IKSIndicator, IKSValue
+from api.v1.v1_publication.models import Administration
+from api.v1.v1_iks.models import IKSIndicator
+from api.v1.v1_iks.utils import (
+    active_indicators,
+    active_values,
+    active_kobo_data,
+    latest_validated_d_class,
+    label_soil_moisture,
+    label_vegetation,
+)
+from utils.custom_permissions import HasApiKey
+from api.v1.v1_iks.constants import (
+    REGIONS,
+    HEATMAP_WEEKS,
+    IMAGE_EXTENSIONS,
+    SOIL_MOISTURE_INDICATOR,
+    VEGETATION_GREENNESS_INDICATOR,
+    SECTION_D_INDICATOR_NAMES,
+    CHIEFDOM_FIELD,
+    MOCK_VALIDATION_TIME_PER_REPORT_DAYS,
+    MOCK_FORM_COMPLETION_PCT,
+    IKS_SCORE_PER_REPORT,
+    MOCK_SAT_SCORE,
+)
 from api.v1.v1_iks.serializers import (
     IKSStatsSerializer,
     IKSSeriesSerializer,
@@ -41,60 +61,6 @@ from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
-
-
-# Every IKS endpoint reads through these three helpers so that the KoboForm
-# `active` flag set in the admin panel is the single switch deciding which
-# form's data is public. Data from a deactivated form stays in the DB (for
-# re-activation and audit) but must never reach an API response.
-def active_indicators():
-    return IKSIndicator.objects.filter(kobo_form__active=True)
-
-
-def active_values():
-    return IKSValue.objects.filter(iks_indicator__kobo_form__active=True)
-
-
-def active_kobo_data():
-    return KoboData.objects.filter(form__active=True)
-
-
-def latest_validated_d_class(administration_id):
-    """Return the validated CDI category for an administration.
-
-    Reads the most recent *published* publication and looks up this
-    administration's entry in its validated_values. Returns None when no
-    published publication covers this administration yet (e.g. only
-    in-review/in-validation publications exist, or IKS data exists but no
-    CDI publication does). The caller renders None as a "No data" badge.
-    """
-    pub = (
-        Publication.objects.filter(
-            status=PublicationStatus.published,
-            deleted_at__isnull=True,
-            validated_values__isnull=False,
-        )
-        .order_by("-year_month")
-        .first()
-    )
-    if not pub or not pub.validated_values:
-        return None
-    return next(
-        (
-            item.get("category")
-            for item in pub.validated_values
-            if str(item.get("administration_id")) == str(administration_id)
-        ),
-        None,
-    )
-
-
-class HasXApiKey(BasePermission):
-    """Custom permission class to validate pre-defined X-API-Key header."""
-
-    def has_permission(self, request, view):
-        api_key = request.META.get(settings.X_API_KEY_HEADER)
-        return api_key and api_key == getattr(settings, "X_API_KEY", None)
 
 
 @extend_schema_view(
@@ -153,6 +119,31 @@ class IKSStatsView(APIView):
 
         total_reports = queryset.count()
 
+        # Generate months_list representing the rolling 12 months
+        # (current month is far right)
+        now = datetime.now()
+        curr_year = now.year
+        curr_month = now.month
+        months_list = []
+        for i in range(11, -1, -1):
+            m = curr_month - i
+            y = curr_year
+            while m <= 0:
+                m += 12
+                y -= 1
+            months_list.append(f"{y}-{m:02d}")
+
+        # Calculate consistency: percentage of the last 12 months
+        # with at least one Kobo submission
+        months_with_reports = set()
+        for sub_time in queryset.values_list("submission_time", flat=True):
+            if sub_time:
+                period_str = sub_time.strftime("%Y-%m")
+                if period_str in months_list:
+                    months_with_reports.add(period_str)
+        reported_months_count = len(months_with_reports)
+        consistency = (reported_months_count / 12.0) * 100.0
+
         # Calculate dummy/actual statistics based on available data
         validation_count = 0
         validation_time_sum = 0
@@ -160,7 +151,7 @@ class IKSStatsView(APIView):
             validation_status = data.raw_data.get("_validation_status", {})
             if validation_status and validation_status.get("uid"):
                 validation_count += 1
-                validation_time_sum += 1.5
+                validation_time_sum += MOCK_VALIDATION_TIME_PER_REPORT_DAYS
 
         validation_rate = (
             (validation_count / total_reports * 100)
@@ -173,8 +164,12 @@ class IKSStatsView(APIView):
             else 0.0
         )
 
-        consistency = 90.0 if total_reports > 0 else 0.0
-        form_completion = 95.0 if total_reports > 0 else 0.0
+        form_completion = MOCK_FORM_COMPLETION_PCT if total_reports > 0 else 0.0
+
+        is_authenticated = request.user and request.user.is_authenticated
+        if not is_authenticated:
+            consistency = None
+            form_completion = None
 
         # Check values matching drought-related indicators
         drought_values = active_values().filter(
@@ -191,18 +186,6 @@ class IKSStatsView(APIView):
         months_drought = (
             drought_values.values("created__month").distinct().count()
         )
-
-        now = datetime.now()
-        curr_year = now.year
-        curr_month = now.month
-        months_list = []
-        for i in range(11, -1, -1):
-            m = curr_month - i
-            y = curr_year
-            while m <= 0:
-                m += 12
-                y -= 1
-            months_list.append(f"{y}-{m:02d}")
 
         rain_leaning = [0] * 12
         extreme_weather = [0] * 12
@@ -423,22 +406,8 @@ class IKSNetSignalAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        weeks = [
-            "May 01",
-            "May 08",
-            "May 15",
-            "May 22",
-            "May 29",
-            "Jun 05",
-            "Jun 12",
-            "Jun 19",
-            "Jun 26",
-            "Jul 03",
-            "Jul 10",
-            "Jul 17",
-            "Jul 24",
-        ]
-        regions = ["Hhohho", "Manzini", "Lubombo", "Shiselweni"]
+        weeks = HEATMAP_WEEKS
+        regions = REGIONS
 
         # No submissions in a region-week means zero, not a prototype
         # figure. The aggregation below fills only what data supports.
@@ -488,7 +457,7 @@ class IKSIndicatorCountsAggregationView(APIView):
             active_indicators().values_list("name", flat=True).distinct()[:5]
         )
 
-        regions = ["Hhohho", "Manzini", "Lubombo", "Shiselweni"]
+        regions = REGIONS
 
         radar_data = {r: [0.0] * len(indicators) for r in regions}
 
@@ -514,10 +483,7 @@ class IKSIndicatorCountsAggregationView(APIView):
 
         indicator_counts_qs = (
             active_values().exclude(
-                iks_indicator__name__in=[
-                    "soil_moisture",
-                    "vegetation_greenness",
-                ]
+                iks_indicator__name__in=SECTION_D_INDICATOR_NAMES
             )
             .values("iks_indicator__name")
             .annotate(cnt=DjCount("id"))
@@ -570,13 +536,13 @@ class IKSAgreementAggregationView(APIView):
             # verdict ("contested") that no observation supports.
             if not iks_count:
                 continue
-            iks_score = min(float(iks_count * 12.5), 100.0)
+            iks_score = min(float(iks_count * IKS_SCORE_PER_REPORT), 100.0)
 
             # ponytail: placeholder — a fixed score for every constituency,
             # not a real satellite reading. Source it from the latest
             # published CDI (see latest_validated_d_class) before this
             # endpoint is put in front of anyone.
-            sat_score = 66.7
+            sat_score = MOCK_SAT_SCORE
             diff = abs(iks_score - sat_score)
             if diff < 15.0:
                 status_str = "aligned"
@@ -612,21 +578,7 @@ class IKSHeatmapAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        weeks = [
-            "May 01",
-            "May 08",
-            "May 15",
-            "May 22",
-            "May 29",
-            "Jun 05",
-            "Jun 12",
-            "Jun 19",
-            "Jun 26",
-            "Jul 03",
-            "Jul 10",
-            "Jul 17",
-            "Jul 24",
-        ]
+        weeks = HEATMAP_WEEKS
         constituencies = list(
             Administration.objects.values_list("name", flat=True).distinct()[
                 :20
@@ -663,7 +615,7 @@ class IKSHeatmapAggregationView(APIView):
     )
 )
 class IKSDownloadMonthlyView(APIView):
-    permission_classes = [HasXApiKey]
+    permission_classes = [HasApiKey]
 
     def post(self, request, version):
         # Trigger the download command asynchronously
@@ -714,7 +666,7 @@ class IKSSoilTrendAggregationView(APIView):
             # Kobo stores soil moisture as raw slugs like "1__dry__womile";
             # use icontains so both cleaned and raw values match.
             values = active_values().filter(
-                iks_indicator__name="soil_moisture"
+                iks_indicator__name=SOIL_MOISTURE_INDICATOR
             )
             if not values.exists():
                 values = active_values().filter(
@@ -763,7 +715,7 @@ class IKSSoilTrendAggregationView(APIView):
 
             # Aggregate vegetation greenness values
             veg_values = active_values().filter(
-                iks_indicator__name="vegetation_greenness"
+                iks_indicator__name=VEGETATION_GREENNESS_INDICATOR
             )
             if veg_values.exists():
                 green_counts = [0] * len(weeks)
@@ -870,10 +822,7 @@ class IKSPhotosView(APIView):
                     continue
                 # Get the base filename
                 base_name = filename.split("/")[-1]
-                is_image = any(
-                    base_name.lower().endswith(ext)
-                    for ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-                )
+                is_image = base_name.lower().endswith(IMAGE_EXTENSIONS)
                 if is_image or "image" in attach.get("mimetype", ""):
                     # Provide local URL proxied by the Django backend
                     # so that the browser doesn't hit Kobo directly
@@ -923,3 +872,105 @@ class IKSPhotoFileView(APIView):
             content_type = "image/webp"
 
         return FileResponse(open(file_path, "rb"), content_type=content_type)
+
+
+class IKSReviewSummaryView(APIView):
+    """Individual review page (Track 2 #146) IKS panel in one call:
+    report count, first photo, chiefdom, the reported indicator slugs (the
+    frontend picks which 5 to show), the soil-moisture + vegetation-greenness
+    cards (most-recent submission — OQ-6), and submission locations for the
+    map marker (G2). Scoped to a single Inkhundla + review month."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _first_photo(self, submissions):
+        for data in submissions:  # newest first
+            for attach in data.raw_data.get("_attachments", []):
+                base = attach.get("filename", "").split("/")[-1]
+                if not base:
+                    continue
+                if base.lower().endswith(
+                    IMAGE_EXTENSIONS
+                ) or "image" in attach.get("mimetype", ""):
+                    return f"/api/v1/iks/photos/media/{base}"
+        return None
+
+    def _card(self, administration_id, kobo_id, indicator, labeller):
+        raw = (
+            active_values().filter(
+                administration_id=administration_id,
+                kobo_id=kobo_id,
+                iks_indicator__name=indicator,
+            ).values_list("value", flat=True).first()
+        )
+        if not raw:
+            return None
+        return {"key": indicator, "value_label": labeller(raw), "raw": raw}
+
+    def get(self, request, version, administration_id):
+        period = request.query_params.get("period")  # YYYY-MM, optional
+        kobo_ids = (
+            active_values().filter(administration_id=administration_id)
+            .values_list("kobo_id", flat=True).distinct()
+        )
+        submissions = active_kobo_data().filter(
+            kobo_id__in=list(kobo_ids)
+        ).order_by("-submission_time")
+        if period:
+            try:
+                year, month = (int(p) for p in period.split("-"))
+                submissions = submissions.filter(
+                    submission_time__year=year,
+                    submission_time__month=month,
+                )
+            except (ValueError, AttributeError):
+                return Response(
+                    {"error": "Invalid period (expected YYYY-MM)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        submissions = list(submissions)
+        latest = submissions[0] if submissions else None
+        sub_kobo_ids = [s.kobo_id for s in submissions]
+
+        indicators_present = list(
+            active_values().filter(
+                administration_id=administration_id,
+                kobo_id__in=sub_kobo_ids,
+            ).exclude(
+                iks_indicator__name__in=SECTION_D_INDICATOR_NAMES
+            ).values_list("iks_indicator__name", flat=True).distinct()
+        )
+
+        soil = veg = chiefdom = None
+        if latest:
+            soil = self._card(
+                administration_id, latest.kobo_id,
+                SOIL_MOISTURE_INDICATOR, label_soil_moisture,
+            )
+            veg = self._card(
+                administration_id, latest.kobo_id,
+                VEGETATION_GREENNESS_INDICATOR, label_vegetation,
+            )
+            chiefdom = (latest.raw_data or {}).get(CHIEFDOM_FIELD) or None
+
+        locations = [
+            {"lat": s.geo["latitude"], "lon": s.geo["longitude"]}
+            for s in submissions
+            if s.geo and s.geo.get("latitude") is not None
+            and s.geo.get("longitude") is not None
+        ]
+
+        return Response(
+            {
+                "administration_id": int(administration_id),
+                "period": period,
+                "reports_count": len(submissions),
+                "chiefdom": chiefdom,
+                "photo_url": self._first_photo(submissions),
+                "indicators_present": indicators_present,
+                "soil_moisture": soil,
+                "vegetation_greenness": veg,
+                "locations": locations,
+            },
+            status=status.HTTP_200_OK,
+        )

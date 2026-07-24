@@ -94,7 +94,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
   margin: 0;
 }
 
@@ -116,6 +116,10 @@ ul {
 .leaflet-container {
   background: var(--background) !important;
   outline: 0;
+}
+
+.inkhundla-map .leaflet-container {
+  background: #f2f2f2 !important;
 }
 
 h1,

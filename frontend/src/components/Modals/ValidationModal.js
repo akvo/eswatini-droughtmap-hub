@@ -4,6 +4,7 @@ import {
   DROUGHT_CATEGORY,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 import { Badge, Divider, Form, List, Modal, Select } from "antd";
 import { useMemo, useState } from "react";
@@ -106,7 +107,9 @@ const ValidationModal = ({
         </Form.Item>
         <Form.Item label="Validated CDI Value" rules={[{ required: true }]}>
           <Select
-            options={DROUGHT_CATEGORY.slice(0, DROUGHT_CATEGORY.length - 1)}
+            options={DROUGHT_CATEGORY.filter(
+              (o) => o.value !== DROUGHT_CATEGORY_VALUE.none,
+            )}
             placeholder="Select Drought category"
             className="w-full"
             defaultValue={data?.category}

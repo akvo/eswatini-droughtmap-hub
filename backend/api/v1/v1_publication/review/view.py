@@ -29,6 +29,10 @@ from api.v1.v1_publication.review.utils import (
     build_rows,
     build_stats,
     filter_rows,
+    public_row,
+    recent_publications,
+    build_administration_cdi,
+    reviewer_decision_history,
 )
 from api.v1.v1_publication.review.serializers import (
     ReviewQueueFilterSerializer,
@@ -71,7 +75,10 @@ def _filtered_rows(publication, request):
     serializer = ReviewQueueFilterSerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
     rows = build_rows(publication, user=request.user)
-    return filter_rows(rows, **serializer.filters())
+    return [
+        public_row(r)
+        for r in filter_rows(rows, **serializer.filters())
+    ]
 
 
 def _previous_rows(publication, user=None):
@@ -164,7 +171,8 @@ class ReviewAdministrationDetailAPI(APIView):
         administration_id = int(administration_id)
         row = next(
             (
-                r for r in build_rows(publication, user=request.user)
+                public_row(r)
+                for r in build_rows(publication, user=request.user)
                 if r["administration_id"] == administration_id
             ),
             None,
@@ -174,6 +182,16 @@ class ReviewAdministrationDetailAPI(APIView):
                 {"message": "Administration not part of this publication."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        # Individual review page (Track 2 #146): CDI-E block (score,
+        # sub-indicators, 12-month history) + THIS reviewer's own decision
+        # history. Anchored to this publication's month, not "now".
+        publications = recent_publications(publication)
+        row["cdi"] = build_administration_cdi(
+            publication, administration_id, row["cdi_class"], publications
+        )
+        row["decision_history"] = reviewer_decision_history(
+            request.user, administration_id, publications
+        )
         # the reviewer's own suggestion for this Inkhundla (prefills the form)
         my_review = publication.reviews.filter(
             user_id=request.user.id

@@ -21,7 +21,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
     inline_serializer,
-    OpenApiParameter
+    OpenApiParameter,
 )
 from django.core.management import call_command
 from django.http import HttpResponse, Http404
@@ -47,11 +47,16 @@ from api.v1.v1_publication.serializers import (
     CompareMapSerializer,
     AttachRasterSerializer,
     PublicationRasterItemSerializer,
+    PushGeonodePublicationSerializer,
+    PushGeonodeRasterSerializer,
+    PushGeonodePublicationResponseSerializer,
+    PushGeonodeRasterResponseSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
     Publication,
     PublicationRaster,
+    PublicationGeonode,
 )
 from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
@@ -65,7 +70,7 @@ from api.v1.v1_publication.constants import (
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from api.v1.v1_publication.utils import discover_components, geonode_auth
-from utils.custom_permissions import IsReviewer, IsAdmin
+from utils.custom_permissions import IsReviewer, IsAdmin, HasApiKey
 from utils.custom_pagination import Pagination
 from utils.default_serializers import (
     DefaultResponseSerializer,
@@ -103,9 +108,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Review.objects.filter(
-            user_id=user.id
-        ).order_by("-created_at")
+        queryset = Review.objects.filter(user_id=user.id).order_by(
+            "-created_at"
+        )
         params = self.request.query_params
         # All / Pending / Completed tabs (missing or "all" -> no filter)
         status_filter = params.get("status")
@@ -174,7 +179,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         """
         Use different serializers for list and detail views.
         """
-        if self.action == 'list':
+        if self.action == "list":
             return ReviewListSerializer
         return ReviewSerializer
 
@@ -183,7 +188,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return super().get_serializer(*args, **kwargs)
 
     def perform_update(self, serializer):
-        review_id = self.kwargs.get('pk')
+        review_id = self.kwargs.get("pk")
         is_completed = Review.objects.get(id=review_id).is_completed
 
         instance = serializer.save()
@@ -206,17 +211,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
             job.save()
         # If all reviews are completed, update the publication status
         if (
-            publication.reviews.filter(is_completed=False).count() == 0 and
-            publication.status == PublicationStatus.in_review
+            publication.reviews.filter(is_completed=False).count() == 0
+            and publication.status == PublicationStatus.in_review
         ):
             publication.status = PublicationStatus.in_validation
             publication.save()
 
     def perform_create(self, serializer):
         if not self.request.data.get("publication_id"):
-            raise ValidationError({
-                "publication_id": "This field is required."
-            })
+            raise ValidationError(
+                {"publication_id": "This field is required."}
+            )
         serializer.save(
             user_id=self.request.user.id,
             publication_id=self.request.data["publication_id"],
@@ -252,9 +257,16 @@ class CDIGeonodeAPI(APIView):
             OpenApiParameter(
                 name="status",
                 required=False,
-                enum=PublicationStatus.FieldStr.keys(),
-                type=OpenApiTypes.NUMBER,
+                enum=(
+                    list(PublicationStatus.FieldStr.keys())
+                    + [FilterStatus.not_yet_started]
+                ),
+                type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
+                description=(
+                    "Publication status (1/2/3), or 'not_yet_started' for "
+                    "GeoNode resources without a publication yet."
+                ),
             ),
             OpenApiParameter(
                 name="id",
@@ -295,178 +307,252 @@ class CDIGeonodeAPI(APIView):
     def get(self, request, *args, **kwargs):
         serializer = CDIGeonodeFilterSerializer(data=request.query_params)
         if not serializer.is_valid():
-            raise ValidationError({
-                "message": "Invalid category parameter."
-            })
-        if serializer.validated_data.get(
-            "id"
-        ):
+            raise ValidationError({"message": "Invalid category parameter."})
+
+        # 1. Single resource lookup
+        if serializer.validated_data.get("id"):
             cdi_id = serializer.validated_data["id"]
-            response = requests.get(
-                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}",
-                auth=geonode_auth(),
-                verify=GEONODE_SSL_VERIFY,
-                timeout=GEONODE_REQUEST_TIMEOUT,
+            gn = PublicationGeonode.objects.filter(geonode_id=cdi_id).first()
+            if not gn:
+                raise Http404("CDI Geonode resource not found in cache.")
+
+            publication = Publication.objects.filter(
+                cdi_geonode_id=cdi_id
+            ).first()
+
+            year_month = (
+                publication.year_month if publication else gn.year_month
             )
-            data = response.json().get("resource", None)
-            if response.status_code == 200 and data:
-                publication = Publication.objects.filter(
-                    cdi_geonode_id=cdi_id
-                ).first()
-                year_month = publication.year_month \
-                    if publication else data.get("date")
-                return Response(
-                    CDIGeonodeListSerializer(
-                        instance={
-                            **data,
-                            "year_month": year_month,
-                            "publication_id": (
-                                publication.pk if publication else None
-                            ),
-                            "status": (
-                                publication.status if publication else None
-                            ),
-                        }
-                    ).data,
-                    status=status.HTTP_200_OK
-                )
+
+            res_data = {
+                "pk": gn.geonode_id,
+                "title": gn.title,
+                "detail_url": gn.detail_url,
+                "embed_url": gn.embed_url,
+                "thumbnail_url": gn.thumbnail_url,
+                "download_url": gn.download_url,
+                "created": gn.resource_created,
+                "year_month": year_month,
+                "publication_id": (publication.pk if publication else None),
+                "status": (publication.status if publication else None),
+                "file_size": gn.file_size,
+                "synced_at": gn.synced_at,
+            }
             return Response(
-                {"message": "Server Error: Unable to fetch data."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                CDIGeonodeListSerializer(instance=res_data).data,
+                status=status.HTTP_200_OK,
             )
+
+        # 2. List resources lookup
         category = serializer.validated_data.get(
-            "category",
-            CDIGeonodeCategory.cdi
+            "category", CDIGeonodeCategory.cdi
         )
-        publication_status = serializer.validated_data.get(
-            "status",
-            None
-        )
-        sort_field = serializer.validated_data.get("sort", None)
+        publication_status = serializer.validated_data.get("status")
+        sort_field = serializer.validated_data.get("sort")
         sort_order = serializer.validated_data.get("sort_order", "desc")
         page = int(request.GET.get("page", "1"))
-        url = (
-            "{0}/api/v2/resources"
-            "?filter{{category.identifier}}={1}"
-            "&filter{{subtype}}=raster&page={2}&sort[]=-date"
-            .format(
-                settings.GEONODE_BASE_URL,
-                category,
-                page,
+        page_size = 10
+
+        qs = PublicationGeonode.objects.filter(category=category)
+
+        # Optional: Status filter. Join/query mapping from Publication status.
+        if publication_status == FilterStatus.not_yet_started:
+            # "Not yet started" = GeoNode resource with no Publication yet.
+            started_ids = Publication.objects.values_list(
+                "cdi_geonode_id", flat=True
             )
-        )
-        if publication_status:
-            ids = Publication.objects.filter(
+            qs = qs.exclude(geonode_id__in=started_ids)
+        elif publication_status is not None:
+            matching_ids = Publication.objects.filter(
                 status=publication_status
             ).values_list("cdi_geonode_id", flat=True)
-            if len(ids):
-                filter_ids = "&".join(
-                    [
-                        f"filter{{pk.in}}={id}"
-                        for id in ids
-                    ]
-                )
-                url = (
-                    "{0}/api/v2/resources?{1}".format(
-                        settings.GEONODE_BASE_URL,
-                        filter_ids
-                    )
-                )
-                url = f"{url}&page={page}&sort[]=-date"
-        response = requests.get(
-            url,
-            auth=geonode_auth(),
-            verify=GEONODE_SSL_VERIFY,
-            timeout=GEONODE_REQUEST_TIMEOUT,
+            qs = qs.filter(geonode_id__in=matching_ids)
+
+        # Build list data
+        raw_items = []
+        geonode_ids = [item.geonode_id for item in qs]
+        publications_query = Publication.objects.filter(
+            cdi_geonode_id__in=geonode_ids
         )
-        if response.status_code == 200:
-            data = response.json()
-            # Prepare the serialized data
-            serialized_data = [
-                CDIGeonodeListSerializer(
-                    instance={
-                        **item,
-                        "year_month": item.get("date"),
-                        "publication_id": None,
-                        "status": None,
-                    }
-                ).data
-                for item in data.get("resources", [])
-            ]
-
-            # Extract IDs from serialized data
-            cdi_geonode_ids = [int(item["pk"]) for item in serialized_data]
-
-            # Fetch related publications based on the IDs and status
-            publications_query = Publication.objects.filter(
-                cdi_geonode_id__in=cdi_geonode_ids
-            )
-            if publication_status:
-                publications_query = Publication.objects.filter(
-                    status=publication_status
-                )
-
-            # Optimize lookup by creating a dictionary of publications
-            publications_dict = {
-                publication.cdi_geonode_id: {
-                    "id": publication.pk,
-                    "status": publication.status,
-                    "year_month": publication.year_month
-                }
-                for publication in publications_query.all()
+        publications_dict = {
+            pub.cdi_geonode_id: {
+                "id": pub.pk,
+                "status": pub.status,
+                "year_month": pub.year_month,
             }
-            # Merge publication data into serialized_data
-            for item in serialized_data:
-                publication = publications_dict.get(
-                    int(item["pk"])
-                )
-                if publication:
-                    item["year_month"] = publication["year_month"]
-                    item["publication_id"] = publication["id"]
-                    item["status"] = publication["status"]
+            for pub in publications_query
+        }
 
-            # Apply server-side sorting
-            if sort_field:
-                reverse = sort_order == "desc"
-                # Normalize sort key to handle mixed types (str vs date/datetime)
-                def normalize_sort_key(value, field_name):
-                    if value is None:
-                        return ""
-                    # For year_month and created fields, convert dates to ISO strings
-                    if field_name in ("year_month", "created"):
-                        if hasattr(value, "isoformat"):
-                            return value.isoformat()
-                        return str(value)
-                    return value
-
-                serialized_data.sort(
-                    key=lambda x: (
-                        x.get(sort_field) is not None,
-                        normalize_sort_key(x.get(sort_field), sort_field)
-                    ),
-                    reverse=reverse
-                )
-
-            if publication_status:
-                data["total"] = publications_query.count()
-            total_page = ceil(int(data["total"]) / int(data["page_size"]))
-            return Response(
+        for gn in qs:
+            pub = publications_dict.get(gn.geonode_id)
+            year_month = pub["year_month"] if pub else gn.year_month
+            raw_items.append(
                 {
-                    "current": page,
-                    "total": data["total"],
-                    "total_page": total_page,
-                    "data": serialized_data
-                },
-                status=status.HTTP_200_OK
+                    "pk": gn.geonode_id,
+                    "title": gn.title,
+                    "detail_url": gn.detail_url,
+                    "embed_url": gn.embed_url,
+                    "thumbnail_url": gn.thumbnail_url,
+                    "download_url": gn.download_url,
+                    "created": gn.resource_created,
+                    "year_month": year_month,
+                    "publication_id": pub["id"] if pub else None,
+                    "status": pub["status"] if pub else None,
+                    "file_size": gn.file_size,
+                    "synced_at": gn.synced_at,
+                }
             )
-        elif response.status_code == 400:
-            return Response(
-                {"message": "Bad Request: Invalid parameters."},
-                status=status.HTTP_400_BAD_REQUEST,
+
+        # Apply sorting
+        if sort_field:
+            reverse = sort_order == "desc"
+
+            def normalize_sort_key(value, field_name):
+                if value is None:
+                    return ""
+                if field_name in ("year_month", "created", "synced_at"):
+                    if hasattr(value, "isoformat"):
+                        return value.isoformat()
+                    return str(value)
+                return value
+
+            raw_items.sort(
+                key=lambda x: (
+                    x.get(sort_field) is not None,
+                    normalize_sort_key(x.get(sort_field), sort_field),
+                ),
+                reverse=reverse,
             )
+        else:
+            # Default sorting by year_month desc
+            def get_ym_sort(x):
+                val = x.get("year_month")
+                if hasattr(val, "isoformat"):
+                    return val.isoformat()
+                return str(val) if val else ""
+
+            raw_items.sort(key=get_ym_sort, reverse=True)
+
+        # Pagination
+        total = len(raw_items)
+        total_page = ceil(total / page_size)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_items = raw_items[start_idx:end_idx]
+
+        serialized_data = CDIGeonodeListSerializer(
+            instance=page_items, many=True
+        ).data
+
+        # Find newest synced_at in the subset
+        newest_synced = None
+        for item in page_items:
+            s_at = item.get("synced_at")
+            if s_at:
+                if newest_synced is None or s_at > newest_synced:
+                    newest_synced = s_at
+
+        meta = {}
+        if newest_synced:
+            meta["synced_at"] = (
+                newest_synced.isoformat()
+                if hasattr(newest_synced, "isoformat")
+                else str(newest_synced)
+            )
+
         return Response(
-            {"message": "Server Error: Unable to fetch data."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            {
+                "current": page,
+                "total": total,
+                "total_page": total_page,
+                "data": serialized_data,
+                "meta": meta,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class GeonodePublicationPushAPI(APIView):
+    permission_classes = [HasApiKey]
+
+    @extend_schema(
+        summary="Push GeoNode publication metadata to cache",
+        tags=["Pipeline"],
+        auth=[{"ApiKeyAuth": []}],
+        request=PushGeonodePublicationSerializer,
+        responses={
+            200: PushGeonodePublicationResponseSerializer,
+            201: PushGeonodePublicationResponseSerializer,
+            403: DefaultResponseSerializer,
+        },
+    )
+    def post(self, request, version):
+        serializer = PushGeonodePublicationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+        obj, created = PublicationGeonode.objects.update_or_create(
+            geonode_id=d["geonode_id"],
+            defaults={
+                "category": d["category"],
+                "title": d["title"],
+                "year_month": d["year_month"],
+                "detail_url": d.get("detail_url"),
+                "embed_url": d.get("embed_url"),
+                "thumbnail_url": d.get("thumbnail_url"),
+                "download_url": d.get("download_url"),
+                "file_size": d.get("file_size"),
+            },
+        )
+        http_status = (
+            status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+        return Response(
+            {"geonode_id": obj.geonode_id, "synced_at": obj.synced_at},
+            status=http_status,
+        )
+
+
+class GeonodeRasterPushAPI(APIView):
+    permission_classes = [HasApiKey]
+
+    @extend_schema(
+        summary="Push pre-computed raster values (GeoNode-down fallback)",
+        tags=["Pipeline"],
+        auth=[{"ApiKeyAuth": []}],
+        request=PushGeonodeRasterSerializer,
+        responses={
+            201: PushGeonodeRasterResponseSerializer,
+            400: DefaultResponseSerializer,
+            403: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+        },
+    )
+    def post(self, request, version, pk):
+        publication = get_object_or_404(Publication, pk=pk)
+        serializer = PushGeonodeRasterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+        now = timezone.now()
+        raster, created = PublicationRaster.objects.update_or_create(
+            publication=publication,
+            indicator=d["indicator"],
+            defaults={
+                "geonode_id": d["geonode_id"],
+                "values": d["values"],
+                "extracted_at": now,
+            },
+        )
+        http_status = (
+            status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+        return Response(
+            {
+                "id": raster.id,
+                "indicator": raster.indicator,
+                "geonode_id": raster.geonode_id,
+                "extracted_at": raster.extracted_at,
+            },
+            status=http_status,
         )
 
 
@@ -484,14 +570,12 @@ class PublicationViewSet(viewsets.ModelViewSet):
         queryset = Publication.objects.all().order_by("-due_date")
         params = self.request.query_params
         status_filter = params.get("status")
-        if status_filter == FilterStatus.pending:
-            queryset = queryset.filter(
-                status=PublicationStatus.in_validation
-            )
+        if status_filter == FilterStatus.not_yet_started:
+            queryset = queryset.filter(status=PublicationStatus.in_review)
+        elif status_filter == FilterStatus.pending:
+            queryset = queryset.filter(status=PublicationStatus.in_validation)
         elif status_filter == FilterStatus.completed:
-            queryset = queryset.filter(
-                status=PublicationStatus.published
-            )
+            queryset = queryset.filter(status=PublicationStatus.published)
         elif status_filter and status_filter != FilterStatus.all:
             try:
                 queryset = queryset.filter(status=int(status_filter))
@@ -502,7 +586,7 @@ class PublicationViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return PublicationInfoSerializer
-        if self.action == 'create':
+        if self.action == "create":
             return CreatePublicationSerializer
         return PublicationSerializer
 
@@ -519,15 +603,17 @@ class PublicationViewSet(viewsets.ModelViewSet):
                 # Save the publication
                 publication = serializer.save()
 
-                publication.reviews.set([
-                    Review(publication=publication, user=reviewer)
-                    for reviewer in reviewers
-                ], bulk=False)
+                publication.reviews.set(
+                    [
+                        Review(publication=publication, user=reviewer)
+                        for reviewer in reviewers
+                    ],
+                    bulk=False,
+                )
 
                 timestamp = int(time.time())
                 filename = "raster_{0}_{1}.tif".format(
-                    publication.cdi_geonode_id,
-                    timestamp
+                    publication.cdi_geonode_id, timestamp
                 )
                 # Create a job
                 job = Jobs.objects.create(
@@ -583,10 +669,14 @@ class PublicationViewSet(viewsets.ModelViewSet):
         total_adms = len(instance.initial_values)
         total_validated = 0
         if instance.validated_values:
-            total_validated = len(list(filter(
-                lambda x: x.get("category") or x.get("category") == 0,
-                instance.validated_values
-            )))
+            total_validated = len(
+                list(
+                    filter(
+                        lambda x: x.get("category") or x.get("category") == 0,
+                        instance.validated_values,
+                    )
+                )
+            )
         instance.updated_at = timezone.now()
         if instance.narrative and total_adms == total_validated:
             instance.published_at = timezone.now()
@@ -619,13 +709,13 @@ class ComponentRasterPreviewAPI(APIView):
     def get(self, request, version):
         year_month = request.GET.get("year_month", "")
         try:
-            target_month = datetime.strptime(
-                year_month[:7], "%Y-%m"
-            ).strftime("%Y-%m")
+            target_month = datetime.strptime(year_month[:7], "%Y-%m").strftime(
+                "%Y-%m"
+            )
         except ValueError:
-            raise ValidationError({
-                "year_month": "Invalid format. Use YYYY-MM."
-            })
+            raise ValidationError(
+                {"year_month": "Invalid format. Use YYYY-MM."}
+            )
         return Response(
             {
                 "data": discover_components(target_month),
@@ -676,21 +766,33 @@ class PublicationRasterAPI(APIView):
         # Resolve the download URL server-side rather than trusting the
         # client with it, so a caller can only ever attach GeoNode
         # resources the backend itself can see and authenticate against.
-        response = requests.get(
-            f"{settings.GEONODE_BASE_URL}/api/v2/resources/{geonode_id}",
-            auth=geonode_auth(),
-            verify=GEONODE_SSL_VERIFY,
-            timeout=GEONODE_REQUEST_TIMEOUT,
-        )
-        resource = (
-            response.json().get("resource")
-            if response.status_code == 200 else None
-        ) or {}
-        download_url = resource.get("download_url")
-        if response.status_code != 200 or not download_url:
-            raise ValidationError({
-                "geonode_id": "Unable to resolve GeoNode resource."
-            })
+        download_url = None
+        try:
+            response = requests.get(
+                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{geonode_id}",
+                auth=geonode_auth(),
+                verify=GEONODE_SSL_VERIFY,
+                timeout=GEONODE_REQUEST_TIMEOUT,
+            )
+            if response.status_code == 200:
+                resource = response.json().get("resource") or {}
+                download_url = resource.get("download_url")
+        except Exception:
+            pass  # best-effort; fall through to cache lookup
+
+        if not download_url:
+            # D-7: fall back to cached download_url from PublicationGeonode
+            cached = (
+                PublicationGeonode.objects.filter(geonode_id=geonode_id)
+                .values("download_url")
+                .first()
+            )
+            download_url = (cached or {}).get("download_url")
+
+        if not download_url:
+            raise ValidationError(
+                {"geonode_id": "Unable to resolve GeoNode resource."}
+            )
 
         try:
             # Nested atomic() turns the uniqueness violation into a
@@ -728,11 +830,14 @@ class PublicationRasterAPI(APIView):
                 job.task_id = task_id
                 job.save()
         except IntegrityError:
-            raise ValidationError({
-                "indicator": (
-                    "This indicator is already attached to the publication."
-                )
-            })
+            raise ValidationError(
+                {
+                    "indicator": (
+                        "This indicator is already attached "
+                        "to the publication."
+                    )
+                }
+            )
 
         return Response(
             AttachRasterSerializer(raster).data,
@@ -823,10 +928,10 @@ class PublicationReviewsAPI(APIView):
                 instance=publication,
                 context={
                     "non_disputed": non_disputed,
-                    "non_validated": non_validated
-                }
+                    "non_validated": non_validated,
+                },
             ).data,
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
 
@@ -846,7 +951,7 @@ class ReviewDetailsAPI(APIView):
             ReviewInfoSerializer(
                 instance=review,
             ).data,
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
 
@@ -875,29 +980,24 @@ class ExportMapAPI(APIView):
     def get(self, request, version, pk):
         publication = get_object_or_404(Publication, pk=pk)
         if publication.status != PublicationStatus.published:
-            raise ValidationError({
-                "message": "Map not yet published"
-            })
+            raise ValidationError({"message": "Map not yet published"})
 
         # Validate the requested format
         serializer = ExportMapSerializer(data=request.query_params)
         if not serializer.is_valid():
-            raise ValidationError({
-                "message": "Invalid format parameter."
-            })
+            raise ValidationError({"message": "Invalid format parameter."})
 
         try:
             # Get the requested format from query parameters
             type = serializer.validated_data.get(
-                "export_type",
-                ExportMapTypes.geojson
+                "export_type", ExportMapTypes.geojson
             )
 
             # Load your GeoDataFrame
             gdf = self._load_geodataframe(publication.validated_values)
 
             # Handle the export based on the requested format
-            year_month = publication.year_month.strftime('%Y-%m')
+            year_month = publication.year_month.strftime("%Y-%m")
             if type == ExportMapTypes.geojson:
                 return self._export_geojson(gdf, year_month)
             elif type == ExportMapTypes.shapefile:
@@ -908,10 +1008,8 @@ class ExportMapAPI(APIView):
                 return self._export_image(gdf, year_month, "svg")
         except Exception as e:
             return Response(
-                {
-                    "message": f"An error occurred during export: {e}"
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"message": f"An error occurred during export: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     def _load_geodataframe(self, validated_values):
@@ -935,9 +1033,7 @@ class ExportMapAPI(APIView):
         gdf["category"] = gdf["administration_id"].map(validated_dict)
 
         # Step 5: Add the "cat_name" column
-        gdf["cat_name"] = gdf["category"].map(
-            DroughtCategory.FieldStr.get
-        )
+        gdf["cat_name"] = gdf["category"].map(DroughtCategory.FieldStr.get)
 
         # Step 6: Handle missing values (optional)
         gdf["category"] = gdf["category"].fillna(DroughtCategory.none)
@@ -972,31 +1068,23 @@ class ExportMapAPI(APIView):
         with ZipFile(zip_buffer, "w") as zip_file:
             # Write the Shapefile components to the zip file
             temp_dir = "./tmp"
-            os.makedirs(
-                temp_dir,
-                exist_ok=True
-            )
+            os.makedirs(temp_dir, exist_ok=True)
             gdf.to_file(
                 os.path.join(temp_dir, f"cdi_map_{year_month}.shp"),
-                driver="ESRI Shapefile"
+                driver="ESRI Shapefile",
             )
             # Manually create the .prj file if it doesn't exist
-            prj_path = os.path.join(
-                temp_dir,
-                f"cdi_map_{year_month}.prj"
-            )
+            prj_path = os.path.join(temp_dir, f"cdi_map_{year_month}.prj")
             if not os.path.exists(prj_path):
                 with open(prj_path, "w") as prj_file:
                     prj_file.write(gdf.crs.to_wkt())
 
             for ext in ["shp", "shx", "dbf", "prj"]:
                 file_path = os.path.join(
-                    temp_dir,
-                    f"cdi_map_{year_month}.{ext}"
+                    temp_dir, f"cdi_map_{year_month}.{ext}"
                 )
                 zip_file.write(
-                    file_path,
-                    arcname=f"cdi_map_{year_month}.{ext}"
+                    file_path, arcname=f"cdi_map_{year_month}.{ext}"
                 )
                 os.remove(file_path)  # Clean up temporary files
 
@@ -1012,12 +1100,14 @@ class ExportMapAPI(APIView):
         Export the GeoDataFrame as an image (SVG or PNG).
         """
         if format not in ["svg", "png"]:
-            raise ValidationError({
-                "message": (
-                    "Invalid format parameter."
-                    "Only 'svg' and 'png' are supported."
-                )
-            })
+            raise ValidationError(
+                {
+                    "message": (
+                        "Invalid format parameter."
+                        "Only 'svg' and 'png' are supported."
+                    )
+                }
+            )
 
         # Define a custom color mapping for categories
         color_mapping = dict(DroughtCategoryColor.FieldStr.items())
@@ -1040,14 +1130,16 @@ class ExportMapAPI(APIView):
                 ax=ax,
                 color=color,
                 edgecolor="black",
-                label=DroughtCategory.FieldStr.get(category)
+                label=DroughtCategory.FieldStr.get(category),
             )
 
-            legend_patches.append(Patch(
-                facecolor=color,
-                edgecolor="black",
-                label=DroughtCategory.FieldStr.get(category)
-            ))
+            legend_patches.append(
+                Patch(
+                    facecolor=color,
+                    edgecolor="black",
+                    label=DroughtCategory.FieldStr.get(category),
+                )
+            )
 
         # Fix aspect ratio and limits
         ax.set_xlim(gdf.total_bounds[0], gdf.total_bounds[2])
@@ -1058,7 +1150,7 @@ class ExportMapAPI(APIView):
             ax.legend(
                 handles=legend_patches,
                 loc="upper right",
-                title="Drought Categories"
+                title="Drought Categories",
             )
 
         # Save as image
@@ -1080,8 +1172,7 @@ class PublishedMapViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Publication.objects.filter(
-            status=PublicationStatus.published,
-            published_at__isnull=False
+            status=PublicationStatus.published, published_at__isnull=False
         ).order_by("-year_month")
 
     @extend_schema(
@@ -1101,7 +1192,7 @@ class PublishedMapViewSet(viewsets.ModelViewSet):
                 type=OpenApiTypes.DATE,
                 location=OpenApiParameter.QUERY,
             ),
-        ]
+        ],
     )
     def list(self, request, *args, **kwargs):
         """
@@ -1119,9 +1210,7 @@ class PublishedMapViewSet(viewsets.ModelViewSet):
         left_date = serializer.validated_data.get("left_date")
         right_date = serializer.validated_data.get("right_date")
         if left_date and right_date:
-            queryset = queryset.filter(
-                year_month__in=[left_date, right_date]
-            )
+            queryset = queryset.filter(year_month__in=[left_date, right_date])
 
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(
@@ -1158,24 +1247,19 @@ class PublicationDateAPI(APIView):
     )
     def get(self, request, version):
         queryset = Publication.objects.filter(
-            status=PublicationStatus.published,
-            published_at__isnull=False
+            status=PublicationStatus.published, published_at__isnull=False
         ).order_by("-year_month")
         exclude_id = request.GET.get("exclude_id")
         if exclude_id:
             queryset = queryset.exclude(pk=int(exclude_id))
         publications = queryset.all()
         options = [
-            {
-                "value": p.id,
-                "label": p.year_month
-            }
-            for p in publications
+            {"value": p.id, "label": p.year_month} for p in publications
         ]
         return Response(
             CommonOptionSerializer(
                 instance=options,
                 many=True,
             ).data,
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
