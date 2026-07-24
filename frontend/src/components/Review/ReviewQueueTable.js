@@ -6,7 +6,7 @@ import { TabButtons } from "@/components";
 import { ConfidenceBadge, DroughtScore } from "@/components/DS";
 import { PAGE_SIZE, REGION_OPTIONS } from "@/static/config";
 import { useAppContext } from "@/context/AppContextProvider";
-import { QUEUE_FILTERS, buildQueueQuery } from "./query";
+import { QUEUE_FILTERS, buildQueueQuery } from "@/lib/query";
 
 /** SPI / LST readings. Mock until station data exists (backend is_mock). */
 const StationSignals = ({ stations }) => {
@@ -143,8 +143,6 @@ const ReviewQueueTable = ({
       key: "my_suggestion",
       width: 110,
       align: "right",
-      // Final column — set off with a faint brand tint from the rest of the row.
-      onHeaderCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
       onCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
       // The reviewer's own class — what they approved or suggested. NOT
       // assigned_score, which stays empty until a validator signs the month off.

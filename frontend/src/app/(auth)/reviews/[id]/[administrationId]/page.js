@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { api } from "@/lib";
-import { buildQueueQuery, parseQueueState } from "@/components/Review/query";
+import { buildQueueQuery, parseQueueState } from "@/lib/query";
 import IndividualReview from "./IndividualReview";
 
 /**

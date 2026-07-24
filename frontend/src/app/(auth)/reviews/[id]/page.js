@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { api } from "@/lib";
 import ReviewQueue from "@/components/Review/ReviewQueue";
-import { buildQueueQuery, parseQueueState } from "@/components/Review/query";
+import { buildQueueQuery, parseQueueState } from "@/lib/query";
 
 /**
  * "This month review queue" (Figma 3117-42637).
