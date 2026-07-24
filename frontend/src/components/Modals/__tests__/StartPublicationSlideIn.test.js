@@ -92,7 +92,19 @@ jest.mock("antd", () => {
       ),
     ),
     DatePicker: React.forwardRef(
-      ({ value, onChange, placeholder, id, picker, ...rest }, ref) => (
+      (
+        {
+          value,
+          onChange,
+          placeholder,
+          id,
+          picker,
+          prefix,
+          suffixIcon,
+          ...rest
+        },
+        ref,
+      ) => (
         <input
           ref={ref}
           id={id}

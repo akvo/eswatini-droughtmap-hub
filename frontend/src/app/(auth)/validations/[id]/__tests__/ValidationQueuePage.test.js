@@ -14,6 +14,19 @@ jest.setTimeout(30000);
 
 jest.mock("@/lib", () => ({ api: jest.fn() }));
 
+jest.mock("antd", () => {
+  const original = jest.requireActual("antd");
+  return {
+    ...original,
+    message: {
+      error: jest.fn(),
+      success: jest.fn(),
+      warning: jest.fn(),
+      info: jest.fn(),
+    },
+  };
+});
+
 // <Can> gates on CASL abilities loaded from the session; render children.
 jest.mock("@/components", () => ({
   Can: ({ children }) => <>{children}</>,
