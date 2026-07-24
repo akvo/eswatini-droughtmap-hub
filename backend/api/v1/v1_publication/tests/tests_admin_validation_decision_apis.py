@@ -99,7 +99,8 @@ class SyncValidatedValuesTestCase(APITestCase):
             len(self.publication.initial_values),
         )
         entry = next(
-            v for v in self.publication.validated_values
+            v
+            for v in self.publication.validated_values
             if v["administration_id"] == target
         )
         self.assertEqual(entry["category"], DroughtCategory.d2)
@@ -134,11 +135,11 @@ class ValidationDecisionAPITestCase(APITestCase):
             role=UserRoleTypes.admin
         ).first()
         self.reviewer = SystemUser.objects.get(
-            pk=self.publication.reviews.first().user_id
+            pk=self.publication.reviews.order_by("id").first().user_id
         )
-        self.administration_id = (
-            self.publication.initial_values[0]["administration_id"]
-        )
+        self.administration_id = self.publication.initial_values[0][
+            "administration_id"
+        ]
         self.client.force_authenticate(user=self.admin)
 
     def _url(self, name="validation-decision", administration_id=None):
@@ -157,13 +158,15 @@ class ValidationDecisionAPITestCase(APITestCase):
         """Give the first N reviewers a submitted D-class."""
         target = administration_id or self.administration_id
         for review, category in zip(
-            self.publication.reviews.all(), categories
+            self.publication.reviews.order_by("id"), categories
         ):
-            review.suggestion_values = [{
-                "administration_id": target,
-                "category": category,
-                "reviewed": True,
-            }]
+            review.suggestion_values = [
+                {
+                    "administration_id": target,
+                    "category": category,
+                    "reviewed": True,
+                }
+            ]
             review.save()
 
     # ---- GET -------------------------------------------------------------
@@ -171,17 +174,35 @@ class ValidationDecisionAPITestCase(APITestCase):
         res = self.client.get(self._url())
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         for key in (
-            "meta", "administration_id", "label", "region", "zone", "status",
-            "reviews_completed", "reviews_total", "consensus",
-            "majority_category", "validated_category", "confidence",
-            "confidence_band", "is_override", "masked", "agreement",
-            "reviews", "decision",
+            "meta",
+            "administration_id",
+            "label",
+            "region",
+            "zone",
+            "status",
+            "reviews_completed",
+            "reviews_total",
+            "consensus",
+            "majority_category",
+            "validated_category",
+            "confidence",
+            "confidence_band",
+            "is_override",
+            "masked",
+            "agreement",
+            "reviews",
+            "decision",
         ):
             self.assertIn(key, res.data, msg=key)
         for key in (
-            "publication_id", "year_month", "reviewers_required",
-            "can_submit", "viewer", "prev_administration_id",
-            "next_administration_id", "queue_page",
+            "publication_id",
+            "year_month",
+            "reviewers_required",
+            "can_submit",
+            "viewer",
+            "prev_administration_id",
+            "next_administration_id",
+            "queue_page",
         ):
             self.assertIn(key, res.data["meta"], msg=key)
 
@@ -213,7 +234,7 @@ class ValidationDecisionAPITestCase(APITestCase):
         # An assigned reviewer who has not submitted for THIS Inkhundla —
         # the case masking exists for. `_submit_categories` gave the first
         # three a D-class; take one that it did not reach.
-        pending = self.publication.reviews.all()[3]
+        pending = self.publication.reviews.order_by("id")[3]
         pending.suggestion_values = []
         pending.save()
         self.client.force_authenticate(user=pending.user)
@@ -297,9 +318,7 @@ class ValidationDecisionAPITestCase(APITestCase):
         guard = 0
         while guard < len(ids) + 5:
             guard += 1
-            res = self.client.get(
-                self._url(administration_id=walked[-1])
-            )
+            res = self.client.get(self._url(administration_id=walked[-1]))
             nxt = res.data["meta"]["next_administration_id"]
             if nxt is None:
                 break
@@ -307,22 +326,24 @@ class ValidationDecisionAPITestCase(APITestCase):
         self.assertEqual(walked, ids)
 
     def test_queue_page_honours_page_size(self):
-        at_ten = self.client.get(
-            self._url(), {"page_size": 10}
-        ).data["meta"]["queue_page"]
-        at_hundred = self.client.get(
-            self._url(), {"page_size": 100}
-        ).data["meta"]["queue_page"]
+        at_ten = self.client.get(self._url(), {"page_size": 10}).data["meta"][
+            "queue_page"
+        ]
+        at_hundred = self.client.get(self._url(), {"page_size": 100}).data[
+            "meta"
+        ]["queue_page"]
         self.assertGreaterEqual(at_ten, at_hundred)
         self.assertEqual(at_hundred, 1)
 
     def test_neighbours_survive_the_row_leaving_its_own_filter(self):
         """Validate on the Ready tab and the row becomes `validated`, so
         ?status=ready stops matching it. Prev/Next must not dead-end."""
-        self.publication.validated_values = [{
-            "administration_id": self.administration_id,
-            "category": DroughtCategory.d2,
-        }]
+        self.publication.validated_values = [
+            {
+                "administration_id": self.administration_id,
+                "category": DroughtCategory.d2,
+            }
+        ]
         self.publication.save()
 
         res = self.client.get(self._url(), {"status": ValidationStatus.ready})
@@ -343,9 +364,7 @@ class ValidationDecisionAPITestCase(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
         payload = self.client.get(self._url()).data
-        self.assertEqual(
-            payload["decision"]["category"], DroughtCategory.d1
-        )
+        self.assertEqual(payload["decision"]["category"], DroughtCategory.d1)
         self.assertEqual(
             payload["decision"]["reasoning"],
             "Waiting on the Met station re-check.",
@@ -358,9 +377,7 @@ class ValidationDecisionAPITestCase(APITestCase):
         self.assertIsNone(self.publication.validated_values)
 
     def test_draft_may_be_incomplete(self):
-        res = self.client.put(
-            self._url(), {"is_draft": True}, format="json"
-        )
+        res = self.client.put(self._url(), {"is_draft": True}, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     # ---- PUT: submit (AC-6.4, 6.6) --------------------------------------
@@ -378,7 +395,8 @@ class ValidationDecisionAPITestCase(APITestCase):
 
         self.publication.refresh_from_db()
         entry = next(
-            v for v in self.publication.validated_values
+            v
+            for v in self.publication.validated_values
             if v["administration_id"] == self.administration_id
         )
         self.assertEqual(entry["category"], DroughtCategory.d2)
@@ -411,10 +429,14 @@ class ValidationDecisionAPITestCase(APITestCase):
     def test_a_tie_requires_reasoning_even_when_accepting_the_chip(self):
         """There is no majority to accept, so the pick is the validator's own
         judgement — and `is_override` is still False (D-9)."""
-        self._submit_categories([
-            DroughtCategory.d2, DroughtCategory.d2,
-            DroughtCategory.d1, DroughtCategory.d1,
-        ])
+        self._submit_categories(
+            [
+                DroughtCategory.d2,
+                DroughtCategory.d2,
+                DroughtCategory.d1,
+                DroughtCategory.d1,
+            ]
+        )
         blocked = self.client.put(
             self._url(),
             {"category": DroughtCategory.d2, "is_draft": False},
@@ -445,9 +467,7 @@ class ValidationDecisionAPITestCase(APITestCase):
         self.assertIn("category", res.data)
 
     def test_submitting_without_a_category_is_rejected(self):
-        res = self.client.put(
-            self._url(), {"is_draft": False}, format="json"
-        )
+        res = self.client.put(self._url(), {"is_draft": False}, format="json")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("category", res.data)
 
@@ -463,11 +483,13 @@ class ValidationDecisionAPITestCase(APITestCase):
         )
         # three more reviewers now say D4, shifting the live majority
         for review in list(self.publication.reviews.all())[2:5]:
-            review.suggestion_values = [{
-                "administration_id": self.administration_id,
-                "category": DroughtCategory.d4,
-                "reviewed": True,
-            }]
+            review.suggestion_values = [
+                {
+                    "administration_id": self.administration_id,
+                    "category": DroughtCategory.d4,
+                    "reviewed": True,
+                }
+            ]
             review.save()
 
         decision = ValidationDecision.objects.get(
@@ -478,9 +500,7 @@ class ValidationDecisionAPITestCase(APITestCase):
         self.assertFalse(decision.is_override)
         # the live tally has moved, and says so
         payload = self.client.get(self._url()).data
-        self.assertEqual(
-            payload["majority_category"], DroughtCategory.d4
-        )
+        self.assertEqual(payload["majority_category"], DroughtCategory.d4)
 
     def test_resubmitting_re_snapshots(self):
         self._submit_categories([DroughtCategory.d2, DroughtCategory.d2])
@@ -542,9 +562,7 @@ class ValidationDecisionAPITestCase(APITestCase):
             c["key"]: c["value"]
             for c in self.client.get(stats_url).data["data"]
         }
-        self.assertEqual(
-            after["validated"], before["validated"] + 1
-        )
+        self.assertEqual(after["validated"], before["validated"] + 1)
 
     def test_two_submits_on_different_tinkhundla_both_survive(self):
         """The race the queue doc could not close: single-entry upserts touch
@@ -554,7 +572,8 @@ class ValidationDecisionAPITestCase(APITestCase):
             self.publication.initial_values[1]["administration_id"],
         )
         for administration_id, category in (
-            (first, DroughtCategory.d1), (second, DroughtCategory.d3)
+            (first, DroughtCategory.d1),
+            (second, DroughtCategory.d3),
         ):
             res = self.client.put(
                 self._url(administration_id=administration_id),
@@ -610,18 +629,16 @@ class ValidationHistoryAPITestCase(APITestCase):
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
         call_command("fake_publications_seeder", "--test", True)
 
-        publications = list(
-            Publication.objects.order_by("year_month")
-        )
+        publications = list(Publication.objects.order_by("year_month"))
         if len(publications) < 2:
             self.skipTest("fixture needs two publications")
         self.earlier, self.current = publications[0], publications[-1]
         self.admin = SystemUser.objects.filter(
             role=UserRoleTypes.admin
         ).first()
-        self.administration_id = (
-            self.current.initial_values[0]["administration_id"]
-        )
+        self.administration_id = self.current.initial_values[0][
+            "administration_id"
+        ]
         self.client.force_authenticate(user=self.admin)
 
     def _history(self, publication):
