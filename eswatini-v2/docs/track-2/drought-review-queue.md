@@ -4,8 +4,10 @@
 **Target page**: `frontend/src/app/(auth)/reviews/[id]/page.js`
 **Figma**: [3117-42637 "Drought review"](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3117-42637&m=dev) · local ref: [assets/drought-review-queue-3117-42637.png](assets/drought-review-queue-3117-42637.png)
 **Design system**: `/home/iwan/Akvo/Eswatini/Eswatini Drought Monitor Design System`
-**Date**: 2026-07-13
-**Status**: Draft
+**Date**: 2026-07-13 (implemented; stats + filters corrected 2026-07-24)
+**Status**: Implemented — queue page live on the real endpoints; summary cards,
+"Review completed" filter and bulk-accept corrected (D-9, D-10, D-5). The
+individual review opens the dedicated page (#146), not the modal (D-7).
 
 ---
 
@@ -91,15 +93,18 @@ All endpoints exist. **The queue endpoints are keyed by `publication_id`, the ro
                              "delta": { "value": 2, "direction": "up" } },
     "tinkhundla_reviewed": { "value": 22, "total": 59,   // THIS reviewer's own sign-offs
                              "delta": { "value": 7, "direction": "up" } },
-    // submissions received / expected (rows x assigned reviewers) — NOT rows touched
-    "overall_readiness":   34,
-    "reviews_collected":   { "value": 61, "total": 177 },
+    // the requesting reviewer's OWN progress out of 59 (Figma "25/59") — not
+    // crossed with other reviewers; == tinkhundla_reviewed
+    "overall_readiness":   37,
+    "reviews_collected":   { "value": 22, "total": 59 },
+    // status_breakdown stays TEAM-level (queue validation-readiness), unlike the
+    // reviewer-scoped fields above — see D-9
     "status_breakdown": [
-      { "key": "fully_reviewed",     "label": "Fully reviewed",     "value": 4,  "note": "ready to validate",
+      { "key": "fully_reviewed",     "label": "Fully reviewed",     "value": 4,  "note": "of queue | ready to validate",
         "delta": { "value": 1, "direction": "up" } },
-      { "key": "partially_reviewed", "label": "Partially reviewed", "value": 7,  "note": "in progress",
+      { "key": "partially_reviewed", "label": "Partially reviewed", "value": 7,  "note": "of queue | in progress",
         "delta": null },
-      { "key": "not_started",        "label": "Not started",        "value": 13, "note": "awaiting first review",
+      { "key": "not_started",        "label": "Not started",        "value": 13, "note": "of queue | awaiting first review",
         "delta": { "value": -1, "direction": "down" } }
     ]
   }
@@ -158,11 +163,19 @@ The frontend already has `frontend/src/static/tokens.js` → `tailwind.config.js
 No bulk endpoint exists. `PUT /reviewer/review/{review_id}` already replaces the whole `suggestion_values` array, so "Accept all high-confidence" = fetch the high-confidence rows (`?confidence=high&page_size=100`), merge them into `suggestion_values` as `{administration_id, category: cdi_class, reviewed: true}`, and PUT once.
 Fine at 59 Tinkhundla. If the count grows or an audit trail is needed, promote it to `POST /reviewer/{publication_id}/bulk-accept` — the UI call site stays one function either way.
 
+> **`mergeAcceptedRows` is an UPSERT (fixed 2026-07-24).** The accepted
+> Tinkhundla are exactly the ones the reviewer has *not* touched, so they are
+> **appended** to `suggestion_values`, not just flipped where already present.
+> The first cut used `base.map(...)`, which could only update rows already in
+> the array — so "Accept all" accepted nothing on the rows that mattered, and
+> the banner never cleared. `base` is now the reviewer's own `suggestion_values`
+> (or `[]`), not `initial_values`.
+
 ### D-6: Mock fields ship as mock, and say so ✅ **confirmed**
 `confidence` and `stations_vs_satellite` keep `is_mock: true` for this iteration — the real formula and station data are not landing in this scope. Render them with a subtle "provisional" affordance (tooltip / muted asterisk) driven off the flag, never silently. When the real values land the flag flips to `false` and the affordance disappears with no UI change.
 
-### D-7: The individual review stays a modal ✅ **confirmed**
-Track 2's sitemap names an "Individual review page". This refactor keeps `ReviewAdmModal` but re-points it at `GET /reviewer/{publication_id}/administrations/{administration_id}` so it shows the full context (confidence, station signals, disagreement, the reviewer's prior suggestion). Promoting it to `/reviews/{id}/{administration_id}` is a separate, additive change once the modal's content is settled.
+### D-7: The individual review is a dedicated page — superseded by #146
+Originally this iteration kept `ReviewAdmModal`. The "separate, additive change" it foresaw has since shipped as **#146** ([`individual-review-page-real-data.md`](individual-review-page-real-data.md)): the full **individual review page** at `/reviews/{id}/{administration_id}`, on the real endpoints (CDI-E, weather, IKS, decision history, submit). The table's **Review** action now links to that page — carrying the active queue filters so Prev/Next walks the same order (#146 D-6). `ReviewAdmModal` is retained only for **map-polygon** clicks; the sitemap's "Individual review page" is the page, not the modal.
 
 ### D-8: `/stats` gains a `delta` per metric ✅ **resolved — the only backend work**
 The metric cards render a trend arrow ("↑ 7%"). Nothing in `/stats` supports one today, so `build_stats` (`review/utils.py:107`) gains a comparison against the **previous publication month** — the most recent `Publication` with `year_month` earlier than this one:
@@ -187,17 +200,38 @@ looked plausible while reading a signal that wasn't what its title said.
 | Card | Was | Now |
 |---|---|---|
 | `tinkhundla_reviewed` | `validated_values` — the **NDRMA validator's** output, empty for the whole review stage (316 read **0** with 22 reviewed; 317 read **4** to a reviewer who had reviewed 0) | the requesting reviewer's own sign-offs |
-| `overall_readiness` / `reviews_collected` | rows with **≥1** submission (317 read **100%** with 1 of 3 reviewers started) | submissions received / expected (rows × assigned reviewers) → 317 = **34%** |
+| `overall_readiness` / `reviews_collected` | rows with **≥1** submission (317 read **100%** with 1 of 3 reviewers started) | the requesting reviewer's **own** progress, n/59 (Figma 3301-48309 "25/59") — never crossed with other reviewers; 317 user 3 = **2/59, 3%** |
 | `pending_review` | the **disputed** count, under a title reading "not yet reviewed" (structurally 0 until two reviewers differ) | outstanding review work; disagreement moved to its own `disagreements` key so the signal is not lost |
 
 **Reviewer-scoped by design**: `pending_review + tinkhundla_reviewed == total`,
-and both agree with the queue header's `progress_review`. Team-level progress is
-what `status_breakdown` and readiness express — the two are no longer conflated.
+`overall_readiness` / `reviews_collected` are the same reviewer's own progress
+out of 59, and all agree with the queue header's `progress_review`. Only the
+`status_breakdown` (fully / partially / not started) stays **team-level** —
+queue validation-readiness, "ready to validate" / "awaiting first review" — as
+the Figma shows.
 
-The readiness fix is deliberately *not* "rows fully reviewed": a row 2/3 reviewed
-should read as partial progress, not zero. Note the single-reviewer caveat from
-`#136` still applies — on a one-TWG publication one submission is 100% coverage,
-which is arithmetically right and editorially thin.
+`overall_readiness` / `reviews_collected` are the reviewer's **own** count out
+of 59 (`mine_reviewed / total`), matching the Figma "25/59" and the queue
+header. An intermediate version measured team submission-coverage
+(`submissions / (rows × reviewers)` = "61/177"); it was reverted as unreadable
+and not what the design shows — the panel is one reviewer's progress, not the
+team's.
+
+### D-10: "Review completed" chip = fully reviewed by the whole team — fixed 2026-07-24
+
+`filter_rows(reviewed=True)` kept every row that was not `not_started`, i.e. any
+row with a **single** submission. Once one reviewer had worked the queue, the
+chip returned the same set as **All** — the two were indistinguishable.
+
+The chip now keeps only `review_status == fully_reviewed`: **every assigned
+reviewer** has submitted the Inkhundla (progress N/N). So on a 3-reviewer
+publication where one TWG has not started, "Review completed" is empty, and on a
+1-reviewer publication it is exactly the rows that reviewer has done.
+
+> A reviewer-scoped reading ("Tinkhundla *I* have submitted") was considered and
+> rejected by product: the chip reflects **queue completion**, not personal
+> progress. Personal progress is the `tinkhundla_reviewed` / `pending_review`
+> cards (D-9).
 
 ---
 
@@ -248,9 +282,9 @@ app/(auth)/reviews/[id]/page.js            RSC — fetch review + stats + page 1
 |---|---|---|
 | `search` | free text | table |
 | `confidence` | `low` \| `medium` \| `high` | table + map |
-| `reviewed` | `true` (the "Review completed" chip) | table + map |
+| `reviewed` | `true` (the "Review completed" chip) — keeps only **fully-reviewed** Tinkhundla, i.e. every assigned reviewer submitted (progress N/N), not merely one (D-10) | table + map |
 | `region` | Hhohho \| Manzini \| Lubombo \| Shiselweni | table + map |
-| `zone` | highveld \| middleveld \| lowveld \| lubombo_plateau | table + map |
+| `zone` | the six agro-ecological zones: `highveld` \| `upper_middleveld` \| `lower_middleveld` \| `western_lowveld` \| `eastern_lowveld` \| `lubombo_range` (backend-owned vocabulary, served via `window.zones`) | table + map |
 | `page` | int | table only |
 | `map` | `confidence` \| `progress` | map only (client-side colouring) |
 
@@ -317,4 +351,5 @@ No open questions remain.
 
 - [x] D-2 (drought ramp) resolved — `config.js` is canonical
 - [x] All open questions answered (§10)
-- [ ] Design approved → proceed with `/sc:implement`
+- [x] Design approved and **implemented**; post-launch corrections logged as D-9
+      (summary cards), D-10 ("Review completed" filter) and the D-5 upsert note

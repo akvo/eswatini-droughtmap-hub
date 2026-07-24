@@ -255,13 +255,20 @@ def public_row(row):
 
 def filter_rows(rows, search=None, confidence=None,
                 reviewed=None, region=None, zone=None):
-    """Apply the review-queue table / map filters over pre-built rows."""
+    """Apply the review-queue table / map filters over pre-built rows.
+
+    ``reviewed`` (the "Review completed" chip) keeps only Tinkhundla that
+    **every assigned reviewer** has submitted — review progress N/N,
+    ``review_status == fully_reviewed``. It previously kept anything with a
+    single submission (``!= not_started``), so one reviewer's activity made the
+    chip identical to "All".
+    """
     def keep(row):
         if search and search.lower() not in (row["name"] or "").lower():
             return False
         if confidence and row["confidence"]["band"] != confidence:
             return False
-        if reviewed and row["review_status"] == "not_started":
+        if reviewed and row["review_status"] != "fully_reviewed":
             return False
         if region and row["region"] != region:
             return False
@@ -278,7 +285,15 @@ def is_mine_reviewed(row):
 
 
 def _tally(rows):
-    """Raw counters behind the summary — for this month and the previous."""
+    """Raw counters behind the summary — for this month and the previous.
+
+    The top cards + Assessment summary (mine_reviewed, pending, readiness,
+    reviews_collected) are scoped to the requesting reviewer: their own
+    submissions out of the 59 Tinkhundla, never crossed with other reviewers.
+    The fully/partially/not_started breakdown stays team-level — queue
+    validation-readiness ("ready to validate" / "awaiting first review") — as
+    the design shows.
+    """
     counts = {"fully_reviewed": 0, "partially_reviewed": 0, "not_started": 0}
     tally = {
         "total": len(rows),
@@ -286,12 +301,6 @@ def _tally(rows):
         "high_confidence": 0,
         "validated": 0,
         "mine_reviewed": 0,
-        # Submissions actually received vs. expected (rows x assigned
-        # reviewers). Counting rows with *any* submission as "collected"
-        # reported 100% readiness on a publication where only one of three
-        # reviewers had started.
-        "submissions": 0,
-        "expected_submissions": 0,
     }
     for row in rows:
         counts[row["review_status"]] += 1
@@ -306,13 +315,9 @@ def _tally(rows):
             tally["validated"] += 1
         if is_mine_reviewed(row):
             tally["mine_reviewed"] += 1
-        tally["submissions"] += row["reviews"]["completed"]
-        tally["expected_submissions"] += row["reviews"]["total"]
     tally.update(counts)
-    # The requesting reviewer's own outstanding rows, so `pending_review` and
-    # `tinkhundla_reviewed` are the two halves of one total (and agree with the
-    # queue header, which derives the same figure from `progress_review`).
-    # Team-level progress is expressed by `status_breakdown` / readiness.
+    # The requesting reviewer's own outstanding rows: pending + reviewed == the
+    # 59 Tinkhundla, and both agree with the queue header's progress_review.
     tally["pending"] = tally["total"] - tally["mine_reviewed"]
     return tally
 
@@ -379,33 +384,33 @@ def build_stats(rows, previous_rows=None):
                 _pct(was["mine_reviewed"], was["total"]) if was else None,
             ),
         },
-        "overall_readiness": _pct(
-            now["submissions"], now["expected_submissions"]
-        ),
+        # The requesting reviewer's own progress out of the 59 Tinkhundla
+        # (Figma "Reviews collected 25/59") — not crossed with other reviewers.
+        "overall_readiness": _pct(now["mine_reviewed"], now["total"]),
         "reviews_collected": {
-            "value": now["submissions"],
-            "total": now["expected_submissions"],
+            "value": now["mine_reviewed"],
+            "total": now["total"],
         },
         "status_breakdown": [
             {
                 "key": "fully_reviewed",
                 "label": "Fully reviewed",
                 "value": now["fully_reviewed"],
-                "note": "ready to validate",
+                "note": "of queue | ready to validate",
                 "delta": delta("fully_reviewed"),
             },
             {
                 "key": "partially_reviewed",
                 "label": "Partially reviewed",
                 "value": now["partially_reviewed"],
-                "note": "in progress",
+                "note": "of queue | in progress",
                 "delta": delta("partially_reviewed"),
             },
             {
                 "key": "not_started",
                 "label": "Not started",
                 "value": now["not_started"],
-                "note": "awaiting first review",
+                "note": "of queue | awaiting first review",
                 "delta": delta("not_started"),
             },
         ],
