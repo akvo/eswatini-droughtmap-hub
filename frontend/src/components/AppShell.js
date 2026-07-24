@@ -7,7 +7,7 @@ const AppShell = ({ session, children }) => {
   const pathname = usePathname();
 
   // Embedded maps (compare slider) render bare — no navbar, footer or container.
-  if (pathname?.startsWith("/iframe")) {
+  if (pathname?.startsWith("/iframe") || pathname?.startsWith("/citizen-weather")) {
     return children;
   }
 
