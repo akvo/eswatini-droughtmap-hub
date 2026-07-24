@@ -32,13 +32,13 @@ const PredictorAccordion = ({
           <span className="text-neutral-500">Predictor observed</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded-[1px] bg-brandTint border border-[#D2D2D2]" />
+          <span className="w-3.5 h-3.5 rounded-[1px] bg-brandTint border border-cardBorder" />
           <span className="text-neutral-500">Predictor not observed</span>
         </div>
       </div>
     </div>
     <div
-      className={`${section === "B" ? "border-y" : "border-t"} border-[#D2D2D2] bg-white`}
+      className={`${section === "B" ? "border-y" : "border-t"} border-cardBorder bg-white`}
     >
       <Collapse
         bordered={false}
@@ -53,9 +53,9 @@ const PredictorAccordion = ({
               </span>
             }
             key={item.key}
-            className="border-b border-[#D2D2D2] last:border-0 bg-white"
+            className="border-b border-cardBorder last:border-0 bg-white"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 border-t border-[#D2D2D2]">
+            <div className="grid grid-cols-1 md:grid-cols-2 border-t border-cardBorder">
               {item.indicators.map((ind, i) => (
                 <IndicatorRow
                   key={i}

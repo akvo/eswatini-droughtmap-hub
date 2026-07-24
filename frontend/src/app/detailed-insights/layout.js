@@ -51,7 +51,7 @@ const monthMap = {
  */
 const SelectInkhundlaEmptyState = () => (
   <div className="flex min-h-[480px] w-full flex-col items-center justify-center gap-4 bg-white px-4 text-center">
-    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-[#D2D2D2] bg-white">
+    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-cardBorder bg-white">
       <InfoCircleOutlined className="text-xl text-primary" />
     </div>
     <div className="flex flex-col gap-1">
@@ -118,7 +118,7 @@ const InsightsShell = ({ children }) => {
           actions={
             <a
               href="#methodology"
-              className="inline-flex items-center justify-center px-6 py-3 border border-[#D2D2D2] bg-white text-sm font-normal text-primary hover:bg-neutral-50 hover:text-[#2d468a] transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 border border-cardBorder bg-white text-sm font-normal text-primary hover:bg-neutral-50 hover:text-[#2d468a] transition-colors"
             >
               Methodology
             </a>
@@ -133,9 +133,9 @@ const InsightsShell = ({ children }) => {
         <div className="mx-auto w-full max-w-[1280px]">
           {/* Shared Explore insights container card. -mt-20 clears pt-8 and
               still overlaps the header by the same 48px as before. */}
-          <div className="relative z-10 bg-white border border-[#D2D2D2] border-b-0 -mt-20">
+          <div className="relative z-10 bg-white border border-cardBorder border-b-0 -mt-20">
             {/* Card Header (Explore insights title + Inkhundla select + Export) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-4 border-b border-[#D2D2D2] gap-4 bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-4 border-b border-cardBorder gap-4 bg-white">
               <h3 className="text-[20px] font-bold text-neutral-800 leading-[30px] mb-0">
                 Explore insights
               </h3>
@@ -157,7 +157,7 @@ const InsightsShell = ({ children }) => {
                 />
                 <Button
                   type="default"
-                  className="text-neutral-600 font-semibold border-[#D2D2D2]"
+                  className="text-neutral-600 font-semibold border-cardBorder"
                 >
                   Export CSV
                 </Button>
@@ -165,7 +165,7 @@ const InsightsShell = ({ children }) => {
             </div>
 
             {/* Tab row inside container */}
-            <div className="flex items-center gap-6 px-4 bg-white border-b border-[#D2D2D2]">
+            <div className="flex items-center gap-6 px-4 bg-white border-b border-cardBorder">
               {tabOptions.map((opt) => {
                 const active = opt.value === activeTab;
                 return (
@@ -189,7 +189,7 @@ const InsightsShell = ({ children }) => {
           {administrationId ? (
             <div className="w-full">{children}</div>
           ) : (
-            <div className="bg-white border border-[#D2D2D2] overflow-hidden">
+            <div className="bg-white border border-cardBorder overflow-hidden">
               <SelectInkhundlaEmptyState />
             </div>
           )}

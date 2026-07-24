@@ -61,7 +61,7 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   const label = zoneLabel(zone);
 
   return (
-    <div className="flex items-start justify-between border-b border-[#D2D2D2] px-4 py-6">
+    <div className="flex items-start justify-between border-b border-cardBorder px-4 py-6">
       <div className="flex flex-col gap-[12px]">
         <h2 className="text-2xl font-bold text-neutral-800 leading-[30px] mb-0">
           {name} Inkhundla

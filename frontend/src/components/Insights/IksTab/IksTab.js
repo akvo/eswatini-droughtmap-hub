@@ -380,7 +380,7 @@ const IksTab = ({
 
   return (
     <div className="space-y-6 w-full">
-      <div className="bg-white border border-[#D2D2D2] border-t-0">
+      <div className="bg-white border border-cardBorder border-t-0">
         <InkhundlaHeader
           name={selectedInkhundla}
           region={region}
@@ -390,7 +390,7 @@ const IksTab = ({
 
         {/* 2 KPI metrics */}
         {!isLocked && (
-          <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-[#D2D2D2] overflow-hidden border-b border-[#D2D2D2]">
+          <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-cardBorder overflow-hidden border-b border-cardBorder">
             <KpiMetricCard
               title="Reporting consistency"
               value={`${formatPercentage(consistency)}%`}
@@ -406,8 +406,8 @@ const IksTab = ({
           </div>
         )}
 
-        <div className="px-4 py-4 border-b border-[#D2D2D2]">
-          <div className="flex items-center justify-between border-b border-[#D2D2D2] pb-4 mb-4">
+        <div className="px-4 py-4 border-b border-cardBorder">
+          <div className="flex items-center justify-between border-b border-cardBorder pb-4 mb-4">
             <div>
               <h4 className="text-[16px] font-bold text-neutral-800 leading-[30px] mb-0">
                 Indicator activity per monthly report
@@ -417,7 +417,7 @@ const IksTab = ({
                 citizen scientist ticked each month
               </p>
             </div>
-            <div className="flex items-center gap-2 border border-[#D2D2D2] px-3 py-1.5 rounded bg-white text-sm text-[#333] shrink-0 select-none">
+            <div className="flex items-center gap-2 border border-cardBorder px-3 py-1.5 rounded bg-white text-sm text-[#333] shrink-0 select-none">
               <CalendarOutlined className="text-neutral-400" />
               <span className="font-normal text-[14px] leading-none">
                 {dateRange}
@@ -486,8 +486,8 @@ const IksTab = ({
         </div>
 
         {/* Soil Moisture and Vegetation Grids (DRY) */}
-        <Row className="border-b border-[#D2D2D2]">
-          <Col md={24} className="border-b border-[#D2D2D2]">
+        <Row className="border-b border-cardBorder">
+          <Col md={24} className="border-b border-cardBorder">
             <MonthlyStatusGrid
               title="Soil moisture (Womile / Ubutsile / Umanti)"
               subtitle="one answer per monthly report"
@@ -537,8 +537,8 @@ const IksTab = ({
         </div>
       </div>
 
-      <div className="bg-white border border-[#D2D2D2] py-4">
-        <div className="flex items-center justify-between border-b border-[#D2D2D2] px-4 pb-4 mb-4">
+      <div className="bg-white border border-cardBorder py-4">
+        <div className="flex items-center justify-between border-b border-cardBorder px-4 pb-4 mb-4">
           <div>
             <h4 className="text-[20px] font-bold text-neutral-800 leading-[30px] mb-0">
               Submitted photos
@@ -558,7 +558,7 @@ const IksTab = ({
                 <Row gutter={[16, 16]}>
                   {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
                     <Col xs={24} sm={8} key={i}>
-                      <div className="relative group overflow-hidden rounded-lg border border-[#D2D2D2] cursor-pointer h-48 bg-neutral-100">
+                      <div className="relative group overflow-hidden rounded-lg border border-cardBorder cursor-pointer h-48 bg-neutral-100">
                         <Image
                           src={photo.url}
                           alt={photo.title || "Observation Photo"}
@@ -601,7 +601,7 @@ const IksTab = ({
                   onClick={handlePrev}
                   disabled={startIndex === 0}
                   type="default"
-                  className="text-neutral-600 font-semibold border-[#D2D2D2] px-3 py-1 flex items-center justify-center rounded"
+                  className="text-neutral-600 font-semibold border-cardBorder px-3 py-1 flex items-center justify-center rounded"
                 >
                   <svg
                     className="w-4 h-4"
@@ -621,7 +621,7 @@ const IksTab = ({
                   onClick={handleNext}
                   disabled={startIndex >= photos.length - 3}
                   type="default"
-                  className="text-neutral-600 font-semibold border-[#D2D2D2] px-3 py-1 flex items-center justify-center rounded"
+                  className="text-neutral-600 font-semibold border-cardBorder px-3 py-1 flex items-center justify-center rounded"
                 >
                   <svg
                     className="w-4 h-4"
