@@ -10,6 +10,8 @@ class JobTypes:
     send_feedback = 9
     indicator_values = 10
     attach_component_rasters = 11
+    cs_reminder = 12
+    cs_magic_link = 13
 
     FieldStr = {
         test: "test",
@@ -23,6 +25,8 @@ class JobTypes:
         send_feedback: "send_feedback",
         indicator_values: "indicator_values",
         attach_component_rasters: "attach_component_rasters",
+        cs_reminder: "cs_reminder",
+        cs_magic_link: "cs_magic_link",
     }
 
 

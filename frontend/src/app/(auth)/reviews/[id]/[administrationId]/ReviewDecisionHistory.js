@@ -29,7 +29,7 @@ const ReviewDecisionHistory = ({ history = [] }) => {
         <div className="flex flex-col gap-3 px-6 pb-6">
           {history.map((entry) => (
             <div
-              key={entry.id}
+              key={entry.period}
               className="flex items-center justify-between border-b border-[#eaecf0] pb-3 last:border-b-0"
             >
               <div className="flex items-center gap-3">
@@ -41,9 +41,11 @@ const ReviewDecisionHistory = ({ history = [] }) => {
                   <div className="text-xs text-[#606060]">{entry.comment}</div>
                 </div>
               </div>
-              <span className="text-xs text-[#a4a4a4] shrink-0">
-                {dayjs(entry.validated_at).format("MMM D, YYYY")}
-              </span>
+              {entry.decided_at && (
+                <span className="text-xs text-[#a4a4a4] shrink-0">
+                  {dayjs(entry.decided_at).format("MMM D, YYYY")}
+                </span>
+              )}
             </div>
           ))}
           {history.length === 0 && (

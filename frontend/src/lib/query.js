@@ -52,16 +52,31 @@ export const buildQueueQuery = (state = {}, { withPage = false } = {}) => {
 
 /**
  * Bulk accept: stamp the computed class onto every high-confidence Inkhundla,
- * leaving every other entry (including other Tinkhundla's existing suggestions)
- * untouched. The review PUT replaces the whole array, so `base` must be the
- * reviewer's current suggestion_values — or initial_values on a first pass.
+ * leaving every other existing suggestion untouched. An UPSERT — the review PUT
+ * replaces the whole array, and the accepted Tinkhundla are precisely the ones
+ * the reviewer has NOT touched yet, so they are appended, not just flipped in
+ * place. A plain `base.map` (the old bug) could only update rows already in
+ * `base`, so it accepted nothing on the rows that mattered.
  */
 export const mergeAcceptedRows = (base = [], rows = []) => {
   const accepted = new Map(rows.map((row) => [row.administration_id, row]));
-  return base.map((value) => {
+  const merged = base.map((value) => {
     const row = accepted.get(value?.administration_id);
-    return row ? { ...value, category: row.cdi_class, reviewed: true } : value;
+    if (!row) {
+      return value;
+    }
+    accepted.delete(value.administration_id);
+    return { ...value, category: row.cdi_class, reviewed: true };
   });
+  // Accepted Tinkhundla with no prior suggestion — the common case — are added.
+  accepted.forEach((row) => {
+    merged.push({
+      administration_id: row.administration_id,
+      category: row.cdi_class,
+      reviewed: true,
+    });
+  });
+  return merged;
 };
 
 /** URL searchParams -> queue state (server and client read the same way). */

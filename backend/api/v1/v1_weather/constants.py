@@ -74,6 +74,44 @@ INGESTION_LAG_ALERT_DAYS = 30
 TOTAL_PLANNED_STATIONS = 8
 NETWORK = "MET"
 
+# --- Citizen science (WX-6) ---------------------------------------------
+CS_NETWORK = "citizen_science"
+# (reading column, display label, units) — 1:1 with the brief's field list.
+CS_FIELDS = [
+    ("min_temperature", "Min temperature", "°C"),
+    ("max_temperature", "Max temperature", "°C"),
+    ("precipitation", "Precipitation (monthly)", "mm"),
+    ("soil_moisture", "Soil moisture", "%"),
+    ("soil_temperature", "Soil temperature", "°C"),
+]
+# Sanity bounds: out-of-range values WARN in the PUT response but never
+# block — the form never blocks submission (WX-6 §8).
+CS_VALUE_BOUNDS = {
+    "min_temperature": (-20, 60),
+    "max_temperature": (-20, 60),
+    "precipitation": (0, 1500),
+    "soil_moisture": (0, 100),
+    "soil_temperature": (-20, 60),
+}
+CS_NOTES_MAX_LENGTH = 2000
+# Station sensor key -> the reading field it gates on the observer form
+# (mockup §6.4 chips). wind_speed is recorded on the station but has no
+# reading field in v1 (not in the brief's submission list).
+CS_SENSORS = {
+    "min_temp": "min_temperature",
+    "max_temp": "max_temperature",
+    "rain_gauge": "precipitation",
+    "soil_moisture": "soil_moisture",
+    "soil_temperature": "soil_temperature",
+    "wind_speed": None,
+}
+# Completeness window and thresholds (brief §6.3): trailing 12 reportable
+# months; >= 10 reported is "reporting well", >= 3 missed is "at risk".
+CS_WINDOW_MONTHS = 12
+CS_REPORTING_WELL_MIN = 10
+CS_AT_RISK_MISSED = 3
+CS_HISTORY_MAX = 24
+
 # --- 30-year normals (WX-5) ---------------------------------------------
 # One band per month-of-year (climatology). Both rasters are EPSG:4326 and
 # live in the repo alongside eswatini.topojson.

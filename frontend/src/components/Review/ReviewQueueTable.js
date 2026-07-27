@@ -4,8 +4,9 @@ import Link from "next/link";
 import { Button, Input, Progress, Select, Table } from "antd";
 import { TabButtons } from "@/components";
 import { ConfidenceBadge, DroughtScore } from "@/components/DS";
-import { PAGE_SIZE, REGION_OPTIONS, ZONE_OPTIONS } from "@/static/config";
-import { QUEUE_FILTERS } from "./query";
+import { PAGE_SIZE, REGION_OPTIONS } from "@/static/config";
+import { useAppContext } from "@/context/AppContextProvider";
+import { QUEUE_FILTERS, buildQueueQuery } from "@/lib/query";
 
 /** SPI / LST readings. Mock until station data exists (backend is_mock). */
 const StationSignals = ({ stations }) => {
@@ -45,6 +46,8 @@ const ReviewQueueTable = ({
   onChange,
   children,
 }) => {
+  // Zone vocabulary comes from the backend via /config.js (window.zones).
+  const { zones } = useAppContext();
   const columns = [
     {
       title: "INKHUNDLA",
@@ -118,9 +121,15 @@ const ReviewQueueTable = ({
       key: "actions",
       width: 100,
       render: (_, record) => {
-        console.log("record", record);
+        // Carry the active queue filters so the individual page's Prev/Next
+        // walks the same filtered order the reviewer sees (D-6).
+        const qs = buildQueueQuery(state);
         return (
-          <Link href={`/reviews/${reviewId}/${record?.administration_id}`}>
+          <Link
+            href={`/reviews/${reviewId}/${record?.administration_id}${
+              qs ? `?${qs}` : ""
+            }`}
+          >
             <Button type="link" className="edm-reviews-action">
               {isCompleted ? "View" : "Review"}
             </Button>
@@ -134,8 +143,6 @@ const ReviewQueueTable = ({
       key: "my_suggestion",
       width: 110,
       align: "right",
-      // Final column — set off with a faint brand tint from the rest of the row.
-      onHeaderCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
       onCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
       // The reviewer's own class — what they approved or suggested. NOT
       // assigned_score, which stays empty until a validator signs the month off.
@@ -196,7 +203,7 @@ const ReviewQueueTable = ({
             className="min-w-[180px]"
             placeholder="All zones"
             allowClear
-            options={ZONE_OPTIONS}
+            options={zones}
             value={state.zone || undefined}
             onChange={(zone) => onChange({ zone: zone || "", page: 1 })}
           />

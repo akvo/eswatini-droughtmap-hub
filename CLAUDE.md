@@ -114,7 +114,7 @@ When implementing frontend features before the backend API is available, place m
 ### Key Patterns
 
 - **Soft deletes**: Publications use logical deletion via `SoftDeletes` mixin (`deleted_at` field)
-- **Role-based access**: Two key roles — `admin` (manages publications/settings) and `reviewer` (reviews publications)
+- **Role-based access**: Three roles — `admin` (manages publications/settings), `reviewer` (reviews publications), and `observer` (citizen-science weather submitters; passwordless magic-link auth, see `eswatini-v2/docs/track-3/citizen-science-weather.md`)
 - **GeoNode integration**: Fetches CDI raster datasets from external GeoNode instance
 - **Email notifications**: SMTP-based notifications for review workflows and overdue checks
 
