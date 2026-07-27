@@ -19,7 +19,10 @@ const IndividualReviewPage = async ({ params, searchParams }) => {
     redirect("/reviews");
   }
   const publicationId = review.publication_id;
-  const period = review.year_month; // already "YYYY-MM"
+  // ReviewSerializer nests these under `publication` (year_month formatted
+  // "YYYY-MM"); they are not top-level fields.
+  const period = review.publication?.year_month;
+  const dueDate = review.publication?.due_date;
   const state = parseQueueState(searchParams);
   const queueQuery = buildQueueQuery(state);
 
@@ -70,8 +73,8 @@ const IndividualReviewPage = async ({ params, searchParams }) => {
       iks={iks}
       orderedIds={orderedIds}
       queueQuery={queueQuery}
-      yearMonth={review.year_month}
-      dueDate={review.due_date}
+      yearMonth={period}
+      dueDate={dueDate}
       isCompleted={review.is_completed}
     />
   );
