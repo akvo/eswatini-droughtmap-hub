@@ -24,8 +24,7 @@ class JobAPITestCase(APITestCase):
         Test fetching an existing job by ID.
         """
         url = reverse(
-            "view_job",
-            kwargs={"version": "v1", "job_id": self.job.id}
+            "view_job", kwargs={"version": "v1", "job_id": self.job.id}
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -128,7 +127,7 @@ class CronJobScriptTestCase(SimpleTestCase):
     def _job_sh_tasks(self):
         # Task names are the case-branch labels in job.sh, e.g. "  reviews)".
         job_sh = (self.base_dir / "job.sh").read_text()
-        return set(re.findall(r"^\s{2}(\w+)\)", job_sh, re.MULTILINE))
+        return set(re.findall(r"^\s*([\w-]+)\)", job_sh, re.MULTILINE))
 
     def _cron_tasks(self):
         cron = (self.base_dir / "eswatini-cron").read_text()
