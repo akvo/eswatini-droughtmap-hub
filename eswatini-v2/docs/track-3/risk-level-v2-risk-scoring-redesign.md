@@ -10,7 +10,7 @@
 **Track**: Track 3 — Operational Response
 **Author**: Iwan Firmawan
 **Date**: 2026-07-24
-**Status**: Draft
+**Status**: Approved (2026-07-27)
 
 **Supersedes**: [`risk-level-backend-v1_indicators.md`](./risk-level-backend-v1_indicators.md) — that doc is marked IMPLEMENTED but was written against the superseded `priority_areas.csv` prototype. This revision realigns `v1_indicators` (and the `v1_activity` trigger seam) to the new **DIH Risk Dataset Handover** methodology.
 
