@@ -10,27 +10,27 @@ from api.v1.v1_insights.views import (
 
 urlpatterns = [
     re_path(
-        r"^(?P<version>(v1))/insights/hero$",
+        r"^(?P<version>(v1))/national-overview/hero$",
         InsightsHeroView.as_view(),
         name="insights-hero",
     ),
     re_path(
-        r"^(?P<version>(v1))/insights/zones$",
+        r"^(?P<version>(v1))/national-overview/zones$",
         InsightsZonesView.as_view(),
         name="insights-zones",
     ),
     re_path(
-        r"^(?P<version>(v1))/insights/metrics$",
+        r"^(?P<version>(v1))/national-overview/metrics$",
         InsightsMetricsView.as_view(),
         name="insights-metrics",
     ),
     re_path(
-        r"^(?P<version>(v1))/insights/response-activities$",
+        r"^(?P<version>(v1))/national-overview/response-activities$",
         InsightsResponseActivitiesView.as_view(),
         name="insights-response-activities",
     ),
     re_path(
-        r"^(?P<version>(v1))/insights/map-data$",
+        r"^(?P<version>(v1))/national-overview/map-data$",
         InsightsMapDataView.as_view(),
         name="insights-map-data",
     ),
