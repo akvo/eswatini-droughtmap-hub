@@ -256,6 +256,37 @@ class CitizenScienceTests(APITestCase):
         )
         self.assertEqual(response.json()["dispatched"], 1)
 
+    def test_fake_citizen_weather_seeder_idempotent(self):
+        call_command(
+            "fake_citizen_weather_seeder", "--coverage", "100",
+            "--test", "true",
+        )
+        # Skips the Inkhundla that already has an observer (setUp's),
+        # fills the uncovered one — passwordless, sensors recorded
+        seeded = SystemUser.objects.get(
+            role=UserRoleTypes.observer, administration=self.kwaluseni
+        )
+        self.assertFalse(seeded.has_usable_password())
+        self.assertIn("rain_gauge", seeded.station_sensors)
+        self.assertTrue(
+            CitizenScienceReading.objects.filter(
+                administration=self.kwaluseni, submitted_at__isnull=False
+            ).exists()
+        )
+        observers = SystemUser.objects.filter(
+            role=UserRoleTypes.observer
+        ).count()
+        readings = CitizenScienceReading.objects.count()
+        call_command(
+            "fake_citizen_weather_seeder", "--coverage", "100",
+            "--test", "true",
+        )
+        self.assertEqual(
+            SystemUser.objects.filter(role=UserRoleTypes.observer).count(),
+            observers,
+        )
+        self.assertEqual(CitizenScienceReading.objects.count(), readings)
+
     def test_send_cs_reminders_command(self):
         out = StringIO()
         call_command("send_cs_reminders", stdout=out)

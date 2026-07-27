@@ -1,7 +1,8 @@
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -432,6 +433,25 @@ class AdministrationCitizenScienceAPI(APIView):
     @extend_schema(
         tags=["Citizen Science"],
         summary="Citizen-science reading for an administration + month",
+        parameters=[
+            OpenApiParameter(
+                name="period",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Target month, YYYY-MM",
+            ),
+            OpenApiParameter(
+                name="history",
+                required=False,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description=(
+                    f"Opt-in trailing months of submitted readings "
+                    f"(0-{CS_HISTORY_MAX}); 0 = current month only"
+                ),
+            ),
+        ],
     )
     def get(self, request, version, administration_id):
         administration = get_object_or_404(
