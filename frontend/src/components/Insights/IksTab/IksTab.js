@@ -23,6 +23,7 @@ import TabLoader from "../TabLoader";
 import KpiMetricCard from "./KpiMetricCard";
 import MonthlyStatusGrid from "./MonthlyStatusGrid";
 import { formatMonthLabel } from "./IndicatorRow";
+import { CalendarOutlined, DownOutlined } from "@ant-design/icons";
 
 import PredictorAccordion from "./PredictorAccordion";
 import {
@@ -236,7 +237,7 @@ const IksTab = ({
       name: "Rainfall Predictors (Section B)",
       type: "line",
       data: rainLeaningData,
-      itemStyle: { color: "#4F679B" },
+      itemStyle: { color: "#3E5EB9" },
       lineStyle: { width: 2 },
       symbol: "circle",
       symbolSize: 6,
@@ -249,8 +250,8 @@ const IksTab = ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(79, 103, 155, 0.15)" },
-            { offset: 1, color: "rgba(79, 103, 155, 0.01)" },
+            { offset: 0, color: "rgba(62, 94, 185, 0.15)" },
+            { offset: 1, color: "rgba(62, 94, 185, 0.01)" },
           ],
         },
       },
@@ -259,7 +260,7 @@ const IksTab = ({
       name: "Extreme Weather (Section C)",
       type: "line",
       data: extremeWeatherData,
-      itemStyle: { color: "#C05C5C" },
+      itemStyle: { color: "#B10D0B" },
       lineStyle: { width: 2 },
       symbol: "circle",
       symbolSize: 6,
@@ -272,8 +273,8 @@ const IksTab = ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(192, 92, 92, 0.15)" },
-            { offset: 1, color: "rgba(192, 92, 92, 0.01)" },
+            { offset: 0, color: "rgba(177, 13, 11, 0.15)" },
+            { offset: 1, color: "rgba(177, 13, 11, 0.01)" },
           ],
         },
       },
@@ -310,7 +311,7 @@ const IksTab = ({
       type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { lineStyle: { color: "#f3f4f6" } },
+      splitLine: { lineStyle: { color: "#e5e7eb", type: "dashed" } },
       axisLabel: { color: "#6b7280" },
     },
     series: activitySeries.filter(
@@ -379,7 +380,7 @@ const IksTab = ({
 
   return (
     <div className="space-y-6 w-full">
-      <div className="bg-white">
+      <div className="bg-white border border-cardBorder border-t-0">
         <InkhundlaHeader
           name={selectedInkhundla}
           region={region}
@@ -388,41 +389,45 @@ const IksTab = ({
         />
 
         {/* 2 KPI metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-neutral-100 overflow-hidden shadow-sm border-b border-neutral-100">
-          <KpiMetricCard
-            title="Reporting consistency"
-            value={`${formatPercentage(consistency)}%`}
-            subtitle={`${reportedMonthsCount} / 12 months reported`}
-            locked={isLocked}
-          />
-          <KpiMetricCard
-            title="Form completion"
-            value={`${formatPercentage(completionRate)}%`}
-            subtitle="Sections B + C + D filled"
-            locked={isLocked}
-          />
-        </div>
+        {!isLocked && (
+          <div className="grid grid-cols-1 md:grid-cols-2 bg-white divide-y md:divide-y-0 md:divide-x divide-cardBorder overflow-hidden border-b border-cardBorder">
+            <KpiMetricCard
+              title="Reporting consistency"
+              value={`${formatPercentage(consistency)}%`}
+              subtitle={`${reportedMonthsCount} / 12 months reported`}
+              locked={isLocked}
+            />
+            <KpiMetricCard
+              title="Form completion"
+              value={`${formatPercentage(completionRate)}%`}
+              subtitle="Sections B + C + D filled"
+              locked={isLocked}
+            />
+          </div>
+        )}
 
-        {/* Line Chart Panel */}
-        <div className="px-4 py-6 border-b border-neutral-100">
-          <div className="flex items-center justify-between mb-4">
+        <div className="px-4 py-4 border-b border-cardBorder">
+          <div className="flex items-center justify-between border-b border-cardBorder pb-4 mb-4">
             <div>
-              <h4 className="text-sm font-bold text-neutral-800">
+              <h4 className="text-[16px] font-bold text-neutral-800 leading-[30px] mb-0">
                 Indicator activity per monthly report
               </h4>
-              <p className="text-xs text-neutral-400">
+              <p className="text-[14px] text-[#606060] font-normal mt-1 mb-0">
                 How many rain-leaning vs extreme weather-leaning indicators the
                 citizen scientist ticked each month
               </p>
             </div>
-            <span className="text-xs text-neutral-400 font-medium border border-neutral-100 px-2 py-1 rounded bg-neutral-50">
-              {dateRange}
-            </span>
+            <div className="flex items-center gap-2 border border-cardBorder px-3 py-1.5 rounded bg-white text-sm text-[#333] shrink-0 select-none">
+              <CalendarOutlined className="text-neutral-400" />
+              <span className="font-normal text-[14px] leading-none">
+                {dateRange}
+              </span>
+              {/* <DownOutlined className="text-neutral-400 text-[10px] ml-1" /> */}
+            </div>
           </div>
-
           {/* Interactive Checkbox Filters */}
           <div className="flex items-center gap-6 mb-4">
-            <ConfigProvider theme={{ token: { colorPrimary: "#4F679B" } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: "#3E5EB9" } }}>
               <Checkbox
                 checked={showRain}
                 onChange={(e) => setShowRain(e.target.checked)}
@@ -432,7 +437,7 @@ const IksTab = ({
                 </span>
               </Checkbox>
             </ConfigProvider>
-            <ConfigProvider theme={{ token: { colorPrimary: "#C05C5C" } }}>
+            <ConfigProvider theme={{ token: { colorPrimary: "#B10D0B" } }}>
               <Checkbox
                 checked={showDrought}
                 onChange={(e) => setShowDrought(e.target.checked)}
@@ -463,7 +468,7 @@ const IksTab = ({
               <div
                 className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showRain ? "opacity-100" : "opacity-35"}`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#4F679B] block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#3E5EB9] block" />
                 <span className="font-medium text-neutral-500">
                   Rain-leaning
                 </span>
@@ -471,7 +476,7 @@ const IksTab = ({
               <div
                 className={`flex items-center gap-2 text-xs transition-opacity duration-200 ${showDrought ? "opacity-100" : "opacity-35"}`}
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#C05C5C] block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#B10D0B] block" />
                 <span className="font-medium text-neutral-500">
                   Extreme weather-leaning
                 </span>
@@ -481,8 +486,8 @@ const IksTab = ({
         </div>
 
         {/* Soil Moisture and Vegetation Grids (DRY) */}
-        <Row className="border-b border-neutral-100">
-          <Col md={24} className="border-b border-neutral-100">
+        <Row className="border-b border-cardBorder">
+          <Col md={24} className="border-b border-cardBorder">
             <MonthlyStatusGrid
               title="Soil moisture (Womile / Ubutsile / Umanti)"
               subtitle="one answer per monthly report"
@@ -512,7 +517,7 @@ const IksTab = ({
         </Row>
 
         {/* Flat Indicator Lists */}
-        <div className="space-y-0 py-6 border-b border-neutral-100">
+        <div className="space-y-6 pt-6 pb-0">
           <PredictorAccordion
             title="Section B: Rainfall predictors (21 indicators)"
             subtitle="One strip per indicator · each cell = one monthly report"
@@ -530,20 +535,21 @@ const IksTab = ({
             section="C"
           />
         </div>
+      </div>
 
-        {/* Photos Grid Carousel */}
-        <div className="border-b border-neutral-100 px-4 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="text-sm font-bold text-neutral-800">
-                Submitted photos
-              </h4>
-              <p className="text-xs text-neutral-400 mb-0">
-                Photos uploaded with monthly Kobo reports | click to view full |{" "}
-                {photos.length} photos found
-              </p>
-            </div>
+      <div className="bg-white border border-cardBorder py-4">
+        <div className="flex items-center justify-between border-b border-cardBorder px-4 pb-4 mb-4">
+          <div>
+            <h4 className="text-[20px] font-bold text-neutral-800 leading-[30px] mb-0">
+              Submitted photos
+            </h4>
+            <p className="text-sm text-[#606060] font-normal mt-1 mb-0">
+              Photos uploaded with monthly Kobo reports · click to view full ·{" "}
+              {photos.length} photos found
+            </p>
           </div>
+        </div>
+        <div className="px-4">
           {photos.length === 0 ? (
             <Empty description="No photos submitted" />
           ) : (
@@ -552,7 +558,7 @@ const IksTab = ({
                 <Row gutter={[16, 16]}>
                   {photos.slice(startIndex, startIndex + 3).map((photo, i) => (
                     <Col xs={24} sm={8} key={i}>
-                      <div className="relative group overflow-hidden rounded-lg border border-neutral-100 shadow-sm cursor-pointer h-48 bg-neutral-100">
+                      <div className="relative group overflow-hidden rounded-lg border border-cardBorder cursor-pointer h-48 bg-neutral-100">
                         <Image
                           src={photo.url}
                           alt={photo.title || "Observation Photo"}
@@ -595,7 +601,7 @@ const IksTab = ({
                   onClick={handlePrev}
                   disabled={startIndex === 0}
                   type="default"
-                  className="text-neutral-600 font-semibold border-neutral-200 px-3 py-1 flex items-center justify-center rounded"
+                  className="text-neutral-600 font-semibold border-cardBorder px-3 py-1 flex items-center justify-center rounded"
                 >
                   <svg
                     className="w-4 h-4"
@@ -615,7 +621,7 @@ const IksTab = ({
                   onClick={handleNext}
                   disabled={startIndex >= photos.length - 3}
                   type="default"
-                  className="text-neutral-600 font-semibold border-neutral-200 px-3 py-1 flex items-center justify-center rounded"
+                  className="text-neutral-600 font-semibold border-cardBorder px-3 py-1 flex items-center justify-center rounded"
                 >
                   <svg
                     className="w-4 h-4"
@@ -635,9 +641,10 @@ const IksTab = ({
             </>
           )}
         </div>
+      </div>
 
-        {/* Indicator Catalogue Table - spec UAC */}
-        {/* <div className="border-t border-neutral-100 px-4 py-6">
+      {/* Indicator Catalogue Table - spec UAC */}
+      {/* <div className="border-t border-neutral-100 px-4 py-6">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-neutral-800">
               Indicator catalogue
@@ -661,8 +668,8 @@ const IksTab = ({
           )}
         </div> */}
 
-        {/* Inkhundla x Week Heatmap - spec UAC (non-blocking via dynamic import) */}
-        {/* <div className="border-t border-neutral-100 px-4 py-6">
+      {/* Inkhundla x Week Heatmap - spec UAC (non-blocking via dynamic import) */}
+      {/* <div className="border-t border-neutral-100 px-4 py-6">
           <div className="mb-4">
             <h4 className="text-sm font-bold text-neutral-800">
               Inkhundla x week submission heatmap
@@ -673,7 +680,6 @@ const IksTab = ({
           </div>
           <IksHeatmap data={heatmapData} />
         </div> */}
-      </div>
     </div>
   );
 };

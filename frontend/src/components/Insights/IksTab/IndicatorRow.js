@@ -47,18 +47,9 @@ const IndicatorRow = ({
 
   // Section specific colors when observed (case-insensitive for safety)
   const activeBgColor =
-    (section || "").toUpperCase() === "B" ? "bg-[#3e5eb9]" : "bg-[#b10d0b]";
+    (section || "").toUpperCase() === "B" ? "bg-primary" : "bg-[#B10D0B]";
   // Inactive background is light blue/gray
-  const inactiveBgColor = "bg-[#ecf0f8]";
-
-  console.log(
-    `[IKS Debug] ${name}: checkedMonths =`,
-    checkedMonths,
-    "section =",
-    section,
-    "observedCount =",
-    observedCount,
-  );
+  const inactiveBgColor = "bg-brandTint";
 
   return (
     <div className="flex flex-col gap-2.5 p-4 bg-white w-full">
