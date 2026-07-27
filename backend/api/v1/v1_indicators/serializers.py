@@ -17,16 +17,17 @@ class IndicatorSerializer(serializers.ModelSerializer):
             "administration",
             "administration_name",
             "region",
+            "land_use_dvi_agri",
             "population",
+            "cattle",
+            "water_demand",
+            "ipc_phase",
             "under_five",
-            "cropland_ha",
-            "rainfed_share",
-            "livestock",
+            "elderly",
+            "rainfed_cropland",
             "rangeland",
             "boreholes",
             "taps",
-            "v_ipc",
-            "v_prep",
             "source",
             "as_of",
             "is_placeholder",
@@ -49,34 +50,23 @@ class IndicatorSerializer(serializers.ModelSerializer):
             },
         }
 
-    def validate_rainfed_share(self, value):
-        if value < 0.0 or value > 1.0:
+    def validate_land_use_dvi_agri(self, value):
+        if value is not None and (value < 0.0 or value > 1.0):
             raise serializers.ValidationError(
-                "Rainfed share must be between 0.0 and 1.0."
+                "Land use DVI-agri score must be between 0.0 and 1.0."
             )
         return value
 
-    def validate_v_ipc(self, value):
-        if value < 0.0 or value > 1.0:
+    def validate_ipc_phase(self, value):
+        if value is not None and (value < 1 or value > 5):
             raise serializers.ValidationError(
-                "Vulnerability IPC score must be between 0.0 and 1.0."
-            )
-        return value
-
-    def validate_v_prep(self, value):
-        if value < 0.0 or value > 1.0:
-            raise serializers.ValidationError(
-                "Vulnerability preparedness score must be between 0.0 "
-                "and 1.0."
+                "IPC phase must be an integer between 1 and 5."
             )
         return value
 
     def validate(self, attrs):
         # Provenance gate: require `source` and `as_of` when
-        # is_placeholder is False. Since is_placeholder defaults to
-        # True on creation but is read-only, we check the instance
-        # status or incoming is_placeholder (if somehow modified, but
-        # read_only fields are excluded from write attrs by default).
+        # is_placeholder is False.
         is_placeholder = attrs.get("is_placeholder", True)
         if self.instance:
             is_placeholder = getattr(self.instance, "is_placeholder", True)
