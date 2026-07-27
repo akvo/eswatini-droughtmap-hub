@@ -46,6 +46,26 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
         null=True,
         blank=True,
     )
+    # Citizen-science observer fields (WX-6 D-2): the observer's Inkhundla and
+    # station display label. Same role-specific-nullable pattern as the two
+    # fields above; NULL for admins/reviewers.
+    administration = models.ForeignKey(
+        "v1_publication.Administration",
+        on_delete=models.PROTECT,
+        related_name="observers",
+        default=None,
+        null=True,
+        blank=True,
+    )
+    station_name = models.CharField(
+        max_length=120, default=None, null=True, blank=True
+    )
+    # Sensor keys from CS_SENSORS (mockup: "determines which fields the
+    # observer sees"); empty list = no record kept -> all fields shown.
+    station_sensors = models.JSONField(default=list, blank=True)
+    station_type = models.CharField(
+        max_length=60, default=None, null=True, blank=True
+    )
 
     objects = UserManager()
 
@@ -87,6 +107,17 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
 
     class Meta:
         db_table = "system_user"
+        constraints = [
+            # One active observer per Inkhundla => one reading stream per
+            # Inkhundla by construction (WX-6 D-2).
+            models.UniqueConstraint(
+                fields=["administration"],
+                condition=models.Q(
+                    role=UserRoleTypes.observer, deleted_at__isnull=True
+                ),
+                name="uniq_observer_per_administration",
+            )
+        ]
 
 
 class Ability(models.Model):

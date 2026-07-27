@@ -15,6 +15,8 @@ class EmailTypes:
     review_request = "review_request"
     new_user_password_setup = "new_user_password_setup"
     send_feedback = "send_feedback"
+    cs_magic_link = "cs_magic_link"
+    cs_reminder = "cs_reminder"
 
     FieldStr = {
         verification_email: "verification_email",
@@ -24,6 +26,8 @@ class EmailTypes:
         review_request: "review_request",
         new_user_password_setup: "new_user_password_setup",
         send_feedback: "send_feedback",
+        cs_magic_link: "cs_magic_link",
+        cs_reminder: "cs_reminder",
     }
 
 
@@ -146,6 +150,48 @@ def email_context(context: dict, type: str):
                 "cta_url": "{0}/reviews/{1}".format(
                     WEBDOMAIN,
                     context["id"],
+                ),
+            }
+        )
+    if type == EmailTypes.cs_magic_link:
+        context.update(
+            {
+                "subject": "Sign in to Citizen Science Weather",
+                "body": """
+                Sanibonani {0},
+                Welcome to Citizen Science Weather!
+                Use the link below to open the monthly weather form for
+                <b>{1}</b>. The link works for 7 days — you can request a
+                fresh one anytime with just your email address.
+                """.format(
+                    context["name"],
+                    context["station_name"],
+                ),
+                "cta_text": "Open my weather form",
+                "cta_url": "{0}/citizen-science?token={1}".format(
+                    WEBDOMAIN, context["token"]
+                ),
+            }
+        )
+    if type == EmailTypes.cs_reminder:
+        context.update(
+            {
+                "subject": "Your {0} weather reading for {1} is due".format(
+                    context["station_name"],
+                    context["month_label"],
+                ),
+                "body": """
+                Sanibonani {0},
+                It's time to log last month's weather for <b>{1}</b>.
+                You don't have to fill every field — whatever your station
+                recorded is valuable. Siyabonga!
+                """.format(
+                    context["name"],
+                    context["station_name"],
+                ),
+                "cta_text": "Submit my weather reading",
+                "cta_url": "{0}/citizen-science?token={1}".format(
+                    WEBDOMAIN, context["token"]
                 ),
             }
         )
