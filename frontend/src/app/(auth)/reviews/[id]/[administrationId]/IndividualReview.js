@@ -170,8 +170,45 @@ const CDIColumn = ({ cdi }) => {
   );
 };
 
-/* ── Weather Stations column — strict per-region (D-9) ── */
-const WeatherColumn = ({ weather }) => {
+/* ── One titled block of reading rows (shared by MET + citizen science) ── */
+const ReadingBlock = ({ title, rows, footnote }) => (
+  <div className="border border-[#eaecf0] rounded overflow-hidden">
+    <div className="bg-[#e8edf8] px-4 py-3 flex items-center justify-between">
+      <span className="text-sm font-semibold text-[#333333]">{title}</span>
+    </div>
+    {rows.map((row) => (
+      <div
+        key={row.key}
+        className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]"
+      >
+        <span className="text-sm text-[#333333]">{row.label}</span>
+        <span className="text-sm font-semibold text-[#333333]">
+          {row.value != null ? (
+            <>
+              {row.value}
+              {row.units && (
+                <span className="text-[#a4a4a4] ml-0.5">{row.units}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-[#a4a4a4]">
+              {row.meta?.reason === "pending_sensor" ? "pending sensor" : "—"}
+            </span>
+          )}
+        </span>
+      </div>
+    ))}
+    {footnote && (
+      <div className="px-4 py-3 border-t border-[#eaecf0] text-xs text-[#606060] italic">
+        {footnote}
+      </div>
+    )}
+  </div>
+);
+
+/* ── Weather Stations column — MET strict per-region (D-9) + citizen
+      science per-Inkhundla exact match, no fallback (WX-6) ── */
+const WeatherColumn = ({ weather, citizenScience }) => {
   const region = weather?.meta?.resolution === "region_station";
   return (
     <div className="flex flex-col gap-5">
@@ -186,36 +223,26 @@ const WeatherColumn = ({ weather }) => {
           region.
         </div>
       ) : (
-        <div className="border border-[#eaecf0] rounded overflow-hidden">
-          <div className="bg-[#e8edf8] px-4 py-3 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#333333]">
-              Met Office: {weather.meta.station}
-            </span>
-          </div>
-          {weather.data.map((row) => (
-            <div
-              key={row.key}
-              className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]"
-            >
-              <span className="text-sm text-[#333333]">{row.label}</span>
-              <span className="text-sm font-semibold text-[#333333]">
-                {row.value != null ? (
-                  <>
-                    {row.value}
-                    {row.units && (
-                      <span className="text-[#a4a4a4] ml-0.5">{row.units}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-[#a4a4a4]">
-                    {row.meta?.reason === "pending_sensor"
-                      ? "pending sensor"
-                      : "—"}
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
+        <ReadingBlock
+          title={`Met Office: ${weather.meta.station}`}
+          rows={weather.data}
+        />
+      )}
+      {citizenScience?.data ? (
+        <ReadingBlock
+          title={`Citizen science: ${
+            citizenScience.meta?.station || "Community station"
+          }`}
+          rows={citizenScience.data}
+          footnote={
+            citizenScience.meta?.notes
+              ? `Observer notes: ${citizenScience.meta.notes}`
+              : null
+          }
+        />
+      ) : (
+        <div className="bg-[#f9fafb] border border-[#eaecf0] rounded p-4 text-sm text-[#a4a4a4]">
+          No citizen-science submission for this Inkhundla this month.
         </div>
       )}
     </div>
@@ -322,6 +349,7 @@ const IndividualReview = ({
   administration,
   myReview,
   weather,
+  citizenScience,
   iks,
   orderedIds,
   queueQuery,
@@ -481,7 +509,7 @@ const IndividualReview = ({
             <CDIColumn cdi={cdi} />
           </div>
           <div className="bg-white p-6 border-r border-[#eaecf0]">
-            <WeatherColumn weather={weather} />
+            <WeatherColumn weather={weather} citizenScience={citizenScience} />
           </div>
           <div className="bg-white p-6">
             <IKSColumn iks={iks} />
@@ -590,3 +618,4 @@ const IndividualReview = ({
 };
 
 export default IndividualReview;
+export { WeatherColumn };
