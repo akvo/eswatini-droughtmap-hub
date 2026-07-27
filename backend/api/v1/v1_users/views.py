@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from django.core import signing
 from drf_spectacular.utils import (
     extend_schema,
     inline_serializer,
@@ -9,7 +10,9 @@ from rest_framework import status, serializers
 from rest_framework.decorators import (
     api_view,
     permission_classes,
+    throttle_classes,
 )
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.response import Response
 from django.utils import timezone
 from django.contrib.auth import authenticate
@@ -31,8 +34,12 @@ from api.v1.v1_users.serializers import (
     VerifyPasswordTokenSerializer,
     ResetPasswordSerializer,
     UserReviewerSerializer,
+    ObserverRequestLinkSerializer,
+    ObserverVerifyLinkSerializer,
 )
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
+from api.v1.v1_users.constants import CS_LINK_SALT, CS_LINK_MAX_AGE
+from api.v1.v1_weather.citizen_science import dispatch_cs_magic_link
 from utils.custom_serializer_fields import validate_serializers_message
 from utils.default_serializers import DefaultResponseSerializer
 from uuid import uuid4
@@ -343,6 +350,99 @@ def reset_password(request, version):
         {"message": "Password reset successfully"},
         status=status.HTTP_200_OK,
     )
+
+
+class CSLinkThrottle(AnonRateThrottle):
+    """Per-IP throttle for the public magic-link endpoints (WX-6 §8)."""
+
+    scope = "cs_link"
+    rate = "10/hour"
+
+
+CS_LINK_SENT_MESSAGE = (
+    "If this email is registered, a sign-in link is on its way."
+)
+
+
+@extend_schema(
+    request=ObserverRequestLinkSerializer,
+    responses={200: DefaultResponseSerializer},
+    tags=["Auth"],
+    summary="Request a citizen-science observer sign-in link",
+)
+@api_view(["POST"])
+@throttle_classes([CSLinkThrottle])
+def observer_request_link(request, version):
+    serializer = ObserverRequestLinkSerializer(data=request.data)
+    # Same 200 whether or not the email belongs to an observer (WX-6 §8:
+    # no enumeration) — mirror of forgot_password.
+    if not serializer.is_valid():
+        return Response(
+            {"message": CS_LINK_SENT_MESSAGE}, status=status.HTTP_200_OK
+        )
+    user = SystemUser.objects.get(
+        email=serializer.validated_data["email"],
+        role=UserRoleTypes.observer,
+    )
+    dispatch_cs_magic_link(user)
+    return Response(
+        {"message": CS_LINK_SENT_MESSAGE}, status=status.HTTP_200_OK
+    )
+
+
+@extend_schema(
+    request=ObserverVerifyLinkSerializer,
+    responses={200: UserSerializer, 400: DefaultResponseSerializer},
+    tags=["Auth"],
+    summary="Exchange a magic-link token for a JWT session",
+)
+@api_view(["POST"])
+@throttle_classes([CSLinkThrottle])
+def observer_verify_link(request, version):
+    serializer = ObserverVerifyLinkSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {"message": validate_serializers_message(serializer.errors)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        pk = signing.loads(
+            serializer.validated_data["token"],
+            salt=CS_LINK_SALT,
+            max_age=CS_LINK_MAX_AGE,
+        )
+    except signing.BadSignature:
+        return Response(
+            {"message": "Invalid or expired sign-in link"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    user = SystemUser.objects.filter(
+        pk=pk,
+        role=UserRoleTypes.observer,
+        deleted_at__isnull=True,
+    ).first()
+    if not user:
+        return Response(
+            {"message": "Invalid or expired sign-in link"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    user.last_login = timezone.now()
+    # Opening a link only their inbox received proves address ownership.
+    user.email_verified = True
+    user.save(update_fields=["last_login", "email_verified"])
+    refresh = RefreshToken.for_user(user)
+    expiration_time = datetime.fromtimestamp(refresh.access_token["exp"])
+    expiration_time = timezone.make_aware(expiration_time)
+    data = {
+        "user": UserSerializer(instance=user).data,
+        "token": str(refresh.access_token),
+        "expiration_time": expiration_time,
+    }
+    response = Response(data, status=status.HTTP_200_OK)
+    response.set_cookie(
+        "AUTH_TOKEN", str(refresh.access_token), expires=expiration_time
+    )
+    return response
 
 
 class ReviewerListAPI(GenericAPIView):

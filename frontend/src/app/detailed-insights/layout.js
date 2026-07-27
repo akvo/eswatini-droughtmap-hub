@@ -51,7 +51,7 @@ const monthMap = {
  */
 const SelectInkhundlaEmptyState = () => (
   <div className="flex min-h-[480px] w-full flex-col items-center justify-center gap-4 bg-white px-4 text-center">
-    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-neutral-200 bg-white">
+    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-cardBorder bg-white">
       <InfoCircleOutlined className="text-xl text-primary" />
     </div>
     <div className="flex flex-col gap-1">
@@ -118,7 +118,7 @@ const InsightsShell = ({ children }) => {
           actions={
             <a
               href="#methodology"
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 border border-cardBorder bg-white text-sm font-normal text-primary hover:bg-neutral-50 hover:text-[#2d468a] transition-colors"
             >
               Methodology
             </a>
@@ -133,12 +133,12 @@ const InsightsShell = ({ children }) => {
         <div className="mx-auto w-full max-w-[1280px]">
           {/* Shared Explore insights container card. -mt-20 clears pt-8 and
               still overlaps the header by the same 48px as before. */}
-          <div className="relative z-10 bg-white border border-neutral-100 shadow-sm overflow-hidden -mt-20">
+          <div className="relative z-10 bg-white border border-cardBorder border-b-0 -mt-20">
             {/* Card Header (Explore insights title + Inkhundla select + Export) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-neutral-100 gap-4 bg-white">
-              <span className="text-neutral-800 font-extrabold text-base">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-4 border-b border-cardBorder gap-4 bg-white">
+              <h3 className="text-[20px] font-bold text-neutral-800 leading-[30px] mb-0">
                 Explore insights
-              </span>
+              </h3>
               <div className="flex items-center gap-3">
                 <Select
                   showSearch
@@ -157,7 +157,7 @@ const InsightsShell = ({ children }) => {
                 />
                 <Button
                   type="default"
-                  className="text-neutral-600 font-semibold border-neutral-200"
+                  className="text-neutral-600 font-semibold border-cardBorder"
                 >
                   Export CSV
                 </Button>
@@ -165,7 +165,7 @@ const InsightsShell = ({ children }) => {
             </div>
 
             {/* Tab row inside container */}
-            <div className="flex items-center gap-6 px-4 bg-white border-b border-neutral-100">
+            <div className="flex items-center gap-6 px-4 bg-white border-b border-cardBorder">
               {tabOptions.map((opt) => {
                 const active = opt.value === activeTab;
                 return (
@@ -174,7 +174,7 @@ const InsightsShell = ({ children }) => {
                     onClick={() => router.push(opt.href)}
                     className={`py-3.5 text-sm font-bold relative transition-colors focus:outline-none -mb-px ${
                       active
-                        ? "text-blue-600 border-b-2 border-blue-600"
+                        ? "text-primary border-b-2 border-primary"
                         : "text-neutral-400 hover:text-neutral-600"
                     }`}
                   >
@@ -183,18 +183,19 @@ const InsightsShell = ({ children }) => {
                 );
               })}
             </div>
-
-            {/* Active tab page renders here, once there is something to show.
-                Gated on the id rather than the name: it is what the tabs
-                fetch with, so this is exactly "can the tabs load data?". */}
-            {administrationId ? (
-              <div className="w-full">{children}</div>
-            ) : (
-              <SelectInkhundlaEmptyState />
-            )}
           </div>
 
-          <FeedbackSection />
+          {/* Active tab page or empty state renders here outside the main header box */}
+          {administrationId ? (
+            <div className="w-full">{children}</div>
+          ) : (
+            <div className="bg-white border border-cardBorder overflow-hidden">
+              <SelectInkhundlaEmptyState />
+            </div>
+          )}
+          <div className="mt-6 [&>div]:mt-0">
+            <FeedbackSection />
+          </div>
         </div>
       </div>
     </div>

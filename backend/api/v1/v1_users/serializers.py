@@ -10,7 +10,7 @@ from utils.custom_serializer_fields import (
     CustomCharField,
     CustomEmailField,
 )
-from .constants import TechnicalWorkingGroup
+from .constants import TechnicalWorkingGroup, UserRoleTypes
 
 
 class AbilitySerializer(serializers.ModelSerializer):
@@ -44,6 +44,10 @@ class UserSerializer(serializers.ModelSerializer):
             "email_verified",
             "abilities",
             "technical_working_group",
+            "administration",
+            "station_name",
+            "station_sensors",
+            "station_type",
         ]
 
 
@@ -143,6 +147,25 @@ class VerifyPasswordTokenSerializer(serializers.Serializer):
         if not SystemUser.objects.filter(reset_password_code=value).exists():
             raise serializers.ValidationError("Invalid code")
         return value
+
+
+class ObserverRequestLinkSerializer(serializers.Serializer):
+    email = CustomEmailField()
+
+    def validate_email(self, value):
+        # Same trick as ForgotPasswordSerializer: the view answers with the
+        # same generic 200 whether or not this raises (no enumeration).
+        if not SystemUser.objects.filter(
+            email=value,
+            role=UserRoleTypes.observer,
+            deleted_at__isnull=True,
+        ).exists():
+            raise serializers.ValidationError("Not an observer email.")
+        return value
+
+
+class ObserverVerifyLinkSerializer(serializers.Serializer):
+    token = serializers.CharField()
 
 
 class UserReviewerSerializer(serializers.ModelSerializer):

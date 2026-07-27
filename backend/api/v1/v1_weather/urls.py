@@ -1,16 +1,54 @@
 from django.urls import re_path
 
 from api.v1.v1_weather.views import (
+    AdministrationCitizenScienceAPI,
     AdministrationLatestAPI,
     AdministrationNormalsAPI,
     AdministrationSeriesAPI,
     AdministrationStatsAPI,
+    CitizenScienceExportAPI,
+    CitizenScienceReadingDetailAPI,
+    CitizenScienceReadingListAPI,
+    CitizenScienceReminderAPI,
+    CitizenScienceStationListAPI,
     WeatherSourceAPI,
     WeatherStationListAPI,
     WeatherStationMonthlyAPI,
 )
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/weather/citizen-science/readings/"
+        r"(?P<period>\d{4}-(0[1-9]|1[0-2]))",
+        CitizenScienceReadingDetailAPI.as_view(),
+        name="cs-reading-detail",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/citizen-science/readings",
+        CitizenScienceReadingListAPI.as_view(),
+        name="cs-reading-list",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/citizen-science/stations",
+        CitizenScienceStationListAPI.as_view(),
+        name="cs-stations",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/citizen-science/reminders",
+        CitizenScienceReminderAPI.as_view(),
+        name="cs-reminders",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/citizen-science/export",
+        CitizenScienceExportAPI.as_view(),
+        name="cs-export",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/administrations/"
+        r"(?P<administration_id>[0-9]+)/citizen-science",
+        AdministrationCitizenScienceAPI.as_view(),
+        name="weather-administration-citizen-science",
+    ),
     re_path(
         r"^(?P<version>(v1))/weather/administrations/"
         r"(?P<administration_id>[0-9]+)/normals",

@@ -7,6 +7,8 @@ from api.v1.v1_users.views import (
     forgot_password,
     verify_password_code,
     reset_password,
+    observer_request_link,
+    observer_verify_link,
     ProfileView,
     ReviewerListAPI,
     ReviewerTreeAPI,
@@ -14,6 +16,16 @@ from api.v1.v1_users.views import (
 
 urlpatterns = [
     re_path(r"^(?P<version>(v1))/auth/login", login),
+    re_path(
+        r"^(?P<version>(v1))/auth/observer/request-link",
+        observer_request_link,
+        name="observer-request-link",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/auth/observer/verify-link",
+        observer_verify_link,
+        name="observer-verify-link",
+    ),
     re_path(r"^(?P<version>(v1))/email/verify", verify_email),
     re_path(
         r"^(?P<version>(v1))/email/resend-verify", resend_verification_email

@@ -77,6 +77,44 @@ class StationDailyAggregate(models.Model):
         ]
 
 
+class CitizenScienceReading(models.Model):
+    """One monthly citizen-science reading per Inkhundla (WX-6), written
+    directly by the observer's form. `administration` always comes from
+    request.user, never the payload. `submitted_at` NULL = draft (D-8):
+    drafts are invisible to the review-page serving endpoint."""
+
+    administration = models.ForeignKey(
+        Administration,
+        on_delete=models.CASCADE,
+        related_name="citizen_science_readings",
+    )
+    year_month = models.DateField()  # first of month, like Publication
+    min_temperature = models.FloatField(null=True, blank=True)  # °C
+    max_temperature = models.FloatField(null=True, blank=True)  # °C
+    precipitation = models.FloatField(null=True, blank=True)  # mm, monthly
+    soil_moisture = models.FloatField(null=True, blank=True)  # % (D-7)
+    soil_temperature = models.FloatField(null=True, blank=True)  # °C
+    notes = models.TextField(blank=True, default="")
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return (
+            f"CS {self.administration.name} "
+            f"{self.year_month:%Y-%m}"
+        )
+
+    class Meta:
+        db_table = "citizen_science_readings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["administration", "year_month"],
+                name="uniq_cs_reading_admin_month",
+            )
+        ]
+
+
 class AdministrationNormal(models.Model):
     """One row per administration + month-of-year + parameter (long format,
     same spirit as StationDailyAggregate / D-3).

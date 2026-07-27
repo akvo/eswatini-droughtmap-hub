@@ -8,12 +8,14 @@ import numpy as np
 from rasterio.mask import mask
 from time import sleep
 from datetime import datetime
+from django.core import signing
 from django.utils import timezone
 from django.conf import settings
 from django_q.tasks import async_task
 from api.v1.v1_jobs.models import Jobs
 from api.v1.v1_jobs.constants import JobStatus, JobTypes
 from api.v1.v1_publication.constants import GEONODE_SSL_VERIFY
+from api.v1.v1_users.constants import CS_LINK_SALT
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.serializers import (
@@ -88,6 +90,49 @@ def notify_reset_password(user: SystemUser, new_user: bool = False):
                 "reset_password_code": user.reset_password_code,
             },
         )
+
+
+def _cs_link_token(user: SystemUser) -> str:
+    return signing.dumps(user.pk, salt=CS_LINK_SALT)
+
+
+def notify_cs_magic_link(user_id: int):
+    """Welcome / fallback sign-in email for a citizen-science observer."""
+    user = SystemUser.objects.filter(pk=user_id).first()
+    if not user:
+        logger.warning(f"notify_cs_magic_link: no user {user_id}")
+        return False
+    if not settings.TEST_ENV:
+        send_email(
+            type=EmailTypes.cs_magic_link,
+            context={
+                "send_to": [user.email],
+                "name": user.name,
+                "station_name": user.station_name or "your station",
+                "token": _cs_link_token(user),
+            },
+        )
+    return {"email": user.email}
+
+
+def notify_cs_reminder(user_id: int, month_label: str):
+    """Monthly reading reminder for a citizen-science observer."""
+    user = SystemUser.objects.filter(pk=user_id).first()
+    if not user:
+        logger.warning(f"notify_cs_reminder: no user {user_id}")
+        return False
+    if not settings.TEST_ENV:
+        send_email(
+            type=EmailTypes.cs_reminder,
+            context={
+                "send_to": [user.email],
+                "name": user.name,
+                "station_name": user.station_name or "your station",
+                "month_label": month_label,
+                "token": _cs_link_token(user),
+            },
+        )
+    return {"email": user.email, "month": month_label}
 
 
 def notify_review_completed(

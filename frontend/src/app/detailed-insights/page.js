@@ -9,7 +9,7 @@ const CdiPage = () => {
   const { selectedInkhundla } = useInsights();
 
   return (
-    <div className="p-8 text-center bg-white rounded-b-lg">
+    <div className="p-8 text-center bg-white border border-cardBorder border-t-0">
       <h3 className="text-lg font-bold text-neutral-800 mb-2">CDI Explorer</h3>
       <p className="text-neutral-500 max-w-md mx-auto text-sm">
         The CDI Explorer tab provides historical satellite drought category

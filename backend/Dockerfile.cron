@@ -4,9 +4,14 @@ WORKDIR /app
 
 COPY requirements.txt /app/
 
+# Run cron in Eswatini local time so crontab entries read as wall-clock
+# local (SAST, UTC+2) — the observer reminder is scheduled for 07:00 local.
+ENV TZ=Africa/Mbabane
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 #Install Cron
 RUN apt-get update
-RUN apt-get -y install cron
+RUN apt-get -y install cron tzdata
 
 RUN set -e; \
     pip -q install --upgrade pip && \

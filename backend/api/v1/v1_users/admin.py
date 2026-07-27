@@ -1,17 +1,47 @@
 from django import forms
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib import admin
 from django_q.tasks import async_task
 from django_json_widget.widgets import JSONEditorWidget
 from .models import SystemUser, Ability
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
 from api.v1.v1_users.constants import UserRoleTypes
+from api.v1.v1_weather.citizen_science import dispatch_cs_magic_link
+
+
+class SystemUserCreationForm(UserCreationForm):
+    """Passwords optional: observers are passwordless (magic-link only),
+    and admins/reviewers set theirs via the welcome email anyway. A blank
+    password saves an UNUSABLE one — never a usable hash of ''."""
+
+    class Meta(UserCreationForm.Meta):
+        model = SystemUser
+        fields = ("email",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in ("password1", "password2"):
+            self.fields[field].required = False
+        self.fields["password1"].help_text = (
+            "Leave blank for observers — they sign in via emailed "
+            "magic link, never a password."
+        )
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if not self.cleaned_data.get("password1"):
+            user.set_unusable_password()
+        if commit:
+            user.save()
+        return user
 
 
 # Add manage users in admin django
 class SystemUserAdmin(UserAdmin):
     site_header = "Manage Users"
     model = SystemUser
+    add_form = SystemUserCreationForm
     list_display = (
         "email",
         "name",
@@ -39,6 +69,17 @@ class SystemUserAdmin(UserAdmin):
                 )
             },
         ),
+        (
+            "Citizen science (observer role only)",
+            {
+                "fields": (
+                    "administration",
+                    "station_name",
+                    "station_sensors",
+                    "station_type",
+                )
+            },
+        ),
     )
     add_fieldsets = (
         (
@@ -53,6 +94,10 @@ class SystemUserAdmin(UserAdmin):
                     "role",
                     "technical_working_group",
                     "activity_sector",
+                    "administration",
+                    "station_name",
+                    "station_sensors",
+                    "station_type",
                 ),
             },
         ),
@@ -66,6 +111,11 @@ class SystemUserAdmin(UserAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if not change:
+            if obj.role == UserRoleTypes.observer:
+                # Observers are passwordless: their welcome IS the magic
+                # link (WX-6 D-3), not the password-setup email below.
+                dispatch_cs_magic_link(obj)
+                return
             obj.generate_reset_password_code()
             if int(request.POST.get("role")[0]) == UserRoleTypes.admin:
                 # Automatically set superuser status for admin role
