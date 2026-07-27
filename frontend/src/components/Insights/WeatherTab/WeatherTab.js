@@ -87,7 +87,7 @@ const WeatherTab = ({
   const noStationData = stats?.data === null;
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white border border-cardBorder border-t-0">
       <InkhundlaHeader
         name={selectedInkhundla}
         region={region}
@@ -120,7 +120,7 @@ const WeatherTab = ({
       {/* Figma 3509:110399: one bordered container, cards flush against each
           other sharing a single hairline. The 1px gaps let the container's
           background through, so seams stay 1px instead of doubling up. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-px border border-cardBorder bg-cardBorder">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-px border-b border-cardBorder bg-cardBorder">
         <MetricItemCard
           label={satelliteDifference.label}
           value={`+${satelliteDifference.value} ${satelliteDifference.units}`}
