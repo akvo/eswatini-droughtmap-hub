@@ -5,7 +5,7 @@
 **Task ID**: [#159] T1-INS-001
 **Author**: Galih Pratama
 **Date**: 2026-07-27
-**Status**: Draft
+**Status**: Implemented
 
 ---
 
@@ -36,21 +36,22 @@ Goal:
 
 ### User Acceptance Criteria
 
-- [ ] Visitor (not signed in) lands on the National Overview and sees the national status pill (worst widespread D-class from the latest published Publication) and a one-line summary sentence.
-- [ ] A "Download National Overview (PDF)" button is present (frontend — already rendered).
-- [ ] 4 Regions / 6 Agro-ecological zones stacked-bar chart is populated from real validated_values data.
-- [ ] KPI cards (rainfall deviation, temperature deviation, active stations, IKS field reports) show real aggregated values.
-- [ ] Response Activities section shows real sector data derived from active ResponseActivity records.
-- [ ] Map defaults to the D-class layer using the latest published Publication's validated_values.
+- [x] Visitor (not signed in) lands on the National Overview and sees the national status pill (worst widespread D-class from the latest published Publication) and a one-line summary sentence.
+- [x] A "Download National Overview (PDF)" button is present (frontend — already rendered).
+- [x] 4 Regions / 6 Agro-ecological zones stacked-bar chart is populated from real validated_values data.
+- [x] KPI cards (rainfall deviation, temperature deviation, active stations, IKS field reports) show real aggregated values.
+- [x] Response Activities section shows real sector data derived from active ResponseActivity records.
+- [x] Map defaults to the D-class layer using the latest published Publication's validated_values.
 
 ### Technical Acceptance Criteria
 
-- [ ] All 5 endpoints return HTTP 200 with AllowAny permission (no auth required).
-- [ ] Response shapes are compatible with each mock file contract.
-- [ ] Unit tests cover every view; at least one integration test per endpoint.
-- [ ] New app is registered in INSTALLED_APPS and wired in eswatini/urls.py.
-- [ ] No migrations required (no new models).
-- [ ] GET /api/v1/insights/hero response time < 200 ms at P95 (single DB query).
+- [x] All 5 endpoints return HTTP 200 with AllowAny permission (no auth required).
+- [x] Response shapes are compatible with each mock file contract.
+- [x] Unit tests cover every view; at least one integration test per endpoint.
+- [x] New app is registered in INSTALLED_APPS and wired in eswatini/urls.py.
+- [x] No migrations required (no new models).
+- [x] GET /api/v1/national-overview/hero response time < 200 ms at P95 (single DB query).
+
 
 ---
 
