@@ -23,9 +23,9 @@ const IndividualReviewPage = async ({ params, searchParams }) => {
   const state = parseQueueState(searchParams);
   const queueQuery = buildQueueQuery(state);
 
-  // Detail is essential; the weather/IKS panels and the map order are
-  // supplementary — a failure there must not blank the whole page.
-  const [detail, weather, iks, map] = await Promise.all([
+  // Detail is essential; the weather/IKS/citizen-science panels and the
+  // map order are supplementary — a failure there must not blank the page.
+  const [detail, weather, citizenScience, iks, map] = await Promise.all([
     api(
       "GET",
       `/reviewer/${publicationId}/administrations/${administrationId}`,
@@ -33,6 +33,13 @@ const IndividualReviewPage = async ({ params, searchParams }) => {
     api("GET", `/weather/administrations/${administrationId}/latest`).catch(
       () => null,
     ),
+    period
+      ? api(
+          "GET",
+          `/weather/administrations/${administrationId}` +
+            `/citizen-science?period=${period}`,
+        ).catch(() => null)
+      : Promise.resolve(null),
     api(
       "GET",
       `/iks/${administrationId}/review-summary${
@@ -59,6 +66,7 @@ const IndividualReviewPage = async ({ params, searchParams }) => {
       administration={detail.administration}
       myReview={detail.my_review}
       weather={weather}
+      citizenScience={citizenScience}
       iks={iks}
       orderedIds={orderedIds}
       queueQuery={queueQuery}
