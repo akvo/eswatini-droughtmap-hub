@@ -1,14 +1,31 @@
 import csv
 import logging
+import os
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_indicators.models import Indicator
+from api.v1.v1_indicators.constants import IndicatorSource
 
 logger = logging.getLogger(__name__)
 
 
+CSV_DIR = "../eswatini-v2/resources/csv"
+POP_CSV_NAME = "risk_dataset__Exposure_Population.csv"
+LANDUSE_CSV_NAME = "risk_dataset__Exposure_LandUse.csv"
+IPC_CSV_NAME = "risk_dataset__Vulnerability_IPC.csv"
+
+
+def _norm_name(name: str) -> str:
+    """
+    Normalize administration name for lookup tolerating
+    spacing/case variations.
+    """
+    return (name or "").strip().casefold()
+
+
 class Command(BaseCommand):
-    help = "Seeds default risk level indicators from priority_areas.csv."
+    help = "Seeds default risk level indicators from DIH Risk Dataset CSVs."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -23,73 +40,96 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         test = options.get("test")
-        csv_file_path = "./source/priority_areas.csv"
+        base_dir = settings.BASE_DIR
 
+        # File paths relative to BASE_DIR or workspace root
+        pop_csv = os.path.join(base_dir, CSV_DIR, POP_CSV_NAME)
+        landuse_csv = os.path.join(base_dir, CSV_DIR, LANDUSE_CSV_NAME)
+        ipc_csv = os.path.join(base_dir, CSV_DIR, IPC_CSV_NAME)
+
+        # Fallback path if BASE_DIR is backend/
+        # and files are relative to current dir
+        if not os.path.exists(pop_csv):
+            pop_csv = os.path.join(CSV_DIR, POP_CSV_NAME)
+            landuse_csv = os.path.join(CSV_DIR, LANDUSE_CSV_NAME)
+            ipc_csv = os.path.join(CSV_DIR, IPC_CSV_NAME)
+
+        # Merged dict: {norm_name: {population, land_use_dvi_agri, ipc_phase}}
+        data = {}
+
+        # 1. Read Population CSV
         try:
-            with open(csv_file_path, "r", encoding="utf-8") as f:
+            with open(pop_csv, "r", encoding="utf-8-sig") as f:
                 reader = csv.DictReader(f)
-                rows = list(reader)
+                for row in reader:
+                    name = row.get("Inkhundla name")
+                    raw_pop = row.get("Population count")
+                    if name and raw_pop:
+                        key = _norm_name(name)
+                        data.setdefault(key, {})
+                        data[key]["population"] = int(float(raw_pop))
         except FileNotFoundError:
-            logger.error("Seeder CSV file not found at: %s", csv_file_path)
-            return
+            logger.error("Population CSV not found at: %s", pop_csv)
+
+        # 2. Read LandUse CSV
+        try:
+            with open(landuse_csv, "r", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    name = row.get("Inkhundla name")
+                    raw_dvi = row.get("DVI-agri (raw)")
+                    if name and raw_dvi:
+                        key = _norm_name(name)
+                        data.setdefault(key, {})
+                        dvi_val = float(raw_dvi)
+                        data[key]["land_use_dvi_agri"] = max(
+                            0.0, min(1.0, dvi_val)
+                        )
+        except FileNotFoundError:
+            logger.error("LandUse CSV not found at: %s", landuse_csv)
+
+        # 3. Read IPC CSV (note: header typo 'Inkhudnla ID' ignored;
+        # read 'Inkhundla name')
+        try:
+            with open(ipc_csv, "r", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    name = row.get("Inkhundla name")
+                    raw_ipc = row.get("IPC phase (1–5)") or row.get(
+                        "IPC phase (1-5)"
+                    )
+                    if name and raw_ipc:
+                        key = _norm_name(name)
+                        data.setdefault(key, {})
+                        phase = int(float(raw_ipc))
+                        data[key]["ipc_phase"] = max(1, min(5, phase))
+        except FileNotFoundError:
+            logger.error("IPC CSV not found at: %s", ipc_csv)
+
+        # Look up all Administrations
+        administrations = {
+            _norm_name(adm.name): adm for adm in Administration.objects.all()
+        }
 
         success_count = 0
-        for row in rows:
-            name = row.get("name")
-            if not name:
-                continue
-
-            try:
-                adm = Administration.objects.get(name=name)
-            except Administration.DoesNotExist:
-                logger.warning(
-                    "No administration match for CSV name: %s", name
-                )
-                continue
-
-            # Map CSV fields to Indicator model attributes
-            # Column headers:
-            # name,region,zone,dclass,spi,droughtScore,exposureScore,vulnScore,
-            # priorityScore,pop,u5,cropland,rfShare,rainfedCropland,popNorm,
-            # rainfedNorm,vWater,vIpc,vPrep,boreholes,taps,waterPoints,
-            # peoplePerWP,livestock,rangeland
-            try:
-                population = int(float(row.get("pop", 0) or 0))
-                under_five = int(float(row.get("u5", 0) or 0))
-                cropland_ha = int(float(row.get("cropland", 0) or 0))
-                rainfed_share = float(row.get("rfShare", 0) or 0.0)
-                livestock = int(float(row.get("livestock", 0) or 0))
-                rangeland = int(float(row.get("rangeland", 0) or 0))
-                boreholes = int(float(row.get("boreholes", 0) or 0))
-                taps = int(float(row.get("taps", 0) or 0))
-                v_ipc = float(row.get("vIpc", 0) or 0.0)
-                v_prep = float(row.get("vPrep", 0) or 0.0)
-            except (ValueError, TypeError) as e:
-                logger.error(
-                    "Data parsing error for administration %s: %s", name, e
-                )
-                continue
-
-            # Clamp float values to [0.0, 1.0] range
-            # to prevent check constraint violations
-            rainfed_share = max(0.0, min(1.0, rainfed_share))
-            v_ipc = max(0.0, min(1.0, v_ipc))
-            v_prep = max(0.0, min(1.0, v_prep))
+        for norm_name, adm in administrations.items():
+            adm_data = data.get(norm_name, {})
 
             Indicator.objects.update_or_create(
                 administration=adm,
                 defaults={
-                    "population": population,
-                    "under_five": under_five,
-                    "cropland_ha": cropland_ha,
-                    "rainfed_share": rainfed_share,
-                    "livestock": livestock,
-                    "rangeland": rangeland,
-                    "boreholes": boreholes,
-                    "taps": taps,
-                    "v_ipc": v_ipc,
-                    "v_prep": v_prep,
-                    "source": "prototype-illustrative",
+                    "population": adm_data.get("population"),
+                    "land_use_dvi_agri": adm_data.get("land_use_dvi_agri"),
+                    "cattle": None,
+                    "water_demand": None,
+                    "ipc_phase": adm_data.get("ipc_phase"),
+                    "under_five": 0,
+                    "elderly": 0,
+                    "rainfed_cropland": 0,
+                    "rangeland": 0,
+                    "boreholes": 0,
+                    "taps": 0,
+                    "source": IndicatorSource.HANDOVER_2026_07,
                     "as_of": None,
                     "is_placeholder": True,
                 },
@@ -99,6 +139,6 @@ class Command(BaseCommand):
         if not test:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Successfully seeded {success_count} indicators."
+                    f"Successfully seeded {success_count} indicators from DIH Risk Dataset."  # noqa
                 )
             )
