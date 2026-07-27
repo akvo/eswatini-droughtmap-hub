@@ -1,5 +1,5 @@
 from django.urls import re_path
-from api.v1.v1_indicators.views import IndicatorViewSet
+from api.v1.v1_indicators.views import IndicatorViewSet, RiskLevelView
 
 urlpatterns = [
     re_path(
@@ -18,5 +18,15 @@ urlpatterns = [
             }
         ),
         name="indicator-detail",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/risk-level$",
+        RiskLevelView.as_view(),
+        name="risk-level-list",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/risk-level/(?P<administration_id>[0-9]+)$",
+        RiskLevelView.as_view(),
+        name="risk-level-detail",
     ),
 ]
