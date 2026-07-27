@@ -11,3 +11,4 @@ class OpenAPIContractSchemaTestCase(APITestCase):
         # Check if Swagger schema is produced and contains the tags definition
         schema_content = response.content.decode("utf-8")
         self.assertIn("Risk Level - Indicators", schema_content)
+        self.assertIn("Risk Level - Scoring", schema_content)

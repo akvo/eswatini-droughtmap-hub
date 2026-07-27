@@ -40,7 +40,7 @@ class IndicatorSeederTestCase(TestCase):
         self.assertIsNone(hhukwini.water_demand)
 
         lobamba = Indicator.objects.get(administration__name="Lobamba")
-        self.assertEqual(lobamba.population, 40432)
+        self.assertEqual(lobamba.population, 40431)
         self.assertEqual(lobamba.ipc_phase, 2)
         self.assertIsNone(lobamba.cattle)
         self.assertIsNone(lobamba.water_demand)

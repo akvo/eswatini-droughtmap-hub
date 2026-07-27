@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from api.v1.v1_publication.models import Publication, PublicationStatus
 from api.v1.v1_publication.constants import DroughtCategory
 from api.v1.v1_indicators.models import Indicator

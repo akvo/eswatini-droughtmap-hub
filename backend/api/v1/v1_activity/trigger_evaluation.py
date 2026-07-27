@@ -7,6 +7,8 @@ conditions off the stored trigger JSON and ANDs them.
 Now backed by the real per-Inkhundla `Indicator` DB table (PA-2 / v2 redesign).
 """
 
+from __future__ import annotations
+
 import logging
 
 from api.v1.v1_activity.constants import (

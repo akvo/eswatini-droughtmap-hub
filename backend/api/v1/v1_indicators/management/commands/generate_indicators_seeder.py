@@ -10,7 +10,7 @@ from api.v1.v1_indicators.constants import IndicatorSource
 logger = logging.getLogger(__name__)
 
 
-CSV_DIR = "../eswatini-v2/resources/csv"
+CSV_DIRS = ["./source/csv"]
 POP_CSV_NAME = "risk_dataset__Exposure_Population.csv"
 LANDUSE_CSV_NAME = "risk_dataset__Exposure_LandUse.csv"
 IPC_CSV_NAME = "risk_dataset__Vulnerability_IPC.csv"
@@ -42,17 +42,18 @@ class Command(BaseCommand):
         test = options.get("test")
         base_dir = settings.BASE_DIR
 
-        # File paths relative to BASE_DIR or workspace root
-        pop_csv = os.path.join(base_dir, CSV_DIR, POP_CSV_NAME)
-        landuse_csv = os.path.join(base_dir, CSV_DIR, LANDUSE_CSV_NAME)
-        ipc_csv = os.path.join(base_dir, CSV_DIR, IPC_CSV_NAME)
-
-        # Fallback path if BASE_DIR is backend/
-        # and files are relative to current dir
-        if not os.path.exists(pop_csv):
-            pop_csv = os.path.join(CSV_DIR, POP_CSV_NAME)
-            landuse_csv = os.path.join(CSV_DIR, LANDUSE_CSV_NAME)
-            ipc_csv = os.path.join(CSV_DIR, IPC_CSV_NAME)
+        # Search candidate directories for the CSV files
+        pop_csv = landuse_csv = ipc_csv = None
+        for d in CSV_DIRS:
+            candidate_pop = os.path.join(base_dir, d, POP_CSV_NAME)
+            if not os.path.exists(candidate_pop):
+                candidate_pop = os.path.join(d, POP_CSV_NAME)
+            if os.path.exists(candidate_pop):
+                dir_path = os.path.dirname(candidate_pop)
+                pop_csv = os.path.join(dir_path, POP_CSV_NAME)
+                landuse_csv = os.path.join(dir_path, LANDUSE_CSV_NAME)
+                ipc_csv = os.path.join(dir_path, IPC_CSV_NAME)
+                break
 
         # Merged dict: {norm_name: {population, land_use_dvi_agri, ipc_phase}}
         data = {}
