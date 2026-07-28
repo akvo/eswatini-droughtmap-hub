@@ -118,7 +118,7 @@ const InsightsShell = ({ children }) => {
           actions={
             <a
               href="#methodology"
-              className="inline-flex items-center justify-center px-6 py-3 border border-cardBorder bg-white text-sm font-normal text-primary hover:bg-neutral-50 hover:text-[#2d468a] transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 border border-cardBorder bg-white text-sm font-normal text-primary hover:bg-neutral-50 hover:text-[#2c4383] transition-colors"
             >
               Methodology
             </a>
