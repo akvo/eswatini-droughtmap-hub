@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_spectacular.utils import extend_schema
 from utils.custom_permissions import IsAdmin
 from utils.custom_pagination import Pagination
@@ -21,7 +21,7 @@ class IndicatorViewSet(viewsets.ModelViewSet):
 
 @extend_schema(tags=["Risk Level - Scoring"])
 class RiskLevelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, version, administration_id=None):
         cycle = request.query_params.get("cycle", "latest")

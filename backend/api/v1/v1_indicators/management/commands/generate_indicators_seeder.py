@@ -113,33 +113,44 @@ class Command(BaseCommand):
         }
 
         success_count = 0
+        unmatched_admins = []
         for norm_name, adm in administrations.items():
             adm_data = data.get(norm_name, {})
+            if not adm_data:
+                unmatched_admins.append(adm.name)
 
+            # Only the three CSV-backed fields are written. cattle,
+            # water_demand and eligibility counts are left alone so the
+            # 0002 proxy bridge (livestock->cattle, cropland_ha->
+            # rainfed_cropland) survives re-seeding.
             Indicator.objects.update_or_create(
                 administration=adm,
                 defaults={
-                    "population": adm_data.get("population"),
-                    "land_use_dvi_agri": adm_data.get("land_use_dvi_agri"),
-                    "cattle": None,
-                    "water_demand": None,
-                    "ipc_phase": adm_data.get("ipc_phase"),
-                    "under_five": 0,
-                    "elderly": 0,
-                    "rainfed_cropland": 0,
-                    "rangeland": 0,
-                    "boreholes": 0,
-                    "taps": 0,
+                    **adm_data,
                     "source": IndicatorSource.HANDOVER_2026_07,
-                    "as_of": None,
                     "is_placeholder": True,
                 },
             )
-            success_count += 1
+            if adm_data:
+                success_count += 1
+
+        unused_csv_rows = sorted(set(data) - set(administrations))
+        if unmatched_admins:
+            logger.warning(
+                "No CSV row for %d administration(s): %s",
+                len(unmatched_admins),
+                ", ".join(sorted(unmatched_admins)),
+            )
+        if unused_csv_rows:
+            logger.warning(
+                "%d CSV row(s) matched no administration (name drift): %s",
+                len(unused_csv_rows),
+                ", ".join(unused_csv_rows),
+            )
 
         if not test:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Successfully seeded {success_count} indicators from DIH Risk Dataset."  # noqa
-                )
+            msg = (
+                f"Seeded {success_count}/{len(administrations)} "
+                "indicators from DIH Risk Dataset."
             )
+            self.stdout.write(self.style.SUCCESS(msg))
