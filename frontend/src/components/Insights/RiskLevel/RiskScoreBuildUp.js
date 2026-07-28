@@ -155,7 +155,11 @@ const RiskScoreBuildUp = ({ riskData }) => {
           <>
             <BuildUpDetailRow
               title="Validated drought score"
-              subtitle={`Signed off in ${drought.period || "current"} review cycle`}
+              subtitle={
+                drought.period_label
+                  ? `Signed off in ${drought.period_label}`
+                  : `Signed off in ${drought.period || "current"} review cycle`
+              }
               value={
                 <div
                   style={{ backgroundColor: chipBg }}
@@ -167,12 +171,14 @@ const RiskScoreBuildUp = ({ riskData }) => {
             />
             <BuildUpDetailRow
               title="Trend"
-              subtitle="vs last month"
+              subtitle={drought.trend_desc || "vs last month"}
               value={getTrendElement(drought.trend)}
             />
             <BuildUpDetailRow
               title="Confidence"
-              subtitle="CDI-E · station · IKS agreement"
+              subtitle={
+                drought.confidence_desc || "CDI-E · station · IKS agreement"
+              }
               value={
                 <span
                   style={{
@@ -195,31 +201,40 @@ const RiskScoreBuildUp = ({ riskData }) => {
           <ScoreBadge value={exposureValue} />,
           "exposure",
           exposure.data.map((item) => {
-            let label = item.key;
-            let subtitle = "";
+            let label = item.label || item.key;
+            let subtitle = item.subtitle || "";
             let formattedVal = formatNum(item.value);
 
-            if (item.key === "population") {
-              label = "Population exposed";
-              subtitle = "Number of people exposed";
-              formattedVal = `${formattedVal} people`;
-            } else if (item.key === "u5") {
-              label = "Under-5 children";
-              subtitle = "Children under 5 exposed";
-              formattedVal = `${formattedVal} children`;
-            } else if (item.key === "rainfed_ha") {
-              label = "Land use";
-              subtitle = "Rain-fed agricultural land";
-              formattedVal = item.value !== null ? `${formattedVal} ha` : "N/A";
-            } else if (item.key === "livestock") {
-              label = "Cattle count";
-              subtitle = "Number of cattle exposed";
+            if (!item.label) {
+              if (item.key === "population") {
+                label = "Population exposed";
+                subtitle = "Number of people exposed";
+                formattedVal = `${formattedVal} people`;
+              } else if (item.key === "u5") {
+                label = "Under-5 children";
+                subtitle = "Children under 5 exposed";
+                formattedVal = `${formattedVal} children`;
+              } else if (item.key === "rainfed_ha") {
+                label = "Land use";
+                subtitle = "Rain-fed agricultural land";
+                formattedVal =
+                  item.value !== null ? `${formattedVal} ha` : "N/A";
+              } else if (item.key === "livestock") {
+                label = "Cattle count";
+                subtitle = "Number of cattle exposed";
+                formattedVal =
+                  item.value !== null ? `${formattedVal} head` : "N/A";
+              } else if (item.key === "water_demand_liters") {
+                label = "Water demand";
+                subtitle = "Estimated water demand";
+                formattedVal =
+                  item.value !== null ? `${formattedVal} L` : "N/A";
+              }
+            } else {
               formattedVal =
-                item.value !== null ? `${formattedVal} head` : "N/A";
-            } else if (item.key === "water_demand_liters") {
-              label = "Water demand";
-              subtitle = "Estimated water demand";
-              formattedVal = item.value !== null ? `${formattedVal} L` : "N/A";
+                item.value !== null
+                  ? `${formattedVal} ${item.unit || ""}`.trim()
+                  : "N/A";
             }
 
             return (
@@ -239,21 +254,27 @@ const RiskScoreBuildUp = ({ riskData }) => {
           <ScoreBadge value={vulnerabilityValue} />,
           "vulnerability",
           vulnerability.data.map((item) => {
-            let label = item.key;
-            let subtitle = "";
+            let label = item.label || item.key;
+            let subtitle = item.subtitle || "";
             let formattedVal =
               item.value !== null ? `${(item.value * 100).toFixed(0)}%` : "N/A";
 
-            if (item.key === "v_water") {
-              label = "Water access pressure";
-              subtitle = "Water access vulnerability";
-            } else if (item.key === "v_ipc") {
-              label = "Susceptibility";
-              subtitle = "IPC food security phase";
-              formattedVal = getIpcPhase(item.value);
-            } else if (item.key === "v_prep") {
-              label = "Preparedness index";
-              subtitle = "Disaster preparedness level";
+            if (!item.label) {
+              if (item.key === "v_water") {
+                label = "Water access pressure";
+                subtitle = "Water access vulnerability";
+              } else if (item.key === "v_ipc") {
+                label = "Susceptibility";
+                subtitle = "IPC food security phase";
+                formattedVal = getIpcPhase(item.value);
+              } else if (item.key === "v_prep") {
+                label = "Preparedness index";
+                subtitle = "Disaster preparedness level";
+              }
+            } else {
+              if (item.format === "ipc") {
+                formattedVal = getIpcPhase(item.value);
+              }
             }
 
             return (

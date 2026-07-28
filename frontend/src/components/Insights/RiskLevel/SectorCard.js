@@ -1,5 +1,4 @@
 import React from "react";
-import { FileTextOutlined } from "@ant-design/icons";
 
 const SECTOR_STYLES = {
   1: { text: "text-[#12B76A]", bg: "bg-[#ECFDF3]", border: "border-[#D1FADF]" },
@@ -12,97 +11,32 @@ const SECTOR_STYLES = {
   8: { text: "text-[#3E5EB9]", bg: "bg-[#ECEFF8]", border: "border-[#C3CDE9]" },
 };
 
+// Sector ID to Figma icon mapping:
+// 1=Food/Agri, 2=Health/Nutrition, 3=WASH/Water, 4=Education, 5=Environment, 6=Coordination, 7=Social, 8=Transport
+const SECTOR_ICON_SRC = {
+  1: "/assets/icons/sectors/agriculture-and-food-security.svg",
+  2: "/assets/icons/sectors/heart-with-pulse.svg",
+  3: "/assets/icons/sectors/water-and-sanitation.svg",
+  4: "/assets/icons/sectors/education.svg",
+  5: "/assets/icons/sectors/environment-and-energy.svg",
+  6: "/assets/icons/sectors/coordination.svg",
+  8: "/assets/icons/sectors/transport-and-logistics.svg",
+};
+
 const SECTOR_CARD_ICONS = {
-  1: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z" />
-      <path d="M9 22v-4H7a3 3 0 0 1-3-3V9" />
-    </svg>
+  ...Object.fromEntries(
+    Object.entries(SECTOR_ICON_SRC).map(([id, src]) => [
+      Number(id),
+      <img
+        key={id}
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="w-5 h-5 object-contain"
+      />,
+    ]),
   ),
-  2: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-    </svg>
-  ),
-  3: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
-    </svg>
-  ),
-  4: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" />
-      <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-    </svg>
-  ),
-  5: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="M4.93 4.93l1.41 1.41" />
-      <path d="M17.66 17.66l1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="M6.34 17.66l-1.41 1.41" />
-      <path d="M19.07 4.93l-1.41 1.41" />
-    </svg>
-  ),
-  6: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  ),
+  // 7: Social Protection — shield (previous icon)
   7: (
     <svg
       className="w-5 h-5"
@@ -114,22 +48,6 @@ const SECTOR_CARD_ICONS = {
       strokeLinejoin="round"
     >
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-  8: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="1" y="3" width="15" height="13" />
-      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
     </svg>
   ),
 };
@@ -194,15 +112,23 @@ const SectorCard = ({
             <button
               key={act.id}
               onClick={() => onActivityClick && onActivityClick(act.id)}
-              className="bg-white border border-cardBorder hover:border-neutral-400 flex gap-3 items-center p-2 relative w-full text-left transition-all duration-200 cursor-pointer rounded-md"
+              className="bg-white border border-cardBorder hover:border-neutral-400 flex gap-3 items-center p-2 relative w-full text-left transition-all duration-200 cursor-pointer"
             >
               {/* Left Indicator Box (Featured Icon) */}
-              <div
-                className={`border ${secStyle.border} ${secStyle.bg} ${secStyle.text} flex-shrink-0 size-8 flex items-center justify-center rounded`}
-              >
-                {SECTOR_CARD_ICONS[sectorId] || (
-                  <FileTextOutlined className="text-sm" />
-                )}
+              <div className="border border-cardBorder bg-white flex-shrink-0 size-8 flex items-center justify-center">
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 21 21"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M10.5 0.5V4.5M10.5 16.5V20.5M3.43 3.43L6.26 6.26M14.74 14.74L17.57 17.57M0.5 10.5H4.5M16.5 10.5H20.5M3.43 17.57L6.26 14.74M14.74 6.26L17.57 3.43"
+                    stroke="#3E5EB9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </div>
               {/* Text content */}
               <div className="flex-1 min-w-0">
