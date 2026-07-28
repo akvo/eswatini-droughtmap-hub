@@ -1,3 +1,5 @@
+import tokens from "@/static/tokens";
+
 export const DEFAULT_CENTER = [-26.573789513879785, 31.626892089843754];
 
 export const USER_ROLES = {
@@ -720,17 +722,11 @@ export const SECTOR_DESCRIPTIONS = {
     "Coordination activities align all sector responses to avoid duplication and prioritise resources across the 59 Tinkhundla.",
 };
 
-// Sector ID to Figma solid background color mapping (node 3487-101737)
-export const SECTOR_STYLES = {
-  1: { color: "#249E58" }, // Agriculture & Food Security
-  2: { color: "#E74C3C" }, // Health & Nutrition
-  3: { color: "#3E5EB9" }, // Water & Sanitation
-  4: { color: "#F39C12" }, // Education
-  5: { color: "#EEA96C" }, // Environment & Energy
-  6: { color: "#B10D0B" }, // Coordination
-  7: { color: "#E65F2B" }, // Social Protection
-  8: { color: "#777777" }, // Transport & Logistics
-};
+// Sector ID to Figma solid background color mapping (node 3487-101737).
+// Hexes live in tokens.sector so Tailwind can emit `sector-{id}` utilities.
+export const SECTOR_STYLES = Object.fromEntries(
+  Object.entries(tokens.sector).map(([id, color]) => [id, { color }]),
+);
 
 // Sector ID to Figma icon SVG source path
 export const SECTOR_ICON_SRC = {

@@ -127,6 +127,21 @@ const table = {
   cellInline: 16,
 };
 
+// Sector palette (Figma node 3487-101737) — one hex per sector id, shared by
+// the sector badge (solid fill) and the sector card icon (tint). Lives here so
+// tailwind.config can expose it as `sector-{id}` utilities; config.js re-shapes
+// it into SECTOR_STYLES for the data layer.
+const sector = {
+  1: "#249E58", // Agriculture & Food Security
+  2: "#E74C3C", // Health & Nutrition
+  3: "#3E5EB9", // Water & Sanitation
+  4: "#F39C12", // Education
+  5: "#EEA96C", // Environment & Energy
+  6: "#B10D0B", // Coordination
+  7: "#E65F2B", // Social Protection
+  8: "#777777", // Transport & Logistics
+};
+
 const status = {
   inReview: semantic.warning,
   inValidation: semantic.info,
@@ -148,5 +163,6 @@ module.exports = {
   input,
   select,
   table,
+  sector,
   status,
 };

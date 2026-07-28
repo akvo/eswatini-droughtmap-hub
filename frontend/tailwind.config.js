@@ -27,6 +27,7 @@ module.exports = {
         cardBorder: tokens.border.card,
         inputBorderActive: tokens.input.borderActive,
         focusRing: tokens.select.focusRing,
+        sector: tokens.sector,
         status: tokens.status,
       },
       borderRadius: {
