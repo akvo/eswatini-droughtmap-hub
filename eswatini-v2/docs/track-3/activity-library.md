@@ -1,3 +1,5 @@
+<!-- DIRTY_AMENDMENT: Visual fixes — sector icons DRY, step number brand color #3E5EB9, status tag fixed width 71px and Figma exact colors. Approved 2026-07-28 -->
+
 # Feature Design Document
 
 ## Feature: Activity Library
