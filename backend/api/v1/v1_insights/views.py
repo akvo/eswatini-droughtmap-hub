@@ -25,7 +25,7 @@ class InsightsHeroView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["National Overview"],
+        tags=["Insights"],
         summary="Get National Overview Hero status and summary",
         responses={200: InsightsHeroSerializer},
     )
@@ -39,7 +39,7 @@ class InsightsZonesView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["National Overview"],
+        tags=["Insights"],
         summary="Get Drought breakdown by Regions or Climatic Zones",
         parameters=[
             OpenApiParameter(
@@ -64,7 +64,7 @@ class InsightsMetricsView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["National Overview"],
+        tags=["Insights"],
         summary="Get National Overview KPI metric cards data",
         responses={200: InsightsMetricsSerializer},
     )
@@ -78,7 +78,7 @@ class InsightsResponseActivitiesView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["National Overview"],
+        tags=["Insights"],
         summary="Get Response Activities sector overview",
         responses={200: InsightsResponseActivitiesSerializer},
     )
@@ -92,7 +92,7 @@ class InsightsMapDataView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["National Overview"],
+        tags=["Insights"],
         summary="Get National Overview map layer configuration",
         responses={200: InsightsMapDataSerializer},
     )

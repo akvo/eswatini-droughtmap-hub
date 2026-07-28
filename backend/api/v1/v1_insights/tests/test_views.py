@@ -54,7 +54,7 @@ class InsightsAPITests(TestCase):
         )
 
     def test_hero_endpoint_published(self):
-        response = self.client.get("/api/v1/national-overview/hero")
+        response = self.client.get("/api/v1/insights/hero")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("status", data)
@@ -67,7 +67,7 @@ class InsightsAPITests(TestCase):
 
     def test_hero_endpoint_no_publication(self):
         Publication.objects.all().delete()
-        response = self.client.get("/api/v1/national-overview/hero")
+        response = self.client.get("/api/v1/insights/hero")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(data["status"]["category"], 0)
@@ -75,9 +75,7 @@ class InsightsAPITests(TestCase):
         self.assertIn("No published drought map", data["summary"])
 
     def test_zones_endpoint_regions(self):
-        response = self.client.get(
-            "/api/v1/national-overview/zones?group=regions"
-        )
+        response = self.client.get("/api/v1/insights/zones?group=regions")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("zones", data)
@@ -86,17 +84,13 @@ class InsightsAPITests(TestCase):
         self.assertEqual(data["zones"]["group"], "regions")
 
     def test_zones_endpoint_climatic(self):
-        response = self.client.get(
-            "/api/v1/national-overview/zones?group=climatic"
-        )
+        response = self.client.get("/api/v1/insights/zones?group=climatic")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(data["zones"]["group"], "climatic")
 
     def test_zones_endpoint_invalid_group_fallback(self):
-        response = self.client.get(
-            "/api/v1/national-overview/zones?group=unknown"
-        )
+        response = self.client.get("/api/v1/insights/zones?group=unknown")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(data["zones"]["group"], "regions")
@@ -131,7 +125,7 @@ class InsightsAPITests(TestCase):
             },
         )
 
-        response = self.client.get("/api/v1/national-overview/metrics")
+        response = self.client.get("/api/v1/insights/metrics")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("rainfall", data)
@@ -140,9 +134,7 @@ class InsightsAPITests(TestCase):
         self.assertEqual(data["fieldReports"]["count"], 1)
 
     def test_response_activities_endpoint(self):
-        response = self.client.get(
-            "/api/v1/national-overview/response-activities"
-        )
+        response = self.client.get("/api/v1/insights/response-activities")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("sectors", data)
@@ -154,7 +146,7 @@ class InsightsAPITests(TestCase):
         self.assertEqual(wash_sector["activities"], 1)
 
     def test_map_data_endpoint(self):
-        response = self.client.get("/api/v1/national-overview/map-data")
+        response = self.client.get("/api/v1/insights/map-data")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("layers", data)
@@ -162,7 +154,7 @@ class InsightsAPITests(TestCase):
 
     def test_map_data_endpoint_no_publication(self):
         Publication.objects.all().delete()
-        response = self.client.get("/api/v1/national-overview/map-data")
+        response = self.client.get("/api/v1/insights/map-data")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("date", data)

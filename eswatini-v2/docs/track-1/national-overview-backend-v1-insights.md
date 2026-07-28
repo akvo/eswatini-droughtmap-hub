@@ -50,8 +50,7 @@ Goal:
 - [x] Unit tests cover every view; at least one integration test per endpoint.
 - [x] New app is registered in INSTALLED_APPS and wired in eswatini/urls.py.
 - [x] No migrations required (no new models).
-- [x] GET /api/v1/national-overview/hero response time < 200 ms at P95 (single DB query).
-
+- [x] GET /api/v1/insights/hero response time < 200 ms at P95 (single DB query).
 
 ---
 
