@@ -44,3 +44,19 @@ class IndicatorSeederTestCase(TestCase):
         self.assertEqual(lobamba.ipc_phase, 2)
         self.assertIsNone(lobamba.cattle)
         self.assertIsNone(lobamba.water_demand)
+
+    def test_seeder_reports_unmatched_names(self):
+        with self.assertLogs("api.v1.v1_indicators", level="WARNING") as logs:
+            call_command("generate_indicators_seeder", "--test", True)
+        self.assertTrue(any("name drift" in m for m in logs.output))
+
+    def test_seeder_preserves_bridged_cattle(self):
+        adm = Administration.objects.first()
+        Indicator.objects.update_or_create(
+            administration=adm,
+            defaults={"cattle": 1800, "rainfed_cropland": 2400},
+        )
+        call_command("generate_indicators_seeder", "--test", True)
+        ind = Indicator.objects.get(administration=adm)
+        self.assertEqual(ind.cattle, 1800)
+        self.assertEqual(ind.rainfed_cropland, 2400)

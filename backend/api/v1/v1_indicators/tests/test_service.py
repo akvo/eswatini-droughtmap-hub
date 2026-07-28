@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.utils import timezone
 from api.v1.v1_publication.models import (
     Administration,
     Publication,
@@ -65,6 +66,7 @@ class RiskScoringServiceTestCase(TestCase):
             initial_values=validated_values,
             validated_values=validated_values,
             status=PublicationStatus.published,
+            published_at=timezone.now(),
         )
 
     def test_min_max_norm_helper(self):
@@ -78,7 +80,7 @@ class RiskScoringServiceTestCase(TestCase):
     def test_min_max_norm_all_equal(self):
         vals = [10.0, 10.0]
         normed = _min_max_norm(vals)
-        self.assertEqual(normed, [0.0, 0.0])
+        self.assertEqual(normed, [None, None])
 
     def test_apply_band_helper(self):
         self.assertEqual(_apply_band(0.55), "Very High")
@@ -86,6 +88,7 @@ class RiskScoringServiceTestCase(TestCase):
         self.assertEqual(_apply_band(0.35), "High")
         self.assertEqual(_apply_band(0.20), "Moderate")
         self.assertEqual(_apply_band(0.10), "Low")
+        self.assertIsNone(_apply_band(None))
 
     def test_score_all_with_published_publication(self):
         self._publish_drought_map(
@@ -139,3 +142,35 @@ class RiskScoringServiceTestCase(TestCase):
             self.assertEqual(item["hazard"], 0.0)
             self.assertEqual(item["risk_score"], 0.0)
             self.assertIn("hazard", item["unavailable"])
+
+    def test_missing_ipc_yields_null_score_not_low(self):
+        adm = Administration.objects.create(
+            id=104, name="TestAdm", region="Hhohho"
+        )
+        Indicator.objects.create(
+            administration=adm, population=5000, ipc_phase=None
+        )
+        row = next(r for r in score_all() if r["administration"] == adm.id)
+        self.assertIsNone(row["risk_score"])
+        self.assertIsNone(row["risk_class"])
+        self.assertIn("ipc_phase", row["unavailable"])
+
+    def test_publication_without_published_at_is_not_current(self):
+        Publication.objects.create(
+            year_month="2026-07-01",
+            cdi_geonode_id=99,
+            due_date="2026-08-01",
+            status=PublicationStatus.published,
+            published_at=None,
+            initial_values=[
+                {"administration_id": self.adm1.id, "category": 5}
+            ],
+        )
+        row = next(
+            r for r in score_all() if r["administration"] == self.adm1.id
+        )
+        self.assertEqual(row["hazard"], 0.0)
+        self.assertIn("hazard", row["unavailable"])
+
+    def test_min_max_norm_constant_col_excluded(self):
+        self.assertEqual(_min_max_norm([5, 5, 5]), [None, None, None])

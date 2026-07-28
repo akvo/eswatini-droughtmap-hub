@@ -64,7 +64,7 @@ class RiskScoringServiceTestCase(TestCase):
 
     def test_min_max_norm(self):
         self.assertEqual(_min_max_norm([None, None]), [None, None])
-        self.assertEqual(_min_max_norm([5, 5, 5]), [0.0, 0.0, 0.0])
+        self.assertEqual(_min_max_norm([5, 5, 5]), [None, None, None])
         self.assertEqual(_min_max_norm([10, 20, None]), [0.0, 1.0, None])
 
     def test_score_all_no_publication(self):
@@ -77,6 +77,9 @@ class RiskScoringServiceTestCase(TestCase):
         self.assertIn("hazard", nkwene["unavailable"])
 
         hosea = next(r for r in results if r["administration"] == 3)
+        self.assertIsNone(hosea["vulnerability"])
+        self.assertIsNone(hosea["risk_score"])
+        self.assertIsNone(hosea["risk_class"])
         self.assertIn("ipc_phase", hosea["unavailable"])
         self.assertIn("cattle", hosea["unavailable"])
 
