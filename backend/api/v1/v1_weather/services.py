@@ -28,6 +28,11 @@ from api.v1.v1_weather.topo import (
     assign_region,
     haversine_km,
 )
+# Drought class is owned by v1_publication (INS-3 D-6): every Detailed
+# Insights tab renders the same chip, so the rule has one definition, beside
+# the model it reads. No cycle — v1_publication never imports v1_weather.
+from api.v1.v1_publication.insights.utils import current_dclass
+from utils.periods import month_range
 
 logger = logging.getLogger(__name__)
 
@@ -126,17 +131,6 @@ def station_health(station, today=None) -> dict:
         "last_reading": last_reading.isoformat(),
         "completeness_30d": completeness,
     }
-
-
-def month_range(from_period: str, to_period: str) -> list:
-    """Inclusive list of 'YYYY-MM' periods."""
-    year, month = map(int, from_period.split("-"))
-    end_year, end_month = map(int, to_period.split("-"))
-    periods = []
-    while (year, month) <= (end_year, end_month):
-        periods.append(f"{year:04d}-{month:02d}")
-        year, month = (year, month + 1) if month < 12 else (year + 1, 1)
-    return periods
 
 
 def monthly_series(
@@ -319,39 +313,6 @@ def resolve_administration_latest(administration) -> dict:
     }
 
 
-def _current_dclass(administration):
-    """Drought class from the latest PUBLISHED publication's
-    validated_values; None when no published month covers this
-    administration. Labels/colors stay in frontend config (CLAUDE.md)."""
-    from api.v1.v1_publication.constants import PublicationStatus
-    from api.v1.v1_publication.models import Publication
-
-    publication = (
-        Publication.objects.filter(
-            status=PublicationStatus.published,
-            validated_values__isnull=False,
-        )
-        .order_by("-year_month")
-        .first()
-    )
-    if not publication:
-        return None
-    item = next(
-        (
-            i
-            for i in (publication.validated_values or [])
-            if i.get("administration_id") == administration.pk
-        ),
-        None,
-    )
-    if not item or item.get("category") is None:
-        return None
-    return {
-        "category": item["category"],
-        "period": publication.year_month.strftime("%Y-%m"),
-    }
-
-
 def _resolve_station_with_data(administration):
     """First D-5 candidate that has any ingested data."""
     for candidate, resolution, distance_km in _resolution_candidates(
@@ -371,7 +332,7 @@ def _administration_base(administration, with_context=False) -> dict:
     if with_context:
         base["value"] = {
             "zone": administration.zone,
-            "dclass": _current_dclass(administration),
+            "dclass": current_dclass(administration),
         }
     return base
 
