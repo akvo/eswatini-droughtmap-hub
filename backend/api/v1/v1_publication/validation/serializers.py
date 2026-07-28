@@ -21,6 +21,9 @@ class ValidationMetaSerializer(serializers.Serializer):
     publication_id = serializers.IntegerField(source="id")
     year_month = serializers.DateField(format="%Y-%m")
     published_at = serializers.DateTimeField()
+    # Carried so re-opening the publish modal on an already-published map
+    # edits the live description instead of silently blanking it.
+    narrative = serializers.CharField(allow_null=True, allow_blank=True)
     total = serializers.SerializerMethodField()
     reviewers_required = serializers.SerializerMethodField()
     can_publish = serializers.SerializerMethodField()

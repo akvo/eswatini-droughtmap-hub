@@ -192,8 +192,18 @@ class ValidationQueueAPIsTestCase(APITestCase):
             {
                 "publication_id", "year_month", "published_at", "total",
                 "reviewers_required", "can_publish", "pending_validation",
+                "narrative",
             },
         )
+
+    def test_meta_carries_the_current_narrative(self):
+        """Re-opening the publish modal must edit the live description, not
+        blank it — the page has no other source for it."""
+        text = "Conditions eased across the Lowveld."
+        self.publication.narrative = text
+        self.publication.save()
+        meta = self.client.get(self.stats_url).data["meta"]
+        self.assertEqual(meta["narrative"], text)
 
     def test_status_counts_partition_the_queue(self):
         """D-10: ready + awaiting + validated == total. `disagreement`
