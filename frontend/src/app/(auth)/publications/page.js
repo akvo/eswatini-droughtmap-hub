@@ -236,13 +236,13 @@ const PublicationsPage = () => {
           className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
         />
         <Can I="read" a="Publication">
-          <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
-            <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+          <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-cardBorder bg-white">
+            <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
               <h2 className="text-xl font-semibold leading-7 text-[#333333]">
                 Reviews
               </h2>
             </div>
-            <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
               <TabButtons
                 options={PUBLICATION_TAB_FILTERS}
                 value={statusFilter}

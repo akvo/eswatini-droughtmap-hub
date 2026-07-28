@@ -65,7 +65,7 @@ export default function ContextSignoffView({ activity }) {
   return (
     <div className="flex flex-col text-neutral-800">
       {/* Title */}
-      <h3 className="text-[#333333] font-medium text-base m-0 pb-4 border-b border-neutral-200">
+      <h3 className="text-textBody font-medium text-base m-0 pb-4 border-b border-neutral-200">
         Context & sign-off
       </h3>
 
@@ -83,7 +83,7 @@ export default function ContextSignoffView({ activity }) {
                 type="link"
                 onClick={handleDownload}
                 loading={downloading}
-                className="p-0 h-auto text-left font-medium text-[#3e5eb9] hover:text-[#2d468a] w-max -ml-5"
+                className="p-0 h-auto text-left font-medium text-primary hover:text-primaryHover w-max -ml-5"
               >
                 &#128190; Download source file
               </Button>
@@ -113,7 +113,7 @@ export default function ContextSignoffView({ activity }) {
           className="flex flex-col md:col-span-2 mt-12"
           value={
             activity.notes ? (
-              <span className="whitespace-pre-wrap font-normal text-sm leading-relaxed text-[#333333]">
+              <span className="whitespace-pre-wrap font-normal text-sm leading-relaxed text-textBody">
                 {activity.notes}
               </span>
             ) : (

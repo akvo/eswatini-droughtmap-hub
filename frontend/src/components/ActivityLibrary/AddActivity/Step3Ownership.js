@@ -58,7 +58,7 @@ export default function Step3Ownership({ formData, setFormData }) {
                 }
                 className={`flex-1 flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${
                   isSelected
-                    ? "border-blue-600 bg-blue-50/40"
+                    ? "border-primary bg-brandTint/40"
                     : "border-neutral-300 bg-white hover:border-neutral-400"
                 }`}
               >
@@ -68,7 +68,7 @@ export default function Step3Ownership({ formData, setFormData }) {
                 <div
                   className={`size-4 rounded-full border flex items-center justify-center ${
                     isSelected
-                      ? "border-blue-600 bg-blue-600"
+                      ? "border-primary bg-primary"
                       : "border-neutral-300 bg-white"
                   }`}
                 >

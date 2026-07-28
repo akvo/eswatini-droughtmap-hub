@@ -75,7 +75,7 @@ const ReviewerRow = ({ review }) => {
   const isPending = review.submitted_at === null;
   return (
     <div
-      className={`border-b border-[#eaecf0] ${isPending ? "bg-[#fafafa]" : ""}`}
+      className={`border-b border-cardBorder ${isPending ? "bg-[#fafafa]" : ""}`}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <Avatar
@@ -178,7 +178,7 @@ const AgreementBar = ({ agreement, majorityCategory }) => {
         ))}
       </div>
 
-      <div className="border-t border-[#eaecf0] mt-4 pt-3">
+      <div className="border-t border-cardBorder mt-4 pt-3">
         <div className="flex flex-wrap gap-x-5 gap-y-1">
           {LEGEND_ITEMS.map((item) => (
             <div key={item.cat} className="flex items-center gap-1.5 text-sm">
@@ -347,7 +347,7 @@ const ValidationDecisionPage = () => {
       <Can I="read" a="Publication">
         <div className="mx-auto w-full max-w-[1280px] pt-10">
           {/* Breadcrumb + navigation */}
-          <div className="flex items-center justify-between py-3 border border-[#eaecf0] border-b-0 bg-white px-6">
+          <div className="flex items-center justify-between py-3 border border-cardBorder border-b-0 bg-white px-6">
             <div className="flex items-center gap-2 text-sm">
               <HomeOutlined className="text-[#606060]" />
               <button
@@ -375,7 +375,7 @@ const ValidationDecisionPage = () => {
           {/* Two-column layout — 50/50 */}
           <div className="flex flex-col lg:flex-row gap-3 pb-8">
             {/* LEFT COLUMN */}
-            <div className="flex-1 min-w-0 flex flex-col border border-[#eaecf0] bg-white">
+            <div className="flex-1 min-w-0 flex flex-col border border-cardBorder bg-white">
               {/* Inkhundla summary */}
               <div className="px-6 pt-6 pb-5">
                 <div className="flex items-start justify-between mb-3">
@@ -435,7 +435,7 @@ const ValidationDecisionPage = () => {
               </div>
 
               {/* Reviewer rows */}
-              <div className="border-t border-[#eaecf0]">
+              <div className="border-t border-cardBorder">
                 {decision?.masked && (
                   <div className="px-4 py-3 text-sm text-[#606060] bg-[#f9fafb]">
                     Submit your own review for this Inkhundla to see the other
@@ -461,7 +461,7 @@ const ValidationDecisionPage = () => {
 
             {/* RIGHT COLUMN — sticky decision panel */}
             <div className="flex-1 min-w-0">
-              <div className="lg:sticky lg:top-4 border border-[#eaecf0] bg-white">
+              <div className="lg:sticky lg:top-4 border border-cardBorder bg-white">
                 <div className="p-6 flex flex-col gap-5">
                   <h2 className="text-lg font-semibold text-[#333333]">
                     Validation decision
@@ -548,11 +548,11 @@ const ValidationDecisionPage = () => {
                     flight, so rendering early flashes the lock notice at an
                     admin who is perfectly entitled to submit. */}
                 {loading ? (
-                  <div className="border-t border-[#eaecf0] px-6 py-4 text-sm text-[#a4a4a4]">
+                  <div className="border-t border-cardBorder px-6 py-4 text-sm text-[#a4a4a4]">
                     Loading decision&hellip;
                   </div>
                 ) : canSubmit ? (
-                  <div className="flex gap-3 border-t border-[#eaecf0] px-6 py-4">
+                  <div className="flex gap-3 border-t border-cardBorder px-6 py-4">
                     <Button
                       className="flex-1"
                       onClick={handleSaveDraft}
@@ -571,7 +571,7 @@ const ValidationDecisionPage = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="border-t border-[#eaecf0] px-6 py-4 text-sm text-[#606060] bg-[#f9fafb]">
+                  <div className="border-t border-cardBorder px-6 py-4 text-sm text-[#606060] bg-[#f9fafb]">
                     You are signed in as{" "}
                     <strong>
                       {TWG_OPTIONS.find(
