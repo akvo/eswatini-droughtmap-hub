@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -253,3 +254,41 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(
             response.json(), {"due_date": ["The date must be today or later."]}
         )
+
+
+@override_settings(USE_TZ=False, TEST_ENV=True)
+class PublicationListOrderingTestCase(APITestCase):
+    """The list is ordered by month, newest first.
+
+    Ordering by -due_date put an older month on top, because publications
+    created together share a due date and tied rows come back in whatever
+    order the database picks — so this pins the column AND the tiebreak.
+    """
+
+    def setUp(self):
+        call_command("generate_administrations_seeder", "--test", True)
+        call_command("generate_admin_seeder", "--test", True)
+        self.admin = SystemUser.objects.filter(
+            role=UserRoleTypes.admin
+        ).first()
+        self.client.force_authenticate(user=self.admin)
+        # Deliberately inserted out of order, all sharing one due date.
+        self.months = ["2026-04", "2026-05", "2026-03"]
+        for index, month in enumerate(self.months):
+            Publication.objects.create(
+                cdi_geonode_id=7100 + index,
+                year_month=date(int(month[:4]), int(month[5:]), 1),
+                due_date=date(2026, 7, 31),
+                initial_values=[],
+            )
+
+    def test_list_is_newest_month_first(self):
+        response = self.client.get(
+            "/api/v1/admin/publications", follow=True
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        months = [
+            row["year_month"][:7] for row in response.json()["data"]
+        ]
+        self.assertEqual(months, sorted(months, reverse=True))
+        self.assertEqual(months[0], "2026-05")
