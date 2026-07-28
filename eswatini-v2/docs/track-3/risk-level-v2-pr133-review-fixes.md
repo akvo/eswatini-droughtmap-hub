@@ -36,19 +36,19 @@ PR review identified 5 blocking correctness bugs and additional structural issue
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] `GET /api/v1/risk-level` returns 200 anonymously.
-- [ ] `GET /api/v1/indicators` returns 401 anonymously.
-- [ ] Tinkhundla with missing IPC data show `risk_score: null, risk_class: null`.
-- [ ] Deleting an Indicator row does not 500 the recommended-actions endpoint.
-- [ ] `generate_indicators_seeder` prints `Seeded 56/59` with two drift warnings.
-- [ ] Re-running seeder preserves manually-set `cattle` / `rainfed_cropland`.
+- [x] `GET /api/v1/risk-level` returns 200 anonymously.
+- [x] `GET /api/v1/indicators` returns 401 anonymously.
+- [x] Tinkhundla with missing IPC data show `risk_score: null, risk_class: null`.
+- [x] Deleting an Indicator row does not 500 the recommended-actions endpoint.
+- [x] `generate_indicators_seeder` prints `Seeded 56/59` with two drift warnings.
+- [x] Re-running seeder preserves manually-set `cattle` / `rainfed_cropland`.
 
 ### Technical Acceptance Criteria
-- [ ] Both scoring paths agree for all 59 Tinkhundla (`mismatched: []`).
-- [ ] `_min_max_norm`, `_apply_band`, `_DROUGHT_CATEGORY_TO_HAZARD_KEY` exist in exactly one module (`services.py`).
-- [ ] `_latest_hazard_map()` filters `published_at__isnull=False`.
-- [ ] `build_dataset()` iterates `indicators` (not `Administration.objects.all()`).
-- [ ] Full test suite passes; count >= 135.
+- [x] Both scoring paths agree for all 59 Tinkhundla (`mismatched: []`).
+- [x] `_min_max_norm`, `_apply_band`, `_DROUGHT_CATEGORY_TO_HAZARD_KEY` exist in exactly one module (`services.py`).
+- [x] `_latest_hazard_map()` filters `published_at__isnull=False`.
+- [x] `build_dataset()` iterates `indicators` (not `Administration.objects.all()`).
+- [x] Full test suite passes; count >= 131.
 
 ---
 
