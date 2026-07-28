@@ -290,17 +290,19 @@ Key invariants (from Methodology sheet, verified against `Risk_expected`):
 
 | Method | URL | Purpose | Auth |
 |--------|-----|---------|------|
-| GET | `/api/v1/risk-level` | Scored risk for all 59 (current cycle) | Auth |
-| GET | `/api/v1/risk-level/{administration_id}` | Scored risk for one Inkhundla | Auth |
+| GET | `/api/v1/risk-level` | Scored risk for all 59 (current cycle) | **Public** _(was Auth)_ |
+| GET | `/api/v1/risk-level/{administration_id}` | Scored risk for one Inkhundla | **Public** _(was Auth)_ |
+
+> **Note on Nullability**: `exposure`, `vulnerability`, `risk_score`, and `risk_class` are `null` if their required inputs (IPC phase or exposure sub-indicators) are missing (e.g. unscored Tinkhundla).
 
 ```json
 // GET /api/v1/risk-level/4588078
 { "administration": 4588078, "administration_name": "Nkwene", "region": "Shiselweni",
   "hazard": 0.60, "exposure": 0.489, "vulnerability": 0.60,
   "risk_score": 0.176, "risk_class": "Moderate",
-  "components": { "land_use_norm": 0.156, "population_norm": 0.822, "cattle_norm": 0.49,
+  "components": { "land_use_norm": 0.156, "population_norm": 0.822, "cattle_norm": null,
                   "water_demand_norm": null },
-  "unavailable": ["water_demand"], "cycle": "2026-07" }
+  "unavailable": ["cattle", "water_demand"], "cycle": "2026-07" }
 ```
 
 ---
@@ -372,7 +374,7 @@ Workbook sheet → model field:
 ---
 
 ## 10. Security Considerations
-- [ ] Indicators write endpoints remain `IsAuthenticated & IsAdmin`; `/risk-level` read is `IsAuthenticated`.
+- [ ] Indicators write endpoints remain `IsAuthenticated & IsAdmin`; `/risk-level` read is public (`AllowAny`).
 - [ ] Input validation: `land_use_dvi_agri` ∈ [0,1], `ipc_phase` ∈ 1..5, counts ≥ 0; duplicate indicator blocked by `UniqueConstraint`.
 - [ ] Provenance gate retained: `source` + `as_of` required when `is_placeholder=False`.
 

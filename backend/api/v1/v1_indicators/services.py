@@ -13,6 +13,7 @@ from api.v1.v1_indicators.constants import (
 # Mapping DroughtCategory int constants to HAZARD_RESCALE string keys
 _DROUGHT_CATEGORY_TO_HAZARD_KEY = {
     DroughtCategory.none: "None",
+    DroughtCategory.normal: "None",
     DroughtCategory.d0: "D0",
     DroughtCategory.d1: "D1",
     DroughtCategory.d2: "D2",
@@ -27,7 +28,10 @@ def _latest_hazard_map() -> dict[int, str]:
     {administration_id: hazard_key}.
     """
     pub = (
-        Publication.objects.filter(status=PublicationStatus.published)
+        Publication.objects.filter(
+            status=PublicationStatus.published,
+            published_at__isnull=False,
+        )
         .order_by("-year_month", "-id")
         .first()
     )
@@ -50,8 +54,10 @@ def _latest_hazard_map() -> dict[int, str]:
     return res
 
 
-def _apply_band(score: float) -> str:
-    """Classify risk_score [0,1] into risk band string."""
+def _apply_band(score: float | None) -> str | None:
+    """Classify risk_score [0,1] into risk band. None score -> None band."""
+    if score is None:
+        return None
     for threshold, band in RISK_BANDS:
         if score >= threshold:
             return band
@@ -61,6 +67,7 @@ def _apply_band(score: float) -> str:
 def _min_max_norm(values: list[float | int | None]) -> list[float | None]:
     """
     Min-max normalisation across a list of numeric values (None stays None).
+    Constant-column values (range == 0) return None to exclude from mean.
     """
     valid_nums = [v for v in values if v is not None]
     if not valid_nums:
@@ -75,10 +82,14 @@ def _min_max_norm(values: list[float | int | None]) -> list[float | None]:
         if v is None:
             res.append(None)
         elif range_v == 0:
-            res.append(0.0)
+            res.append(None)
         else:
             res.append((float(v) - min_v) / range_v)
     return res
+
+
+def _round(value: float | None, digits: int = 4) -> float | None:
+    return None if value is None else round(value, digits)
 
 
 def score_all(cycle: str = "latest") -> list[dict]:
@@ -110,11 +121,11 @@ def score_all(cycle: str = "latest") -> list[dict]:
         h_key = hazard_map.get(adm_id)
         hazard = HAZARD_RESCALE.get(h_key, 0.0) if h_key else 0.0
 
-        # 2. Vulnerability component
+        # 2. Vulnerability component (None when IPC absent; matches notebook)
         vulnerability = (
-            IPC_RESCALE.get(ind.ipc_phase, 0.0)
+            IPC_RESCALE.get(ind.ipc_phase)
             if ind.ipc_phase is not None
-            else 0.0
+            else None
         )
 
         # 3. Exposure component (arithmetic mean of non-null
@@ -136,10 +147,14 @@ def score_all(cycle: str = "latest") -> list[dict]:
             else:
                 unavailable_subinds.append(subind)
 
-        exposure = sum(valid_norms) / len(valid_norms) if valid_norms else 0.0
+        exposure = sum(valid_norms) / len(valid_norms) if valid_norms else None
 
         # 4. Multiplicative Risk Score & Class
-        risk_score = hazard * exposure * vulnerability
+        # (None when exposure or vulnerability is None)
+        if exposure is None or vulnerability is None:
+            risk_score = None
+        else:
+            risk_score = hazard * exposure * vulnerability
         risk_class = _apply_band(risk_score)
 
         # 5. Unavailable flags
@@ -159,9 +174,9 @@ def score_all(cycle: str = "latest") -> list[dict]:
                 "administration_name": adm.name,
                 "region": adm.region,
                 "hazard": round(hazard, 4),
-                "exposure": round(exposure, 4),
-                "vulnerability": round(vulnerability, 4),
-                "risk_score": round(risk_score, 4),
+                "exposure": _round(exposure),
+                "vulnerability": _round(vulnerability),
+                "risk_score": _round(risk_score),
                 "risk_class": risk_class,
                 "components": sub_norms,
                 "unavailable": unavailable,

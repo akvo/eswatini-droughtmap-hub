@@ -25,10 +25,13 @@ from api.v1.v1_indicators.models import Indicator
 from api.v1.v1_indicators.constants import (
     HAZARD_RESCALE,
     IPC_RESCALE,
-    RISK_BANDS,
     EXPOSURE_SUBINDICATORS,
 )
-from api.v1.v1_publication.constants import DroughtCategory
+from api.v1.v1_indicators.services import (
+    _min_max_norm,
+    _apply_band,
+    _DROUGHT_CATEGORY_TO_HAZARD_KEY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +41,6 @@ _RISK_CLASS_RANK = {
     "Moderate": 2,
     "High": 3,
     "Very High": 4,
-}
-
-_DROUGHT_CATEGORY_TO_HAZARD_KEY = {
-    DroughtCategory.none: "None",
-    DroughtCategory.d0: "D0",
-    DroughtCategory.d1: "D1",
-    DroughtCategory.d2: "D2",
-    DroughtCategory.d3: "D3",
-    DroughtCategory.d4: "D4",
 }
 
 
@@ -148,30 +142,6 @@ def _latest_published_categories():
     return {v["administration_id"]: v.get("category") for v in values}
 
 
-def _min_max_norm(values: list[float | int | None]) -> list[float | None]:
-    valid_nums = [v for v in values if v is not None]
-    if not valid_nums:
-        return [None] * len(values)
-    min_v, max_v = float(min(valid_nums)), float(max(valid_nums))
-    range_v = max_v - min_v
-    res = []
-    for v in values:
-        if v is None:
-            res.append(None)
-        elif range_v == 0:
-            res.append(0.0)
-        else:
-            res.append((float(v) - min_v) / range_v)
-    return res
-
-
-def _apply_band(score: float) -> str:
-    for threshold, band in RISK_BANDS:
-        if score >= threshold:
-            return band
-    return "Low"
-
-
 def build_dataset():
     """Per-administration evaluation rows keyed by administration id.
     Reads directly from the Indicator database model and latest Publication."""
@@ -190,11 +160,19 @@ def build_dataset():
         normed_by_subind[subind] = _min_max_norm(raw_vals)
 
     dataset = {}
-    for idx, adm in enumerate(Administration.objects.all()):
+    # Iterate over all Administrations so missing Indicator rows yield null
+    # scores rather than 500 / IndexError. Exposure norm is retrieved by
+    # position in the sorted `indicators` list.
+    indicator_pos = {
+        ind.administration_id: idx for idx, ind in enumerate(indicators)
+    }
+
+    for adm in Administration.objects.all():
         ind = indicator_by_adm.get(adm.id)
         cat = categories.get(adm.id)
+        idx = indicator_pos.get(adm.id)
 
-        if ind:
+        if ind and idx is not None:
             pop = ind.population
             crop = ind.rainfed_cropland
             cat_val = ind.cattle
@@ -209,20 +187,24 @@ def build_dataset():
                 if normed_by_subind[subind][idx] is not None
             ]
             exposure = (
-                sum(valid_norms) / len(valid_norms) if valid_norms else 0.0
+                sum(valid_norms) / len(valid_norms) if valid_norms else None
             )
 
-            # Hazard & Vulnerability
+            # Hazard & Vulnerability (None when IPC absent; matches notebook)
             h_key = _DROUGHT_CATEGORY_TO_HAZARD_KEY.get(cat, "None")
             hazard = HAZARD_RESCALE.get(h_key, 0.0)
-            vuln = IPC_RESCALE.get(ipc, 0.0) if ipc else 0.0
+            vuln = IPC_RESCALE.get(ipc) if ipc is not None else None
 
-            risk_score = hazard * exposure * vuln
-            risk_class = _apply_band(risk_score)
+            if exposure is None or vuln is None:
+                risk_score = None
+                risk_class = None
+            else:
+                risk_score = hazard * exposure * vuln
+                risk_class = _apply_band(risk_score)
         else:
             pop = crop = cat_val = wat = ipc = dvi = None
-            risk_score = 0.0
-            risk_class = "Low"
+            risk_score = None
+            risk_class = None
 
         dataset[adm.id] = {
             "category": cat,
