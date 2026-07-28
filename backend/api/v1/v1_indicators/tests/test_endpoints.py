@@ -180,3 +180,31 @@ class IndicatorEndpointsTestCase(APITestCase):
         response = self.client.patch(url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("source", response.data)
+
+        # Update curated row with missing as_of date
+        payload_missing_as_of = {
+            "administration": self.adm2.id,
+            "source": "Valid Source",
+            "as_of": None,
+        }
+        response = self.client.patch(url, payload_missing_as_of, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("as_of", response.data)
+
+    def test_risk_level_detail_not_found_returns_404(self):
+        url = reverse(
+            "risk-level-detail",
+            kwargs={"version": "v1", "administration_id": 999999},
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_ipc_phase_out_of_range_returns_400(self):
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "administration": self.adm2.id,
+            "ipc_phase": 6,
+        }
+        response = self.client.post(self.list_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ipc_phase", response.data)

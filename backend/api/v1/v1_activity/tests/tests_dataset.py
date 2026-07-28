@@ -129,3 +129,36 @@ class BuildDatasetTestCase(TestCase):
             "risk": {"class": "Moderate"},
         }
         self.assertTrue(activity_passes(triggers_risk, row))
+
+    def test_missing_indicator_row_returns_null_scores_without_crash(self):
+        # #1: Deleting an Indicator row must not crash build_dataset()
+        self.ind_nk.delete()
+        ds = build_dataset()
+        self.assertIn(101, ds)
+        self.assertIsNone(ds[101]["risk_score"])
+        self.assertIsNone(ds[101]["risk_class"])
+
+    def test_null_risk_class_fails_safe_in_activity_passes(self):
+        # #4: SOPs with risk gates must fail-safe for null-score/class rows
+        null_row = {
+            "risk_score": None,
+            "risk_class": None,
+            "category": DroughtCategory.d4,
+        }
+        self.assertFalse(
+            activity_passes({"risk": {"class": "High"}}, null_row)
+        )
+        self.assertFalse(
+            activity_passes({"risk": {"op": 1, "value": 0.15}}, null_row)
+        )
+
+    def test_scoring_alignment_with_score_all_service(self):
+        # #1: Verify build_dataset() risk_score/class match score_all()
+        from api.v1.v1_indicators.services import score_all
+
+        svc = {r["administration"]: r for r in score_all()}
+        ds = build_dataset()
+        for adm_id, row in ds.items():
+            if adm_id in svc:
+                self.assertEqual(row["risk_score"], svc[adm_id]["risk_score"])
+                self.assertEqual(row["risk_class"], svc[adm_id]["risk_class"])
