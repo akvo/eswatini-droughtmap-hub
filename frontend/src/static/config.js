@@ -719,3 +719,55 @@ export const SECTOR_DESCRIPTIONS = {
   coord:
     "Coordination activities align all sector responses to avoid duplication and prioritise resources across the 59 Tinkhundla.",
 };
+
+// Sector ID to Figma solid background color mapping (node 3487-101737)
+export const SECTOR_STYLES = {
+  1: { color: "#249E58" }, // Agriculture & Food Security
+  2: { color: "#E74C3C" }, // Health & Nutrition
+  3: { color: "#3E5EB9" }, // Water & Sanitation
+  4: { color: "#F39C12" }, // Education
+  5: { color: "#EEA96C" }, // Environment & Energy
+  6: { color: "#B10D0B" }, // Coordination
+  7: { color: "#E65F2B" }, // Social Protection
+  8: { color: "#777777" }, // Transport & Logistics
+};
+
+// Sector ID to Figma icon SVG source path
+export const SECTOR_ICON_SRC = {
+  1: "/assets/icons/sectors/agriculture-and-food-security.svg",
+  2: "/assets/icons/sectors/heart-with-pulse.svg",
+  3: "/assets/icons/sectors/water-and-sanitation.svg",
+  4: "/assets/icons/sectors/education.svg",
+  5: "/assets/icons/sectors/environment-and-energy.svg",
+  6: "/assets/icons/sectors/coordination.svg",
+  8: "/assets/icons/sectors/transport-and-logistics.svg",
+};
+
+export const SECTOR_CARD_ICONS = {
+  ...Object.fromEntries(
+    Object.entries(SECTOR_ICON_SRC).map(([id, src]) => [
+      Number(id),
+      <img
+        key={id}
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="w-5 h-5 object-contain"
+      />,
+    ]),
+  ),
+  // 7: Social Protection — shield icon
+  7: (
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
+};
