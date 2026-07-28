@@ -25,6 +25,11 @@ const type = (value) =>
     target: { value },
   });
 
+const bulletinInput = () => screen.getByLabelText(/bulletin url/i);
+
+const typeBulletin = (value) =>
+  fireEvent.change(bulletinInput(), { target: { value } });
+
 const publish = () =>
   fireEvent.click(screen.getByRole("button", { name: /^publish$/i }));
 
@@ -51,17 +56,92 @@ describe("PublishModal", () => {
     expect(screen.getAllByText("Auto-generated")).toHaveLength(4);
   });
 
-  it("submits only the description", async () => {
+  it("submits the description and the bulletin URL", async () => {
     const onPublish = jest.fn().mockResolvedValue(null);
     render(<PublishModal open yearMonth="2026-05" onPublish={onPublish} />);
 
     type("Conditions eased across the Lowveld.");
+    typeBulletin("  https://ndma.org.sz/bulletin-2026-05.pdf  ");
     publish();
 
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
     expect(onPublish).toHaveBeenCalledWith({
       narrative: "Conditions eased across the Lowveld.",
+      bulletinUrl: "https://ndma.org.sz/bulletin-2026-05.pdf",
     });
+  });
+
+  it("publishes without a bulletin URL — it is optional", async () => {
+    const onPublish = jest.fn().mockResolvedValue(null);
+    render(<PublishModal open yearMonth="2026-05" onPublish={onPublish} />);
+
+    type("No bulletin this month.");
+    publish();
+
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish).toHaveBeenCalledWith({
+      narrative: "No bulletin this month.",
+      bulletinUrl: "",
+    });
+  });
+
+  it("sends an emptied bulletin URL so clearing one actually clears it", async () => {
+    const onPublish = jest.fn().mockResolvedValue(null);
+    const { rerender } = render(
+      <PublishModal open={false} yearMonth="2026-05" onPublish={onPublish} />,
+    );
+    rerender(
+      <PublishModal
+        open
+        yearMonth="2026-05"
+        currentNarrative="Hello world"
+        currentBulletinUrl="https://ndma.org.sz/old.pdf"
+        published
+        onPublish={onPublish}
+      />,
+    );
+
+    typeBulletin("");
+    fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
+
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish).toHaveBeenCalledWith({
+      narrative: "Hello world",
+      bulletinUrl: "",
+    });
+  });
+
+  it("seeds the description and bulletin URL from the published map, and says Update", () => {
+    // `meta` arrives after the first render, so seeding only in useState
+    // leaves an already-published map editing an empty box (bug: #317).
+    // The modal submits both fields on every update, so a field it fails to
+    // seed is a field it silently wipes.
+    const { rerender } = render(
+      <PublishModal open={false} yearMonth="2026-05" onPublish={jest.fn()} />,
+    );
+    rerender(
+      <PublishModal
+        open
+        yearMonth="2026-05"
+        currentNarrative="Hello world"
+        currentBulletinUrl="https://ndma.org.sz/bulletin-2026-05.pdf"
+        published
+        onPublish={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByPlaceholderText("Shown underneath the title"),
+    ).toHaveValue("Hello world");
+    expect(bulletinInput()).toHaveValue(
+      "https://ndma.org.sz/bulletin-2026-05.pdf",
+    );
+    expect(
+      screen.getByRole("button", { name: /^update$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^publish$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("requires a description before it will submit", async () => {

@@ -22,19 +22,20 @@ const ChartCard = ({
   loading = false,
   isEmpty = false,
   emptyText = "No data available",
+  titleSize = "text-xl",
   children,
 }) => (
   <div className="bg-white border-t border-neutral-100 p-4">
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 pb-4 border-b border-neutral-100">
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-xl font-semibold text-neutral-800 mb-0">
+          <h3 className={`${titleSize} font-semibold text-neutral-800 mb-0`}>
             {title}
           </h3>
           <RangePicker
             picker="month"
             allowClear
-            className="shrink-0"
+            className="shrink-0 max-w-[218px]"
             value={
               range?.from && range?.to
                 ? [dayjs(range.from, "YYYY-MM"), dayjs(range.to, "YYYY-MM")]

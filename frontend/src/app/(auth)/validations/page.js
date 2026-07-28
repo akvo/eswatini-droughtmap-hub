@@ -42,7 +42,11 @@ const ValidationsPage = () => {
       dataIndex: "due_date",
       key: "due_date",
       width: "26%",
-      defaultSortOrder: "descend",
+      // No defaultSortOrder: the server already returns newest month first,
+      // and a default sort here silently re-ordered the rows by deadline on
+      // arrival — deadlines repeat across publications, so months came back
+      // interleaved. Clicking the header still sorts, but only within the
+      // current page, which is the nature of a client-side sorter.
       sorter: (a, b) =>
         dayjs(a.due_date, "DD-MM-YYYY").unix() -
         dayjs(b.due_date, "DD-MM-YYYY").unix(),
