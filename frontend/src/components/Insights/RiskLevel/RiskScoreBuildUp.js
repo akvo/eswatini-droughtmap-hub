@@ -1,12 +1,6 @@
 import React from "react";
 import { Collapse } from "antd";
-import {
-  ArrowUpOutlined,
-  ArrowDownOutlined,
-  MinusOutlined,
-  SlidersOutlined,
-  DownOutlined,
-} from "@ant-design/icons";
+import { SlidersOutlined, DownOutlined } from "@ant-design/icons";
 import {
   CONFIDENCE_STYLE,
   DROUGHT_CATEGORY_COLOR,
@@ -17,15 +11,20 @@ const { Panel } = Collapse;
 
 // Helper components to keep the layout DRY
 const ScoreBadge = ({ value }) => (
-  <div className="bg-[#cbf5dc] text-[#12b76a] px-2.5 py-0.5 rounded-full text-xs font-bold border border-solid border-[#bceccf] select-none">
+  <div className="bg-[#cbf5dc] text-normal px-2.5 py-0.5 rounded-full text-xs font-bold border border-solid border-[#bceccf] select-none">
     {value}
   </div>
 );
 
-const BuildUpRow = ({ label, value }) => (
-  <div className="flex justify-between items-center">
-    <span>{label}:</span>
-    <span className="font-semibold text-neutral-800">{value}</span>
+const BuildUpDetailRow = ({ title, subtitle, value }) => (
+  <div className="bg-[#f5f8ff] border-b border-cardBorder last:border-b-0 flex gap-4 items-center justify-between px-4 py-3 w-full">
+    <div className="flex flex-col gap-0.5 items-start">
+      <span className="text-[14px] font-semibold text-neutral-800 leading-5">
+        {title}
+      </span>
+      <span className="text-[12px] text-neutral-500 leading-4">{subtitle}</span>
+    </div>
+    <div className="shrink-0 flex items-center justify-end">{value}</div>
   </div>
 );
 
@@ -38,15 +37,13 @@ const renderBuildUpPanel = (title, extra, panelKey, children) => (
     key={panelKey}
     className="bg-white animate-fade-in border-b border-r border-cardBorder"
   >
-    <div className="flex flex-col gap-3 text-sm text-neutral-600 px-3 py-3 bg-[#F8FAFC] border border-solid border-cardBorder rounded-md m-2">
-      {children}
-    </div>
+    <div className="flex flex-col w-full bg-[#f5f8ff]">{children}</div>
   </Panel>
 );
 
 // Susceptibility Phase mapping from v_ipc
 const getIpcPhase = (vIpc) => {
-  if (vIpc === null || vIpc === undefined) return "N/A (Phase unavail.)";
+  if (vIpc === null || vIpc === undefined) return "N/A";
   if (vIpc <= 0.25) return "Phase 1: Minimal";
   if (vIpc <= 0.5) return "Phase 2: Stressed";
   if (vIpc <= 0.75) return "Phase 3: Crisis";
@@ -57,21 +54,21 @@ const getTrendElement = (trend) => {
   switch (trend) {
     case "worse":
       return (
-        <span className="text-red-500 font-semibold flex items-center gap-1">
-          <ArrowUpOutlined /> Worse than last month
+        <span className="text-[#B10D0B] font-bold text-xs whitespace-nowrap">
+          ▼ WORSENING
         </span>
       );
     case "better":
       return (
-        <span className="text-green-500 font-semibold flex items-center gap-1">
-          <ArrowDownOutlined /> Better than last month
+        <span className="text-[#027A48] font-bold text-xs whitespace-nowrap">
+          ▲ BETTER
         </span>
       );
     case "stable":
     default:
       return (
-        <span className="text-neutral-500 font-semibold flex items-center gap-1">
-          <MinusOutlined /> Stable
+        <span className="text-[#606060] font-bold text-xs whitespace-nowrap">
+          ■ STABLE
         </span>
       );
   }
@@ -148,7 +145,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
             className="text-neutral-500 text-xs"
           />
         )}
-        className="bg-transparent flex flex-col w-full"
+        className="bg-transparent flex flex-col w-full risk-buildup-collapse"
       >
         {/* DROUGHT ACCORDION */}
         {renderBuildUpPanel(
@@ -156,24 +153,39 @@ const RiskScoreBuildUp = ({ riskData }) => {
           droughtBadge,
           "drought",
           <>
-            <BuildUpRow label="Validated category" value={drought.label} />
-            <div className="flex justify-between items-center">
-              <span>Trend:</span>
-              {getTrendElement(drought.trend)}
-            </div>
-            <div className="flex justify-between items-center">
-              <span>Confidence:</span>
-              <span
-                style={{
-                  color: confidenceConf.color,
-                  backgroundColor: confidenceConf.bg,
-                  borderColor: confidenceConf.color + "22",
-                }}
-                className="font-semibold rounded border px-2 py-0.5 text-xs m-0"
-              >
-                {confidenceConf.label}
-              </span>
-            </div>
+            <BuildUpDetailRow
+              title="Validated drought score"
+              subtitle={`Signed off in ${drought.period || "current"} review cycle`}
+              value={
+                <div
+                  style={{ backgroundColor: chipBg }}
+                  className="text-white px-2 py-0.5 rounded text-xs font-semibold select-none"
+                >
+                  {drought.key || "None"}
+                </div>
+              }
+            />
+            <BuildUpDetailRow
+              title="Trend"
+              subtitle="vs last month"
+              value={getTrendElement(drought.trend)}
+            />
+            <BuildUpDetailRow
+              title="Confidence"
+              subtitle="CDI-E · station · IKS agreement"
+              value={
+                <span
+                  style={{
+                    color: confidenceConf.color,
+                    backgroundColor: confidenceConf.bg,
+                    borderColor: confidenceConf.color + "22",
+                  }}
+                  className="font-semibold rounded border px-2 py-0.5 text-xs m-0"
+                >
+                  {confidenceConf.label}
+                </span>
+              }
+            />
           </>,
         )}
 
@@ -184,29 +196,39 @@ const RiskScoreBuildUp = ({ riskData }) => {
           "exposure",
           exposure.data.map((item) => {
             let label = item.key;
+            let subtitle = "";
             let formattedVal = formatNum(item.value);
 
             if (item.key === "population") {
               label = "Population exposed";
+              subtitle = "Number of people exposed";
               formattedVal = `${formattedVal} people`;
             } else if (item.key === "u5") {
               label = "Under-5 children";
+              subtitle = "Children under 5 exposed";
               formattedVal = `${formattedVal} children`;
             } else if (item.key === "rainfed_ha") {
               label = "Land use";
-              formattedVal =
-                item.value !== null ? `${formattedVal} ha rain-fed` : "N/A";
+              subtitle = "Rain-fed agricultural land";
+              formattedVal = item.value !== null ? `${formattedVal} ha` : "N/A";
             } else if (item.key === "livestock") {
               label = "Cattle count";
+              subtitle = "Number of cattle exposed";
               formattedVal =
                 item.value !== null ? `${formattedVal} head` : "N/A";
             } else if (item.key === "water_demand_liters") {
               label = "Water demand";
+              subtitle = "Estimated water demand";
               formattedVal = item.value !== null ? `${formattedVal} L` : "N/A";
             }
 
             return (
-              <BuildUpRow key={item.key} label={label} value={formattedVal} />
+              <BuildUpDetailRow
+                key={item.key}
+                title={label}
+                subtitle={subtitle}
+                value={<ScoreBadge value={formattedVal} />}
+              />
             );
           }),
         )}
@@ -218,20 +240,29 @@ const RiskScoreBuildUp = ({ riskData }) => {
           "vulnerability",
           vulnerability.data.map((item) => {
             let label = item.key;
+            let subtitle = "";
             let formattedVal =
               item.value !== null ? `${(item.value * 100).toFixed(0)}%` : "N/A";
 
             if (item.key === "v_water") {
               label = "Water access pressure";
+              subtitle = "Water access vulnerability";
             } else if (item.key === "v_ipc") {
               label = "Susceptibility";
+              subtitle = "IPC food security phase";
               formattedVal = getIpcPhase(item.value);
             } else if (item.key === "v_prep") {
               label = "Preparedness index";
+              subtitle = "Disaster preparedness level";
             }
 
             return (
-              <BuildUpRow key={item.key} label={label} value={formattedVal} />
+              <BuildUpDetailRow
+                key={item.key}
+                title={label}
+                subtitle={subtitle}
+                value={<ScoreBadge value={formattedVal} />}
+              />
             );
           }),
         )}
