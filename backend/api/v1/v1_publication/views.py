@@ -567,7 +567,13 @@ class PublicationViewSet(viewsets.ModelViewSet):
     pagination_class = Pagination
 
     def get_queryset(self):
-        queryset = Publication.objects.all().order_by("-due_date")
+        # Newest month first. Ordering by -due_date instead put an older month
+        # on top: due dates repeat across publications (a batch created
+        # together shares one), and ties in the sort column are returned in
+        # whatever order the database chooses. `-id` breaks any remaining tie
+        # so the page is stable across requests and paginates without
+        # dropping or repeating rows.
+        queryset = Publication.objects.all().order_by("-year_month", "-id")
         params = self.request.query_params
         status_filter = params.get("status")
         if status_filter == FilterStatus.not_yet_started:
