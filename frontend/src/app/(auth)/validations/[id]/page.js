@@ -36,6 +36,18 @@ import {
 import dayjs from "dayjs";
 import { PublishModal, ReviewerPanelModal } from "@/components/Validation";
 
+/**
+ * First message out of a DRF error body, whichever field it came from.
+ * Reading only `status` was enough while the publish payload carried one
+ * validatable field; with `bulletin_url` alongside it, a mistyped URL would
+ * otherwise surface as the generic "Publish failed." with the real reason
+ * ("Enter a valid URL.") dropped on the floor.
+ */
+const firstError = (res) =>
+  Object.values(res || {})
+    .flat()
+    .find((value) => typeof value === "string") ?? "Publish failed.";
+
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
   { label: "Ready", value: "ready" },
@@ -444,7 +456,9 @@ const ValidationDetailPage = () => {
                   disabled={!meta?.can_publish}
                   onClick={() => setPublishOpen(true)}
                 >
-                  Publish validated map
+                  {publishedDate
+                    ? "Update published map"
+                    : "Publish validated map"}
                 </Button>
               </Tooltip>
             </div>
@@ -643,16 +657,20 @@ const ValidationDetailPage = () => {
       <PublishModal
         open={publishOpen}
         yearMonth={meta?.year_month}
+        currentNarrative={meta?.narrative}
+        currentBulletinUrl={meta?.bulletin_url}
+        published={!!publishedDate}
         onCancel={() => setPublishOpen(false)}
-        onPublish={async ({ narrative }) => {
+        onPublish={async ({ narrative, bulletinUrl }) => {
           // api() resolves on 4xx rather than rejecting, so a failed publish
           // has to be detected from the body — never from a catch block.
           const res = await api("PUT", `/admin/publication/${id}`, {
             status: PUBLICATION_STATUS.published,
             narrative,
+            bulletin_url: bulletinUrl,
           });
           if (res?.status !== PUBLICATION_STATUS.published) {
-            return res?.status?.[0] ?? "Publish failed.";
+            return firstError(res);
           }
           setPublishOpen(false);
           fetchData();

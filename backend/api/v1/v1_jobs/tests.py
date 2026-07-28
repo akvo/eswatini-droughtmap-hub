@@ -127,8 +127,11 @@ class CronJobScriptTestCase(SimpleTestCase):
 
     def _job_sh_tasks(self):
         # Task names are the case-branch labels in job.sh, e.g. "  reviews)".
+        # Hyphens count: "cs-reminders" is a task name, and a \w-only pattern
+        # silently drops it from BOTH assertions below — the drift check then
+        # passes while ignoring the very task it should be guarding.
         job_sh = (self.base_dir / "job.sh").read_text()
-        return set(re.findall(r"^\s{2}(\w+)\)", job_sh, re.MULTILINE))
+        return set(re.findall(r"^\s{2}([\w-]+)\)", job_sh, re.MULTILINE))
 
     def _cron_tasks(self):
         cron = (self.base_dir / "eswatini-cron").read_text()
