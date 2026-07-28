@@ -36,10 +36,9 @@ const renderBuildUpPanel = (title, extra, panelKey, children) => (
     }
     extra={extra}
     key={panelKey}
-    style={{ borderBottom: "1px solid #f0f0f0" }}
-    className="bg-white"
+    className="bg-white animate-fade-in border-b border-r border-cardBorder"
   >
-    <div className="flex flex-col gap-3 text-sm text-neutral-600 px-1 pb-2">
+    <div className="flex flex-col gap-3 text-sm text-neutral-600 px-3 py-3 bg-[#F8FAFC] border border-solid border-cardBorder rounded-md m-2">
       {children}
     </div>
   </Panel>
@@ -81,7 +80,7 @@ const getTrendElement = (trend) => {
 const RiskScoreBuildUp = ({ riskData }) => {
   if (!riskData) {
     return (
-      <div className="p-4 bg-white border border-neutral-100 text-center text-neutral-400">
+      <div className="p-4 bg-white border border-cardBorder text-center text-neutral-400">
         No risk assessment data available for this area.
       </div>
     );
@@ -100,7 +99,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
   const dclass =
     DROUGHT_CATEGORY_VALUE[droughtKeyLower] ?? DROUGHT_CATEGORY_VALUE.none;
   const isNoData = dclass === DROUGHT_CATEGORY_VALUE.none;
-  const chipBg = isNoData ? "#9ca3af" : DROUGHT_CATEGORY_COLOR[dclass];
+  const chipBg = isNoData ? "#3E5EB9" : DROUGHT_CATEGORY_COLOR[dclass];
 
   // Format badges for the accordion headers
   const droughtBadge = (
@@ -129,10 +128,10 @@ const RiskScoreBuildUp = ({ riskData }) => {
   return (
     <div
       data-testid="risk-score-buildup"
-      className="bg-white border-r border-b border-neutral-100 flex flex-col relative w-full overflow-hidden"
+      className="bg-white flex flex-col relative w-full overflow-hidden"
     >
       {/* Table Header Section */}
-      <div className="bg-white border-b border-neutral-100 flex h-[70px] items-center p-4 w-full">
+      <div className="bg-white border-b border-r border-cardBorder flex h-[70px] items-center p-4 w-full">
         <h2 className="font-['Inter'] font-semibold text-lg text-neutral-800 m-0">
           Risk score build-up
         </h2>
@@ -145,7 +144,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
         expandIconPosition="end"
         expandIcon={({ isActive }) => (
           <DownOutlined
-            rotate={isActive ? -90 : 0}
+            rotate={isActive ? 180 : 0}
             className="text-neutral-500 text-xs"
           />
         )}
@@ -239,7 +238,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
       </Collapse>
 
       {/* Background/Risk Score Summary Section */}
-      <div className=" bg-white p-4 flex flex-col gap-4 w-full">
+      <div className=" bg-white p-4 flex flex-col gap-4 w-full border-y border-r border-cardBorder">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="font-['Inter'] font-semibold text-lg text-neutral-800">
@@ -247,10 +246,10 @@ const RiskScoreBuildUp = ({ riskData }) => {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-['Inter'] font-bold text-xl text-blue-600">
+            <span className="font-['Inter'] font-bold text-xl text-primary">
               {risk_score.value.toFixed(1)}
             </span>
-            <div className="border border-neutral-100 rounded p-1.5 flex items-center justify-center text-neutral-600 bg-white">
+            <div className="border border-cardBorder rounded p-1.5 flex items-center justify-center text-neutral-600 bg-white">
               <SlidersOutlined className="text-sm" />
             </div>
           </div>
@@ -263,7 +262,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
             <span>Current Level</span>
           </div>
           <div className="relative w-full h-2 flex items-center">
-            <div className="h-2 rounded-full overflow-hidden w-full relative bg-neutral-25 border border-neutral-100">
+            <div className="h-2 rounded-full overflow-hidden w-full relative bg-neutral-25 border border-cardBorder">
               <div
                 style={{
                   backgroundImage:

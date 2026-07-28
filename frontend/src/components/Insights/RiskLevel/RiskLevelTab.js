@@ -144,7 +144,7 @@ const RiskLevelTab = ({
     DROUGHT_CATEGORY_VALUE[droughtKey] ?? DROUGHT_CATEGORY_VALUE.none;
 
   return (
-    <div className="min-h-screen">
+    <div className="w-full bg-white border border-cardBorder border-t-0">
       {/* Selected Inkhundla Header Section */}
       <InkhundlaHeader
         name={selectedInkhundla}
@@ -154,16 +154,16 @@ const RiskLevelTab = ({
       />
 
       {/* Page Layout Container */}
-      <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-x-4 bg-brandTint">
+      <div className="w-full flex flex-col lg:flex-row bg-[#F8FAFC] gap-x-2">
         {/* Left Panel: Risk Score Build-up */}
-        <div className="w-full lg:w-[420px] flex flex-col gap-6">
+        <div className="w-full lg:w-[420px] flex flex-col">
           <RiskScoreBuildUp riskData={riskData} />
         </div>
 
         {/* Right Panel: Response Activities Groups */}
-        <div className="flex-1 border-l border-r border-b border-neutral-100 flex flex-col items-start relative w-full bg-white shadow-sm">
+        <div className="flex-1 flex flex-col items-start relative w-full bg-white border-l border-cardBorder">
           {/* Table Header Section */}
-          <div className="bg-white border-b border-neutral-100 flex h-[70px] items-center p-4 w-full">
+          <div className="bg-white border-b border-cardBorder flex h-[70px] items-center p-4 w-full">
             <h2 className="font-['Inter'] font-semibold text-lg text-neutral-800 m-0">
               All response activities
             </h2>
