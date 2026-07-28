@@ -5,8 +5,10 @@
 **Task ID**: INS-3 (INS-1 = insights shell + first CDI tab, frontend-only; INS-2 = national overview)
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-07-27
-**Status**: Implemented (2026-07-27) — 25 new tests; full backend suite (651)
-green after the `current_dclass` and `month_range` moves
+**Status**: Implemented — backend 2026-07-27, frontend tab + window fix
+2026-07-28. 26 CDI tests; full backend suite (656) and frontend suite (188)
+green. Amended after live testing: **D-11 was reversed** — the window is
+anchored on today, not on the latest published month (see D-11).
 **Figma**: [Detailed insights → CDI Explorer, node `3483-57786`](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3483-57786&m=dev)
 **Builds on**: [`publication-raster-extraction.md`](publication-raster-extraction.md) (PublicationRaster, implemented) · [`weather-explorer-public-api.md`](weather-explorer-public-api.md) (WX-4 — the contract shape this mirrors) · supersedes the backend half of [`../specs/INS-1_insights_cdi_explorer.md`](../specs/INS-1_insights_cdi_explorer.md)
 
@@ -92,7 +94,7 @@ thing):
       published drought-class chip — identical data to the sibling explorer
       tabs, so the shared `InkhundlaHeader` component keeps working unchanged.
 - [x] A 12-cell **D-class classification history** strip renders one cell per
-      published month, oldest → newest, with months that have no published
+      calendar month, oldest → newest, with months that have no published
       decision rendered as "No data" rather than shifting the axis.
 - [x] Four **metric cards** show last month's value per index, the previous
       month's value, and the signed change between them.
@@ -111,10 +113,9 @@ thing):
 - [x] Generic contract keys (`key`/`label`/`value`/`data`/`group`/`period`/
       `meta`/`breakdown`) per CLAUDE.md; no drought labels or colors in any
       payload — those stay in `frontend/src/static/config.js`.
-- [x] Bounded query cost — 5 queries for `/stats`, 4 for `/series`,
-      **independent of window size** (administration, current D-class, latest
-      published month, the window, the rasters), with an explicit max span so
-      a crafted `from`/`to` cannot scan the table.
+- [x] Bounded query cost — 5 queries for `/stats`, 3 for `/series`,
+      **independent of window size**, with an explicit max span so a crafted
+      `from`/`to` cannot scan the table.
 - [x] Tests in `api/v1/v1_publication/tests/tests_cdi_explorer_*.py` on a
       shared mixin, covering the empty states and the range validation.
 
@@ -163,8 +164,9 @@ class RasterIndicatorTypes:
 # (publication-raster-extraction.md D-4), so one unit token covers all four.
 PCT_RANK_UNITS = "pct_rank"
 
-# Explorer window bounds. 12 = the Figma strip; 120 caps a crafted from/to so
-# it cannot walk the whole publication history.
+# Explorer window bounds. 12 = the Figma strip, counted back from the CURRENT
+# month (D-11); 120 caps a crafted from/to so it cannot walk the whole
+# publication history.
 CDI_EXPLORER_DEFAULT_MONTHS = 12
 CDI_EXPLORER_MAX_MONTHS = 120
 ```
@@ -217,9 +219,12 @@ so DRF renders the 400 — house style):
 
 | Param | Endpoint | Format | Default |
 |---|---|---|---|
-| `from` | series | `YYYY-MM`, inclusive | latest published month − 11 |
-| `to` | series | `YYYY-MM`, inclusive | latest published month |
+| `from` | series | `YYYY-MM`, inclusive | current month − 11 |
+| `to` | series | `YYYY-MM`, inclusive | current month |
 | `indicators` | series | comma-separated subset of `spi,evi2,esi,sm` | all four |
+
+`/stats` takes no range params — it always uses the default window, so the
+strip and the cards cannot drift apart from each other.
 
 Invalid month format, `from > to`, span > `CDI_EXPLORER_MAX_MONTHS`, or an
 unknown indicator key → `400`. Unknown `administration_id` → `404` via
@@ -267,10 +272,15 @@ unknown indicator key → `400`. Unknown `administration_id` → `404` via
   "meta": {
     "period": "2026-05",
     "last_updated": "2026-05-15T06:12:00Z",
-    "from": "2025-06", "to": "2026-05", "months": 12
+    "from": "2025-08", "to": "2026-07", "months": 12
   }
 }
 ```
+
+`meta.from`/`to` are the calendar window (D-11); `meta.period` is the latest
+**published** month inside it, which with publication lag is normally one or
+two months before `meta.to`. Both `period` and `last_updated` are `null` when
+the window contains no published month at all.
 
 - `breakdown.data[].value` is the raw `category` int from
   `validated_values` (0–5); `null` = the month is published but carries no
@@ -294,8 +304,17 @@ unknown indicator key → `400`. Unknown `administration_id` → `404` via
   An Inkhundla that simply never appears in any published month is *not* this
   case — it gets the full window with `null` throughout, since the page can
   still show which months were published.
-- An index with no extracted raster in the window →
+- Publications exist but **none inside the window** (a long publication pause,
+  or a database seeded with historical months) → the padded strip and all four
+  cards are still returned, every value `null`, each card carrying
+  `"reason": "no_published_data_in_window"`. `meta.period` and
+  `meta.last_updated` are **`null`** in this case: there is no latest
+  published month inside the window to date the cards by. This is a direct
+  consequence of D-11's today-anchored window and is the one shape a client
+  must not assume away.
+- An index with no extracted raster for the latest published month →
   `"value": null` + `"meta": {"reason": "no_raster_data"}` on that card only.
+  Distinct from the previous case: one dataset is missing, not the map.
 
 ### `/series` response
 
@@ -346,12 +365,18 @@ rasters = PublicationRaster.objects.filter(
 ).values_list("publication__year_month", "indicator", "values")
 ```
 
-Five queries for `/stats` and four for `/series` — administration, current
-D-class, latest published month, the window, the rasters — all independent of
-window size. No GeoNode call, no N+1. (`current_dclass` keeps its own query
-rather than reusing `latest`: it filters on `validated_values`, not
-`published_at`, and matching WX-4's existing behaviour exactly is worth more
-than saving one indexed lookup.)
+**Five queries for `/stats`** — administration, current D-class, the
+"is anything published at all" existence check, the window, the rasters — and
+**three for `/series`** (administration, window, rasters; the clock defines
+the window, so no lookup is needed to find it). All independent of window
+size. No GeoNode call, no N+1.
+
+`current_dclass` keeps its own query rather than reusing the window's latest
+publication: it filters on `validated_values`, not `published_at`, and
+matching WX-4's existing behaviour exactly is worth more than saving one
+indexed lookup. It is also deliberately **not** window-bounded — the header
+chip reports the last known class whenever it was published, so it can name a
+month the strip does not cover.
 
 ---
 
@@ -562,40 +587,58 @@ in that file) that its unanchored `/admin/publication/(?P<pk>[0-9]+)` pattern
 **Impact**: both new patterns are anchored with a trailing `$` and are
 registered *above* the unanchored publication patterns.
 
-### D-11: Same fetch convention as the existing tabs; different default window
+### D-11: The window is 12 calendar months ending at the current month
 
 **Options Considered**:
-1. Copy WX-4 wholesale, including its default window (current calendar year
-   to date).
-2. Copy the *mechanism* and set the default to the last 12 published months.
+1. Copy WX-4 wholesale (current calendar year to date).
+2. The last 12 **published** months — anchor on the newest published map.
 3. Fix the window to an agricultural/financial year boundary.
+4. The last 12 **calendar** months ending at the current month.
 
-**Decision**: Option 2 (asked and answered 2026-07-27 — "do the same as
-`frontend/src/app/detailed-insights/`").
+**Decision**: Option 4. **This reverses the original decision**, which was
+Option 2; the reversal came out of live testing on 2026-07-28.
 
-**Rationale**: the mechanism is already settled by `useWeatherSeries` and
-should be copied exactly — one hook call **per chart**, `{from, to}` held as
-`"YYYY-MM"` strings because that is the shape `/series` takes, and **omitted
-entirely on first load so the backend owns the default**. A CDI hook is that
-hook plus an `indicators` param (D-2).
+**Rationale**: Option 2's argument was that CDI publishes 1–2 months in
+arrears, so a calendar window would trail empty cells while the strip is
+specified as 12 filled ones. That reasoning was right about the lag and wrong
+about the cost.
 
-The default *value* is where this tab must diverge, and the reason is
-concrete: weather can use calendar-year-to-date because the WIS2 archive is
-daily and current, but CDI publishes with a 1–2 month lag. Calendar-YTD in
-July would return four published months and seven empty ones, while the strip
-beside the charts is specified as 12 filled cells. "The last 12 **published**
-months, ascending" makes the strip, the cards and the charts share one window
-and one latest month.
+Anchoring on the data makes the **axis itself a function of the data**. A
+database whose newest published map is old — a fresh environment seeded with
+historical months, a demo, or simply a publication pause — renders a strip
+labelled with those old years. The live case that exposed it: the only
+published map was `2000-02`, so `/stats` correctly returned a window of
+`1999-03 → 2000-02` and the page showed eleven blank cells under 1999 dates
+beside charts of recent months. A reader cannot tell that from a bug.
 
-Option 3 was checked and rejected: the Figma subtitle ("Jun '25 → May '26")
-disagrees with its own cell labels (Jul 2025 → Jun 2026), which reads as mock
-drift rather than an intended year boundary, and no agricultural-year
-requirement exists anywhere else in the product.
+With a calendar window the lag shows up the honest way — as one or two empty
+cells on the **right**, which reads as "not published yet" — and the axis
+always says the last twelve months. It also matches the IKS monthly grids
+beside it, which is what the strip was asked to look like.
 
-**Impact**: `CDI_EXPLORER_DEFAULT_MONTHS = 12` anchored on the latest
-published month, not on `today`. The frontend adds `useCdiSeries` mirroring
-`useWeatherSeries` — including its in-flight `cancelled` guard, which a
-four-picker page needs more than the two-picker weather tab does.
+Option 3 stays rejected: the Figma subtitle ("Jun '25 → May '26") disagrees
+with its own cell labels (Jul 2025 → Jun 2026), which reads as mock drift
+rather than an intended year boundary, and no agricultural-year requirement
+exists elsewhere in the product.
+
+**Impact**:
+- `CDI_EXPLORER_DEFAULT_MONTHS = 12` counted back from `timezone.now()`.
+- `resolve_window()` **always** returns a window, so the "nothing published"
+  empty state moved to an explicit `has_published_publication()` check, and
+  `latest_published_month()` was deleted — that is the query `/series` no
+  longer makes.
+- A window can now legitimately contain **zero** publications, which would
+  have crashed on `publications[-1]`. `meta.period` / `last_updated` are
+  nullable and the cards report `no_published_data_in_window` (§4).
+- The test fixture had to become **relative to today** (`period_at(offset)`).
+  Fixed 2026 dates fell inside a today-anchored window only by luck and would
+  have silently rotted once the clock passed them.
+- Frontend: charts open on the same trailing window via the shared
+  `lastNMonths(12)` helper, which ends at the last **ended** month (a monthly
+  aggregate is only knowable once the month closes). The strip therefore ends
+  one month later than the charts — deliberate: a strip cell is a categorical
+  "was this month published", which is meaningful for the current month,
+  while a partial bar is not.
 
 ---
 
@@ -626,8 +669,10 @@ four-picker page needs more than the two-picker weather tab does.
 - [x] CLI tools still work — no seeder, job or management command touched.
 - [x] `InkhundlaHeader` (already shared by the Weather and IKS tabs) consumes
       `label` / `group` / `value.zone` / `value.dclass.category` unchanged.
-- [ ] **INS-1's frontend CDI tab is superseded** — its `/dates` + `/map/{id}`
-      fan-out is replaced by `/stats`. Frontend work, tracked separately.
+- [x] **INS-1's frontend CDI tab is superseded** — `/detailed-insights` was a
+      placeholder; it now renders `components/Insights/CdiTab/`, which issues
+      one `/stats` on mount plus one `/series` per chart. The `/dates` +
+      `/map/{id}` fan-out is gone.
 
 ### Seeder/CLI Compatibility
 - [x] Existing seeders work — `publications_seeder` (with rasters) already
@@ -654,7 +699,10 @@ four-picker page needs more than the two-picker weather tab does.
       `from=1900-01` alone against the default `to` — are 400s rather than a
       full-table scan; queries are bounded at 5 per request regardless of
       window; no outbound GeoNode call on the read path, so an upstream
-      outage or a slow response cannot be induced from here.
+      outage or a slow response cannot be induced from here. The span cap
+      lives in `resolve_window()` rather than the query serializer, because
+      with only `from` supplied the span is not knowable until `to` has
+      fallen back to the current month.
 - [x] **No file/CSV surface**: export is out of scope (§4), so this feature
       adds no download path and no formula-injection surface.
 
@@ -662,15 +710,23 @@ four-picker page needs more than the two-picker weather tab does.
 
 ## 9. Testing Strategy
 
+**26 backend tests** across
+`api/v1/v1_publication/tests/tests_cdi_explorer_stats.py` and
+`tests_cdi_explorer_series.py`, on a shared `mixins.py` fixture (the pattern
+`v1_weather/tests/mixins.py` established), plus **8 frontend tests** in
+`components/Insights/CdiTab/__tests__/CdiTab.test.js`. Covered by the CI
+`test.sh` run.
+
 | Test Type | Coverage |
 |-----------|----------|
-| Unit | Window resolution (default = latest published month − 11; `from`/`to` override; span cap). `change_pct` sign, 1dp rounding, and the `null` cases (previous missing / previous `0`). Category pass-through for `-9999`. `current_dclass` parity after the D-6 move — the existing WX-4 stats tests must pass untouched. |
-| Integration | `/stats`: full payload for an Inkhundla with 12 published months; every month present in `breakdown` including gaps; `no_published_data` empty state; `no_raster_data` on a single card. `/series`: `indicators` subset returns only those series; null-filled gaps; unpublished months excluded (D-4); 400s for bad month format, `from > to`, span > 120 (both explicit and `from`-only against the default `to`), unknown indicator; 404 for unknown administration. Query-count assertions (5 / 4) so a future refactor cannot reintroduce an N+1. |
-| E2E | Frontend CDI Explorer tab: strip renders 12 cells for a seeded Inkhundla, a chart's date picker refetches only its own series. |
+| Unit | Window resolution (default = current month − 11; `from`/`to` override; span cap). `change_pct` sign, 1dp rounding, and the `null` cases (previous missing / previous `0`). Category pass-through for `-9999`. `current_dclass` parity after the D-6 move — the existing WX-4 stats tests must pass untouched. |
+| Integration | `/stats`: full payload; every month present in `breakdown` including gaps; `no_published_data` (nothing published) and `no_published_data_in_window` (published, but outside the window — the D-11 regression case) empty states; `no_raster_data` on a single card. `/series`: `indicators` subset returns only those series; null-filled gaps; unpublished months excluded (D-4); 400s for bad month format, `from > to`, span > 120 (both explicit and `from`-only against the default `to`), unknown indicator; 404 for unknown administration. Query-count assertions (5 / 3) so a future refactor cannot reintroduce an N+1. |
+| Frontend | One `/stats` on mount and one `/series` per chart, each narrowed to its own index; the trailing window ends at last month; strip pads every month and collapses `null` and `-9999` to one empty cell; cards show the real period, not "last month"; `no_raster_data` renders an em dash; precipitation draws as bars, the rest as lines, on a pinned 0–1 axis; header still renders when nothing is published. |
 
-New files: `api/v1/v1_publication/tests/tests_cdi_explorer_stats.py` and
-`tests_cdi_explorer_series.py`, on a shared `mixins.py` fixture (the pattern
-`v1_weather/tests/mixins.py` established). Covered by the CI `test.sh` run.
+**The fixture is anchored on today** (`period_at(offset)`), not on fixed
+dates. With the D-11 window counted back from the clock, hard-coded 2026
+months sat inside the window only by luck and would have started failing once
+the clock passed them.
 
 ---
 
@@ -691,9 +747,10 @@ New files: `api/v1/v1_publication/tests/tests_cdi_explorer_stats.py` and
 - [x] **Export CSV** — out of scope; no endpoint (§4).
 - [x] **Metric-card period label** — cards show the actual period from
       `meta.period`, not the literal words "last month" (§4).
-- [x] **D-class strip window** — last 12 *published* months, ascending; same
-      fetch convention as `frontend/src/app/detailed-insights/`, no
-      agricultural-year boundary (D-11).
+- [x] **D-class strip window** — ~~last 12 *published* months~~ **superseded
+      2026-07-28**: last 12 *calendar* months ending at the current month.
+      Anchoring on the data made the axis show whatever years the data
+      happened to hold (D-11).
 - [x] **Months with no publication at all** — one "No data" cell, visually
       identical to a published month carrying no decision; both are
       `value: null` (§4).
@@ -707,8 +764,9 @@ New files: `api/v1/v1_publication/tests/tests_cdi_explorer_stats.py` and
 - Data source: [`publication-raster-extraction.md`](publication-raster-extraction.md) — `PublicationRaster`, D-4 (percentile ranks, no categories)
 - Superseded (backend half): [`../specs/INS-1_insights_cdi_explorer.md`](../specs/INS-1_insights_cdi_explorer.md)
 - Sibling tab: [`iks_explorer_backend.md`](iks_explorer_backend.md)
-- Shared frontend component: [`frontend/src/components/Insights/InkhundlaHeader.js`](../../../frontend/src/components/Insights/InkhundlaHeader.js)
-- Fetch convention this tab copies (D-11): [`frontend/src/hooks/useWeatherSeries.js`](../../../frontend/src/hooks/useWeatherSeries.js) · [`frontend/src/components/Insights/WeatherTab/`](../../../frontend/src/components/Insights/WeatherTab/) · the tab this replaces: [`frontend/src/app/detailed-insights/page.js`](../../../frontend/src/app/detailed-insights/page.js) (placeholder)
+- Backend: [`insights/utils.py`](../../../backend/api/v1/v1_publication/insights/utils.py) · [`insights/view.py`](../../../backend/api/v1/v1_publication/insights/view.py) · [`insights/serializers.py`](../../../backend/api/v1/v1_publication/insights/serializers.py) · shared month helpers [`utils/periods.py`](../../../backend/utils/periods.py)
+- Frontend tab: [`components/Insights/CdiTab/`](../../../frontend/src/components/Insights/CdiTab/) — `CdiTab.js` (stats fetch, cards), `DclassHistory.js` (strip), `IndicatorChart.js` (one chart + picker), `indicators.js` (key → title/subtitle, the frontend half of D-5); hook [`hooks/useCdiSeries.js`](../../../frontend/src/hooks/useCdiSeries.js); route [`app/detailed-insights/page.js`](../../../frontend/src/app/detailed-insights/page.js)
+- Reused rather than rebuilt: [`InkhundlaHeader.js`](../../../frontend/src/components/Insights/InkhundlaHeader.js) · `WeatherTab/ChartCard.js` + `MetricItemCard.js` + `seriesColors.js` · [`IksTab/MonthlyStatusGrid.js`](../../../frontend/src/components/Insights/IksTab/MonthlyStatusGrid.js) (the strip layout, extended with an optional `cellStyle`/`emptyLabel` so the drought palette can drive it) · [`hooks/useWeatherSeries.js`](../../../frontend/src/hooks/useWeatherSeries.js) (the fetch convention `useCdiSeries` mirrors)
 
 ---
 
