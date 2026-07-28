@@ -8,7 +8,7 @@ export default function ConditionItem({
   return (
     <div className={className}>
       <span className="text-neutral-500 text-sm">{label}</span>
-      <div className="text-[#333333] font-medium text-base mt-1">{value}</div>
+      <div className="text-textBody font-medium text-base mt-1">{value}</div>
     </div>
   );
 }

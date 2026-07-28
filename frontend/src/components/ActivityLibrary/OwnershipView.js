@@ -28,7 +28,7 @@ export default function OwnershipView({ activity }) {
   return (
     <div className="flex flex-col text-neutral-800">
       {/* Title */}
-      <h3 className="text-[#333333] font-medium text-base m-0 pb-4 border-b border-neutral-200">
+      <h3 className="text-textBody font-medium text-base m-0 pb-4 border-b border-neutral-200">
         Ownership
       </h3>
 
@@ -41,7 +41,7 @@ export default function OwnershipView({ activity }) {
             owner !== "-" ? (
               <div className="flex items-center gap-2">
                 {initials && (
-                  <div className="w-8 h-8 rounded-full bg-[#e8eefc] text-[#3e5eb9] flex items-center justify-center font-bold text-xs shrink-0 border border-[#d3e0fa]">
+                  <div className="w-8 h-8 rounded-full bg-brandTint text-primary flex items-center justify-center font-bold text-xs shrink-0 border border-inputBorderActive">
                     {initials}
                   </div>
                 )}

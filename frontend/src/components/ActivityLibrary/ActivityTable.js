@@ -2,12 +2,6 @@ import React from "react";
 import { Table, Button } from "antd";
 import ActivityStatusTag from "./ActivityStatusTag";
 import { SectorBadge } from "@/components/DS";
-import { SECTOR_STYLES, SECTOR_CARD_ICONS } from "@/static/config";
-
-export const SECTOR_ICONS = SECTOR_CARD_ICONS;
-export const SECTOR_TAG_COLORS = Object.fromEntries(
-  Object.keys(SECTOR_STYLES).map((id) => [id, "default"]),
-);
 
 export default function ActivityTable({
   activities = [],

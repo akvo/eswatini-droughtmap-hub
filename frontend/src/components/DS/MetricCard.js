@@ -45,7 +45,7 @@ const MetricCard = ({
       }
       className={classNames(
         "flex min-w-0 flex-1 flex-col gap-2 border bg-white p-4",
-        active ? "border-[#3E5EB9] bg-[#f2f5fd]" : "border-[#eaecf0]",
+        active ? "border-[#3E5EB9] bg-[#f2f5fd]" : "border-cardBorder",
         onClick &&
           "text-left hover:bg-[#f7f8fa] focus:outline-none " +
             "focus-visible:ring-2 focus-visible:ring-[#3E5EB9]",
