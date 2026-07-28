@@ -1,4 +1,5 @@
 import "./citizen-weather.css";
+import { cwThemeVars } from "@/static/cw-theme";
 
 export const metadata = {
   title: "Citizen Science Weather",
@@ -7,7 +8,11 @@ export const metadata = {
 };
 
 const CitizenWeatherLayout = ({ children }) => {
-  return <div className="cw-app">{children}</div>;
+  return (
+    <div className="cw-app" style={cwThemeVars}>
+      {children}
+    </div>
+  );
 };
 
 export default CitizenWeatherLayout;

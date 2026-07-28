@@ -20,6 +20,7 @@ const brand = {
   muted: "#485D92",
   light: "#7E93D0", // brand-primary-300
   tint: "#ECEFF8",
+  p100: "#C3CDE9", // brand-primary-100 (same as input.borderActive)
 };
 
 // Top navigation menu-item states (Figma node 3025:14539).
@@ -66,6 +67,7 @@ const neutral = {
 const text = {
   heading: "#020618",
   muted: "#3E4958",
+  tertiary: "#606060", // text/color/secondary (same as select.placeholder)
 };
 
 const border = {

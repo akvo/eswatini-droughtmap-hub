@@ -418,12 +418,12 @@ INKHUNDLA_OPTIONS.forEach((group) => {
 });
 
 export const SENSOR_OPTIONS = [
-  { key: "min_temp", label: "Min temperature", icon: "▼" },
-  { key: "max_temp", label: "Max temperature", icon: "▲" },
-  { key: "rain_gauge", label: "Rain gauge", icon: "💧" },
-  { key: "soil_moisture", label: "Soil moisture", icon: "◒" },
-  { key: "soil_temp", label: "Soil temperature", icon: "🌡" },
-  { key: "wind_speed", label: "Wind speed", icon: "💨" },
+  { key: "min_temp", label: "Min temperature" },
+  { key: "max_temp", label: "Max temperature" },
+  { key: "rain_gauge", label: "Rain gauge" },
+  { key: "soil_moisture", label: "Soil moisture" },
+  { key: "soil_temp", label: "Soil temperature" },
+  { key: "wind_speed", label: "Wind speed" },
 ];
 
 export const STATION_TYPES = [

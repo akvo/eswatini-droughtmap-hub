@@ -1,277 +1,204 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { InputNumber, Input, Button, Tag, Table, message } from "antd";
+import { useState } from "react";
+import { Button, Tag, Table } from "antd";
+import Link from "next/link";
 import CWHeader from "@/components/CitizenWeather/CWHeader";
+import { TabButtons } from "@/components";
 import {
   observerProfile,
   reportingHistory,
-  CURRENT_MONTH,
 } from "@/static/mocks/citizen-weather";
 
-const { TextArea } = Input;
-
-const FIELDS = [
-  {
-    key: "temp_min",
-    label: "Monthly minimum temperature",
-    unit: "°C",
-    icon: "▼",
-    iconClass: "tmin",
-    placeholder: "e.g. 11.4",
-    hint: "The lowest temperature reading you recorded this month.",
-  },
-  {
-    key: "temp_max",
-    label: "Monthly maximum temperature",
-    unit: "°C",
-    icon: "▲",
-    iconClass: "tmax",
-    placeholder: "e.g. 29.6",
-    hint: "The highest temperature reading you recorded this month.",
-  },
-  {
-    key: "rainfall",
-    label: "Total rainfall for the month",
-    unit: "mm",
-    icon: "💧",
-    iconClass: "rain",
-    placeholder: "e.g. 42",
-    hint: "The total rain your gauge measured across the month.",
-  },
-  {
-    key: "soil_moisture",
-    label: "Average soil moisture",
-    unit: "% or m³/m³",
-    icon: "◒",
-    iconClass: "smoist",
-    placeholder: "e.g. 0.21",
-    hint: "Skip if your station doesn't have a soil moisture probe.",
-  },
-  {
-    key: "soil_temp",
-    label: "Average soil temperature",
-    unit: "°C",
-    icon: "🌡",
-    iconClass: "stemp",
-    placeholder: "e.g. 18.7",
-    hint: "Skip if your station doesn't have a soil temperature probe.",
-  },
+const STATUS_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Complete", value: "complete" },
+  { label: "Partial", value: "partial" },
+  { label: "Missed", value: "missed" },
 ];
 
-const statusBadge = (status) => {
-  const map = {
-    complete: { color: "#00B98E", label: "Complete" },
-    partial: { color: "#F5B840", label: "Partial" },
-    missed: { color: "#94A3B8", label: "Missed" },
-    draft: { color: "#F5B840", label: "Draft" },
-  };
-  const s = map[status] || map.missed;
-  return <Tag color={s.color}>{s.label}</Tag>;
+const STATUS_MAP = {
+  complete: { color: "#12b76a", label: "Complete" },
+  partial: { color: "#FAAD14", label: "Partial" },
+  missed: { color: "#667085", label: "Missed" },
+  draft: { color: "#FAAD14", label: "Draft" },
 };
 
-const ObserverFormPage = () => {
-  const [values, setValues] = useState({
-    temp_min: 12.1,
-    temp_max: 28.4,
-    rainfall: null,
-    soil_moisture: null,
-    soil_temp: null,
-  });
-  const [notes, setNotes] = useState(
-    "The rain gauge overflowed on the 14th — a very heavy storm, about 55mm in one afternoon. My reading for that day is approximate."
-  );
+/** Convert "May 2026" to "2026-05" */
+const monthToPeriod = (monthStr) => {
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const parts = monthStr.split(" ");
+  const monthAbbr = parts[0].substring(0, 3);
+  const year = parts[parts.length - 1];
+  const idx = monthNames.indexOf(monthAbbr);
+  if (idx === -1) return null;
+  return `${year}-${String(idx + 1).padStart(2, "0")}`;
+};
 
-  const filledCount = useMemo(
-    () => FIELDS.filter((f) => values[f.key] != null).length,
-    [values]
-  );
+const emptyCell = <span style={{ color: "#a4a4a4" }}>&mdash;</span>;
 
-  const totalFields = FIELDS.length;
-  const progressPct = (filledCount / totalFields) * 100;
+const ObserverListPage = () => {
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const completedMonths = reportingHistory.filter(
     (r) => r.status === "complete" || r.status === "partial"
   ).length;
 
+  const latestUnsubmitted = reportingHistory.find(
+    (r) => r.status === "draft" || r.status === "missed"
+  );
+
+  const filteredData =
+    statusFilter === "all"
+      ? reportingHistory
+      : reportingHistory.filter((r) => r.status === statusFilter);
+
   const columns = [
-    { title: "Month", dataIndex: "month", key: "month", width: 120 },
     {
-      title: "T min",
+      title: "MONTH",
+      dataIndex: "month",
+      key: "month",
+      width: "18%",
+      render: (v) => {
+        const period = monthToPeriod(v);
+        return period ? (
+          <Link href={`/citizen-weather/observe/${period}`}>{v}</Link>
+        ) : (
+          v
+        );
+      },
+    },
+    {
+      title: "T MIN",
       dataIndex: "temp_min",
       key: "temp_min",
-      render: (v) =>
-        v != null ? `${v} °C` : <span style={{ color: "#94A3B8" }}>—</span>,
+      width: "14%",
+      render: (v) => (v != null ? `${v} \u00B0C` : emptyCell),
     },
     {
-      title: "T max",
+      title: "T MAX",
       dataIndex: "temp_max",
       key: "temp_max",
-      render: (v) =>
-        v != null ? `${v} °C` : <span style={{ color: "#94A3B8" }}>—</span>,
+      width: "14%",
+      render: (v) => (v != null ? `${v} \u00B0C` : emptyCell),
     },
     {
-      title: "Rainfall",
+      title: "RAINFALL",
       dataIndex: "rainfall",
       key: "rainfall",
-      render: (v) =>
-        v != null ? `${v} mm` : <span style={{ color: "#94A3B8" }}>—</span>,
+      width: "14%",
+      render: (v) => (v != null ? `${v} mm` : emptyCell),
     },
     {
-      title: "Soil moist",
+      title: "SOIL MOIST",
       dataIndex: "soil_moisture",
       key: "soil_moisture",
-      render: (v) =>
-        v != null ? v : <span style={{ color: "#94A3B8" }}>—</span>,
+      width: "14%",
+      render: (v) => (v != null ? v : emptyCell),
     },
     {
-      title: "Soil temp",
+      title: "SOIL TEMP",
       dataIndex: "soil_temp",
       key: "soil_temp",
-      render: (v) =>
-        v != null ? `${v} °C` : <span style={{ color: "#94A3B8" }}>—</span>,
+      width: "14%",
+      render: (v) => (v != null ? `${v} \u00B0C` : emptyCell),
     },
     {
-      title: "Status",
+      title: "STATUS",
       dataIndex: "status",
       key: "status",
-      align: "center",
-      render: statusBadge,
+      width: "12%",
+      render: (status) => {
+        const s = STATUS_MAP[status] || STATUS_MAP.missed;
+        return (
+          <Tag className="edm-reviews-status-tag" color={s.color}>
+            {s.label}
+          </Tag>
+        );
+      },
     },
   ];
 
   return (
-    <div className="cw-content">
-      <CWHeader
-        subtitle={`Your station · ${observerProfile.station.shortName} · ${observerProfile.station.region} region`}
-        userName={observerProfile.name}
-        userInitials={observerProfile.initials}
-      />
+    <div className="w-full h-auto">
+      {/* Header */}
+      <div className="px-4 sm:px-8 md:px-12 xl:px-20 pt-4 pb-0">
+        <div className="mx-auto w-full max-w-[1280px]">
+          <CWHeader
+            subtitle={`Your station \u00B7 ${observerProfile.station.shortName} \u00B7 ${observerProfile.station.region} region`}
+            userName={observerProfile.name}
+            userInitials={observerProfile.initials}
+          />
+        </div>
+      </div>
 
-      {/* Hero card */}
-      <div className="cw-obs-hero">
-        <div className="month-pill">📅 Reading for {CURRENT_MONTH}</div>
-        <h1>
-          Sanibonani {observerProfile.name.split(" ")[0]} — let&apos;s log
-          May&apos;s weather.
-        </h1>
-        <p className="hero-sub">
-          Fill in whatever your station recorded. You can skip any field you
-          don&apos;t have a value for.
-        </p>
-        <div className="progress-line">
-          <div className="progress-track">
-            <div
-              className="progress-fill"
-              style={{ width: `${progressPct}%` }}
+      {/* Hero — full width with pattern */}
+      <section className="relative overflow-hidden bg-white px-4 pb-24 pt-10 sm:px-8 md:px-12 xl:px-20">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
+        />
+        <div className="relative mx-auto w-full max-w-[1280px]">
+          <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
+            {observerProfile.station.name}
+          </h1>
+          <p className="text-sm leading-6 text-[#606060] mb-4">
+            {observerProfile.station.inkhundla} &middot;{" "}
+            {observerProfile.station.region} region &middot;{" "}
+            {observerProfile.station.zone}
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#333333] font-semibold">
+              {Math.round((completedMonths / 12) * 100)}% completeness
+            </span>
+            <span className="text-sm text-[#606060]">
+              {completedMonths} of the last 12 months submitted
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Table — full width with brandTint background band */}
+      <div className="relative px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+        />
+        <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
+          <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6 flex items-center justify-between">
+            <h2 className="text-xl font-semibold leading-7 text-[#333333]">
+              Reporting history
+            </h2>
+            {latestUnsubmitted && (
+              <Link href={`/citizen-weather/observe/${monthToPeriod(latestUnsubmitted.month)}`}>
+                <Button type="primary">
+                  Log {latestUnsubmitted.month} reading
+                </Button>
+              </Link>
+            )}
+          </div>
+          <div className="border-b border-[#eaecf0] p-4">
+            <TabButtons
+              options={STATUS_FILTERS}
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
           </div>
-          <div className="progress-label">
-            {filledCount} of {totalFields} fields filled in
-          </div>
-        </div>
-      </div>
-
-      {/* Field cards */}
-      <div className="cw-fields-grid">
-        {FIELDS.map((field) => (
-          <div className="cw-field-card" key={field.key}>
-            <div className="field-row">
-              <div className={`field-icon ${field.iconClass}`}>
-                {field.icon}
-              </div>
-              <div className="field-label">{field.label}</div>
-              <div className="field-unit">{field.unit}</div>
-            </div>
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder={field.placeholder}
-              value={values[field.key]}
-              onChange={(v) => setValues({ ...values, [field.key]: v })}
-              controls={false}
-            />
-            <div className="field-hint">{field.hint}</div>
-          </div>
-        ))}
-
-        {/* Reassurance card */}
-        <div className="cw-field-card">
-          <div className="field-row">
-            <div className="field-icon ok">✓</div>
-            <div className="field-label" style={{ color: "#94A3B8" }}>
-              All fields are optional
-            </div>
-          </div>
-          <div
-            style={{ fontSize: 12.5, color: "#4B5563", lineHeight: 1.6 }}
-          >
-            You don&apos;t have to fill every field. Share what you recorded,
-            leave the rest blank, and add a note if something was unusual or if a
-            gauge stopped working.
-          </div>
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="cw-notes-card">
-        <div className="notes-row">
-          <div className="notes-icon">📝</div>
-          <label
-            style={{ fontSize: 13, fontWeight: 600, color: "#1F2937" }}
-          >
-            Anything else worth telling us? (optional)
-          </label>
-        </div>
-        <TextArea
-          rows={3}
-          placeholder="Broken sensor? Unusual event? A quick observation from around your Inkhundla? Write it here."
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
-
-      {/* Actions */}
-      <div className="cw-actions-bar">
-        <div className="actions-note">
-          You can save what you have and come back later, or submit now.
-        </div>
-        <Button onClick={() => message.info("Draft saved.")}>
-          Save draft
-        </Button>
-        <Button
-          type="primary"
-          style={{ background: "#00B98E", borderColor: "#00B98E" }}
-          onClick={() => message.success("Reading submitted. Siyabonga!")}
-        >
-          Submit {CURRENT_MONTH} reading
-        </Button>
-      </div>
-
-      {/* History */}
-      <div className="cw-history">
-        <h3>Your reporting history</h3>
-        <div className="history-sub">The last 12 months at a glance.</div>
-
-        <div className="cw-completeness">
-          <div className="pct">
-            {Math.round((completedMonths / 12) * 100)}%
-          </div>
-          <div className="comp-text">
-            You&apos;ve submitted a reading in{" "}
-            <b>{completedMonths} of the last 12 months</b>. Well above average —
-            thank you for keeping it consistent.
-          </div>
-        </div>
-
-        <Table
-          dataSource={reportingHistory.map((r, i) => ({ ...r, key: i }))}
-          columns={columns}
-          pagination={false}
-          size="small"
-        />
+          <Table
+            className="edm-reviews-table"
+            dataSource={filteredData.map((r, i) => ({ ...r, key: i }))}
+            columns={columns}
+            pagination={false}
+            tableLayout="fixed"
+            scroll={{ x: 800 }}
+          />
+        </section>
       </div>
     </div>
   );
 };
 
-export default ObserverFormPage;
+export default ObserverListPage;
