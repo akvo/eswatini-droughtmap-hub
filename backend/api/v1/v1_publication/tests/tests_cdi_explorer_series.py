@@ -6,7 +6,9 @@ from rest_framework.test import APITestCase
 from api.v1.v1_publication.constants import RasterIndicatorTypes
 from api.v1.v1_publication.tests.mixins import (
     CDIExplorerDataMixin,
+    LATEST,
     MHLANGATANE,
+    period_at,
 )
 
 
@@ -26,8 +28,9 @@ class CDIExplorerSeriesTestCase(CDIExplorerDataMixin, APITestCase):
         response = self.get()
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         meta = response.json()["meta"]
-        self.assertEqual(meta["from"], "2025-06")
-        self.assertEqual(meta["to"], "2026-05")
+        # Anchored on today, like the strip.
+        self.assertEqual(meta["from"], period_at(11))
+        self.assertEqual(meta["to"], period_at(0))
         self.assertEqual(meta["months"], 12)
         self.assertEqual(
             meta["indicators"], list(RasterIndicatorTypes.FieldStr)
@@ -41,12 +44,14 @@ class CDIExplorerSeriesTestCase(CDIExplorerDataMixin, APITestCase):
         self.assertEqual(series["label"], "SPI percentile rank")
         points = {p["period"]: p["value"] for p in series["data"]}
         self.assertEqual(len(points), 12)
-        self.assertEqual(points["2025-12"], 0.41)
-        self.assertEqual(points["2026-05"], 0.05)
-        # no publication at all / published but no value for this Inkhundla
-        self.assertIsNone(points["2025-06"])
-        self.assertIsNone(points["2026-02"])
-        self.assertIsNone(points["2026-03"])
+        self.assertEqual(points[period_at(7)], 0.41)
+        self.assertEqual(points[period_at(LATEST)], 0.05)
+        # no publication at all / published but no value for this Inkhundla /
+        # the current month, which is not published yet
+        self.assertIsNone(points[period_at(11)])
+        self.assertIsNone(points[period_at(5)])
+        self.assertIsNone(points[period_at(4)])
+        self.assertIsNone(points[period_at(0)])
 
     def test_indicator_subset(self):
         data = self.get("?indicators=spi").json()
@@ -54,10 +59,10 @@ class CDIExplorerSeriesTestCase(CDIExplorerDataMixin, APITestCase):
         self.assertEqual(data["meta"]["indicators"], ["spi"])
 
     def test_explicit_range(self):
-        data = self.get("?from=2025-12&to=2026-01").json()
+        data = self.get(f"?from={period_at(7)}&to={period_at(6)}").json()
         self.assertEqual(data["meta"]["months"], 2)
         periods = [p["period"] for p in data["data"][0]["data"]]
-        self.assertEqual(periods, ["2025-12", "2026-01"])
+        self.assertEqual(periods, [period_at(7), period_at(6)])
 
     def test_invalid_month_format_is_400(self):
         for query in ("?from=2025-13", "?to=May-2026", "?from=2025"):
@@ -68,13 +73,13 @@ class CDIExplorerSeriesTestCase(CDIExplorerDataMixin, APITestCase):
             )
 
     def test_reversed_range_is_400(self):
-        response = self.get("?from=2026-05&to=2025-01")
+        response = self.get(f"?from={period_at(0)}&to={period_at(11)}")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_oversized_range_is_400(self):
         # Both forms: explicit, and `from` alone against the default `to`.
         self.assertEqual(
-            self.get("?from=1900-01&to=2026-05").status_code,
+            self.get(f"?from=1900-01&to={period_at(0)}").status_code,
             status.HTTP_400_BAD_REQUEST,
         )
         self.assertEqual(
@@ -91,6 +96,7 @@ class CDIExplorerSeriesTestCase(CDIExplorerDataMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_query_count_is_bounded(self):
-        # 4 = administration, latest published, window, rasters.
-        with self.assertNumQueries(4):
+        # 3 = administration, window, rasters. The window is computed from
+        # the clock now, so no "latest published month" lookup is needed.
+        with self.assertNumQueries(3):
             self.get()

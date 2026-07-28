@@ -1,6 +1,4 @@
 """Shared test fixtures for the CDI Explorer (INS-3)."""
-from datetime import date
-
 from django.utils import timezone
 
 from api.v1.v1_publication.constants import (
@@ -12,39 +10,38 @@ from api.v1.v1_publication.models import (
     Publication,
     PublicationRaster,
 )
+from utils.periods import month_start, shift_period
 
 MHLANGATANE = 4588078  # Hhohho / highveld — has published data
 KWALUSENI = 2042786  # Manzini — never appears in any published month
 
-# Ascending. 2026-02 is deliberately absent from the calendar run so the
-# padding is exercised, and 2026-03 is published but carries no decision or
-# raster value for Mhlangatane.
-PUBLISHED_MONTHS = ["2025-12", "2026-01", "2026-03", "2026-04", "2026-05"]
-COVERED_MONTHS = ["2025-12", "2026-01", "2026-04", "2026-05"]
-CATEGORY_BY_MONTH = {
-    "2025-12": 3,
-    "2026-01": 5,
-    "2026-04": 0,
-    "2026-05": 4,
-}
-# (period, indicator) -> value; 2026-05 esi is missing on purpose so one card
-# reports no_raster_data while the others carry a delta.
-VALUE_BY_MONTH = {
-    "2025-12": 0.41,
-    "2026-01": 0.38,
-    "2026-04": 0.22,
-    "2026-05": 0.05,
-}
+
+def period_at(offset: int) -> str:
+    """'YYYY-MM' `offset` months back from the current month."""
+    return shift_period(timezone.now().date().strftime("%Y-%m"), -offset)
 
 
-def month_start(period):
-    year, month = map(int, period.split("-"))
-    return date(year, month, 1)
+# Months back from today. The explorer window is the last 12 calendar months
+# ending at the current month, so everything here lands inside it, and the
+# fixture stays valid whenever it is run — hard-coded 2026 dates would drift
+# out of the window as soon as the clock passed them.
+#
+# Shape is deliberately awkward: offsets 3 and 5 are missing entirely (no
+# publication), offset 4 is published but carries no decision for this
+# Inkhundla, and the latest month is missing its ESI raster. That exercises
+# padding, null strip cells and no_raster_data rather than assuming them.
+LATEST = 1
+PREVIOUS = 2
+DECISIONLESS = 4
+PUBLISHED_OFFSETS = [7, 6, DECISIONLESS, PREVIOUS, LATEST]
+COVERED_OFFSETS = [7, 6, PREVIOUS, LATEST]
+CATEGORY_BY_OFFSET = {7: 3, 6: 5, PREVIOUS: 0, LATEST: 4}
+VALUE_BY_OFFSET = {7: 0.41, 6: 0.38, PREVIOUS: 0.22, LATEST: 0.05}
 
 
 class CDIExplorerDataMixin:
-    """Seeds five published months for Mhlangatane with one gap month, one
-    decision-less month and one missing raster. Compose with APITestCase.
+    """Seeds five published months for Mhlangatane inside the current window,
+    with one gap, one decision-less month and one missing raster.
     """
 
     def setUp(self):
@@ -58,36 +55,37 @@ class CDIExplorerDataMixin:
         self.uncovered = Administration.objects.create(
             pk=KWALUSENI, name="Kwaluseni", region="Manzini"
         )
-        self.publications = {}
-        for index, period in enumerate(PUBLISHED_MONTHS):
-            self.publications[period] = self._publish(period, index)
+        self.publications = {
+            period_at(offset): self._publish(offset, index)
+            for index, offset in enumerate(PUBLISHED_OFFSETS)
+        }
 
-    def _publish(self, period, index):
-        covered = period in COVERED_MONTHS
-        validated = (
-            [
-                {
-                    "administration_id": MHLANGATANE,
-                    "value": 2,
-                    "category": CATEGORY_BY_MONTH[period],
-                }
-            ]
-            if covered
-            else []
-        )
+    def _publish(self, offset, index):
+        covered = offset in COVERED_OFFSETS
+        period = period_at(offset)
         publication = Publication.objects.create(
             cdi_geonode_id=1000 + index,
             year_month=month_start(period),
             due_date=month_start(period),
             initial_values=[],
-            validated_values=validated,
+            validated_values=(
+                [
+                    {
+                        "administration_id": MHLANGATANE,
+                        "value": 2,
+                        "category": CATEGORY_BY_OFFSET[offset],
+                    }
+                ]
+                if covered
+                else []
+            ),
             status=PublicationStatus.published,
             published_at=timezone.now(),
         )
         if not covered:
             return publication
         for indicator in RasterIndicatorTypes.FieldStr:
-            if period == "2026-05" and indicator == RasterIndicatorTypes.esi:
+            if offset == LATEST and indicator == RasterIndicatorTypes.esi:
                 continue
             PublicationRaster.objects.create(
                 publication=publication,
@@ -96,7 +94,7 @@ class CDIExplorerDataMixin:
                 values=[
                     {
                         "administration_id": MHLANGATANE,
-                        "value": VALUE_BY_MONTH[period],
+                        "value": VALUE_BY_OFFSET[offset],
                     }
                 ],
             )

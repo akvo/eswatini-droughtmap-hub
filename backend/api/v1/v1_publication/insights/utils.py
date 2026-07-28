@@ -7,6 +7,7 @@ time, so an unpublished month already has indicator values in the database and
 serving them would both leak a map still under review and run the charts a
 month ahead of the strip beside them.
 """
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from api.v1.v1_publication.constants import (
@@ -23,35 +24,35 @@ from utils.periods import month_range, month_start, period_span, shift_period
 ALL_INDICATORS = list(RasterIndicatorTypes.FieldStr)
 
 
-def latest_published_month():
-    """The newest published month as 'YYYY-MM', or None."""
-    year_month = (
-        Publication.objects.filter(
-            status=PublicationStatus.published, published_at__isnull=False
-        )
-        .order_by("-year_month")
-        .values_list("year_month", flat=True)
-        .first()
-    )
-    return as_target_month(year_month) if year_month else None
+def has_published_publication() -> bool:
+    return Publication.objects.filter(
+        status=PublicationStatus.published, published_at__isnull=False
+    ).exists()
+
+
+def current_period() -> str:
+    return as_target_month(timezone.now().date())
 
 
 def resolve_window(from_month: str = None, to_month: str = None):
-    """(from_period, to_period), or (None, None) when nothing is published
-    yet and no explicit range was given.
+    """(from_period, to_period) — always a real window.
 
-    The default is the last CDI_EXPLORER_DEFAULT_MONTHS months ending at the
-    latest PUBLISHED month (design D-11) — anchored on publication rather than
-    on today, because CDI publishes 1-2 months in arrears and a
-    calendar-year-to-date default would return a mostly empty strip.
+    The default is the last CDI_EXPLORER_DEFAULT_MONTHS calendar months ending
+    at the CURRENT month, so the strip reads as "the last year" and lines up
+    with the IKS monthly grids beside it.
+
+    Deliberately NOT anchored on the latest published month (the original D-11
+    choice): that made the axis a function of the data, so a database whose
+    newest published map is old — a fresh environment seeded with historical
+    months, or a long publication pause — rendered a strip labelled with those
+    old years instead of recent ones. Publication lag now shows up the honest
+    way, as empty cells on the right.
     """
-    end = to_month or latest_published_month()
-    if not end:
-        return None, None
+    end = to_month or current_period()
     start = from_month or shift_period(end, -(CDI_EXPLORER_DEFAULT_MONTHS - 1))
     # Capped here rather than in the query serializer: with only `from`
     # supplied the span is not knowable until `to` has fallen back to the
-    # latest published month.
+    # current month.
     if period_span(start, end) > CDI_EXPLORER_MAX_MONTHS:
         raise ValidationError(
             f"Range too large (max {CDI_EXPLORER_MAX_MONTHS} months)"
@@ -164,7 +165,12 @@ def build_cards(period, previous_period, values, indicators) -> list:
             "change_pct": _change_pct(value, previous),
         }
         if value is None:
-            meta["reason"] = "no_raster_data"
+            # Distinguish "this index has no raster for the latest published
+            # month" from "nothing was published in the window at all" — the
+            # first is a gap in one dataset, the second is a gap in the map.
+            meta["reason"] = (
+                "no_raster_data" if period else "no_published_data_in_window"
+            )
         cards.append(
             {
                 "key": indicator,
@@ -211,13 +217,13 @@ def administration_stats(administration) -> dict:
         "zone": administration.zone,
         "dclass": current_dclass(administration),
     }
-    from_period, to_period = resolve_window()
-    if not from_period:
+    if not has_published_publication():
         base["data"] = None
         base["breakdown"] = None
         base["meta"] = {"reason": "no_published_data"}
         return base
 
+    from_period, to_period = resolve_window()
     publications = published_in_window(from_period, to_period)
     periods = month_range(from_period, to_period)
     values = raster_values(publications, administration.pk, ALL_INDICATORS)
@@ -227,14 +233,16 @@ def administration_stats(administration) -> dict:
         )
         for publication in publications
     }
-    # The window ends at the latest published month, so the last two entries
-    # are the two most recent published months. Adjacent in this list, not
-    # necessarily adjacent in the calendar — previous_period says which.
-    latest = publications[-1]
+    # The two most recent published months IN THE WINDOW. Adjacent in this
+    # list, not necessarily adjacent in the calendar — previous_period says
+    # which. Both may be absent: the window is anchored on today, so a
+    # publication pause longer than the window leaves it empty, and that must
+    # render as a blank strip rather than raise.
+    latest = publications[-1] if publications else None
     previous = publications[-2] if len(publications) > 1 else None
 
     base["data"] = build_cards(
-        as_target_month(latest.year_month),
+        as_target_month(latest.year_month) if latest else None,
         as_target_month(previous.year_month) if previous else None,
         values,
         ALL_INDICATORS,
@@ -247,8 +255,8 @@ def administration_stats(administration) -> dict:
         ],
     }
     base["meta"] = {
-        "period": as_target_month(latest.year_month),
-        "last_updated": latest.published_at,
+        "period": as_target_month(latest.year_month) if latest else None,
+        "last_updated": latest.published_at if latest else None,
         "from": from_period,
         "to": to_period,
         "months": len(periods),
@@ -264,11 +272,6 @@ def administration_series(
     base = _base(administration)
     indicators = indicators or ALL_INDICATORS
     from_period, to_period = resolve_window(from_month, to_month)
-    if not from_period:
-        base["data"] = None
-        base["meta"] = {"reason": "no_published_data"}
-        return base
-
     publications = published_in_window(from_period, to_period)
     periods = month_range(from_period, to_period)
     values = raster_values(publications, administration.pk, indicators)
