@@ -73,7 +73,7 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
       >
         <div
           style={{ backgroundColor: chipBg }}
-          className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
+          className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0"
         >
           <p
             style={{ color: readableInk(chipBg) }}
