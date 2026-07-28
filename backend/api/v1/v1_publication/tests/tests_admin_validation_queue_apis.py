@@ -192,7 +192,7 @@ class ValidationQueueAPIsTestCase(APITestCase):
             {
                 "publication_id", "year_month", "published_at", "total",
                 "reviewers_required", "can_publish", "pending_validation",
-                "narrative",
+                "narrative", "bulletin_url",
             },
         )
 
@@ -204,6 +204,15 @@ class ValidationQueueAPIsTestCase(APITestCase):
         self.publication.save()
         meta = self.client.get(self.stats_url).data["meta"]
         self.assertEqual(meta["narrative"], text)
+
+    def test_meta_carries_the_current_bulletin_url(self):
+        """Same trap as the narrative: the modal submits the bulletin URL on
+        every update, so a field it cannot prefill is a field it wipes."""
+        url = "https://ndma.org.sz/bulletin-2026-05.pdf"
+        self.publication.bulletin_url = url
+        self.publication.save()
+        meta = self.client.get(self.stats_url).data["meta"]
+        self.assertEqual(meta["bulletin_url"], url)
 
     def test_status_counts_partition_the_queue(self):
         """D-10: ready + awaiting + validated == total. `disagreement`
