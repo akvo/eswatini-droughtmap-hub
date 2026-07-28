@@ -1,56 +1,5 @@
 import React from "react";
-
-const SECTOR_STYLES = {
-  1: { text: "text-[#12B76A]", bg: "bg-[#ECFDF3]", border: "border-[#D1FADF]" },
-  2: { text: "text-[#F04438]", bg: "bg-[#FEF3F2]", border: "border-[#FEE4E2]" },
-  3: { text: "text-[#3E5EB9]", bg: "bg-[#ECEFF8]", border: "border-[#C3CDE9]" },
-  4: { text: "text-[#B54708]", bg: "bg-[#FFFAEB]", border: "border-[#FEF0C7]" },
-  5: { text: "text-[#0E7090]", bg: "bg-[#F0FDFA]", border: "border-[#CCFBF1]" },
-  6: { text: "text-[#7A5AF8]", bg: "bg-[#F4F3FF]", border: "border-[#EBE9FE]" },
-  7: { text: "text-[#E65F2B]", bg: "bg-[#FFF6F0]", border: "border-[#FFE6D5]" },
-  8: { text: "text-[#3E5EB9]", bg: "bg-[#ECEFF8]", border: "border-[#C3CDE9]" },
-};
-
-// Sector ID to Figma icon mapping:
-// 1=Food/Agri, 2=Health/Nutrition, 3=WASH/Water, 4=Education, 5=Environment, 6=Coordination, 7=Social, 8=Transport
-const SECTOR_ICON_SRC = {
-  1: "/assets/icons/sectors/agriculture-and-food-security.svg",
-  2: "/assets/icons/sectors/heart-with-pulse.svg",
-  3: "/assets/icons/sectors/water-and-sanitation.svg",
-  4: "/assets/icons/sectors/education.svg",
-  5: "/assets/icons/sectors/environment-and-energy.svg",
-  6: "/assets/icons/sectors/coordination.svg",
-  8: "/assets/icons/sectors/transport-and-logistics.svg",
-};
-
-const SECTOR_CARD_ICONS = {
-  ...Object.fromEntries(
-    Object.entries(SECTOR_ICON_SRC).map(([id, src]) => [
-      Number(id),
-      <img
-        key={id}
-        src={src}
-        alt=""
-        aria-hidden="true"
-        className="w-5 h-5 object-contain"
-      />,
-    ]),
-  ),
-  // 7: Social Protection — shield (previous icon)
-  7: (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-};
+import { SECTOR_STYLES, SECTOR_CARD_ICONS } from "@/static/config";
 
 const SectorCard = ({
   sectorId,
@@ -61,11 +10,7 @@ const SectorCard = ({
   onActivityClick,
 }) => {
   const count = activities.length;
-  const secStyle = SECTOR_STYLES[sectorId] || {
-    text: "text-primary",
-    bg: "bg-neutral-50",
-    border: "border-cardBorder",
-  };
+  const secColor = SECTOR_STYLES[sectorId]?.color || "#3E5EB9";
 
   return (
     <div className="bg-white border-b border-cardBorder flex flex-col items-start p-4 relative w-full last:border-b-0">
@@ -73,10 +18,11 @@ const SectorCard = ({
       <div className="flex items-center justify-between relative w-full">
         <div className="flex items-center gap-2">
           {SECTOR_CARD_ICONS[sectorId] && (
-            <span className={`${secStyle.text} flex items-center`}>
+            <span style={{ color: secColor }} className="flex items-center">
               {SECTOR_CARD_ICONS[sectorId]}
             </span>
           )}
+
           <span className="font-[family-name:var(--text\/font\/body,'Inter:Regular')] font-semibold text-[16px] text-neutral-800">
             {sectorName}
           </span>
