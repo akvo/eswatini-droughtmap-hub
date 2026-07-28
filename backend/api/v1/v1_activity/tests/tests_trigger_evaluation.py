@@ -7,12 +7,13 @@ from api.v1.v1_publication.constants import DroughtCategory
 # A fully-populated administration row (all indicators present).
 def _row(**over):
     row = {
-        "category": DroughtCategory.d3,   # 4
+        "category": DroughtCategory.d3,  # 4
         "population": 5000,
         "cropland": 2000,
         "cattle": 1600,
-        "water": None,        # UNAVAILABLE dimension
-        "ipc_phase": None,    # UNAVAILABLE dimension
+        "water": 1000,
+        "water_demand": 1000,
+        "ipc_phase": 3,
         "months_active": None,
     }
     row.update(over)
@@ -49,10 +50,11 @@ class ActivityPassesTestCase(SimpleTestCase):
         self.assertTrue(activity_passes(
             trig, _row(category=DroughtCategory.d3)))
 
-    def test_vuln_ipc_phase_satisfied_by_omission(self):
-        # ipc_phase is UNAVAILABLE -> vuln passes even with no data.
-        trig = {"vuln": {"op": 1, "value": 4}}
-        self.assertTrue(activity_passes(trig, _row(ipc_phase=None)))
+    def test_vuln_ipc_phase_evaluated(self):
+        trig = {"vuln": {"op": 1, "value": 3}}  # op=1 (>=)
+        self.assertTrue(activity_passes(trig, _row(ipc_phase=3)))
+        self.assertTrue(activity_passes(trig, _row(ipc_phase=4)))
+        self.assertFalse(activity_passes(trig, _row(ipc_phase=2)))
 
     def test_exp_population_evaluated(self):
         trig = {"exp": [{"indicator": "population", "op": 1, "value": 2000}]}
@@ -69,9 +71,10 @@ class ActivityPassesTestCase(SimpleTestCase):
         trig = {"exp": [{"indicator": "population", "op": 1, "value": 1}]}
         self.assertFalse(activity_passes(trig, _row(population=None)))
 
-    def test_exp_water_satisfied_by_omission(self):
-        trig = {"exp": [{"indicator": "water", "op": 1, "value": 999}]}
-        self.assertTrue(activity_passes(trig, _row(water=None)))
+    def test_exp_water_evaluated(self):
+        trig = {"exp": [{"indicator": "water", "op": 1, "value": 500}]}
+        self.assertTrue(activity_passes(trig, _row(water=1000)))
+        self.assertFalse(activity_passes(trig, _row(water=200)))
 
     def test_multiple_exp_all_must_pass(self):
         trig = {"exp": [
@@ -92,6 +95,6 @@ class ActivityPassesTestCase(SimpleTestCase):
             "vuln": {"op": 1, "value": 2},
             "exp": [{"indicator": "population", "op": 1, "value": 2000}]}
         self.assertTrue(activity_passes(
-            trig, _row(category=DroughtCategory.d3, population=5000)))
+            trig, _row(category=DroughtCategory.d3, population=5000, ipc_phase=3)))
         self.assertFalse(activity_passes(
-            trig, _row(category=DroughtCategory.d2, population=5000)))
+            trig, _row(category=DroughtCategory.d2, population=5000, ipc_phase=3)))

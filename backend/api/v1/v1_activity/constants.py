@@ -68,7 +68,14 @@ class TriggerOperator:
 # Constrains triggers["exp"][*]["indicator"].
 # population = people exposed; cropland = ha rain-fed cropland;
 # water = litres water demand; cattle = amount of cattle.
-EXPOSURE_INDICATORS = ["population", "cropland", "water", "cattle"]
+EXPOSURE_INDICATORS = [
+    "population",
+    "cropland",
+    "water",
+    "cattle",
+    "land_use_dvi_agri",
+    "water_demand",
+]
 
 # class int -> wizard segment label, for trigger_summary.
 DCLASS_SEGMENT = {
@@ -82,15 +89,15 @@ DCLASS_SEGMENT = {
 # Valid drought-class gate values: D0..D4 only (never normal/none).
 VALID_DCLASS = set(DCLASS_SEGMENT)
 
-# Vulnerability = IPC food-security phase threshold (Phase 1..4).
-VULN_PHASE_MIN, VULN_PHASE_MAX = 1, 4
+# Vulnerability = IPC food-security phase threshold (Phase 1..5).
+VULN_PHASE_MIN, VULN_PHASE_MAX = 1, 5
 
 
 # --- Trigger evaluation (SOP-2) -----------------------------------------
 # Dimensions with no honest per-administration source yet. Conditions on
 # these are treated as satisfied (never block firing) and reported in
-# `matched_on` with source "unavailable". Removed once PA-2 lands.
-UNAVAILABLE = {"months", "ipc_phase", "water"}
+# `matched_on` with source "unavailable".
+UNAVAILABLE = {"months"}
 
 
 ALLOWED_EXTENSIONS = {
@@ -128,5 +135,5 @@ ALLOWED_MIMES = {
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # noqa
 }
