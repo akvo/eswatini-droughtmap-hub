@@ -1,18 +1,14 @@
 """Generic trigger evaluation shared by the wizard preview and the
 `recommended-actions` endpoint.
 
-The predicate is field-driven: it reads `dclass`, `vuln`, and every `exp[]`
-condition off the stored trigger JSON and ANDs them. There is no per-activity
-branching, so new or edited activities need zero code here.
+The predicate is field-driven: it reads `dclass`, `vuln`, `exp`, and `risk`
+conditions off the stored trigger JSON and ANDs them.
 
-Dimensions we have no honest per-administration source for yet
-(`months`, IPC `ipc_phase`, `water` — see constants.UNAVAILABLE) count as
-satisfied rather than being fabricated or failing every activity that uses
-them. `dclass.class` and the `population/cropland/cattle` exposures evaluate
-against real data (see build_dataset, added in Task 2).
+Now backed by the real per-Inkhundla `Indicator` DB table (PA-2 / v2 redesign).
 """
 
-import csv
+from __future__ import annotations
+
 import logging
 
 from api.v1.v1_activity.constants import (
@@ -25,6 +21,27 @@ from api.v1.v1_publication.models import (
     Publication,
     PublicationStatus,
 )
+from api.v1.v1_indicators.models import Indicator
+from api.v1.v1_indicators.constants import (
+    HAZARD_RESCALE,
+    IPC_RESCALE,
+    EXPOSURE_SUBINDICATORS,
+)
+from api.v1.v1_indicators.services import (
+    _min_max_norm,
+    _apply_band,
+    _DROUGHT_CATEGORY_TO_HAZARD_KEY,
+)
+
+logger = logging.getLogger(__name__)
+
+# Numeric rank for risk_class comparison (higher number = higher risk)
+_RISK_CLASS_RANK = {
+    "Low": 1,
+    "Moderate": 2,
+    "High": 3,
+    "Very High": 4,
+}
 
 
 def _condition_pass(actual, op, value, dimension):
@@ -45,7 +62,7 @@ def activity_passes(triggers, row):
     if not triggers:
         return False
 
-    # Drought-class gate: administration category must meet the minimum.
+    # 1. Drought-class gate: administration category must meet the minimum.
     dclass = triggers.get("dclass") or {}
     cls = dclass.get("class")
     if cls is not None:
@@ -53,22 +70,48 @@ def activity_passes(triggers, row):
         # DroughtCategory.none (-9999) fails cat < cls automatically.
         if cat is None or cat < cls:
             return False
-        # dclass.months is UNAVAILABLE -> no further check.
 
-    # Vulnerability gate (IPC phase) — UNAVAILABLE, so satisfied for now.
+    # 2. Vulnerability gate (IPC phase 1..5)
     vuln = triggers.get("vuln")
     if vuln and not _condition_pass(
-            row.get("ipc_phase"), vuln["op"], vuln["value"], "ipc_phase"):
+        row.get("ipc_phase"), vuln["op"], vuln["value"], "ipc_phase"
+    ):
         return False
 
-    # Exposure gates — all AND-ed; unknown indicator fails safe.
+    # 3. Risk gate (overall computed risk score or class threshold)
+    risk = triggers.get("risk")
+    if risk:
+        if "class" in risk:
+            target_class = risk["class"]
+            actual_class = row.get("risk_class")
+            target_rank = _RISK_CLASS_RANK.get(target_class, 99)
+            actual_rank = _RISK_CLASS_RANK.get(actual_class, -1)
+            if actual_rank < target_rank:
+                return False
+        elif "op" in risk and "value" in risk:
+            if not _condition_pass(
+                row.get("risk_score"), risk["op"], risk["value"], "risk_score"
+            ):
+                return False
+
+    # 4. Exposure gates — all AND-ed; unknown indicator fails safe.
     for cond in triggers.get("exp") or []:
         indicator = cond["indicator"]
         if indicator not in EXPOSURE_INDICATORS:
             return False
+
+        # Support both 'cropland' / 'water' (authored vocab)
+        # and direct column names
+        actual_val = row.get(indicator)
+        if actual_val is None:
+            if indicator == "cropland":
+                actual_val = row.get("rainfed_cropland")
+            elif indicator == "water":
+                actual_val = row.get("water_demand")
+
         if not _condition_pass(
-                row.get(indicator),
-                cond["op"], cond["value"], indicator):
+            actual_val, cond["op"], cond["value"], indicator
+        ):
             return False
 
     return True
@@ -77,52 +120,19 @@ def activity_passes(triggers, row):
 # =========================================================================
 # Dataset seam
 # =========================================================================
-# build_dataset() is the ONE place that knows where per-administration
-# values come from. Today: dclass from the latest published Publication
-# (real), and population/cropland/cattle from a shipped prototype CSV.
-# water/ipc_phase/months have no source (see UNAVAILABLE).
-# TODO(PA-2): replace this whole function with the real PA-2
-# per-Inkhundla query; the predicate above stays unchanged.
-
-logger = logging.getLogger(__name__)
-
-_PRIORITY_CSV = "./source/priority_areas.csv"
-
-# CSV column -> dataset row key. The authored `cropland` indicator means
-# rain-fed hectares (see constants), so it maps to rainfedCropland, not
-# the CSV's total `cropland`. `cattle` uses livestock (TLU) as the closest
-# proxy.
-_CSV_FIELDS = {
-    "pop": "population",
-    "rainfedCropland": "cropland",
-    "livestock": "cattle",
-}
-
-
-def _norm(name):
-    """Normalize an administration name for the CSV join (tolerate case
-    and surrounding-whitespace drift between the CSV and the DB)."""
-    return (name or "").strip().casefold()
-
-
-def _num(raw):
-    """Parse a CSV numeric cell; blank/garbage -> None."""
-    if raw is None or raw == "":
-        return None
-    try:
-        value = float(raw)
-    except (TypeError, ValueError):
-        return None
-    return int(value) if value.is_integer() else value
 
 
 def _latest_published_categories():
     """{administration_id: category} from the latest published
     publication, or {} when nothing is published yet."""
-    pub = Publication.objects.filter(
-        status=PublicationStatus.published,
-        published_at__isnull=False,
-    ).order_by("-year_month", "-id").first()
+    pub = (
+        Publication.objects.filter(
+            status=PublicationStatus.published,
+            published_at__isnull=False,
+        )
+        .order_by("-year_month", "-id")
+        .first()
+    )
     if not pub:
         return {}
     if pub.validated_values is not None:
@@ -132,41 +142,83 @@ def _latest_published_categories():
     return {v["administration_id"]: v.get("category") for v in values}
 
 
-def _read_priority_areas():
-    """{administration_name: {population, cropland, cattle}} from the
-    CSV."""
-    rows = {}
-    with open(_PRIORITY_CSV, newline="") as handle:
-        for record in csv.DictReader(handle):
-            rows[_norm(record["name"])] = {
-                key: _num(record.get(column))
-                for column, key in _CSV_FIELDS.items()
-            }
-    return rows
-
-
 def build_dataset():
-    """Per-administration evaluation rows keyed by administration id."""
+    """Per-administration evaluation rows keyed by administration id.
+    Reads directly from the Indicator database model and latest Publication."""
     categories = _latest_published_categories()
-    exposures = _read_priority_areas()
+    indicators = list(
+        Indicator.objects.select_related("administration")
+        .all()
+        .order_by("administration_id")
+    )
+    indicator_by_adm = {ind.administration_id: ind for ind in indicators}
+
+    # Cross-row min-max norm for exposure calculation
+    normed_by_subind = {}
+    for subind in EXPOSURE_SUBINDICATORS:
+        raw_vals = [getattr(ind, subind, None) for ind in indicators]
+        normed_by_subind[subind] = _min_max_norm(raw_vals)
 
     dataset = {}
+    # Iterate over all Administrations so missing Indicator rows yield null
+    # scores rather than 500 / IndexError. Exposure norm is retrieved by
+    # position in the sorted `indicators` list.
+    indicator_pos = {
+        ind.administration_id: idx for idx, ind in enumerate(indicators)
+    }
+
     for adm in Administration.objects.all():
-        row = {
-            "category": categories.get(adm.id),
-            "population": None,
-            "cropland": None,
-            "cattle": None,
-            "water": None,        # UNAVAILABLE
-            "ipc_phase": None,    # UNAVAILABLE
+        ind = indicator_by_adm.get(adm.id)
+        cat = categories.get(adm.id)
+        idx = indicator_pos.get(adm.id)
+
+        if ind and idx is not None:
+            pop = ind.population
+            crop = ind.rainfed_cropland
+            cat_val = ind.cattle
+            wat = ind.water_demand
+            ipc = ind.ipc_phase
+            dvi = ind.land_use_dvi_agri
+
+            # Exposure calculation
+            valid_norms = [
+                normed_by_subind[subind][idx]
+                for subind in EXPOSURE_SUBINDICATORS
+                if normed_by_subind[subind][idx] is not None
+            ]
+            exposure = (
+                sum(valid_norms) / len(valid_norms) if valid_norms else None
+            )
+
+            # Hazard & Vulnerability (None when IPC absent; matches notebook)
+            h_key = _DROUGHT_CATEGORY_TO_HAZARD_KEY.get(cat, "None")
+            hazard = HAZARD_RESCALE.get(h_key, 0.0)
+            vuln = IPC_RESCALE.get(ipc) if ipc is not None else None
+
+            if exposure is None or vuln is None:
+                risk_score = None
+                risk_class = None
+            else:
+                risk_score = hazard * exposure * vuln
+                risk_class = _apply_band(risk_score)
+        else:
+            pop = crop = cat_val = wat = ipc = dvi = None
+            risk_score = None
+            risk_class = None
+
+        dataset[adm.id] = {
+            "category": cat,
+            "population": pop,
+            "cropland": crop,
+            "rainfed_cropland": crop,
+            "cattle": cat_val,
+            "water": wat,
+            "water_demand": wat,
+            "ipc_phase": ipc,
+            "land_use_dvi_agri": dvi,
+            "risk_score": risk_score,
+            "risk_class": risk_class,
             "months_active": None,
         }
-        matched = exposures.get(_norm(adm.name))
-        if matched is not None:
-            row.update(matched)
-        else:
-            logger.info(
-                "priority_areas.csv has no row for administration %r",
-                adm.name)
-        dataset[adm.id] = row
+
     return dataset

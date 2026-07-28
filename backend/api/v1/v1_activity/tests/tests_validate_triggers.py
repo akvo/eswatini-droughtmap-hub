@@ -29,7 +29,7 @@ class ValidateTriggersTestCase(SimpleTestCase):
 
     def test_vuln_phase_out_of_range_rejected(self):
         with self.assertRaises(ValidationError):
-            validate_triggers({"vuln": {"op": 1, "value": 5}})
+            validate_triggers({"vuln": {"op": 1, "value": 6}})
 
     def test_exp_unknown_indicator_rejected(self):
         with self.assertRaises(ValidationError):
