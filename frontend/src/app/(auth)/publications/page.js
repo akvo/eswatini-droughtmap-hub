@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Modal, Select, Table, Tag } from "antd";
+import { Button, Modal, Table, Tag } from "antd";
 import { FileOutlined } from "@ant-design/icons";
 import {
   Can,
@@ -34,7 +34,6 @@ const PublicationsPage = () => {
   const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
   const [page, setPage] = useState(1);
-  const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortField, setSortField] = useState("year_month");
   const [sortOrder, setSortOrder] = useState("descend");
@@ -181,7 +180,7 @@ const PublicationsPage = () => {
 
         const params = new URLSearchParams({
           page,
-          category,
+          category: MAP_CATEGORY_OPTIONS[0].value,
           sort: sortField,
           sort_order,
         });
@@ -209,7 +208,7 @@ const PublicationsPage = () => {
       setLoading(false);
       setPreload(false);
     }
-  }, [preload, page, statusFilter, category, sortField, sortOrder]);
+  }, [preload, page, statusFilter, sortField, sortOrder]);
 
   useEffect(() => {
     fetchData();
@@ -252,22 +251,6 @@ const PublicationsPage = () => {
                   setPage(1);
                   setPreload(true);
                 }}
-              />
-              <Select
-                options={MAP_CATEGORY_OPTIONS}
-                className="w-full lg:w-48"
-                placeholder="Filter by Category"
-                onChange={(value) => {
-                  setPage(1);
-                  if (value) {
-                    setCategory(value);
-                  } else {
-                    setCategory(MAP_CATEGORY_OPTIONS[0].value);
-                  }
-                  setPreload(true);
-                }}
-                value={category}
-                allowClear={false}
               />
             </div>
             <Table

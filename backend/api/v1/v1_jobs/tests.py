@@ -24,8 +24,7 @@ class JobAPITestCase(APITestCase):
         Test fetching an existing job by ID.
         """
         url = reverse(
-            "view_job",
-            kwargs={"version": "v1", "job_id": self.job.id}
+            "view_job", kwargs={"version": "v1", "job_id": self.job.id}
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

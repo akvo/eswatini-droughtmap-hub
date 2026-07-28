@@ -353,22 +353,6 @@ describe("PublicationsPage", () => {
     });
   });
 
-  it("handles category selection change", async () => {
-    render(<PublicationsPage />);
-
-    await waitFor(() => expect(api).toHaveBeenCalledTimes(1));
-
-    const categorySelect = screen.getByTestId("mock-select");
-    fireEvent.change(categorySelect, { target: { value: "spi-raster-map" } });
-
-    await waitFor(() => {
-      expect(api).toHaveBeenLastCalledWith(
-        "GET",
-        expect.stringContaining("category=spi-raster-map"),
-      );
-    });
-  });
-
   it("handles table sorting change", async () => {
     const { container } = render(<PublicationsPage />);
 
