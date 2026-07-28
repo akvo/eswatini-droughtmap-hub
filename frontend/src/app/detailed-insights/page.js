@@ -1,22 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { Spin } from "antd";
 import { useInsights } from "@/context/InsightsContextProvider";
 
 // CDI Explorer is the default tab, so it lives at the index route itself
 // rather than behind a redirect — a redirect() here would fire during the
 // layout's deferred (empty-state) render and corrupt the App Router's hooks.
+const CdiTab = dynamic(() => import("@/components/Insights/CdiTab/CdiTab"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-96 flex flex-col gap-3 items-center justify-center">
+      <Spin size="large" />
+      <span className="text-sm text-neutral-400">Loading CDI Explorer...</span>
+    </div>
+  ),
+});
+
 const CdiPage = () => {
-  const { selectedInkhundla } = useInsights();
+  const { selectedInkhundla, administrationId, region, zone } = useInsights();
 
   return (
-    <div className="p-8 text-center bg-white border border-cardBorder border-t-0">
-      <h3 className="text-lg font-bold text-neutral-800 mb-2">CDI Explorer</h3>
-      <p className="text-neutral-500 max-w-md mx-auto text-sm">
-        The CDI Explorer tab provides historical satellite drought category
-        trends for {selectedInkhundla} Inkhundla. This tab is currently under
-        construction.
-      </p>
-    </div>
+    <CdiTab
+      selectedInkhundla={selectedInkhundla}
+      administrationId={administrationId}
+      region={region}
+      zone={zone}
+    />
   );
 };
 

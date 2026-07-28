@@ -143,7 +143,8 @@ const PublishModal = ({
                   htmlFor="publish-bulletin-url"
                   className="text-sm font-normal text-[#606060]"
                 >
-                  Bulletin URL <span className="text-[#909090]">(optional)</span>
+                  Bulletin URL{" "}
+                  <span className="text-[#909090]">(optional)</span>
                 </label>
                 <Input
                   id="publish-bulletin-url"
@@ -153,8 +154,8 @@ const PublishModal = ({
                   onChange={(e) => setBulletinUrl(e.target.value)}
                 />
                 <span className="text-xs text-[#606060]">
-                  Link to the full bulletin for this month. Leave empty if
-                  there is none.
+                  Link to the full bulletin for this month. Leave empty if there
+                  is none.
                 </span>
               </div>
             </div>
