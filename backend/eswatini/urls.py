@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/", include("api.v1.v1_iks.urls"), name="v1_iks"),
     path("api/", include("api.v1.v1_weather.urls"), name="v1_weather"),
     path("api/", include("api.v1.v1_indicators.urls"), name="v1_indicators"),
+    path("api/", include("api.v1.v1_risk_level.urls"), name="v1_risk_level"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
