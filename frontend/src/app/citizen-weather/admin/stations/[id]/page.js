@@ -5,14 +5,12 @@ import { Button, Space, Tag } from "antd";
 import {
   UserOutlined,
   MailOutlined,
-  ToolOutlined,
   BarChartOutlined,
   InboxOutlined,
   ArrowLeftOutlined,
-  PhoneOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
-import CWHeader from "@/components/CitizenWeather/CWHeader";
+import { PageHeader } from "@/components";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
 import { stationDetail } from "@/static/mocks/citizen-weather";
 
@@ -34,74 +32,19 @@ const StationDetailPage = () => {
     lastSubmission: "April 2026 \u00B7 3 May",
   };
 
-  const completenessColor =
-    s.completeness >= 75
-      ? "#12b76a"
-      : s.completeness >= 50
-        ? "#FAAD14"
-        : "#FF4D4F";
-
   return (
     <div className="w-full h-auto">
-      {/* Header */}
-      <div className="px-4 sm:px-8 md:px-12 xl:px-20 pt-4 pb-0">
-        <div className="mx-auto w-full max-w-[1280px]">
-          <CWHeader
-            isAdmin
-            subtitle="Station profile"
-            userName="Dr Felix Motsa · UNESWA admin"
-            userInitials="LO"
-          />
-        </div>
-      </div>
-
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-white px-4 pb-24 pt-10 sm:px-8 md:px-12 xl:px-20">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
-        />
-        <div className="relative mx-auto w-full max-w-[1280px]">
-          <Link
-            href="/citizen-weather/admin"
-            className="inline-flex items-center gap-1.5 text-sm text-[#3E5EB9] mb-4 hover:underline"
-          >
-            <ArrowLeftOutlined /> Back to admin
+      <PageHeader
+        title={s.name}
+        description={`${s.inkhundla} · ${s.region} region · ${s.zone} · ${s.completeness}% completeness`}
+        actions={
+          <Link href="/citizen-weather/admin">
+            <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
           </Link>
-          <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
-            {s.name}
-          </h1>
-          <p className="text-sm leading-6 text-[#606060] mb-4">
-            {s.inkhundla} &middot; {s.region} region &middot; {s.zone} &middot;{" "}
-            <span className="font-mono text-xs">
-              {s.coordinates[0]}, {s.coordinates[1]}
-            </span>
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#333333] font-semibold inline-flex items-center gap-1.5">
-              <UserOutlined /> {obs.name}
-            </span>
-            <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#606060] inline-flex items-center gap-1.5">
-              <MailOutlined /> {obs.email}
-            </span>
-            <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#606060] inline-flex items-center gap-1.5">
-              <PhoneOutlined /> {obs.phone}
-            </span>
-            <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#606060] inline-flex items-center gap-1.5">
-              <ToolOutlined /> {s.type}
-            </span>
-            <span
-              className="rounded border px-2.5 py-1 text-sm font-bold"
-              style={{ color: completenessColor, borderColor: completenessColor }}
-            >
-              {s.completeness}% completeness
-            </span>
-          </div>
-        </div>
-      </section>
+        }
+      />
 
-      {/* Content */}
-      <div className="relative px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
         <div
           aria-hidden
           className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
@@ -110,8 +53,8 @@ const StationDetailPage = () => {
           {/* Detail cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Station card */}
-            <section className="border border-[#eaecf0] bg-white">
-              <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6 flex items-center justify-between">
+            <section className="border border-cardBorder bg-white">
+              <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-[#333333]">
                   Station
                 </h2>
@@ -163,8 +106,8 @@ const StationDetailPage = () => {
             </section>
 
             {/* Observer card */}
-            <section className="border border-[#eaecf0] bg-white">
-              <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6 flex items-center justify-between">
+            <section className="border border-cardBorder bg-white">
+              <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-[#333333]">
                   Observer
                 </h2>
@@ -214,8 +157,8 @@ const StationDetailPage = () => {
           </div>
 
           {/* Timeline */}
-          <section className="border border-[#eaecf0] bg-white mb-4">
-            <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+          <section className="border border-cardBorder bg-white mb-4">
+            <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
               <h2 className="text-base font-semibold text-[#333333]">
                 Submission timeline &mdash; last 12 months
               </h2>
@@ -302,7 +245,7 @@ const StationDetailPage = () => {
 
 const KVRow = ({ label, value, noBorder }) => (
   <div
-    className={`flex py-2.5 text-sm ${noBorder ? "" : "border-b border-[#eaecf0]"}`}
+    className={`flex py-2.5 text-sm ${noBorder ? "" : "border-b border-cardBorder"}`}
   >
     <div className="text-xs text-[#606060] flex-shrink-0 w-[140px] pt-0.5">
       {label}

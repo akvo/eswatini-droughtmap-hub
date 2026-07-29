@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input, Select, Button } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import Link from "next/link";
-import CWHeader from "@/components/CitizenWeather/CWHeader";
+import { PageHeader } from "@/components";
 
 const DAY_OPTIONS = [
   { label: "1st of the month (default)", value: "1" },
@@ -61,7 +61,7 @@ const ToggleGroup = ({ options, value, onChange }) => (
         className={`flex-1 py-2 px-3 border rounded-lg text-center cursor-pointer text-xs transition-all select-none ${
           value === opt.value
             ? "border-[#3E5EB9] bg-[#f0f4ff] text-[#333333] font-semibold"
-            : "border-[#eaecf0] bg-white text-[#606060]"
+            : "border-cardBorder bg-white text-[#606060]"
         }`}
         onClick={() => onChange(opt.value)}
       >
@@ -84,43 +84,17 @@ const ReminderSchedulePage = () => {
 
   return (
     <div className="w-full h-auto">
-      {/* Header */}
-      <div className="px-4 sm:px-8 md:px-12 xl:px-20 pt-4 pb-0">
-        <div className="mx-auto w-full max-w-[1280px]">
-          <CWHeader
-            isAdmin
-            subtitle="Reminder schedule"
-            userName="Dr Felix Motsa · UNESWA admin"
-            userInitials="LO"
-          />
-        </div>
-      </div>
-
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-white px-4 pb-24 pt-10 sm:px-8 md:px-12 xl:px-20">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
-        />
-        <div className="relative mx-auto w-full max-w-[1280px]">
-          <Link
-            href="/citizen-weather/admin"
-            className="inline-flex items-center gap-1.5 text-sm text-[#3E5EB9] mb-4 hover:underline"
-          >
-            <ArrowLeftOutlined /> Back to admin
+      <PageHeader
+        title="Reminder schedule"
+        description="Configure when the automated monthly reminder goes out to every observer. Changes apply from next month onwards."
+        actions={
+          <Link href="/citizen-weather/admin">
+            <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
           </Link>
-          <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
-            Reminder schedule
-          </h1>
-          <p className="text-sm leading-6 text-[#606060]">
-            Configure when the automated monthly reminder goes out to every
-            observer. Changes apply from next month onwards.
-          </p>
-        </div>
-      </section>
+        }
+      />
 
-      {/* Content */}
-      <div className="relative px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
         <div
           aria-hidden
           className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
@@ -128,8 +102,8 @@ const ReminderSchedulePage = () => {
         <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Section 1: Main monthly reminder */}
-            <section className="border border-[#eaecf0] bg-white">
-              <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+            <section className="border border-cardBorder bg-white">
+              <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-[#3E5EB9] text-white text-xs font-bold flex items-center justify-center">
                     1
@@ -193,8 +167,8 @@ const ReminderSchedulePage = () => {
             </section>
 
             {/* Section 2: Automatic follow-ups */}
-            <section className="border border-[#eaecf0] bg-white">
-              <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+            <section className="border border-cardBorder bg-white">
+              <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-[#3E5EB9] text-white text-xs font-bold flex items-center justify-center">
                     2
@@ -232,7 +206,7 @@ const ReminderSchedulePage = () => {
                   </div>
                 </FieldGroup>
 
-                <div className="border-t border-[#eaecf0] pt-5">
+                <div className="border-t border-cardBorder pt-5">
                   <FieldGroup
                     label="Per-region overrides"
                     hint="optional"
@@ -258,8 +232,8 @@ const ReminderSchedulePage = () => {
           </div>
 
           {/* Next scheduled preview */}
-          <section className="border border-[#eaecf0] bg-white mb-4">
-            <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+          <section className="border border-cardBorder bg-white mb-4">
+            <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
               <h2 className="text-base font-semibold text-[#333333]">
                 Next scheduled reminder
               </h2>
@@ -268,7 +242,7 @@ const ReminderSchedulePage = () => {
               </p>
             </div>
             <div className="p-4 sm:p-6">
-              <div className="border border-[#eaecf0] rounded-lg p-4 text-sm text-[#333333] leading-relaxed">
+              <div className="border border-cardBorder rounded-lg p-4 text-sm text-[#333333] leading-relaxed">
                 <b className="text-[#333333]">
                   Sunday 1 June 2026 &middot; 07:00 SAST
                 </b>{" "}
