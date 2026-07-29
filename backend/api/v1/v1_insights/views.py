@@ -66,10 +66,26 @@ class InsightsMetricsView(APIView):
     @extend_schema(
         tags=["Insights"],
         summary="Get National Overview KPI metric cards data",
+        parameters=[
+            OpenApiParameter(
+                "inkhundla_id",
+                OpenApiTypes.INT,
+                description="Optional Tinkhundla administration ID filter",
+                required=False,
+            ),
+        ],
         responses={200: InsightsMetricsSerializer},
     )
     def get(self, request, version=None):
-        data = get_metrics_data()
+        inkhundla_id_raw = request.query_params.get("inkhundla_id")
+        inkhundla_id = None
+        if inkhundla_id_raw:
+            try:
+                inkhundla_id = int(inkhundla_id_raw)
+            except ValueError:
+                inkhundla_id = None
+
+        data = get_metrics_data(inkhundla_id=inkhundla_id)
         serializer = InsightsMetricsSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

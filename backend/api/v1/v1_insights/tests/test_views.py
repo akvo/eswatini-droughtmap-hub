@@ -174,3 +174,21 @@ class InsightsAPITests(TestCase):
             compute_linear_slope([("2026-01", 2.0), ("2026-02", 2.0)]),
             "stable",
         )
+
+    def test_metrics_endpoint_with_inkhundla_id(self):
+        response = self.client.get(
+            f"/api/v1/insights/metrics?inkhundla_id={self.admin.id}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("rainfall", data)
+        self.assertIn(self.admin.name, data["rainfall"]["note"])
+
+    def test_zones_endpoint_breakdowns_include_names(self):
+        response = self.client.get("/api/v1/insights/zones?group=regions")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        breakdowns = data["breakdowns"]["data"]
+        self.assertTrue(len(breakdowns) > 0)
+        first_breakdown_point = breakdowns[0]["data"][0]
+        self.assertIn("names", first_breakdown_point)

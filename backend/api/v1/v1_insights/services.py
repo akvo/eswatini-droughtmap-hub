@@ -1,5 +1,5 @@
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
@@ -194,8 +194,20 @@ def get_zones_data(group="regions"):
         )
 
         # Breakdowns
+        names_by_cat = defaultdict(list)
+        for aid in admin_ids:
+            cat = latest_vals.get(aid, 0)
+            adm_obj = next((a for a in g_admins if a.id == aid), None)
+            if adm_obj and adm_obj.name:
+                names_by_cat[cat].append(adm_obj.name)
+
         breakdown_counts = [
-            {"key": c, "value": cat_counts.get(c, 0)} for c in range(6)
+            {
+                "key": c,
+                "value": cat_counts.get(c, 0),
+                "names": names_by_cat.get(c, []),
+            }
+            for c in range(6)
         ]
         breakdowns_list.append(
             {
@@ -234,13 +246,22 @@ def get_zones_data(group="regions"):
     }
 
 
-def get_metrics_data():
+def get_metrics_data(inkhundla_id=None):
     """Service for GET /api/v1/insights/metrics"""
     now = timezone.now()
     cutoff_30d = now - timedelta(days=30)
 
+    admin = None
+    if inkhundla_id:
+        admin = Administration.objects.filter(id=inkhundla_id).first()
+
     # Weather Stations health
     all_stations = WeatherStation.objects.filter(is_active=True)
+    if admin and admin.region:
+        stations_in_region = all_stations.filter(region=admin.region)
+        if stations_in_region.exists():
+            all_stations = stations_in_region
+
     total_stations = all_stations.count()
     online_count = 0
     offline_count = 0
@@ -262,9 +283,13 @@ def get_metrics_data():
     )
 
     # Field Reports (Kobo 30d)
-    kobo_count = KoboData.objects.filter(
-        submission_time__gte=cutoff_30d
-    ).count()
+    kobo_qs = KoboData.objects.filter(submission_time__gte=cutoff_30d)
+    if admin and admin.name:
+        admin_kobo_qs = kobo_qs.filter(raw_data__icontains=admin.name)
+        if admin_kobo_qs.exists():
+            kobo_qs = admin_kobo_qs
+
+    kobo_count = kobo_qs.count()
 
     # Rainfall & Temperature History (last 12 months)
     recent_pubs = list(
@@ -281,7 +306,6 @@ def get_metrics_data():
 
     for pub in recent_pubs:
         period_str = pub.year_month.strftime("%Y-%m")
-        # Example deviation logic per period
         rain_dev = 0
         temp_dev = 0.0
         rainfall_history.append({"key": period_str, "value": rain_dev})
@@ -299,33 +323,47 @@ def get_metrics_data():
         if latest_pub
         else "Current month"
     )
+    if admin:
+        month_note = f"{month_note} ({admin.name})"
+
+    precip_label = "Precipitation vs 30-yr normal"
+    temp_label = "Temperature vs 30 yr Normal"
+    station_label = "Active stations"
+    reports_label = "Field reports"
+
+    if admin:
+        precip_label = f"{precip_label} ({admin.name})"
+        temp_label = f"{temp_label} ({admin.name})"
+        reports_label = f"{reports_label} ({admin.name})"
+        if admin.region:
+            station_label = f"{station_label} ({admin.region})"
 
     return {
         "rainfall": {
             "value": latest_rain_dev,
             "unit": "mm",
             "note": f"{month_note} deviation",
-            "label": "Precipitation vs 30-yr normal",
+            "label": precip_label,
             "history": rainfall_history,
         },
         "temperature": {
             "value": latest_temp_dev,
             "unit": "°C",
             "note": f"{month_note} mean Tmax deviation",
-            "label": "Temperature vs 30 yr Normal",
+            "label": temp_label,
             "history": temp_history,
         },
         "activeStations": {
             "online": online_count,
             "total": total_stations,
             "onlinePct": online_pct,
-            "label": "Active stations",
+            "label": station_label,
             "note": f"{offline_count} Offline  {degraded_count} Degraded",
         },
         "fieldReports": {
             "count": kobo_count,
             "verifiedPct": 100,
-            "label": "Field reports",
+            "label": reports_label,
             "note": "in last 30 days  100% verified",
         },
     }
