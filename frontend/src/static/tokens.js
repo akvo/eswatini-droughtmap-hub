@@ -28,6 +28,7 @@ const brand = {
 const text = {
   heading: "#020618",
   muted: "#3E4958",
+  tertiary: "#606060", // text/color/secondary (same as select.placeholder)
   body: "#333333", // field values, card figures, section headings
   secondary: "#606060", // labels, helper copy, select placeholder
   hint: "#909090", // italic helper notes under a label
@@ -73,12 +74,6 @@ const neutral = {
   bg: "#ffffff",
   fg: "#171717",
   white: "#ffffff",
-};
-
-const text = {
-  heading: "#020618",
-  muted: "#3E4958",
-  tertiary: "#606060", // text/color/secondary (same as select.placeholder)
 };
 
 const border = {
