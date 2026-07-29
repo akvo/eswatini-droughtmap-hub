@@ -2,8 +2,8 @@
 
 **Task ID**: WX-9 (Track 3 — closes [WX-8](citizen-science-weather-ui-and-emails.md) D-8 and [WX-6](citizen-science-weather.md) work plan §10.8)
 **Author**: Iwan Firmawan (with Claude)
-**Date**: 2026-07-27 (rev. 2 — open questions resolved by Iwan)
-**Status**: Approved for implementation
+**Date**: 2026-07-29 (rev. 3 — WX-8 Part A landed; §B.3 middleware implemented ahead of this plan, see D-13. rev. 2 resolved the open questions)
+**Status**: Approved for implementation — **work-plan item 5 (middleware) is done**; everything else outstanding
 
 ---
 
@@ -14,6 +14,13 @@
 ### Relationship to WX-8
 
 WX-8 (restyle + emails) and this plan touch the same files. **WX-8 lands first** (D-8): restyling against deterministic mock data keeps a visual regression distinguishable from a data bug. The one exception is WX-8's optional 15th item — the `?token=` handler — which is specified here as §B.1 and may travel with either PR.
+
+**WX-8 Part A shipped on 2026-07-29** (branch `feature/148-weather-update-from-uneswa-ui`) and moved two things this plan asserts:
+
+1. **The module no longer has one shell.** `/citizen-weather/admin` renders inside the standard DIH `AppShell` (navbar + footer); only the observer surface keeps the standalone `.cw-app` frame, scoped by an `app/citizen-weather/(observer)/` route group (WX-8 §A.9 / D-13). **URLs are unchanged**, so every path in this plan still reads correctly.
+2. **Route protection landed early.** `middleware.js` now guards both citizen-weather subtrees. §B.3 is rewritten below to what shipped, with the one deliberate difference recorded as **D-13**.
+
+What did **not** move: no screen makes an API call, there is still no observer session, `USER_ROLES` still has no `observer`, and the admin subtree still has no `UserContextProvider`. §A.2, §B.1, §B.2, §C and §D all stand as written.
 
 ---
 
@@ -34,9 +41,9 @@ WX-8 (restyle + emails) and this plan touch the same files. **WX-8 lands first**
 
 `IsObserver` (`utils/custom_permissions.py:21`) requires role **and** a bound Inkhundla — every observer endpoint scopes by `request.user.administration`, never by payload. Nothing in this plan may weaken that.
 
-### A.2 Frontend — six routes, zero API calls
+### A.2 Frontend — seven routes, zero API calls
 
-*(Six after WX-8: the schedule screen is deleted, the observer area splits in two.)*
+*(Seven as shipped: the observer area split in two, and the schedule screen was renamed to `admin/reminders/` rather than deleted — WX-8 §A.10, still to be resolved.)*
 
 `grep -rn "token\|api(" app/citizen-weather` returns nothing. Every screen imports from `static/mocks/citizen-weather/index.js`, which exports 14 fixtures:
 
@@ -70,11 +77,11 @@ data = {"user": UserSerializer(instance=user).data,
 
 So the observer session is `signIn`'s body with a different URL and a token instead of credentials. That symmetry is the whole design of §B.1.
 
-Three related gaps follow from it:
+Three related gaps followed from it. One is now closed:
 
-1. `static/config.js` `USER_ROLES` has `admin: 1, reviewer: 2` — **no `observer: 3`**, so no middleware rule can name the role.
-2. `middleware.js` does not mention `/citizen-weather` at all: `protectedRoutes` is an **exact-match** list (`protectedRoutes.includes(pathName)`), so even adding `/citizen-weather` there would not cover `/citizen-weather/observe`.
-3. `app/citizen-weather/layout.js` renders a bare `<div>` — **no `UserContextProvider`**, so `<Can>` inside that subtree reads a null context and renders nothing (§C).
+1. `static/config.js` `USER_ROLES` has `admin: 1, reviewer: 2` — **still no `observer: 3`**, so no middleware rule can yet name the role. This is what caps §B.3 at "any authenticated user" for the observer area (D-13).
+2. ~~`middleware.js` does not mention `/citizen-weather` at all: `protectedRoutes` is an **exact-match** list.~~ **Closed 2026-07-29.** `protectedRoutes` is now a prefix→sign-in-path map matched with `startsWith`, and both citizen-weather subtrees are in it — see §B.3.
+3. `app/citizen-weather/(observer)/layout.js` renders a themed `<div>` and the admin subtree has **no layout at all** — so still **no `UserContextProvider`** anywhere under `/citizen-weather`, and `<Can>` there reads a null context and renders nothing (§C). Joining the app shell did not fix this: `AppShell` passes a session, not abilities.
 
 ---
 
@@ -120,26 +127,54 @@ The expired-link branch is the one that matters in practice: a 7-day link and a 
 
 `POST /auth/observer/request-link` always returns the same 200 body regardless of whether the email exists (WX-6 §8, pinned by a backend test). **The frontend must not undo that**: render the returned message verbatim, never "we couldn't find that email", never a different UI branch on 404 vs 200. A 429 from `CSLinkThrottle` is the one distinguishable outcome and gets its own copy.
 
-### B.3 Role gating
+### B.3 Role gating — **implemented 2026-07-29**, with one gap
 
-- `static/config.js`: add `observer: 3` to `USER_ROLES`; add `[USER_ROLES.observer]: "/citizen-weather/observe"` to `HOME_PAGE` so the existing post-login redirect works unchanged.
-- `middleware.js`: `/citizen-weather` subpaths need `startsWith`, not the exact-match `protectedRoutes` array. Add alongside the existing role block:
+`protectedRoutes` was an exact-match array, so `/publications/create` and every other sub-route was unguarded. It is now a prefix→destination map, matched with `startsWith` — which fixes that class of hole for the whole app and gives each subtree its own sign-in page:
 
 ```js
-const isObserverArea = pathName.startsWith("/citizen-weather/observe");
-const isCsAdminArea  = pathName.startsWith("/citizen-weather/admin");
-// unauthenticated: send to the CS sign-in, not /login — observers have no password
-if (!session && (isObserverArea || isCsAdminArea)) {
-  return NextResponse.redirect(new URL("/citizen-weather", request.url));
+// route prefix -> where anonymous visitors are sent.
+// observers sign in with an emailed magic link, not the password form.
+const protectedRoutes = {
+  "/citizen-weather/admin": "/login",
+  "/citizen-weather/observe": "/citizen-weather",
+  "/profile": "/login",
+  "/publications": "/login",
+  "/reviews": "/login",
+  "/settings": "/login",
+  "/validations": "/login",
+};
+
+const signInPath = Object.entries(protectedRoutes).find(([route]) =>
+  pathName.startsWith(route),
+)?.[1];
+
+if (!session && signInPath) {
+  return NextResponse.redirect(new URL(signInPath, request.url));
 }
-// wrong role
-if (role !== USER_ROLES.observer && isObserverArea) → /unauthorized
-if (role !== USER_ROLES.admin && isCsAdminArea)     → /unauthorized
 ```
 
-Sending an unauthenticated visitor to `/citizen-weather` rather than `/login` is the point of the module having its own shell — an observer has no password to enter on `/login`.
+Sending an unauthenticated observer to `/citizen-weather` rather than `/login` is the point of the module having its own shell — an observer has no password to enter on `/login`. Admins do, so `/citizen-weather/admin` goes to `/login` like every other staff route; this plan originally sent both to `/citizen-weather`, and that was wrong for the admin half (D-13).
 
-`/citizen-weather` itself stays public (it is the sign-in screen).
+Verified against the dev server, logged out:
+
+| Path | Result |
+|---|---|
+| `/citizen-weather` | 200 — public sign-in screen |
+| `/citizen-weather/observe`, `/observe/2026-05` | 307 → `/citizen-weather` |
+| `/citizen-weather/admin`, `/admin/stations/add` | 307 → `/login` |
+| `/publications/create` | 307 → `/login` *(was unguarded)* |
+
+**Role gating: half done.**
+
+- `/citizen-weather/admin` is in the existing admin-role block, so a signed-in reviewer is sent to `/unauthorized`. ✅
+- `/citizen-weather/observe` has **no role check** — any authenticated user reaches it. **Deliberate, D-13**: `USER_ROLES.observer` does not exist yet, so there is no role to compare against.
+
+**Still to do here** (unchanged from rev. 2): add `observer: 3` to `USER_ROLES`, `[USER_ROLES.observer]: "/citizen-weather/observe"` to `HOME_PAGE`, and then the observer-area role check — one clause, once the constant exists:
+
+```js
+(role !== USER_ROLES.observer && pathName.startsWith("/citizen-weather/observe"))
+  → /unauthorized
+```
 
 ---
 
@@ -164,7 +199,9 @@ So `<Can>` is the **UI** gate; the middleware rule in §B.3 is the **navigation*
 
 ### C.2 The three pieces
 
-**1. Provider** — new `app/citizen-weather/admin/layout.js`, a verbatim copy of the `publications` layout pattern:
+**1. Provider** — new `app/citizen-weather/admin/layout.js`, a verbatim copy of the `publications` layout pattern.
+
+> **Note (rev. 3).** A file at this path existed briefly during the WX-8 work and was removed: it wrapped `<AppShell>`, which the root layout already provides, and supplied **no** `UserContextProvider` — so it added a duplicate shell and zero abilities. The layout below is still needed, and it is the provider that is the point of it, not the shell.
 
 ```js
 import { auth } from "@/lib";
@@ -314,13 +351,15 @@ Error mapping (all 400): email already taken (checked including soft-deleted), I
 ## 1. Context & Problem Statement
 
 ```
-Currently:
-- 5 citizen-weather screens render entirely from static/mocks/citizen-weather.
+Currently (2026-07-29, after WX-8 Part A):
+- 7 citizen-weather screens render entirely from static/mocks/citizen-weather.
   No screen makes an API call; grep for "api(" under app/citizen-weather is empty.
 - All 8 WX-6 endpoints ship, are permission-guarded and covered by the 626-test run.
 - No observer can sign in: verify-link returns a JWT, but nothing on the frontend
   exchanges the token or writes the currentUser cookie.
-- USER_ROLES has no observer; middleware does not mention /citizen-weather.
+- Middleware DOES now guard both subtrees (anonymous /observe -> /citizen-weather,
+  /admin -> /login, non-admin /admin -> /unauthorized), but USER_ROLES still has
+  no observer, so the observer area is any-authenticated for now (D-13).
 - The citizen-weather subtree has no UserContextProvider, so <Can> denies everyone.
 - Two mock fields (AEZ, assigned admin) describe data the backend deliberately
   does not store.
@@ -343,10 +382,10 @@ Goal:
 - [ ] An observer can correct and re-submit an already-submitted month in the window, and doing so **never loses a value they did not change**.
 - [ ] Out-of-range or non-sensor values are accepted, stored where valid, and reported back as warnings — never blocked.
 - [ ] An admin sees real network stats and station rows, can trigger reminders, nudge one observer, add a station+observer, and download the CSV.
-- [ ] A non-admin opening `/citizen-weather/admin` is redirected, not shown an empty page.
+- [x] A non-admin opening `/citizen-weather/admin` is redirected, not shown an empty page. *(Shipped 2026-07-29: anonymous → `/login`, signed-in non-admin → `/unauthorized`.)*
 - [ ] A station detail for an Inkhundla with no observer shows "No observer assigned" with a way to add one — not a 404.
 - [ ] The CSV export downloads for a signed-in admin from the browser.
-- [ ] An observer opening `/citizen-weather/admin` is redirected; an admin opening `/citizen-weather/observe` is redirected.
+- [ ] An observer opening `/citizen-weather/admin` is redirected; an admin opening `/citizen-weather/observe` is redirected. *(First half shipped. Second half is deferred by **D-13** — the observer area is any-authenticated until `USER_ROLES.observer` exists; the API still refuses a non-observer.)*
 
 ### Technical Acceptance Criteria
 - [ ] `static/mocks/citizen-weather/` retains only `SENSOR_OPTIONS`, `STATION_TYPES`, `NUDGE_TONES` — everything else deleted, not left dangling.
@@ -520,6 +559,14 @@ A correction leaves `submitted_at` untouched and moves `updated_at` (`auto_now`)
 **Constraint that makes this non-optional**: a bare `<a href="/api/v1/weather/citizen-science/export">` sends no `Authorization` header, so it 401s — the JWT lives in the httpOnly `currentUser` cookie and is attached by `lib/api.js`, not by the browser. The download therefore has to go through the app's fetch path regardless of preference.
 **Note**: `api()` `JSON.parse`s and would reject on CSV; use the `apiText`/blob path.
 
+### D-13: The observer area is any-authenticated until `USER_ROLES.observer` exists (added rev. 3)
+
+**Decision (Iwan, 2026-07-29)**: `/citizen-weather/observe` requires a session and redirects anonymous visitors to `/citizen-weather`; it does **not** yet check the role — *"for now any logged in can access this page."* `/citizen-weather/admin` keeps the full admin-role check.
+**Why it is safe to ship in this order**: the gate that matters is on the server. Every observer endpoint is `IsObserver`, which requires role **and** a bound Inkhundla and scopes every query by `request.user.administration` (§A.1). An admin who reaches `/observe` today sees a mock screen; once §D.2 wires it, they will see a 403 from the API, not another observer's data. Middleware decides navigation, not access (D-2).
+**Why not just add the constant now**: `USER_ROLES.observer = 3` is only meaningful together with `HOME_PAGE`, `signInWithToken` and the post-login redirect — items 2–4 of the work plan. Adding the role check alone would lock out every account that exists today, since no session in the system carries role 3.
+**Follow-up**: this becomes a one-clause change when item 2 lands (§B.3). Until then the interim state is: an admin can open the observer screens.
+`// ponytail: one clause deferred, not a permission model deferred — the server was always the boundary.`
+
 ## 6. Type/Constant Mappings
 
 | Frontend | Backend constant | Value |
@@ -567,7 +614,7 @@ A correction leaves `submitted_at` untouched and moves `updated_at` (`auto_now`)
 |-----------|----------|
 | Unit (frontend) | Field-key adapter maps API keys → form fields; sensor filter yields the right `FIELDS` for `[]`, `["rain_gauge"]`, all six; history `status` derivation (`complete`/`partial`/`missed`/`draft`); completeness class uses payload thresholds |
 | Integration (frontend, mocked fetch) | Sign-in: valid token → redirect; invalid → form + alert; request-link 200 and 429 copy; observer form save-draft vs submit payloads (`submit` flag); `warnings` rendered after save; admin dashboard maps `stats` to the four cards; add-station 400s map to the right fields |
-| Auth/routing | Middleware: unauthenticated `/observe` → `/citizen-weather`; observer on `/admin` → `/unauthorized`; admin on `/observe` → `/unauthorized`; `/citizen-weather` stays public |
+| Auth/routing | Middleware: unauthenticated `/observe` → `/citizen-weather`; unauthenticated `/admin` → `/login`; non-admin on `/admin` → `/unauthorized`; `/citizen-weather` stays public. Admin-on-`/observe` → `/unauthorized` lands with item 2 (D-13); until then assert the current behaviour rather than the intended one, so the test says what is true |
 | `<Can>` | Admin abilities render the dashboard; empty abilities render nothing; the admin layout supplies abilities (regression for the missing-provider bug in §C.1) |
 | Backend | Seeder adds exactly three `CitizenScience` rows for admin and none for observer/reviewer; re-running is idempotent. **Window guard (D-8)**: PUT for a month inside the window succeeds; the month before the window, and any future month, both 400 — with the boundary months tested explicitly, since an off-by-one here silently blocks the oldest legitimate month |
 | Integration (frontend) | Observer list renders 12 rows for an observer with no readings, with the CTA; submit redirects to the list and carries `warnings` through the redirect |
@@ -586,8 +633,8 @@ The regression worth naming: **the missing-provider bug**. `<Can>` failing close
 | 2 | `USER_ROLES.observer` + `HOME_PAGE` entry | FE | S |
 | 3 | `signInWithToken` in `lib/auth.js` | FE | S |
 | 4 | Sign-in screen: token exchange, request-link, expired-link branch | FE | M |
-| 5 | Middleware rules for `/citizen-weather/{observe,admin}` | FE | S |
-| 6 | `admin/layout.js` with `UserContextProvider` + `<Can>` wrapping | FE | S |
+| 5 | ~~Middleware rules for `/citizen-weather/{observe,admin}`~~ | FE | ✅ **done 2026-07-29** (§B.3) — the observer *role* clause waits on item 2 (D-13) |
+| 6 | `admin/layout.js` with `UserContextProvider` + `<Can>` wrapping | FE | S — still outstanding; see the note in §C.2 |
 | 7 | Observer list + form: GET/PUT, key rename, sensor gating, warnings, submit→list redirect | FE | L |
 | 8 | Admin dashboard: stats + rows, reminders, nudge, CSV export | FE | M |
 | 9 | Station detail: row lookup + `?history=12` timeline | FE | M |

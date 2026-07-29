@@ -2,8 +2,12 @@
 
 **Task ID**: WX-8 (Track 3 — follow-up to [WX-6 `citizen-science-weather.md`](citizen-science-weather.md) work plan §10.8)
 **Author**: Iwan Firmawan (with Claude)
-**Date**: 2026-07-27 (rev. 3 — observer list-first IA added per WX-9 OQ-1; rev. 2 resolved the open questions)
-**Status**: Approved for implementation
+**Date**: 2026-07-29 (rev. 4 — Part A implemented; §A.9 admin-shell split added. rev. 3 added the observer list-first IA per WX-9 OQ-1; rev. 2 resolved the open questions)
+**Status**: Part A **implemented** (branch `feature/148-weather-update-from-uneswa-ui`, one deviation — §A.10); Part B not started
+
+---
+
+> **Implementation note (2026-07-29).** Part A has shipped, with one structural change this plan did not anticipate: the module is no longer one shell. `/citizen-weather/admin` is a **staff** surface and now renders inside the standard DIH `AppShell` (navbar + footer) using the `publications` page layout; only the observer surface keeps the standalone `.cw-app` shell. §A.9 records the split and §A.10 the deviation from D-10. Part B (emails) is untouched — every gap in §B still stands as written.
 
 ---
 
@@ -19,7 +23,7 @@
 | Emoji → SVG icon components | Adding routes/screens not already built |
 | Promote two existing literals in `tokens.js` to named tokens | **Changing any design-system value** (OQ-6: current system wins over the mockup) |
 | Delete the `/admin/schedule` screen (OQ-3) | A stored reminder-schedule model — reminders stay backend cron |
-| **Split `observe/` into list + form routes** (§A.9) | The API calls those routes will make — WX-9 |
+| **Split `observe/` into list + form routes** (§A.8) | The API calls those routes will make — WX-9 |
 | Wire the 3 static CS email templates into `send_email` | siSwati translations (WX-6 §11 OQ-2: English v1) |
 | Fix email copy that contradicts the schema/token lifetime | Renaming "EDM" outside the mail subject (see §11 OQ-4 note) |
 
@@ -27,24 +31,28 @@
 
 ## Part A · Frontend design-system alignment
 
-### A.1 Current state — what is actually there
+### A.1 State — before, and as shipped
 
-`frontend/src/app/citizen-weather/` (2,669 lines across 8 files) plus 2 components:
+**Before** (2,669 lines across 8 files): `layout.js` wrapped everything in `.cw-app`, `citizen-weather.css` (1,124 lines) defined 14 `--cw-*` variables from the old hand-picked palette, and the JSX carried 36 distinct hardcoded hexes over 60+ occurrences (`#00B98E` ×17, `#94A3B8` ×14, `#4B5563` ×14, `#1C2B3A` ×6, `#F5B840` ×5) — none of them in `frontend/src/static/tokens.js`. `AppShell` bypassed Navbar/Footer for the whole `/citizen-weather` prefix (WX-6 OQ-1).
+
+**As shipped** — the route group is the visible change: the observer surface keeps the standalone shell, the admin surface joins the app (§A.9).
 
 | File | Lines | State |
 |---|---|---|
-| `layout.js` | 13 | Imports `citizen-weather.css`, wraps in `.cw-app`. `AppShell` already bypasses Navbar/Footer for `/citizen-weather` (deliberate, WX-6 OQ-1) |
-| `citizen-weather.css` | 1,124 | Port of the mockup CSS; defines 14 `--cw-*` variables = the **old hand-picked palette** |
-| `page.js` (sign-in) | 87 | Mock submit (`setTimeout`), 🌦 emoji logo, inline `#00B98E` button. **Rebuild against `/login`** — see A.8 |
-| `observe/page.js` | 277 | 8 emoji, mock data. Hero + form + history in one page — **splits into list + `[period]` form** (§A.9) |
-| `admin/page.js` | 247 | 2 emoji, mock stats. Loses its "Reminder schedule" link (OQ-3) |
-| `admin/schedule/page.js` | 290 | **DELETE** (OQ-3) — configures a schedule no backend stores |
-| `admin/stations/add/page.js` | 410 | Mock submit |
-| `admin/stations/[id]/page.js` | 221 | Mock detail |
-| `components/CitizenWeather/CWHeader.js` | 34 | ⚙/🌦 emoji, inline `#1C2B3A`/`#F5B840` |
-| `components/CitizenWeather/NudgeModal.js` | ~150 | Cambria serif heading, inline `#F5B840`/`#00B98E` |
+| `(observer)/layout.js` | 18 | Imports `citizen-weather.css`, applies `cwThemeVars` + `.cw-app`. Scoped to the route group, so **admin does not inherit it** |
+| `(observer)/citizen-weather.css` | 1,072 | `:root` remapped to `var(--edm-*)`; adherence layer ported; Ant-duplicating rules deleted |
+| `(observer)/page.js` (sign-in) | 95 | Rebuilt on `Form` + `SubmitButton` + `Alert` per §A.7. Submit is still a `setTimeout` mock — WX-9 §D.1 wires it |
+| `(observer)/observe/page.js` | 204 | History list + CTA (§A.8) |
+| `(observer)/observe/[period]/page.js` | 251 | Per-month form |
+| `admin/page.js` | 205 | Station table on the `publications` layout (§A.9). Keeps its "Reminder schedule" link — see §A.10 |
+| `admin/reminders/page.js` | 293 | The former `admin/schedule/` screen, **renamed rather than deleted** — deviates from D-10, §A.10 |
+| `admin/stations/add/page.js` | 392 | Mock submit |
+| `admin/stations/[id]/page.js` | 257 | Mock detail |
+| `components/CitizenWeather/CWHeader.js` | 39 | Icon components, `--cw-*` vars. **Observer-only now** — the admin pages dropped it for the app navbar |
+| `components/CitizenWeather/CWIcons.js` | 149 | The 4 weather glyphs (D-5) |
+| `components/CitizenWeather/NudgeModal.js` | 117 | Ant `Modal`, no serif |
 
-**Hardcoded hex literals in JSX**: 36 distinct values, 60+ occurrences. Top offenders: `#00B98E` ×17, `#94A3B8` ×14, `#4B5563` ×14, `#1C2B3A` ×6, `#F5B840` ×5. None of these exist in `frontend/src/static/tokens.js`.
+`grep -E "#00B98E|#F5B840|#B85042|#1C2B3A|Cambria"` over `app/citizen-weather/` and `components/CitizenWeather/` returns **zero matches** — the condition the grep guard (§A.11 item A11) asserts holds today; the test itself is still to be written.
 
 ### A.2 What the alignment file actually changes
 
@@ -200,25 +208,74 @@ Post-submit → redirect to the list, where the row now reads *Submitted*. Save 
 
 **Backend consequence, handled in WX-9**: a URL-addressable form means `/observe/2030-01` is reachable by typing, and the PUT currently has no window check (`parse_period` accepts any valid `YYYY-MM`). WX-9 adds the guard; this doc's mock-data version simply renders months from `trailing_window`.
 
-### A.9 Work plan — Part A
+### A.9 Admin is a staff surface — it joins the app shell (added rev. 4)
 
-| # | Task | Files | Est. |
-|---|------|-------|------|
-| A0 | Split `observe/` into list + `[period]` form per §A.8 (do this **before** restyling, so the layout is not styled twice) | `observe/page.js` → `observe/page.js` + `observe/[period]/page.js` | M |
-| A1 | Promote `brand.p100` + `text.tertiary` (aliases, same hexes). **No value edits.** | `static/tokens.js` | S |
-| A2 | Derive the `--edm-*` map from tokens; apply as inline vars on the CW root | new `static/cw-theme.js`, `citizen-weather/layout.js` | S |
-| A3 | Rewrite the `:root` block: 14 `--cw-*` literals → `var(--edm-*)` | `citizen-weather.css` | S |
-| A4 | Port the 94-rule adherence layer, re-targeted per §A.4 | `citizen-weather.css` | M |
-| A5 | Delete `cw-` rules that duplicate the Ant theme (table/modal/tag) | `citizen-weather.css` (−~120 lines) | S |
-| A6 | Delete the schedule screen + its entry point (OQ-3) | `admin/schedule/` (−290), `admin/page.js` | S |
-| A7 | Rebuild sign-in against `/login` (`Form` + `SubmitButton` + `bg-dhi-pattern`) per §A.7 | `citizen-weather/page.js` | S |
-| A8 | `bg-dhi-pattern` backdrop on the observer + station heroes | `observe/[period]/page.js`, `admin/stations/[id]/page.js` | S |
-| A9 | `CWIcons.js` (4 weather glyphs) + swap all 44 emoji for icon components | new `CWIcons.js`, 6 page/component files | M |
-| A10 | Strip the 60+ inline hex literals from JSX; move to classes or `--edm-*` | 6 page/component files | M |
-| A11 | Jest render smoke tests per route (mirrors `app/__tests__/page.test.js`) + the grep guard | `citizen-weather/__tests__/` | S |
-| A12 | `yarn lint` + `yarn build` green; visual check of all 6 routes (5 after the schedule deletion, +1 from the observe split) | — | S |
+This plan assumed one module with one shell: repoint the palette, keep the standalone `.cw-app` frame that WX-6 OQ-1 chose for the whole `/citizen-weather` prefix. Building it showed that assumption splits along the same line the permissions do.
 
-**Verification that matters most** (A11): a single test asserting the retired palette literals and `Cambria` appear nowhere under `citizen-weather/` — that is the one check that fails loudly if the refactor is left half-done.
+**The observer surface is public-facing and once-a-month.** It earns a standalone shell: no navbar an observer has no use for, no footer link to a validation queue they cannot open.
+
+**The admin surface is staff-facing.** An admin who manages stations also publishes CDI maps and reviews validations, and the citizen-weather dashboard is one more item in that day's work. Giving it its own chrome means an admin loses the navbar exactly where they need it and lands on a page that looks like a different product.
+
+So the shell now splits by subtree, not by prefix:
+
+| Surface | Shell | Theme |
+|---|---|---|
+| `/citizen-weather`, `/citizen-weather/observe/**` | standalone (`AppShell` returns `children`) | `.cw-app` + `cwThemeVars` |
+| `/citizen-weather/admin/**` | standard DIH — `Navbar`, container, `LogoSection`, `Footer` | app defaults; **no** `.cw-app` |
+
+Two mechanisms, both boring:
+
+1. **A route group**, `app/citizen-weather/(observer)/`, holds the sign-in page, `observe/**`, `citizen-weather.css` and the layout that applies `.cw-app`. URLs are unchanged — a route group is parentheses, not a path segment. `admin/**` sits outside it and therefore inherits nothing from it. This is what stops `.cw-app`'s `min-height:100vh` grey fill and its `.ant-btn` overrides from reaching admin screens, and it does so structurally: there is no runtime check to get wrong.
+2. **`AppShell` narrows its bypass** from `/citizen-weather` to "`/citizen-weather` **except** `/citizen-weather/admin`".
+
+`// ponytail: a route group, not a pathname check in a client layout — the file tree is the condition.`
+
+**The admin pages then follow `publications`, not the mockup.** [`app/(auth)/publications/page.js`](../../../frontend/src/app/(auth)/publications/page.js) is the reference for every admin screen, the same way `/login` is the reference for sign-in (§A.7):
+
+| Element | Pattern |
+|---|---|
+| Hero | `<PageHeader title description actions />` — replaces the hand-rolled `CWHeader` + hero on all four screens; sub-pages pass a "Back to admin" `Button` as `actions` |
+| Full-bleed band | `relative left-1/2 w-screen -translate-x-1/2 px-4 … xl:px-20` + an absolute `bg-brandTint` fill from `top-[72px]` |
+| Card | `relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-cardBorder bg-white` |
+| Table | `<Table className="edm-reviews-table">` + `TabButtons` filter row |
+| Footer CTA | `<FeedbackSection />` on the dashboard |
+
+The `-mt-16` card lift is why this is not cosmetic: it only reads correctly under a `PageHeader`. The admin dashboard had the lift and no header, so its card slid up under the navbar — the reported breakage.
+
+**Consequence for `CWHeader`**: it is now observer-only. It stays, unchanged, on `observe/**`, where the standalone shell still needs a header.
+
+**Consequence for WX-9 §C**: the admin subtree has **no `UserContextProvider`**, so `<Can>` there still denies everyone. Joining the app shell does not supply abilities — `AppShell` passes a session, not a CASL context. WX-9 §C.2's `admin/layout.js` is still required and still outstanding.
+
+### A.10 Deviation: the schedule screen was renamed, not deleted
+
+D-10 / OQ-3 decided `/citizen-weather/admin/schedule` should be **deleted** — it configures a cron the backend does not read, and a control panel that silently does nothing is worse than no control panel. What actually landed in `2a12744` is a rename: `admin/schedule/page.js` was removed and `admin/reminders/page.js` added, same 290-odd lines, same controls, still wired to nothing. The dashboard's "Reminder schedule" link survived with it.
+
+The rev.-4 work then restyled that screen alongside the other three, so the deviation is now *more* finished than it was.
+
+**This needs a decision, and it is not one this rev. makes.** Either D-10 stands and `admin/reminders/` plus its dashboard link are deleted (one work-plan item, ~293 lines out), or D-10 is amended with the reason the screen is worth keeping — a read-only "here is when reminders go out, change it in the crontab" view is a defensible third option, but it is not what the screen currently is. Until then it is a form whose Save button does nothing, on a page that now looks like the rest of the product, which is precisely the trustworthiness problem D-10 named.
+
+### A.11 Work plan — Part A
+
+| # | Task | Files | Est. | Status |
+|---|------|-------|------|---|
+| A0 | Split `observe/` into list + `[period]` form per §A.8 (do this **before** restyling, so the layout is not styled twice) | `observe/page.js` → `observe/page.js` + `observe/[period]/page.js` | M | ✅ |
+| A1 | Promote `brand.p100` + `text.tertiary` (aliases, same hexes). **No value edits.** | `static/tokens.js` | S | ✅ |
+| A2 | Derive the `--edm-*` map from tokens; apply as inline vars on the CW root | new `static/cw-theme.js`, `(observer)/layout.js` | S | ✅ |
+| A3 | Rewrite the `:root` block: 14 `--cw-*` literals → `var(--edm-*)` | `citizen-weather.css` | S | ✅ |
+| A4 | Port the 94-rule adherence layer, re-targeted per §A.4 | `citizen-weather.css` | M | ✅ |
+| A5 | Delete `cw-` rules that duplicate the Ant theme (table/modal/tag) | `citizen-weather.css` (−~120 lines) | S | ✅ |
+| A6 | Delete the schedule screen + its entry point (OQ-3) | `admin/schedule/` (−290), `admin/page.js` | S | ⚠️ **renamed to `admin/reminders/`, not deleted — §A.10** |
+| A7 | Rebuild sign-in against `/login` (`Form` + `SubmitButton` + `bg-dhi-pattern`) per §A.7 | `(observer)/page.js` | S | ✅ |
+| A8 | `bg-dhi-pattern` backdrop on the observer + station heroes | `observe/[period]/page.js`, `admin/stations/[id]/page.js` | S | ✅ (admin heroes now get it via `PageHeader` — §A.9) |
+| A9 | `CWIcons.js` (4 weather glyphs) + swap all 44 emoji for icon components | new `CWIcons.js`, 6 page/component files | M | ✅ |
+| A10 | Strip the 60+ inline hex literals from JSX; move to classes or `--edm-*` | 6 page/component files | M | ✅ for the retired palette; neutral greys (`#333333`, `#606060`, `#eaecf0`) remain inline, matching `publications` |
+| A11 | Jest render smoke tests per route (mirrors `app/__tests__/page.test.js`) + the grep guard | `citizen-weather/__tests__/` | S | ☐ **outstanding** |
+| A12 | `yarn lint` + `yarn build` green; visual check of all 7 routes | — | S | ✅ lint + build; observer routes visually checked, admin routes **not** (needs an admin session) |
+| A13 | *(added rev. 4)* Route group + `AppShell` bypass narrowing; admin screens onto the `publications` layout | `(observer)/`, `AppShell.js`, 4 admin pages | M | ✅ — §A.9 |
+
+**Verification that matters most** (A11): a single test asserting the retired palette literals and `Cambria` appear nowhere under `citizen-weather/` — that is the one check that fails loudly if the refactor is left half-done. **It has not been written.** The grep passes today (§A.1), which is exactly the state in which a guard test is cheap to add and easy to forget.
+
+**Also outstanding, and cheap**: a middleware test for the redirect map (WX-9 §B.3) and a render test for the admin dashboard's status/region filters, which shared one state variable until rev. 4 — selecting a region silently reset the status tab.
 
 ---
 
@@ -366,20 +423,22 @@ Goal:
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] An observer opening any citizen-weather screen sees DIH brand indigo, Inter type and the standard component chrome — no Akvo-green CTAs, no serif headings.
-- [ ] Every icon renders as an SVG glyph; no emoji appears in the UI.
+- [x] An observer opening any citizen-weather screen sees DIH brand indigo, Inter type and the standard component chrome — no Akvo-green CTAs, no serif headings.
+- [x] Every icon renders as an SVG glyph; no emoji appears in the UI.
 - [ ] An observer registered by an admin receives the designed **welcome** email; the magic link opens the citizen-weather sign-in route rather than a 404.
 - [ ] An observer who requests a fresh link receives sign-in copy, not "welcome aboard".
 - [ ] On the 1st of the month an observer receives the designed **reminder**, listing exactly the fields *their station's sensors cover*, and stating the correct 7-day link validity.
 - [ ] An admin nudging a single observer sends their own message through the **nudge** template.
-- [ ] An admin can no longer open a reminder-schedule screen that configures nothing.
-- [ ] An observer opening `/citizen-weather/observe` sees their reporting history with a clear CTA to log the outstanding month, and can open any month's form from its row.
-- [ ] A magic link still lands the observer **directly on the form**, not on the list.
+- [ ] ~~An admin can no longer open a reminder-schedule screen that configures nothing.~~ **Not met** — the screen was renamed, not removed (§A.10).
+- [x] An observer opening `/citizen-weather/observe` sees their reporting history with a clear CTA to log the outstanding month, and can open any month's form from its row.
+- [ ] A magic link still lands the observer **directly on the form**, not on the list. *(needs the token exchange — WX-9 §B.1.)*
+- [x] *(added rev. 4)* An admin opening `/citizen-weather/admin` gets the standard DIH navbar and footer, and a page that reads like `/publications` — not a second product.
 
 ### Technical Acceptance Criteria
-- [ ] No **colour** literal remains in `citizen-weather.css` or any citizen-weather JSX — all resolve through `--edm-*` ← `tokens.js` (grep-enforced by a test). Sizes/weights/tracking stay plain CSS values (D-9).
-- [ ] `tokens.js` value edits: **zero** (D-4). Two same-hex aliases added.
-- [ ] Net-new frontend dependencies: **zero**.
+- [x] No **colour** literal remains in `citizen-weather.css` or any citizen-weather JSX — all resolve through `--edm-*` ← `tokens.js`. Sizes/weights/tracking stay plain CSS values (D-9). *Caveat: the retired palette is gone and the grep passes, but **the enforcing test is not written** (§A.11), and the admin screens carry the same inline neutral greys `publications` does.*
+- [x] `tokens.js` value edits: **zero** (D-4). Two same-hex aliases added.
+- [x] Net-new frontend dependencies: **zero**.
+- [x] *(rev. 4)* URLs unchanged by the route group — `/citizen-weather`, `/citizen-weather/observe[/period]`, `/citizen-weather/admin/**` all resolve exactly as before (verified against the dev server).
 - [ ] `send_email` selects a template by type via one dict; non-CS emails render byte-identically to today apart from the subject prefix (snapshot-pinned).
 - [ ] Link lifetime in copy derives from `CS_LINK_MAX_AGE`, not a literal.
 - [ ] The reminder field list derives from `observer_field_keys()` × `CS_FIELDS` — no field list hand-written in a template.
@@ -493,6 +552,7 @@ The adherence layer references `--edm-size-xs/xxs`, `--edm-weight-*` and `--edm-
 **Decision (Iwan)**: delete the route and its entry point from the admin dashboard — *"remove, use backend ways."* Schedule changes stay an ops action (crontab), matching the `check_overdue_reviews` precedent.
 **Rationale**: restyling it makes a control panel that silently does nothing look *more* trustworthy, which is worse than not shipping it — an admin who sets "07:00 → 09:00" and sees a success toast has been told something false. Deleting is also the shortest diff: 290 lines out, versus 290 restyled and then deleted later anyway.
 **Impact**: if configurable schedules are wanted later, they return as a designed feature with a model behind them. The screen's copy survives in the mockup for whoever picks that up.
+**Status (rev. 4): not followed.** The screen was renamed to `admin/reminders/` and restyled instead. This decision stands until someone amends it — see §A.10.
 
 ### D-11: Mail subject prefix `"EDM - "` → `"DIH - "` (OQ-4)
 
@@ -505,6 +565,15 @@ The prefix is kept — it is how every DIH mail identifies itself — but rename
 This plan is otherwise a restyle, and splitting a route is not styling. It lands here regardless.
 **Rationale**: the alternative is restyling a 277-line page whose hero, form and history are about to be separated — the restyle would be done twice, and the second pass would be indistinguishable from a regression in review. Moving the markup first costs one file move; restyling first costs the same work twice.
 **Impact**: WX-8 stops being a pure restyle, stated openly rather than smuggled in. The split is against mock data — no fetch, no auth — so it stays inside D-8's "restyle before wiring" rule.
+
+### D-13: The shell splits by subtree — observer standalone, admin inside the app (added rev. 4)
+
+**Supersedes** this plan's working assumption (inherited from WX-6 OQ-1) that `AppShell` bypasses Navbar/Footer for the whole `/citizen-weather` prefix.
+**Options**: (a) keep one standalone shell for the module; (b) keep it for observers only, and render `/citizen-weather/admin` inside the standard DIH shell.
+**Decision**: (b). Full reasoning in §A.9.
+**Rationale**: the bypass was chosen for *observers* — a once-a-month, phone-first, single-purpose surface. Admins are not that user: they arrive from the same navbar that takes them to publications and validations, and cutting it away on one dashboard costs them navigation to buy a citizen-facing feel that is not for them. The prefix was a proxy for the audience, and the two stop matching at `/admin`.
+**Mechanism**: a `(observer)` route group, not a pathname branch in a layout — URLs unchanged, and the theme cannot leak into admin because it is not in admin's layout chain.
+**Impact**: `.cw-app`'s `min-height:100vh` fill and `.ant-btn` overrides no longer reach admin screens; `CWHeader` becomes observer-only; and WX-9 §C's `admin/layout.js` is still needed for `<Can>` — the app shell supplies a session, not abilities.
 
 ## 6. Type/Constant Mappings
 
@@ -522,6 +591,9 @@ This plan is otherwise a restyle, and splitting a route is not styling. It lands
 | danger | `tokens.semantic.error` | `#FF4D4F` (was `#B85042`) |
 | display font | `tokens.font.heading` | `var(--font-inter)` (was Cambria) |
 | page/hero backdrop | Tailwind `bg-dhi-pattern` | `/images/dhi-pattern.svg` |
+| observer shell (standalone) | `AppShell` bypass | `/citizen-weather` **minus** `/citizen-weather/admin` |
+| observer theme scope | route group | `app/citizen-weather/(observer)/` — `.cw-app` + `cwThemeVars` |
+| admin page layout | `PageHeader` + `bg-brandTint` band + `border-cardBorder` card | mirrors `app/(auth)/publications/page.js` |
 
 ## 7. Compatibility & Migration
 
@@ -565,21 +637,22 @@ The grep guard is the load-bearing test: the refactor's failure mode is not a cr
 
 | # | Task | Part | Status |
 |---|------|------|--------|
-| 0 | Split `observe/` into list + `[period]` form (§A.8) — before the restyle | A | ☐ |
-| 1 | Tokens: promote `brand.p100` + `text.tertiary` (aliases only, no value edits) | A | ☐ |
-| 2 | `static/cw-theme.js` (`--edm-*` from tokens) + apply on `citizen-weather/layout.js` | A | ☐ |
-| 3 | `citizen-weather.css`: `:root` remap + adherence layer re-targeted to `cw-` selectors | A | ☐ |
-| 4 | Delete `cw-` rules duplicating the Ant theme (table/modal/tag) | A | ☐ |
-| 5 | Delete `admin/schedule/` + its dashboard link (D-10) | A | ☐ |
-| 6 | Rebuild sign-in against `/login`; `bg-dhi-pattern` on sign-in + heroes (§A.7) | A | ☐ |
-| 7 | `CWIcons.js` + emoji → icon swap across 6 files | A | ☐ |
-| 8 | Strip inline hex literals from JSX | A | ☐ |
+| 0 | Split `observe/` into list + `[period]` form (§A.8) — before the restyle | A | ✅ |
+| 1 | Tokens: promote `brand.p100` + `text.tertiary` (aliases only, no value edits) | A | ✅ |
+| 2 | `static/cw-theme.js` (`--edm-*` from tokens) + apply on the observer layout | A | ✅ |
+| 3 | `citizen-weather.css`: `:root` remap + adherence layer re-targeted to `cw-` selectors | A | ✅ |
+| 4 | Delete `cw-` rules duplicating the Ant theme (table/modal/tag) | A | ✅ |
+| 5 | Delete `admin/schedule/` + its dashboard link (D-10) | A | ⚠️ renamed to `admin/reminders/` — §A.10, needs a decision |
+| 6 | Rebuild sign-in against `/login`; `bg-dhi-pattern` on sign-in + heroes (§A.7) | A | ✅ |
+| 7 | `CWIcons.js` + emoji → icon swap across 6 files | A | ✅ |
+| 8 | Strip inline hex literals from JSX | A | ✅ (retired palette; neutral greys stay, as in `publications`) |
+| 8b | *(rev. 4)* `(observer)` route group + `AppShell` bypass narrowed; admin onto the `publications` layout (§A.9) | A | ✅ |
 | 9 | `send_email` template registry + `EmailTypes.cs_nudge` / `JobTypes.cs_nudge`; prefix → `"DIH - "` | B | ☐ |
 | 10 | `email_context` branches for the three CS types (context contract §B.3) | B | ☐ |
 | 11 | Magic-link URL fix → `/citizen-weather?token=` | B | ☐ |
 | 12 | Template copy fixes: link days from `CS_LINK_MAX_AGE`, sensor-gated `{% for %}` field list | B | ☐ |
 | 13 | `dispatch_cs_reminders(message=…)` + optional `message` on the reminders endpoint | B | ☐ |
-| 14 | Tests §9, CI green | A+B | ☐ |
+| 14 | Tests §9, CI green | A+B | ☐ — the frontend half (smoke + grep guard) is the gap; see §A.11 |
 
 Parts A and B share no files and can land as two independent PRs. B is the smaller one and should go first: it is the part observers actually receive, and its CTA currently points at a route that does not exist.
 
