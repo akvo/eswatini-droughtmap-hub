@@ -201,6 +201,7 @@ docker compose exec backend python manage.py fetch_weather_observations --from 2
 ```
 
 Notes:
+
 - `fetch_weather_observations` runs the station sync first, is **idempotent**
   (day-level upsert) and **self-healing** — a missed night backfills
   automatically on the next run.
@@ -247,6 +248,27 @@ Only active forms (`Active=True`) are synced from the Kobo API using the active 
 docker compose exec backend python manage.py download_iks_data
 ```
 
+### **Seed Risk Level Indicators: `generate_indicators_seeder`**
+
+The `generate_indicators_seeder` command seeds Tinkhundla risk level indicator details (exposure and vulnerability metrics) from:
+
+```bash
+backend/source/priority_areas.csv
+```
+
+It creates or updates `Indicator` records by matching the administration `name`, which makes it safe to run multiple times when the prototype CSV data changes.
+
+#### **Run Indicators Seeder with Docker**
+
+```bash
+docker compose exec backend python manage.py generate_indicators_seeder
+```
+
+Expected output:
+
+```bash
+Successfully seeded 59 indicators.
+```
 ### **Sync GeoNode Publication Cache: `sync_publication_geonodes`**
 
 The `sync_publication_geonodes` command is a manual backfill command to fetch metadata for all CDI, SPI, ESI, EVI2, and SM raster map resources from the configured GeoNode instance, saving them into the local database cache (`PublicationGeonode`). This cache ensures that:

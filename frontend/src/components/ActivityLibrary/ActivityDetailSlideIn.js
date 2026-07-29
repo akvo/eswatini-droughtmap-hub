@@ -165,13 +165,13 @@ export default function ActivityDetailSlideIn({
 
         {/* Sticky Footer */}
         {!loading && activity && (
-          <div className="px-6 py-4 border-t border-[#d2d2d2] flex justify-between items-center sticky bottom-0 bg-white z-10 w-full h-[76px]">
+          <div className="px-6 py-4 border-t border-cardBorder flex justify-between items-center sticky bottom-0 bg-white z-10 w-full h-[76px]">
             <div>
               {canEdit && (
                 <Can I="update" a="Activity">
                   <Button
                     onClick={() => onEdit(activity)}
-                    className="h-11 px-6 border border-solid border-[#e2e8f0] bg-white text-[#001946] font-medium rounded-none hover:bg-neutral-50 hover:text-[#001946] focus:bg-white focus:text-[#001946] focus:border-[#e2e8f0]"
+                    className="font-medium"
                   >
                     Edit
                   </Button>
@@ -184,7 +184,7 @@ export default function ActivityDetailSlideIn({
                 <Button
                   onClick={handleArchive}
                   loading={transitioning}
-                  className="h-11 px-6 border border-solid border-[#e2e8f0] bg-white text-[#001946] font-medium rounded-none hover:bg-neutral-50 focus:bg-white focus:text-[#001946] focus:border-[#e2e8f0] hover:border-red-200 hover:text-red-600"
+                  className="font-medium hover:!border-red-200 hover:!text-red-600"
                 >
                   Archive
                 </Button>
@@ -192,9 +192,10 @@ export default function ActivityDetailSlideIn({
 
               {canActivate && (
                 <Button
+                  type="primary"
                   onClick={handleActivate}
                   loading={transitioning}
-                  className="h-11 px-6 bg-[#3e5eb9] text-white font-medium rounded-none border-none hover:bg-[#2d468a] hover:text-white focus:bg-[#3e5eb9] focus:text-white"
+                  className="font-medium"
                 >
                   Set active
                 </Button>
@@ -203,8 +204,9 @@ export default function ActivityDetailSlideIn({
               {isDraft && canEdit && (
                 <Can I="update" a="Activity">
                   <Button
+                    type="primary"
                     onClick={() => onEdit(activity)}
-                    className="h-11 px-6 bg-[#3e5eb9] text-white font-medium rounded-none border-none hover:bg-[#2d468a] hover:text-white focus:bg-[#3e5eb9] focus:text-white"
+                    className="font-medium"
                   >
                     Save changes as draft
                   </Button>

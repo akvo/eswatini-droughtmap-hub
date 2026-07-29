@@ -100,7 +100,7 @@ const ReviewerMap = ({
   return (
     <div className="w-full">
       <CDIMap {...{ onFeature, onClick }} style={mapStyle} />
-      <div className="flex flex-wrap items-center gap-4 border-t border-[#eaecf0] px-4 py-3 text-xs leading-4 text-[#606060]">
+      <div className="flex flex-wrap items-center gap-4 border-t border-cardBorder px-4 py-3 text-xs leading-4 text-[#606060]">
         {legend.map(({ color, stroke, label }) => (
           <span key={label} className="flex items-center gap-1.5">
             <span

@@ -13,7 +13,7 @@ const DecisionHistory = ({ history = [] }) => {
     <div>
       <button
         type="button"
-        className="flex w-full items-center justify-between border-t border-[#eaecf0] px-6 py-4 text-left"
+        className="flex w-full items-center justify-between border-t border-cardBorder px-6 py-4 text-left"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="text-lg font-semibold text-[#333333]">
@@ -31,7 +31,7 @@ const DecisionHistory = ({ history = [] }) => {
           {history.map((entry) => (
             <div
               key={entry.id}
-              className="rounded-lg border border-[#eaecf0] bg-[#f9fafb] overflow-hidden"
+              className="rounded-lg border border-cardBorder bg-[#f9fafb] overflow-hidden"
             >
               <div className="flex items-center gap-3 px-4 py-3 bg-[#eef1f8]">
                 <Avatar

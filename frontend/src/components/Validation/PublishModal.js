@@ -113,7 +113,7 @@ const PublishModal = ({
                 <label className="text-sm font-normal text-[#606060]">
                   Title for this month overview
                 </label>
-                <div className="rounded border border-[#eaecf0] bg-[#f9fafb] px-3 py-2 text-sm text-[#333333]">
+                <div className="rounded border border-cardBorder bg-[#f9fafb] px-3 py-2 text-sm text-[#333333]">
                   {overviewTitle(yearMonth)}
                 </div>
                 <span className="text-xs text-[#606060]">
@@ -163,7 +163,7 @@ const PublishModal = ({
         </div>
 
         {/* Sector cards — derived, shown so the admin can confirm */}
-        <div className="flex flex-col border-t border-[#eaecf0] pt-4">
+        <div className="flex flex-col border-t border-cardBorder pt-4">
           <span className="text-sm font-medium text-[#333333]">
             Sector information
           </span>
@@ -173,7 +173,7 @@ const PublishModal = ({
           {SECTORS.map((label) => (
             <div
               key={label}
-              className="flex items-center justify-between border-b border-[#eaecf0] py-3"
+              className="flex items-center justify-between border-b border-cardBorder py-3"
             >
               <span className="text-sm text-[#333333]">{label}</span>
               <span className="text-xs text-[#606060]">Auto-generated</span>
@@ -186,7 +186,7 @@ const PublishModal = ({
         )}
 
         {/* Footer */}
-        <div className="flex gap-3 border-t border-[#eaecf0] pt-4 mt-4">
+        <div className="flex gap-3 border-t border-cardBorder pt-4 mt-4">
           <Button
             className="flex-1"
             size="large"

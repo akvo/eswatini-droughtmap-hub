@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { auth } from "./lib";
 import { USER_ROLES } from "./static/config";
 
-const protectedRoutes = [
-  "/profile",
-  "/publications",
-  "/reviews",
-  "/settings",
-  "/validations",
-];
+// route prefix -> where anonymous visitors are sent.
+// observers sign in with an emailed magic link, not the password form.
+const protectedRoutes = {
+  "/citizen-weather/admin": "/login",
+  "/citizen-weather/observe": "/citizen-weather",
+  "/profile": "/login",
+  "/publications": "/login",
+  "/reviews": "/login",
+  "/settings": "/login",
+  "/validations": "/login",
+};
 const authRoutes = ["/login"];
 
 export default async function middleware(request) {
@@ -16,8 +20,14 @@ export default async function middleware(request) {
   const pathName = request.nextUrl.pathname;
   const response = NextResponse.next();
 
-  if (!session && protectedRoutes.includes(pathName)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // prefix match: sub-routes (/publications/create, /citizen-weather/observe/2026-05)
+  // are protected too, not just the exact segment
+  const signInPath = Object.entries(protectedRoutes).find(([route]) =>
+    pathName.startsWith(route),
+  )?.[1];
+
+  if (!session && signInPath) {
+    return NextResponse.redirect(new URL(signInPath, request.url));
   }
   if (session) {
     if (authRoutes.includes(pathName)) {
@@ -53,6 +63,7 @@ export default async function middleware(request) {
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||
           pathName.startsWith("/settings") ||
+          pathName.startsWith("/citizen-weather/admin") ||
           (pathName.startsWith("/validations") && !isDecisionPage)))
     ) {
       return NextResponse.redirect(new URL("/unauthorized", request.url));

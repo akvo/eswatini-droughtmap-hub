@@ -535,8 +535,8 @@ const ValidationDetailPage = () => {
           )}
 
           {/* Validation queue */}
-          <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
-            <div className="flex flex-col gap-4 border-b border-[#eaecf0] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-cardBorder bg-white">
+            <div className="flex flex-col gap-4 border-b border-cardBorder px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <h2 className="text-xl font-semibold leading-7 text-[#333333]">
                 Validation queue
               </h2>
@@ -562,7 +562,7 @@ const ValidationDetailPage = () => {
                 </Button>
               </div>
             </div>
-            <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
               <TabButtons
                 options={STATUS_FILTERS}
                 value={statusFilter}

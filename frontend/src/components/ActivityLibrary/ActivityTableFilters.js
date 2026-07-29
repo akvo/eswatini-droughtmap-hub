@@ -32,8 +32,8 @@ export default function ActivityTableFilters({
   return (
     <>
       {/* Title + search + export row */}
-      <div className="flex flex-col gap-4 border-b border-[#eaecf0] px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-        <h2 className="m-0 text-xl font-semibold leading-7 text-[#333333]">
+      <div className="flex flex-col gap-4 border-b border-cardBorder px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <h2 className="m-0 text-xl font-semibold leading-7 text-textBody">
           Operation procedures
         </h2>
         <div className="flex w-full items-center gap-3 lg:w-auto">
@@ -51,7 +51,7 @@ export default function ActivityTableFilters({
       </div>
 
       {/* Filter controls row */}
-      <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
         <TabButtons
           options={STATUS_FILTERS}
           value={statusFilter}

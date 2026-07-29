@@ -7,7 +7,13 @@ const AppShell = ({ session, children }) => {
   const pathname = usePathname();
 
   // Embedded maps (compare slider) render bare — no navbar, footer or container.
-  if (pathname?.startsWith("/iframe")) {
+  // ponytail: /citizen-weather is the standalone observer surface, but its
+  // /admin subtree is staff-facing and keeps the normal navbar/footer.
+  const isBareCitizenWeather =
+    pathname?.startsWith("/citizen-weather") &&
+    !pathname?.startsWith("/citizen-weather/admin");
+
+  if (pathname?.startsWith("/iframe") || isBareCitizenWeather) {
     return children;
   }
 

@@ -5,9 +5,8 @@ import { Alert, Empty } from "antd";
 import { api } from "@/lib/api";
 import {
   ACTIVITY_STATUS,
-  ACTIVITY_SECTOR_OPTIONS,
   DROUGHT_CATEGORY_VALUE,
-  SECTOR_DESCRIPTIONS,
+  SECTORS,
 } from "@/static/config";
 
 // Component imports
@@ -20,29 +19,13 @@ import TabLoader from "../TabLoader";
 // Mock data fallback
 import mockRiskData from "@/static/mocks/risk-level/risk_score.json";
 
-// Map integer IDs from ACTIVITY_SECTOR_OPTIONS to SECTOR_DESCRIPTIONS keys
-const SECTOR_KEY_MAP = {
-  1: "food",
-  2: "health",
-  3: "wash",
-  4: "edu",
-  5: "env",
-  6: "coord",
-  7: "social",
-  8: "trans",
-};
-
 // Sector sequence matching the Figma design order: WASH, Food, Env, Coord, Health, Trans, Edu, Social
 const SECTOR_ORDER = [3, 1, 5, 6, 2, 8, 4, 7];
 
-// Dynamically generate SECTOR_LIST from the config source of truth and sort by Figma design order
-const SECTOR_LIST = ACTIVITY_SECTOR_OPTIONS.filter((opt) => opt.value !== "all")
-  .map((opt) => ({
-    id: opt.value,
-    key: SECTOR_KEY_MAP[opt.value],
-    name: opt.label,
-  }))
-  .sort((a, b) => SECTOR_ORDER.indexOf(a.id) - SECTOR_ORDER.indexOf(b.id));
+// Only the display order is ours — id/key/label come from the config row.
+const SECTOR_LIST = [...SECTORS].sort(
+  (a, b) => SECTOR_ORDER.indexOf(a.id) - SECTOR_ORDER.indexOf(b.id),
+);
 
 const RiskLevelTab = ({
   selectedInkhundla,
@@ -144,7 +127,7 @@ const RiskLevelTab = ({
     DROUGHT_CATEGORY_VALUE[droughtKey] ?? DROUGHT_CATEGORY_VALUE.none;
 
   return (
-    <div className="min-h-screen">
+    <div className="w-full bg-white border border-cardBorder border-t-0">
       {/* Selected Inkhundla Header Section */}
       <InkhundlaHeader
         name={selectedInkhundla}
@@ -154,16 +137,16 @@ const RiskLevelTab = ({
       />
 
       {/* Page Layout Container */}
-      <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-x-4 bg-brandTint">
+      <div className="w-full flex flex-col lg:flex-row bg-[#F8FAFC] gap-x-2">
         {/* Left Panel: Risk Score Build-up */}
-        <div className="w-full lg:w-[420px] flex flex-col gap-6">
+        <div className="w-full lg:w-[420px] flex flex-col">
           <RiskScoreBuildUp riskData={riskData} />
         </div>
 
         {/* Right Panel: Response Activities Groups */}
-        <div className="flex-1 border-l border-r border-b border-neutral-100 flex flex-col items-start relative w-full bg-white shadow-sm">
+        <div className="flex-1 flex flex-col items-start relative w-full bg-white border-l border-cardBorder">
           {/* Table Header Section */}
-          <div className="bg-white border-b border-neutral-100 flex h-[70px] items-center p-4 w-full">
+          <div className="bg-white border-b border-cardBorder flex h-[70px] items-center p-4 w-full">
             <h2 className="font-['Inter'] font-semibold text-lg text-neutral-800 m-0">
               All response activities
             </h2>
@@ -180,8 +163,8 @@ const RiskLevelTab = ({
                 <SectorCard
                   key={sector.id}
                   sectorId={sector.id}
-                  sectorName={sector.name}
-                  description={SECTOR_DESCRIPTIONS[sector.key]}
+                  sectorName={sector.label}
+                  description={sector.description}
                   inkhundlaName={selectedInkhundla}
                   activities={sectorActivities}
                   onActivityClick={(id) => setSelectedActivityId(id)}

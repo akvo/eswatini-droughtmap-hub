@@ -39,7 +39,7 @@ export default function TriggerConditionsView({ triggers }) {
   return (
     <div className="flex flex-col text-neutral-800">
       {/* Title */}
-      <h3 className="text-[#333333] font-medium text-base m-0 pb-4 border-b border-neutral-200">
+      <h3 className="text-textBody font-medium text-base m-0 pb-4 border-b border-neutral-200">
         Trigger condition
       </h3>
 

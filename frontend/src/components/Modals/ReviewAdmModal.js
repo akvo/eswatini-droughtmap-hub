@@ -182,7 +182,7 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
               </Tag>
             </Flex>
 
-            <div className="flex flex-wrap items-center gap-6 border-y border-[#eaecf0] py-3">
+            <div className="flex flex-wrap items-center gap-6 border-y border-cardBorder py-3">
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-[#606060]">Computed value</span>
                 <span className="flex items-center gap-2">
