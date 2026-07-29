@@ -179,11 +179,16 @@ export const getProfileDropdownItems = (user, isPublic = false) => {
           ...menuItems,
           {
             key: 2,
+            label: "Citizen Weather",
+            url: "/citizen-weather/admin",
+          },
+          {
+            key: 3,
             label: "User Management",
             url: "/admin/v1_users/systemuser/",
           },
           {
-            key: 3,
+            key: 4,
             label: "Settings",
             url: "/settings",
           },
