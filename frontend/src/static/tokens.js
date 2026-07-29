@@ -20,6 +20,7 @@ const brand = {
   muted: "#485D92",
   light: "#7E93D0", // brand-primary-300
   tint: "#ECEFF8",
+  p100: "#C3CDE9", // brand-primary-100 (same as input.borderActive)
 };
 
 // Text colours. Declared before the component tokens below so the greys have a
@@ -27,6 +28,7 @@ const brand = {
 const text = {
   heading: "#020618",
   muted: "#3E4958",
+  tertiary: "#606060", // text/color/secondary (same as select.placeholder)
   body: "#333333", // field values, card figures, section headings
   secondary: "#606060", // labels, helper copy, select placeholder
   hint: "#909090", // italic helper notes under a label
