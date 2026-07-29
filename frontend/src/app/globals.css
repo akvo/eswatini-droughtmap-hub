@@ -400,3 +400,12 @@ h5 {
   background-image: var(--hatch-gradient);
   opacity: var(--hatch-opacity, 1);
 }
+
+.risk-buildup-collapse .ant-collapse-content > .ant-collapse-content-box {
+  padding: 0 !important;
+}
+
+.risk-buildup-collapse .ant-collapse-header {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--table-border) !important;
+}

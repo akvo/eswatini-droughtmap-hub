@@ -15,7 +15,24 @@ const MONTHS = [
   "Dec",
 ];
 
-const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
+/**
+ * One cell per monthly report: a status code per month, plus a legend.
+ *
+ * `cellStyle` is the escape hatch for callers whose vocabulary is not the IKS
+ * W/M/D · G/S/B one — the CDI D-class strip has seven states coloured from
+ * config hex, which no Tailwind class chain can express. When it is omitted
+ * the built-in IKS mapping applies, so the soil and vegetation grids are
+ * untouched.
+ */
+const MonthlyStatusGrid = ({
+  title,
+  subtitle,
+  statesMap,
+  legend,
+  weeks,
+  cellStyle,
+  emptyLabel = "No submission",
+}) => {
   const labels = weeks && weeks.length > 0 ? weeks : MONTHS;
   return (
     <div className="p-4 bg-white">
@@ -34,6 +51,7 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
       >
         {labels.map((m, idx) => {
           const state = statesMap(idx);
+          const custom = cellStyle?.(state);
           // No submission: grey, not the brand blue — an empty month must not
           // outrank a reported one for attention. Same grey as the No-data
           // drought badge in IksTab.
@@ -52,7 +70,10 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
               className="flex flex-col items-center justify-center text-center"
             >
               <div
-                className={`h-[34px] w-full flex items-center justify-center rounded-[4px] font-bold text-sm ${colorClass}`}
+                className={`h-[34px] w-full flex items-center justify-center rounded-[4px] font-bold text-sm ${
+                  custom?.className ?? colorClass
+                }`}
+                style={custom?.style}
               >
                 <span>{state}</span>
               </div>
@@ -66,12 +87,13 @@ const MonthlyStatusGrid = ({ title, subtitle, statesMap, legend, weeks }) => {
       <div className="flex items-center gap-4 mt-3 text-[10px] text-neutral-400">
         <span className="flex items-center gap-1">
           <span className="w-2.5 h-2.5 bg-brandTint block rounded-full border border-cardBorder"></span>{" "}
-          No submission
+          {emptyLabel}
         </span>
         {legend.map((item, idx) => (
           <span key={idx} className="flex items-center gap-1">
             <span
-              className={`w-2.5 h-2.5 ${item.color} block rounded-full`}
+              className={`w-2.5 h-2.5 block rounded-full ${item.color ?? ""}`}
+              style={item.hex ? { backgroundColor: item.hex } : undefined}
             ></span>{" "}
             {item.label}
           </span>

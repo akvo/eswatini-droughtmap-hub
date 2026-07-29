@@ -3,7 +3,12 @@ import { WeatherColumn } from "../IndividualReview";
 
 const metWeather = {
   data: [
-    { key: "min_temperature", label: "Min temperature", value: 12, units: "°C" },
+    {
+      key: "min_temperature",
+      label: "Min temperature",
+      value: 12,
+      units: "°C",
+    },
     {
       key: "soil_temperature",
       label: "Soil temperature",
@@ -17,7 +22,12 @@ const metWeather = {
 
 const csReading = {
   data: [
-    { key: "precipitation", label: "Precipitation (monthly)", value: 55, units: "mm" },
+    {
+      key: "precipitation",
+      label: "Precipitation (monthly)",
+      value: 55,
+      units: "mm",
+    },
     { key: "soil_moisture", label: "Soil moisture", value: null, units: "%" },
   ],
   meta: {

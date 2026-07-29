@@ -56,13 +56,13 @@ const AssessmentSummary = ({ summary }) => {
   // One continuous panel: the breakdown cards sit flush against the summary,
   // separated by a hairline rather than a gap (Figma).
   return (
-    <div className="flex w-full flex-col border border-[#eaecf0] bg-white">
+    <div className="flex w-full flex-col border border-cardBorder bg-white">
       <div className="flex flex-col gap-4 p-4">
         <h3 className="text-base font-semibold leading-6 text-[#333333]">
           Assessment summary
         </h3>
         <Gauge percent={summary?.overall_readiness || 0} />
-        <div className="flex flex-col gap-1.5 border-t border-[#eaecf0] pt-4">
+        <div className="flex flex-col gap-1.5 border-t border-cardBorder pt-4">
           <div className="flex items-center justify-between text-sm leading-5">
             <span className="font-medium text-[#333333]">
               Reviews collected
@@ -86,7 +86,7 @@ const AssessmentSummary = ({ summary }) => {
         // The wrapper carries the separator so the card itself stays
         // borderless — `border-none` kills border-style, which a `divide-y`
         // on the parent would then be unable to draw.
-        <div key={key} className="border-t border-[#eaecf0]">
+        <div key={key} className="border-t border-cardBorder">
           <MetricCard
             className="border-none"
             label={label}

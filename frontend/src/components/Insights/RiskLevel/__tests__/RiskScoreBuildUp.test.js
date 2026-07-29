@@ -74,8 +74,8 @@ describe("RiskScoreBuildUp", () => {
   it("renders drought category, stable trend status, and confidence label", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
-    expect(screen.getByText("D3 — Extreme Drought")).toBeInTheDocument();
-    expect(screen.getByText("Stable")).toBeInTheDocument();
+    expect(screen.getByText("Validated drought score")).toBeInTheDocument();
+    expect(screen.getByText("■ STABLE")).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
   });
 
@@ -84,23 +84,23 @@ describe("RiskScoreBuildUp", () => {
 
     expect(screen.getByText("8,956 people")).toBeInTheDocument();
     expect(screen.getByText("184 children")).toBeInTheDocument();
-    expect(screen.getByText("1,069 ha rain-fed")).toBeInTheDocument();
+    expect(screen.getByText("1,069 ha")).toBeInTheDocument();
     expect(screen.getByText("1,364 head")).toBeInTheDocument();
     // water_demand is null, so it should display "N/A"
-    expect(screen.getByText("Water demand:")).toBeInTheDocument();
+    expect(screen.getByText("Water demand")).toBeInTheDocument();
   });
 
   it("renders vulnerability index values and mapped IPC Phase", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
-    expect(screen.getByText("Water access pressure:")).toBeInTheDocument();
+    expect(screen.getByText("Water access pressure")).toBeInTheDocument();
     expect(screen.getByText("100%")).toBeInTheDocument();
 
-    expect(screen.getByText("Susceptibility:")).toBeInTheDocument();
+    expect(screen.getByText("Susceptibility")).toBeInTheDocument();
     // v_ipc = 0.534 maps to Phase 3: Crisis
     expect(screen.getByText("Phase 3: Crisis")).toBeInTheDocument();
 
-    expect(screen.getByText("Preparedness index:")).toBeInTheDocument();
+    expect(screen.getByText("Preparedness index")).toBeInTheDocument();
     expect(screen.getByText("47%")).toBeInTheDocument();
   });
 

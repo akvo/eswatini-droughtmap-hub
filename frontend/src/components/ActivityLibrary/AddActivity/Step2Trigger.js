@@ -130,10 +130,10 @@ export default function Step2Trigger({ formData, setFormData }) {
   return (
     <div className="flex flex-col gap-6 w-full text-neutral-800">
       <div className="flex flex-col gap-2">
-        <h4 className="text-xl font-medium text-[#333] m-0 leading-normal">
+        <h4 className="text-xl font-medium text-textBody m-0 leading-normal">
           Trigger condition
         </h4>
-        <p className="text-base text-[#606060] m-0 leading-[24px]">
+        <p className="text-base text-textSecondary m-0 leading-[24px]">
           Define the conditions that make this Response activity fire for an
           Inkhundla. The live preview below shows how many Tinkhundla it would
           fire for if activated against current data.
@@ -144,15 +144,15 @@ export default function Step2Trigger({ formData, setFormData }) {
       {/* D-Class Threshold segmented pill */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-0.5 flex-1">
-          <span className="text-sm text-[#606060] font-normal">
+          <span className="text-sm text-textSecondary font-normal">
             D-class threshold:
           </span>
-          <p className="text-xs text-[#909090] italic m-0 leading-[18px]">
+          <p className="text-xs text-textHint italic m-0 leading-[18px]">
             Validated drought class the Inkhundla must reach — None disables
             this condition.
           </p>
         </div>
-        <div className="flex bg-[#eceff8] p-0.5 rounded-[10px] w-max border border-neutral-100">
+        <div className="flex bg-brandTint p-0.5 rounded-[10px] w-max border border-neutral-100">
           {dClasses.map((cls) => {
             const isActive = getDclassVal() === cls;
             // dClasses index matches DROUGHT_CATEGORY_VALUE (None=normal=0, D0=1, ...)
@@ -160,7 +160,7 @@ export default function Step2Trigger({ formData, setFormData }) {
             const darkText = dClasses.indexOf(cls) < DROUGHT_CATEGORY_VALUE.d3;
             const activeStyle =
               cls === "None"
-                ? { className: "bg-blue-600 text-white" }
+                ? { className: "bg-primary text-white" }
                 : {
                     className: darkText ? "text-neutral-800" : "text-white",
                     style: { backgroundColor: categoryColor },
@@ -175,7 +175,7 @@ export default function Step2Trigger({ formData, setFormData }) {
                 className={`px-3 py-1 rounded-[8px] text-sm font-normal transition-all ${
                   isActive
                     ? `${activeStyle.className} shadow-sm`
-                    : "text-[#a4a4a4] hover:text-neutral-700 bg-transparent"
+                    : "text-textDisabled hover:text-neutral-700 bg-transparent"
                 }`}
               >
                 {cls}
@@ -188,16 +188,16 @@ export default function Step2Trigger({ formData, setFormData }) {
       {/* Months input */}
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-0.5 flex-1 pb-2">
-          <span className="text-sm text-[#606060] font-normal">
+          <span className="text-sm text-textSecondary font-normal">
             for at least [N] consecutive months
           </span>
-          <p className="text-xs text-[#909090] italic m-0 leading-[18px]">
+          <p className="text-xs text-textHint italic m-0 leading-[18px]">
             Whole number of months in a row the D-class must hold, e.g. D2 for
             at least 3 consecutive months.
           </p>
         </div>
         <div className="flex flex-col gap-1.5 w-[143px]">
-          <span className="text-xs text-[#606060] font-normal">Amount</span>
+          <span className="text-xs text-textSecondary font-normal">Amount</span>
           <InputNumber
             precision={0}
             min={1}
@@ -205,7 +205,7 @@ export default function Step2Trigger({ formData, setFormData }) {
             value={formData.triggers.dclass?.months ?? null}
             onChange={handleMonthsChange}
             disabled={!formData.triggers.dclass}
-            className="w-full h-10 border-[#d0d5dd] rounded-[4px] text-sm"
+            className="w-full h-10 border-inputBorder rounded-[4px] text-sm"
           />
         </div>
       </div>
@@ -226,23 +226,23 @@ export default function Step2Trigger({ formData, setFormData }) {
               className="flex items-center justify-between gap-4"
             >
               <div className="flex flex-col gap-0.5 flex-1">
-                <span className="text-sm text-[#606060] font-normal">
+                <span className="text-sm text-textSecondary font-normal">
                   {ind.label}
                 </span>
-                <p className="text-xs text-[#909090] italic m-0 leading-[18px]">
+                <p className="text-xs text-textHint italic m-0 leading-[18px]">
                   {ind.help}
                 </p>
               </div>
 
               {/* Operator Switch */}
-              <div className="flex bg-[#eceff8] p-0.5 rounded-[10px] border border-neutral-100">
+              <div className="flex bg-brandTint p-0.5 rounded-[10px] border border-neutral-100">
                 <button
                   type="button"
                   onClick={() => handleIndicatorOpChange(ind, 1)}
                   className={`px-3 py-1 rounded-[8px] text-sm font-semibold transition-all ${
                     currentOp === 1
-                      ? "bg-[#3e5eb9] text-white shadow-sm"
-                      : "text-[#a4a4a4]"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-textDisabled"
                   }`}
                 >
                   &ge;
@@ -252,8 +252,8 @@ export default function Step2Trigger({ formData, setFormData }) {
                   onClick={() => handleIndicatorOpChange(ind, 2)}
                   className={`px-3 py-1 rounded-[8px] text-sm font-semibold transition-all ${
                     currentOp === 2
-                      ? "bg-[#3e5eb9] text-white shadow-sm"
-                      : "text-[#a4a4a4]"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-textDisabled"
                   }`}
                 >
                   &le;
@@ -269,7 +269,7 @@ export default function Step2Trigger({ formData, setFormData }) {
                   placeholder={ind.placeholder}
                   value={currentVal}
                   onChange={(val) => handleIndicatorValChange(ind, val)}
-                  className="w-full h-10 border-[#d0d5dd] rounded-[4px] text-sm"
+                  className="w-full h-10 border-inputBorder rounded-[4px] text-sm"
                 />
               </div>
             </div>
@@ -280,10 +280,10 @@ export default function Step2Trigger({ formData, setFormData }) {
       {/* Other condition (free-form) */}
       <div className="flex flex-col gap-2 w-full">
         <div className="flex flex-col gap-0.5">
-          <label className="text-sm text-[#606060] font-normal">
+          <label className="text-sm text-textSecondary font-normal">
             Other condition (free-form)
           </label>
-          <p className="text-xs text-[#909090] italic m-0 leading-[18px]">
+          <p className="text-xs text-textHint italic m-0 leading-[18px]">
             Free-form note for reviewers — not evaluated automatically.
           </p>
         </div>
@@ -300,13 +300,13 @@ export default function Step2Trigger({ formData, setFormData }) {
             })
           }
           rows={4}
-          className="w-full border-[#d2d2d2] rounded-[8px] p-3 text-sm focus:border-blue-500"
+          className="w-full border-cardBorder rounded-[8px] p-3 text-sm focus:border-inputBorderActive"
         />
       </div>
 
       {/* Live Preview alert banner */}
-      <div className="bg-[#eceff8] text-[#333] rounded-[8px] px-3.5 py-2.5 text-sm flex items-center gap-2 font-medium w-full">
-        <span className="text-[#3e5eb9] text-base">&#9888;</span>
+      <div className="bg-brandTint text-textBody rounded-[8px] px-3.5 py-2.5 text-sm flex items-center gap-2 font-medium w-full">
+        <span className="text-primary text-base">&#9888;</span>
         <span className="flex-1">
           {preview
             ? `Would fire for ${preview.matched} of ${preview.total} Tinkhundla`

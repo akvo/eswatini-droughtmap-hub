@@ -30,7 +30,7 @@ const ReviewDecisionHistory = ({ history = [] }) => {
           {history.map((entry) => (
             <div
               key={entry.period}
-              className="flex items-center justify-between border-b border-[#eaecf0] pb-3 last:border-b-0"
+              className="flex items-center justify-between border-b border-cardBorder pb-3 last:border-b-0"
             >
               <div className="flex items-center gap-3">
                 <DroughtScore level={entry.category} size="sm" />

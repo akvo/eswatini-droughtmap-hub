@@ -238,8 +238,8 @@ const ReviewQueue = ({
             <div className="w-full lg:w-[325px] lg:shrink-0">
               <AssessmentSummary summary={summary} />
             </div>
-            <div className="w-full border border-[#eaecf0] bg-white">
-              <div className="flex flex-col gap-3 border-b border-[#eaecf0] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="w-full border border-cardBorder bg-white">
+              <div className="flex flex-col gap-3 border-b border-cardBorder p-4 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-base font-semibold leading-6 text-[#333333]">
                   CDI-E drought map
                 </h3>

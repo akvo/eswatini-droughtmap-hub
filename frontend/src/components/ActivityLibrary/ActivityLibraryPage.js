@@ -178,7 +178,7 @@ export default function ActivityLibraryPage() {
           <Can I="create" a="Activity">
             <Button
               type="primary"
-              className="font-semibold bg-blue-600 border-blue-600 hover:bg-blue-700"
+              className="font-semibold"
               onClick={() => setShowSlideIn(true)}
             >
               Add new activity
@@ -198,7 +198,7 @@ export default function ActivityLibraryPage() {
             archived={counts.archived}
           />
         </div>
-        <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
+        <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-cardBorder bg-white">
           <ActivityTableFilters
             statusFilter={statusFilter}
             sectorFilter={sectorFilter}

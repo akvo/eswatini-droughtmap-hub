@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Input, Modal } from "antd";
 import { WarningFilled } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -22,10 +22,32 @@ export const overviewTitle = (yearMonth) =>
     yearMonth ? dayjs(yearMonth, "YYYY-MM").format("MMMM YYYY") : "this month"
   }`;
 
-const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
-  const [narrative, setNarrative] = useState("");
+const PublishModal = ({
+  open,
+  yearMonth,
+  currentNarrative,
+  currentBulletinUrl,
+  published = false,
+  onCancel,
+  onPublish,
+}) => {
+  const [narrative, setNarrative] = useState(currentNarrative || "");
+  const [bulletinUrl, setBulletinUrl] = useState(currentBulletinUrl || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // `destroyOnClose` only unmounts the Modal's children — this state lives in
+  // the wrapper and survives, so on first mount it is seeded from a `meta`
+  // that has not been fetched yet. Re-seed each time the modal opens, not on
+  // every prop change, or a refetch mid-edit would overwrite what is typed.
+  useEffect(() => {
+    if (open) {
+      setNarrative(currentNarrative || "");
+      setBulletinUrl(currentBulletinUrl || "");
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handlePublish = async () => {
     if (!narrative.trim()) {
@@ -37,7 +59,13 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
     // onPublish resolves with an error message, or null on success. The API
     // helper resolves on 4xx rather than rejecting, so a rejected publish is
     // a value to inspect — not an exception to catch.
-    const message = await onPublish?.({ narrative });
+    // The bulletin URL is optional: an empty box means "no bulletin", and is
+    // sent as such so clearing one actually clears it. Its format is left to
+    // the backend's URLField so there is one definition of a valid URL.
+    const message = await onPublish?.({
+      narrative,
+      bulletinUrl: bulletinUrl.trim(),
+    });
     setSaving(false);
     if (message) {
       setError(message);
@@ -69,7 +97,9 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
 
             <div className="flex flex-col gap-2">
               <h2 className="text-xl font-semibold text-[#333333]">
-                Publish validated drought map
+                {published
+                  ? "Update published drought map"
+                  : "Publish validated drought map"}
               </h2>
               <p className="text-sm text-[#606060]">
                 This replaces the current National Overview. The headline and
@@ -83,7 +113,7 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
                 <label className="text-sm font-normal text-[#606060]">
                   Title for this month overview
                 </label>
-                <div className="rounded border border-[#eaecf0] bg-[#f9fafb] px-3 py-2 text-sm text-[#333333]">
+                <div className="rounded border border-cardBorder bg-[#f9fafb] px-3 py-2 text-sm text-[#333333]">
                   {overviewTitle(yearMonth)}
                 </div>
                 <span className="text-xs text-[#606060]">
@@ -107,12 +137,33 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
                   country.
                 </span>
               </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="publish-bulletin-url"
+                  className="text-sm font-normal text-[#606060]"
+                >
+                  Bulletin URL{" "}
+                  <span className="text-[#909090]">(optional)</span>
+                </label>
+                <Input
+                  id="publish-bulletin-url"
+                  type="url"
+                  placeholder="https://example.org/bulletin-2026-05.pdf"
+                  value={bulletinUrl}
+                  onChange={(e) => setBulletinUrl(e.target.value)}
+                />
+                <span className="text-xs text-[#606060]">
+                  Link to the full bulletin for this month. Leave empty if there
+                  is none.
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Sector cards — derived, shown so the admin can confirm */}
-        <div className="flex flex-col border-t border-[#eaecf0] pt-4">
+        <div className="flex flex-col border-t border-cardBorder pt-4">
           <span className="text-sm font-medium text-[#333333]">
             Sector information
           </span>
@@ -122,7 +173,7 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
           {SECTORS.map((label) => (
             <div
               key={label}
-              className="flex items-center justify-between border-b border-[#eaecf0] py-3"
+              className="flex items-center justify-between border-b border-cardBorder py-3"
             >
               <span className="text-sm text-[#333333]">{label}</span>
               <span className="text-xs text-[#606060]">Auto-generated</span>
@@ -135,7 +186,7 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
         )}
 
         {/* Footer */}
-        <div className="flex gap-3 border-t border-[#eaecf0] pt-4 mt-4">
+        <div className="flex gap-3 border-t border-cardBorder pt-4 mt-4">
           <Button
             className="flex-1"
             size="large"
@@ -151,7 +202,7 @@ const PublishModal = ({ open, yearMonth, onCancel, onPublish }) => {
             loading={saving}
             onClick={handlePublish}
           >
-            Publish
+            {published ? "Update" : "Publish"}
           </Button>
         </div>
       </div>

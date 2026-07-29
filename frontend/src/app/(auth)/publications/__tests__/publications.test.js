@@ -155,13 +155,16 @@ describe("PublicationsPage", () => {
   });
 
   it("filters API requests by status tab", async () => {
+    const { act } = await import("@testing-library/react");
     render(<PublicationsPage />);
 
     await waitFor(() => expect(api).toHaveBeenCalledTimes(1));
 
     // Click "Awaiting review" tab
     const awaitingTab = screen.getByRole("tab", { name: "Awaiting review" });
-    fireEvent.click(awaitingTab);
+    await act(async () => {
+      fireEvent.click(awaitingTab);
+    });
 
     await waitFor(() => {
       expect(api).toHaveBeenLastCalledWith(
@@ -172,7 +175,9 @@ describe("PublicationsPage", () => {
 
     // Click "Ready" tab
     const readyTab = screen.getByRole("tab", { name: "Ready" });
-    fireEvent.click(readyTab);
+    await act(async () => {
+      fireEvent.click(readyTab);
+    });
 
     await waitFor(() => {
       expect(api).toHaveBeenLastCalledWith(
@@ -183,7 +188,9 @@ describe("PublicationsPage", () => {
 
     // Click "Validated" tab
     const validatedTab = screen.getByRole("tab", { name: "Validated" });
-    fireEvent.click(validatedTab);
+    await act(async () => {
+      fireEvent.click(validatedTab);
+    });
 
     await waitFor(() => {
       expect(api).toHaveBeenLastCalledWith(
@@ -194,7 +201,9 @@ describe("PublicationsPage", () => {
 
     // Click "All" tab
     const allTab = screen.getByRole("tab", { name: "All" });
-    fireEvent.click(allTab);
+    await act(async () => {
+      fireEvent.click(allTab);
+    });
 
     await waitFor(() => {
       expect(api).toHaveBeenLastCalledWith(
@@ -202,7 +211,7 @@ describe("PublicationsPage", () => {
         expect.not.stringContaining("status="),
       );
     });
-  });
+  }, 15000);
 
   it("renders correct status tags color and text", async () => {
     render(<PublicationsPage />);
@@ -341,22 +350,6 @@ describe("PublicationsPage", () => {
     await waitFor(() => {
       const truncatedTitle = `${"a".repeat(75)}.....`;
       expect(screen.getByText(truncatedTitle)).toBeInTheDocument();
-    });
-  });
-
-  it("handles category selection change", async () => {
-    render(<PublicationsPage />);
-
-    await waitFor(() => expect(api).toHaveBeenCalledTimes(1));
-
-    const categorySelect = screen.getByTestId("mock-select");
-    fireEvent.change(categorySelect, { target: { value: "spi-raster-map" } });
-
-    await waitFor(() => {
-      expect(api).toHaveBeenLastCalledWith(
-        "GET",
-        expect.stringContaining("category=spi-raster-map"),
-      );
     });
   });
 

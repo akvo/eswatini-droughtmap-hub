@@ -36,6 +36,18 @@ import {
 import dayjs from "dayjs";
 import { PublishModal, ReviewerPanelModal } from "@/components/Validation";
 
+/**
+ * First message out of a DRF error body, whichever field it came from.
+ * Reading only `status` was enough while the publish payload carried one
+ * validatable field; with `bulletin_url` alongside it, a mistyped URL would
+ * otherwise surface as the generic "Publish failed." with the real reason
+ * ("Enter a valid URL.") dropped on the floor.
+ */
+const firstError = (res) =>
+  Object.values(res || {})
+    .flat()
+    .find((value) => typeof value === "string") ?? "Publish failed.";
+
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
   { label: "Ready", value: "ready" },
@@ -444,7 +456,9 @@ const ValidationDetailPage = () => {
                   disabled={!meta?.can_publish}
                   onClick={() => setPublishOpen(true)}
                 >
-                  Publish validated map
+                  {publishedDate
+                    ? "Update published map"
+                    : "Publish validated map"}
                 </Button>
               </Tooltip>
             </div>
@@ -521,8 +535,8 @@ const ValidationDetailPage = () => {
           )}
 
           {/* Validation queue */}
-          <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
-            <div className="flex flex-col gap-4 border-b border-[#eaecf0] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <section className="relative z-10 mx-auto mt-6 w-full max-w-[1280px] border border-cardBorder bg-white">
+            <div className="flex flex-col gap-4 border-b border-cardBorder px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <h2 className="text-xl font-semibold leading-7 text-[#333333]">
                 Validation queue
               </h2>
@@ -548,7 +562,7 @@ const ValidationDetailPage = () => {
                 </Button>
               </div>
             </div>
-            <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
               <TabButtons
                 options={STATUS_FILTERS}
                 value={statusFilter}
@@ -643,16 +657,20 @@ const ValidationDetailPage = () => {
       <PublishModal
         open={publishOpen}
         yearMonth={meta?.year_month}
+        currentNarrative={meta?.narrative}
+        currentBulletinUrl={meta?.bulletin_url}
+        published={!!publishedDate}
         onCancel={() => setPublishOpen(false)}
-        onPublish={async ({ narrative }) => {
+        onPublish={async ({ narrative, bulletinUrl }) => {
           // api() resolves on 4xx rather than rejecting, so a failed publish
           // has to be detected from the body — never from a catch block.
           const res = await api("PUT", `/admin/publication/${id}`, {
             status: PUBLICATION_STATUS.published,
             narrative,
+            bulletin_url: bulletinUrl,
           });
           if (res?.status !== PUBLICATION_STATUS.published) {
-            return res?.status?.[0] ?? "Publish failed.";
+            return firstError(res);
           }
           setPublishOpen(false);
           fetchData();

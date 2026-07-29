@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Modal, Select, Table, Tag } from "antd";
+import { Button, Modal, Table, Tag } from "antd";
 import { FileOutlined } from "@ant-design/icons";
 import {
   Can,
@@ -34,7 +34,6 @@ const PublicationsPage = () => {
   const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
   const [page, setPage] = useState(1);
-  const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortField, setSortField] = useState("year_month");
   const [sortOrder, setSortOrder] = useState("descend");
@@ -181,7 +180,7 @@ const PublicationsPage = () => {
 
         const params = new URLSearchParams({
           page,
-          category,
+          category: MAP_CATEGORY_OPTIONS[0].value,
           sort: sortField,
           sort_order,
         });
@@ -209,7 +208,7 @@ const PublicationsPage = () => {
       setLoading(false);
       setPreload(false);
     }
-  }, [preload, page, statusFilter, category, sortField, sortOrder]);
+  }, [preload, page, statusFilter, sortField, sortOrder]);
 
   useEffect(() => {
     fetchData();
@@ -237,13 +236,13 @@ const PublicationsPage = () => {
           className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
         />
         <Can I="read" a="Publication">
-          <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-[#eaecf0] bg-white">
-            <div className="border-b border-[#eaecf0] px-4 py-4 sm:px-6">
+          <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-cardBorder bg-white">
+            <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
               <h2 className="text-xl font-semibold leading-7 text-[#333333]">
                 Reviews
               </h2>
             </div>
-            <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
               <TabButtons
                 options={PUBLICATION_TAB_FILTERS}
                 value={statusFilter}
@@ -252,22 +251,6 @@ const PublicationsPage = () => {
                   setPage(1);
                   setPreload(true);
                 }}
-              />
-              <Select
-                options={MAP_CATEGORY_OPTIONS}
-                className="w-full lg:w-48"
-                placeholder="Filter by Category"
-                onChange={(value) => {
-                  setPage(1);
-                  if (value) {
-                    setCategory(value);
-                  } else {
-                    setCategory(MAP_CATEGORY_OPTIONS[0].value);
-                  }
-                  setPreload(true);
-                }}
-                value={category}
-                allowClear={false}
               />
             </div>
             <Table

@@ -28,9 +28,26 @@ from .validation.view import (
     ValidationHistoryAPI,
 )
 from .twg.view import ReviewerAssignmentAPI
+from .insights.view import CDIExplorerStatsAPI, CDIExplorerSeriesAPI
 
 urlpatterns = [
     re_path(r"^(?P<version>(v1))/config.js", get_config_file),
+    # CDI Explorer (INS-3). Under /cdi/ rather than nested below
+    # /publications/ — the publication-details pattern further down has no
+    # trailing `$`, so anything nested under it is swallowed by a prefix
+    # match (same trap as D-3 and D-12 below). Anchored for the same reason.
+    re_path(
+        r"^(?P<version>(v1))/cdi/administrations/"
+        r"(?P<administration_id>[0-9]+)/stats$",
+        CDIExplorerStatsAPI.as_view(),
+        name="cdi-explorer-stats",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/cdi/administrations/"
+        r"(?P<administration_id>[0-9]+)/series$",
+        CDIExplorerSeriesAPI.as_view(),
+        name="cdi-explorer-series",
+    ),
     re_path(
         r"^(?P<version>(v1))/reviewer/reviews",
         ReviewViewSet.as_view({"get": "list", "post": "create"}),

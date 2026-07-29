@@ -23,6 +23,17 @@ const brand = {
   p100: "#C3CDE9", // brand-primary-100 (same as input.borderActive)
 };
 
+// Text colours. Declared before the component tokens below so the greys have a
+// single home — button/input/select reference these instead of re-listing hexes.
+const text = {
+  heading: "#020618",
+  muted: "#3E4958",
+  body: "#333333", // field values, card figures, section headings
+  secondary: "#606060", // labels, helper copy, select placeholder
+  hint: "#909090", // italic helper notes under a label
+  disabled: "#A4A4A4", // disabled button text, inactive pill
+};
+
 // Top navigation menu-item states (Figma node 3025:14539).
 const nav = {
   default: brand.primary, // #3E5EB9
@@ -36,7 +47,7 @@ const button = {
   primaryHover: "#2C4383",
   primaryActive: "#2C4383", // design has no distinct pressed fill
   disabledBg: "#E8E8E8",
-  disabledText: "#A4A4A4",
+  disabledText: text.disabled,
   secondaryText: "#001946",
   secondaryBorder: "#E2E8F0",
   secondaryHoverBg: "#F8FAFC",
@@ -75,6 +86,8 @@ const border = {
   input: "#D0D5DD",
   // Figma colors/neutral/300 — metric-card grid hairlines (node 3509:110399)
   card: "#d2d2d2",
+  // Gray/200 — panel + filter-row hairlines (also the Ant table border)
+  section: "#EAECF0",
 };
 
 const surface = {
@@ -109,24 +122,39 @@ const input = {
   paddingX: 14,
   height: 40, // Figma: inputs/selects are 40px (4px shorter than the 44px buttons)
   placeholder: "#667085",
-  text: "#333333",
+  text: text.body,
 };
 
 // Select / dropdown (Figma node 3019:7261). Shares input border/radius/height;
 // differs in placeholder colour and adds a 4px focus ring.
 const select = {
-  placeholder: "#606060", // text/color/secondary
+  placeholder: text.secondary, // #606060
   focusRing: "rgba(72, 93, 146, 0.2)", // brand.muted @ 20%
 };
 
 // Table (Figma node 3217:34504 header / 3217:34521 cell).
 const table = {
   headerBg: "#E8E8E8", // grey header variant (colors/neutral/200)
-  headerColor: "#606060", // text/color/secondary
-  bodyColor: "#606060",
-  border: "#EAECF0", // Gray/200
+  headerColor: text.secondary,
+  bodyColor: text.secondary,
+  border: border.section, // Gray/200
   hoverBg: "#F9FAFB", // Gray/50
   cellInline: 16,
+};
+
+// Sector palette (Figma node 3487-101737) — one hex per sector id, shared by
+// the sector badge (solid fill) and the sector card icon (tint). Lives here so
+// tailwind.config can expose it as `sector-{id}` utilities; config.js re-shapes
+// it into SECTOR_STYLES for the data layer.
+const sector = {
+  1: "#249E58", // Agriculture & Food Security
+  2: "#E74C3C", // Health & Nutrition
+  3: "#3E5EB9", // Water & Sanitation
+  4: "#F39C12", // Education
+  5: "#EEA96C", // Environment & Energy
+  6: "#B10D0B", // Coordination
+  7: "#E65F2B", // Social Protection
+  8: "#777777", // Transport & Logistics
 };
 
 const status = {
@@ -150,5 +178,6 @@ module.exports = {
   input,
   select,
   table,
+  sector,
   status,
 };

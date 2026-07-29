@@ -13,6 +13,7 @@ from api.v1.v1_publication.models import (
     PublicationStatus,
 )
 from api.v1.v1_publication.constants import DroughtCategory
+from api.v1.v1_indicators.models import Indicator
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
@@ -20,27 +21,80 @@ class RecommendedActionsTestCase(APITestCase):
     def setUp(self):
         # Seed the four ACT-* activities as ACTIVE.
         call_command("generate_activity_seeder", "--test", True)
+        call_command("generate_indicators_seeder", "--test", True)
         self.viewer = SystemUser.objects.create(
-            email="v@x.org", name="Viewer", role=UserRoleTypes.reviewer)
+            email="v@x.org", name="Viewer", role=UserRoleTypes.reviewer
+        )
         # Administrations whose names exist in priority_areas.csv.
         self.nkwene = Administration.objects.create(
-            id=101, name="Nkwene", region="Shiselweni")
+            id=101, name="Nkwene", region="Shiselweni"
+        )
         self.sigwe = Administration.objects.create(
-            id=102, name="Sigwe", region="Shiselweni")
+            id=102, name="Sigwe", region="Shiselweni"
+        )
         self.kumethula = Administration.objects.create(
-            id=103, name="Kumethula", region="Shiselweni")
+            id=103, name="Kumethula", region="Shiselweni"
+        )
         self.hosea = Administration.objects.create(
-            id=104, name="Hosea", region="Lubombo")
+            id=104, name="Hosea", region="Lubombo"
+        )
+        # Populate Indicator records for test administrations
+        Indicator.objects.update_or_create(
+            administration=self.nkwene,
+            defaults={
+                "population": 8956,
+                "rainfed_cropland": 2000,
+                "cattle": 1364,
+                "water_demand": 5000,
+                "ipc_phase": 3,
+            },
+        )
+        Indicator.objects.update_or_create(
+            administration=self.sigwe,
+            defaults={
+                "population": 8836,
+                "rainfed_cropland": 1500,
+                "cattle": 1000,
+                "water_demand": 4000,
+                "ipc_phase": 3,
+            },
+        )
+        Indicator.objects.update_or_create(
+            administration=self.kumethula,
+            defaults={
+                "population": 15000,
+                "rainfed_cropland": 3500,
+                "cattle": 2500,
+                "water_demand": 8000,
+                "ipc_phase": 4,
+            },
+        )
+        Indicator.objects.update_or_create(
+            administration=self.hosea,
+            defaults={
+                "population": 1200,
+                "rainfed_cropland": 100,
+                "cattle": 50,
+                "water_demand": 100,
+                "ipc_phase": 1,
+            },
+        )
+
         # Categories are set here, deliberately, per case.
         Publication.objects.create(
-            year_month="2025-02-01", cdi_geonode_id=1, due_date="2025-03-01",
+            year_month="2025-02-01",
+            cdi_geonode_id=1,
+            due_date="2025-03-01",
             initial_values=[],
             validated_values=[
                 {"administration_id": 101, "category": DroughtCategory.d3},
                 {"administration_id": 102, "category": DroughtCategory.d2},
                 {"administration_id": 103, "category": DroughtCategory.d4},
-                {"administration_id": 104, "category": DroughtCategory.d0}],
-            status=PublicationStatus.published, published_at=timezone.now())
+                {"administration_id": 104, "category": DroughtCategory.d0},
+            ],
+            status=PublicationStatus.published,
+            published_at=timezone.now(),
+        )
 
     def _url(self, adm_id=None):
         base = reverse("recommended-actions", kwargs={"version": "v1"})
@@ -58,7 +112,8 @@ class RecommendedActionsTestCase(APITestCase):
         resp = self.client.get(self._url(101))
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            self._codes(resp), ["ACT-COORD-1", "ACT-HEALTH-1", "ACT-WASH-1"])
+            self._codes(resp), ["ACT-COORD-1", "ACT-HEALTH-1", "ACT-WASH-1"]
+        )
 
     def test_sigwe_d2(self):
         # D2: WASH-1 and HEALTH-1 (both D2 gates, pop ok). FOOD-1/COORD-1
@@ -74,7 +129,8 @@ class RecommendedActionsTestCase(APITestCase):
         resp = self.client.get(self._url(103))
         self.assertEqual(
             self._codes(resp),
-            ["ACT-COORD-1", "ACT-FOOD-1", "ACT-HEALTH-1", "ACT-WASH-1"])
+            ["ACT-COORD-1", "ACT-FOOD-1", "ACT-HEALTH-1", "ACT-WASH-1"],
+        )
 
     def test_hosea_d0_none_fire(self):
         # D0 is below every activity's dclass gate -> empty.
@@ -96,11 +152,13 @@ class RecommendedActionsTestCase(APITestCase):
         self.client.force_authenticate(self.viewer)
         resp = self.client.get(self._url(101))
         wash = next(
-            i for i in resp.data["recommended"] if i["code"] == "ACT-WASH-1")
+            i for i in resp.data["recommended"] if i["code"] == "ACT-WASH-1"
+        )
         matched = wash["matched_on"]
         self.assertTrue(matched["dclass"]["pass"])
-        self.assertEqual(matched["dclass"]["actual_category"],
-                         DroughtCategory.d3)
+        self.assertEqual(
+            matched["dclass"]["actual_category"], DroughtCategory.d3
+        )
         self.assertEqual(matched["vuln"]["source"], "unavailable")
         exp = matched["exp"][0]
         self.assertEqual(exp["indicator"], "population")
