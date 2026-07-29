@@ -19,11 +19,36 @@ const ResponseActivities = dynamic(
   { ssr: false },
 );
 
+const fetchSafe = async (method, url, payload) => {
+  try {
+    return await api(method, url, payload);
+  } catch (err) {
+    console.error(`Error fetching ${url}:`, err);
+    return null;
+  }
+};
+
 const Home = async () => {
-  const [{ data }, dates] = await Promise.all([
-    api("GET", "/maps?page_size=1"),
-    api("GET", "/dates"),
+  const [
+    { data } = {},
+    dates,
+    hero,
+    regionsData,
+    climaticData,
+    metrics,
+    responseActivities,
+    mapData,
+  ] = await Promise.all([
+    fetchSafe("GET", "/maps?page_size=1"),
+    fetchSafe("GET", "/dates"),
+    fetchSafe("GET", "/insights/hero"),
+    fetchSafe("GET", "/insights/zones?group=regions"),
+    fetchSafe("GET", "/insights/zones?group=climatic"),
+    fetchSafe("GET", "/insights/metrics"),
+    fetchSafe("GET", "/insights/response-activities"),
+    fetchSafe("GET", "/insights/map-data"),
   ]);
+
   const map = data?.[0] || null;
   const validatedValues = map?.validated_values || [];
 
@@ -31,7 +56,7 @@ const Home = async () => {
     <div className="w-full">
       {/* Hero - full width */}
       <div className="relative w-screen left-1/2 -translate-x-1/2">
-        <HeroSection />
+        <HeroSection hero={hero} />
       </div>
 
       {/* Main sections */}
@@ -40,13 +65,18 @@ const Home = async () => {
         style={{ backgroundColor: "#ECEFF8" }}
       >
         <div className="container mx-auto px-4 -mt-32">
-          <BreakdownByZones />
+          <BreakdownByZones
+            regionsData={regionsData}
+            climaticData={climaticData}
+          />
           <DroughtMapSection
             mapId={map?.id}
             dates={dates}
             validatedValues={validatedValues}
+            metrics={metrics}
+            mapData={mapData}
           />
-          <ResponseActivities />
+          <ResponseActivities responseActivities={responseActivities} />
           <FeedbackSection />
         </div>
       </div>
