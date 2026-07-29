@@ -2,14 +2,6 @@
 
 import { useState } from "react";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
-import {
-  zonesData,
-  trendsData,
-  breakdownsData,
-  climaticZonesData,
-  climaticTrendsData,
-  climaticBreakdownsData,
-} from "@/static/mocks/national-overview/zones";
 import TabButtons from "@/components/TabButtons";
 import ZoneBreakdown from "@/components/ZoneBreakdown";
 
@@ -27,13 +19,14 @@ const LEGEND_ITEMS = [
   { value: 5, label: "D4 Exceptional" },
 ];
 
-const BreakdownByZones = () => {
+const BreakdownByZones = ({ regionsData, climaticData }) => {
   const [grouping, setGrouping] = useState("climatic");
 
   const isClimatic = grouping === "climatic";
-  const zones = isClimatic ? climaticZonesData : zonesData;
-  const trends = isClimatic ? climaticTrendsData : trendsData;
-  const breakdowns = isClimatic ? climaticBreakdownsData : breakdownsData;
+  const currentData = isClimatic ? climaticData : regionsData;
+  const zones = currentData?.zones || { data: [] };
+  const trends = currentData?.trends || { data: [] };
+  const breakdowns = currentData?.breakdowns || { data: [] };
 
   return (
     <section className="w-full mb-4">
