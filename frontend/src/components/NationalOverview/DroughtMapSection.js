@@ -2,35 +2,56 @@
 
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Select } from "antd";
+import { Button, Select, Tag } from "antd";
 import {
   CalendarOutlined,
+  CloseCircleOutlined,
   CloudOutlined,
   DashboardOutlined,
 } from "@ant-design/icons";
 import TabButtons from "@/components/TabButtons";
 import MetricCard from "./MetricCard";
 import { api } from "@/lib";
-import { metricsData } from "@/static/mocks/national-overview/metrics";
-import {
-  mapData,
-  mockValidatedValues,
-} from "@/static/mocks/national-overview/map-data";
 
 const OverviewMap = dynamic(() => import("./OverviewMap"), { ssr: false });
 
 const NO_COMPARE = 0;
 
-const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
-  const [activeLayer, setActiveLayer] = useState(mapData.activeLayer);
+const DroughtMapSection = ({
+  mapId,
+  dates = [],
+  validatedValues = [],
+  metrics,
+  mapData,
+}) => {
+  const defaultLayer = mapData?.activeLayer ?? "drought-class";
+  const [activeLayer, setActiveLayer] = useState(defaultLayer);
   const [currentID, setCurrentID] = useState(mapId ?? null);
   const [compareID, setCompareID] = useState(NO_COMPARE);
-  const [values, setValues] = useState(
-    validatedValues.length > 0 ? validatedValues : mockValidatedValues,
-  );
+  const [values, setValues] = useState(validatedValues);
   const [compareValues, setCompareValues] = useState([]);
 
-  const layerOptions = mapData.layers.map((l) => ({
+  // Metrics state (starts with server prop, updated on inkhundla selection)
+  const [metricsState, setMetricsState] = useState(metrics);
+  const [selectedInkhundlaId, setSelectedInkhundlaId] = useState(null);
+  const [selectedInkhundlaName, setSelectedInkhundlaName] = useState("");
+
+  // Sync metricsState when parent metrics prop updates
+  useEffect(() => {
+    if (!selectedInkhundlaId) {
+      setMetricsState(metrics);
+    }
+  }, [metrics, selectedInkhundlaId]);
+
+  // Sync values state when validatedValues prop updates
+  useEffect(() => {
+    setValues(validatedValues);
+  }, [validatedValues]);
+
+  const layers = mapData?.layers || [
+    { key: "drought-class", label: "Drought class" },
+  ];
+  const layerOptions = layers.map((l) => ({
     value: l.key,
     label: l.label,
   }));
@@ -60,6 +81,44 @@ const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
     fetchValues(compareID).then(setCompareValues);
   }, [compareID, fetchValues]);
 
+  const handleInkhundlaSelect = useCallback(
+    async (adminId, adminName) => {
+      if (!adminId || selectedInkhundlaId === adminId) {
+        setSelectedInkhundlaId(null);
+        setSelectedInkhundlaName("");
+        setMetricsState(metrics);
+        return;
+      }
+      setSelectedInkhundlaId(adminId);
+      setSelectedInkhundlaName(adminName || `Inkhundla #${adminId}`);
+
+      try {
+        const res = await fetch(
+          `/api/v1/insights/metrics?inkhundla_id=${adminId}`,
+        );
+        if (res.ok) {
+          const newMetrics = await res.json();
+          setMetricsState(newMetrics);
+        }
+      } catch (err) {
+        console.error("Failed to fetch per-Inkhundla metrics:", err);
+      }
+    },
+    [selectedInkhundlaId, metrics],
+  );
+
+  const clearInkhundlaFilter = () => {
+    setSelectedInkhundlaId(null);
+    setSelectedInkhundlaName("");
+    setMetricsState(metrics);
+  };
+
+  const currentMetrics = metricsState || metrics || {};
+  const rainfall = currentMetrics.rainfall || {};
+  const temperature = currentMetrics.temperature || {};
+  const activeStations = currentMetrics.activeStations || {};
+  const fieldReports = currentMetrics.fieldReports || {};
+
   return (
     <section className="w-full mb-4">
       <div className="border border-neutral-200 bg-white">
@@ -81,34 +140,50 @@ const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
         <div className="flex flex-col lg:flex-row">
           {/* Left column: Metric cards */}
           <div className="w-full lg:w-1/3 flex flex-col lg:border-r border-neutral-200 [&>div:last-child]:border-b-0">
+            {selectedInkhundlaId && (
+              <div className="p-3 bg-blue-50 border-b border-neutral-200 flex items-center justify-between">
+                <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                  Viewing: <strong>{selectedInkhundlaName}</strong>
+                </span>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<CloseCircleOutlined />}
+                  onClick={clearInkhundlaFilter}
+                  className="text-xs text-blue-600 hover:text-blue-800 p-0 h-auto"
+                >
+                  Clear filter
+                </Button>
+              </div>
+            )}
             <MetricCard
-              label={metricsData.rainfall.label}
-              value={metricsData.rainfall.value}
-              unit={metricsData.rainfall.unit}
-              note={metricsData.rainfall.note}
-              history={metricsData.rainfall.history}
+              label={rainfall.label || "Precipitation vs 30-yr normal"}
+              value={rainfall.value ?? 0}
+              unit={rainfall.unit || "mm"}
+              note={rainfall.note || ""}
+              history={rainfall.history || []}
               icon={<CloudOutlined />}
             />
             <MetricCard
-              label={metricsData.temperature.label}
-              value={metricsData.temperature.value}
-              unit={metricsData.temperature.unit}
-              note={metricsData.temperature.note}
-              history={metricsData.temperature.history}
+              label={temperature.label || "Temperature vs 30 yr Normal"}
+              value={temperature.value ?? 0}
+              unit={temperature.unit || "°C"}
+              note={temperature.note || ""}
+              history={temperature.history || []}
               icon={<DashboardOutlined />}
             />
             <MetricCard
-              label={metricsData.activeStations.label}
-              value={`${metricsData.activeStations.online}/${metricsData.activeStations.total}`}
-              note={metricsData.activeStations.note}
-              percentage={metricsData.activeStations.onlinePct}
+              label={activeStations.label || "Active stations"}
+              value={`${activeStations.online ?? 0}/${activeStations.total ?? 0}`}
+              note={activeStations.note || ""}
+              percentage={activeStations.onlinePct ?? 0}
               icon={<DashboardOutlined />}
             />
             <MetricCard
-              label={metricsData.fieldReports.label}
-              value={metricsData.fieldReports.count}
-              note={metricsData.fieldReports.note}
-              percentage={metricsData.fieldReports.verifiedPct}
+              label={fieldReports.label || "Field reports"}
+              value={fieldReports.count ?? 0}
+              note={fieldReports.note || ""}
+              percentage={fieldReports.verifiedPct ?? 0}
             />
           </div>
 
@@ -144,10 +219,12 @@ const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
                 <OverviewMap
                   validatedValues={values}
                   compareValues={compareValues}
+                  onInkhundlaSelect={handleInkhundlaSelect}
                 />
               ) : (
                 <div className="w-full h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
-                  {mapData.layers.find((l) => l.key === activeLayer)?.label}{" "}
+                  {layers.find((l) => l.key === activeLayer)?.label ||
+                    activeLayer}{" "}
                   layer - coming soon
                 </div>
               )}
