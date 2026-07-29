@@ -1,8 +1,8 @@
 # Feature Design Document
 
-## Feature: Track 3 — Operational Response: Risk Level — Priority Service (`v1_risk_level`)
+## Feature: Track 3 — Operational Response: Risk Level Service (`v1_risk_level`)
 
-**Task ID**: PA-2
+**Task ID**: RL-1 (#171)
 **Author**: Galih Pratama
 **Date**: 2026-07-29
 **Status**: Approved
@@ -26,7 +26,7 @@ Goal:
     · band mapping (riskClass → urgent/watch/monitor)
     · region and band query-param filters
     · explicit empty state when no Publication is published
-- Public GET endpoint /api/v1/priority-areas, AllowAny, consistent with
+- Public GET endpoint /api/v1/risk-levels, AllowAny, consistent with
   the public browse page.
 ```
 
@@ -71,7 +71,7 @@ No database migrations needed. `v1_risk_level` is a stateless service layer wrap
 
 | Method | URL | Purpose | Auth |
 |--------|-----|---------|------|
-| GET | `/api/v1/priority-areas` | Ranked priority list of Tinkhundla by risk score | Public (`AllowAny`) |
+| GET | `/api/v1/risk-levels` | Ranked list of Tinkhundla by risk score | Public (`AllowAny`) |
 
 Query params:
 - `?region=Shiselweni` — exact match on `Administration.region`
@@ -80,7 +80,7 @@ Query params:
 ### Request/Response Examples
 
 ```json
-// GET /api/v1/priority-areas?region=Shiselweni&band=watch
+// GET /api/v1/risk-levels?region=Shiselweni&band=watch
 // Response 200 OK
 {
   "publication": {
@@ -116,7 +116,7 @@ Query params:
 ```
 
 ```json
-// GET /api/v1/priority-areas (when no published publication exists)
+// GET /api/v1/risk-levels (when no published publication exists)
 // Response 200 OK
 {
   "publication": null,
@@ -126,7 +126,7 @@ Query params:
 ```
 
 ```json
-// GET /api/v1/priority-areas?band=invalid
+// GET /api/v1/risk-levels?band=invalid
 // Response 400 Bad Request
 {
   "band": ["'invalid' is not a valid band. Use: urgent, watch, monitor."]
@@ -160,6 +160,18 @@ Query params:
 **Decision**: Option 2 — Preserve global rank.
 
 **Rationale**: Preserving global rank ensures consistency across views (e.g. Inkhundla #3 globally remains rank 3 even when filtering by region).
+
+---
+
+### D-3: Standardizing Naming to Risk Level
+
+**Options Considered**:
+1. Keep `/api/v1/priority-areas` endpoint and `PriorityArea` serializer names from legacy prototype spec.
+2. Standardize all contracts, app names, service methods, serializers, and endpoints on **Risk Level** (`/api/v1/risk-levels`, `RiskLevelItemSerializer`, `compute_risk_level_list`).
+
+**Decision**: Option 2 — Standardize on Risk Level.
+
+**Rationale**: Eliminates cognitive drift between app (`v1_risk_level`), score (`risk_score`), and endpoint. Search confirmed `/api/v1/priority-areas` was not hardcoded in the frontend.
 
 ---
 
@@ -200,7 +212,7 @@ Query params:
 | Test Type | Coverage |
 |-----------|----------|
 | Unit (`test_service.py`) | - `test_band_map_very_high`: `"Very High"` → `"urgent"`<br>- `test_band_map_high`: `"High"` → `"watch"`<br>- `test_band_map_moderate`: `"Moderate"` → `"watch"`<br>- `test_band_map_low`: `"Low"` → `"monitor"`<br>- `test_none_risk_score_excluded`: missing indicator → excluded<br>- `test_ranking_order`: `risk_score` desc, `name` asc<br>- `test_empty_state_no_publication`: `{publication: null, count: 0, data: []}` |
-| Integration (`test_endpoints.py`) | - `test_public_unauthenticated_200`: Anonymous GET returns 200<br>- `test_response_structure`: Verify payload structure<br>- `test_rank_contiguous`: `data[i].rank == i+1`<br>- `test_filter_by_region`: Filter matching<br>- `test_filter_by_band`: Filter matching<br>- `test_filter_invalid_band`: Returns 400 Bad Request<br>- `test_empty_state`: Empty list when no published publication exists<br>- `test_swagger_schema`: API schema contains `/api/v1/priority-areas` |
+| Integration (`test_endpoints.py`) | - `test_public_unauthenticated_200`: Anonymous GET returns 200<br>- `test_response_structure`: Verify payload structure<br>- `test_rank_contiguous`: `data[i].rank == i+1`<br>- `test_filter_by_region`: Filter matching<br>- `test_filter_by_band`: Filter matching<br>- `test_filter_invalid_band`: Returns 400 Bad Request<br>- `test_empty_state`: Empty list when no published publication exists<br>- `test_swagger_schema`: API schema contains `/api/v1/risk-levels` |
 
 ---
 
@@ -209,6 +221,7 @@ Query params:
 - [x] **OQ-1 (`v_prep` dependency)**: RESOLVED — Using H×E×V model from `v1_indicators`.
 - [x] **OQ-2 (`rainfed_cropland` calculation)**: RESOLVED — Exposure uses `land_use_dvi_agri`, not `rainfed_cropland`.
 - [x] **OQ-3 (Filter ranking behavior)**: RESOLVED — Preserving global rank numbers.
+- [x] **OQ-4 (Naming alignment)**: RESOLVED — Endpoint standardized to `/api/v1/risk-levels`.
 
 ---
 
