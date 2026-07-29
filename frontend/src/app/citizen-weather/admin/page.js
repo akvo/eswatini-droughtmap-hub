@@ -48,7 +48,9 @@ const AdminDashboardPage = () => {
       width: "26%",
       render: (_, record) => (
         <div>
-          <div className="text-sm font-medium text-[#333333]">{record.name}</div>
+          <div className="text-sm font-medium text-[#333333]">
+            {record.name}
+          </div>
           <div className="text-xs text-[#606060]">
             {record.inkhundla} · {record.region}
           </div>

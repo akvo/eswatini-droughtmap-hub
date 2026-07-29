@@ -248,8 +248,7 @@ export const stationDetail = {
     phone: "+268 76 12 3456",
     language: "English",
     assignedAdmin: "Dr Felix Motsa · UNESWA",
-    notes:
-      "Chairs the Inkhundla DRMC. Best contacted in the mornings.",
+    notes: "Chairs the Inkhundla DRMC. Best contacted in the mornings.",
     lastSignIn: "3 May 2026 · 14:22",
   },
   completeness: 83,

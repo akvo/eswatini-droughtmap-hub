@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Modal, Input, Button } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
 import { NUDGE_TONES } from "@/static/mocks/citizen-weather";
@@ -10,19 +10,22 @@ const { TextArea } = Input;
 const NudgeModal = ({ open, onClose, station }) => {
   const [tone, setTone] = useState("friendly");
 
-  const fillTemplate = (template) => {
-    if (!station || !template) return "";
-    return template
-      .replace(/{name}/g, station.observer?.split(" ")[0] || "")
-      .replace(/{month}/g, "May 2026")
-      .replace(/{station}/g, station.name || "");
-  };
+  const fillTemplate = useCallback(
+    () => (template) => {
+      if (!station || !template) return "";
+      return template
+        .replace(/{name}/g, station.observer?.split(" ")[0] || "")
+        .replace(/{month}/g, "May 2026")
+        .replace(/{station}/g, station.name || "");
+    },
+    [station],
+  );
 
   const toneData = NUDGE_TONES[tone];
   const [message, setMessage] = useState(fillTemplate(toneData?.message));
   const subject = useMemo(
     () => fillTemplate(NUDGE_TONES[tone]?.subject),
-    [tone, station]
+    [tone, fillTemplate],
   );
 
   const handleToneChange = (newTone) => {
@@ -106,9 +109,7 @@ const NudgeModal = ({ open, onClose, station }) => {
           audit trail.
         </div>
         <Button onClick={onClose}>Cancel</Button>
-        <Button type="primary">
-          Send nudge
-        </Button>
+        <Button type="primary">Send nudge</Button>
       </div>
     </Modal>
   );

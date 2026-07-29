@@ -75,7 +75,7 @@ const ReminderSchedulePage = () => {
   const [day, setDay] = useState("1");
   const [time, setTime] = useState("07:00");
   const [subjectTemplate, setSubjectTemplate] = useState(
-    "Your {station} weather reading for {month} is due"
+    "Your {station} weather reading for {month} is due",
   );
   const [deadline, setDeadline] = useState("5");
   const [followUp1, setFollowUp1] = useState("3");
@@ -178,7 +178,8 @@ const ReminderSchedulePage = () => {
                   </h2>
                 </div>
                 <p className="text-xs text-[#606060] mt-1 ml-8">
-                  Extra reminders sent if the observer hasn&apos;t submitted yet.
+                  Extra reminders sent if the observer hasn&apos;t submitted
+                  yet.
                 </p>
               </div>
               <div className="p-4 sm:p-6 flex flex-col gap-5">
@@ -207,14 +208,11 @@ const ReminderSchedulePage = () => {
                 </FieldGroup>
 
                 <div className="border-t border-cardBorder pt-5">
-                  <FieldGroup
-                    label="Per-region overrides"
-                    hint="optional"
-                  >
+                  <FieldGroup label="Per-region overrides" hint="optional">
                     <p className="text-xs text-[#606060] mb-2.5">
-                      Use this if a specific region needs a different day or time
-                      (e.g. observers in Lubombo prefer earlier reminders due to
-                      farm hours).
+                      Use this if a specific region needs a different day or
+                      time (e.g. observers in Lubombo prefer earlier reminders
+                      due to farm hours).
                     </p>
                     <div className="grid grid-cols-2 gap-2.5">
                       <Select
@@ -246,8 +244,8 @@ const ReminderSchedulePage = () => {
                 <b className="text-[#333333]">
                   Sunday 1 June 2026 &middot; 07:00 SAST
                 </b>{" "}
-                &rarr; <b>28 observers</b> across all 4 regions receive their May
-                2026 reminder.
+                &rarr; <b>28 observers</b> across all 4 regions receive their
+                May 2026 reminder.
                 <div className="text-xs text-[#606060] mt-2 leading-relaxed">
                   Follow-up 1: Wed 10 June &middot; 07:00 &middot; sent only to
                   observers who haven&apos;t submitted yet.
@@ -262,8 +260,9 @@ const ReminderSchedulePage = () => {
           {/* Bottom actions */}
           <div className="flex flex-wrap items-center gap-3 py-4">
             <span className="text-xs text-[#606060] mr-auto">
-              Schedule changes take effect from the next monthly cycle. Observers
-              currently mid-cycle will finish under the previous schedule.
+              Schedule changes take effect from the next monthly cycle.
+              Observers currently mid-cycle will finish under the previous
+              schedule.
             </span>
             <Link href="/citizen-weather/admin">
               <Button>Cancel</Button>
