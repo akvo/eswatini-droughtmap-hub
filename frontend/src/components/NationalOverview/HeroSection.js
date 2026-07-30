@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "antd";
+import { Button, Skeleton } from "antd";
 import { CalendarOutlined, DownloadOutlined } from "@ant-design/icons";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
 
@@ -15,13 +15,23 @@ const textOn = (hex = "#ffffff") => {
 };
 
 const HeroSection = ({ hero }) => {
+  if (!hero) {
+    return (
+      <section className="relative w-full flex flex-col items-center text-center py-12 gap-6 min-h-[300px]">
+        <Skeleton.Button active size="small" style={{ width: 160 }} />
+        <Skeleton.Input active size="large" style={{ width: 340 }} />
+        <Skeleton.Node active style={{ width: 480, height: 70 }} />
+      </section>
+    );
+  }
+
   const {
     status = { category: 0, label: "Normal / No Drought" },
     published = "-",
     nextUpdate = "-",
     headline = "Drought Situation Overview",
     summary = "",
-  } = hero || {};
+  } = hero;
 
   const catVal = status?.category ?? 0;
   const badgeBg = DROUGHT_CATEGORY_COLOR[catVal] || "#b9f8cf";
