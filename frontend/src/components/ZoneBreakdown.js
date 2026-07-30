@@ -32,6 +32,9 @@ const ZoneCard = ({ zone, breakdown, trend }) => {
   const byClass = Object.fromEntries(
     (breakdown?.data || []).map((item) => [item.key, item.value]),
   );
+  const namesByClass = Object.fromEntries(
+    (breakdown?.data || []).map((item) => [item.key, item.names || []]),
+  );
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-3 bg-white p-4">
@@ -52,7 +55,11 @@ const ZoneCard = ({ zone, breakdown, trend }) => {
           {trendMeta.arrow} {trendMeta.label}
         </span>
       </div>
-      <ZoneDoughnut byClass={byClass} centerLabel={`${zone.confidence}%`} />
+      <ZoneDoughnut
+        byClass={byClass}
+        namesByClass={namesByClass}
+        centerLabel={`${zone.confidence}%`}
+      />
     </div>
   );
 };

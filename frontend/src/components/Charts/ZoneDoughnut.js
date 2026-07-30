@@ -9,9 +9,24 @@ import {
 // Reusable label-free D-class doughnut (Figma node 3154:28294).
 // Pass `byClass` ({ [category]: count }) and an optional `centerLabel` (e.g. "55%").
 // Segment colours use the USDM DROUGHT_CATEGORY_COLOR (palette decision pending, spec §10).
-const ZoneDoughnut = ({ byClass = {}, centerLabel, size = 80 }) => {
+const ZoneDoughnut = ({
+  byClass = {},
+  namesByClass = {},
+  centerLabel,
+  size = 80,
+}) => {
   const rawConfig = {
-    tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+    tooltip: {
+      trigger: "item",
+      formatter: (params) => {
+        const names = params.data?.names || [];
+        let html = `<strong>${params.name}</strong>: ${params.value} (${params.percent}%)`;
+        if (names.length > 0) {
+          html += `<br/><div style="font-size:11px;max-width:220px;white-space:normal;margin-top:4px;color:#cbd5e1;">Tinkhundla: ${names.join(", ")}</div>`;
+        }
+        return html;
+      },
+    },
     series: [
       {
         type: "pie",
@@ -22,7 +37,9 @@ const ZoneDoughnut = ({ byClass = {}, centerLabel, size = 80 }) => {
           .filter((cat) => byClass[cat] > 0)
           .map((cat) => ({
             value: byClass[cat],
-            name: DROUGHT_CATEGORY_LABEL[cat],
+            name: DROUGHT_CATEGORY_LABEL[cat] || `Class ${cat}`,
+            catKey: cat,
+            names: namesByClass[cat] || [],
             itemStyle: { color: DROUGHT_CATEGORY_COLOR[cat] },
           })),
       },
