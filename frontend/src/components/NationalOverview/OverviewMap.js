@@ -12,30 +12,52 @@ const findCategory = (values, feature) =>
   )?.category;
 
 // Remounts the GeoJSON layer whenever the colors it paints change.
-const layerKeyOf = (values) => values.map((v) => v?.category).join("-");
+const layerKeyOf = (values, visible) =>
+  values.map((v) => v?.category).join("-") + "|" + [...visible].sort().join(",");
+
+const allCategoryValues = new Set(
+  DROUGHT_CATEGORY.slice(0, -1).map((c) => c.value),
+);
 
 const OverviewMap = ({ validatedValues = [], compareValues = [] }) => {
   const [selectedFeature, setSelectedFeature] = useState(null);
+  const [visibleCategories, setVisibleCategories] = useState(allCategoryValues);
   const isCompare = compareValues.length > 0;
 
   useEffect(() => {
     setSelectedFeature(null);
   }, [validatedValues, compareValues]);
 
+  const toggleCategory = (value) => {
+    setVisibleCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
+  };
+
   // ReactCompareSlider lays itemOne out as a flex child, so it needs a width of
   // its own — without w-full it collapses and the map paints blank.
   const renderMap = (values, withCard) => (
     <div className="w-full">
       <CDIMap
-        layerKey={layerKeyOf(values)}
-        // ponytail: pan off while comparing — two Leaflet maps would drift apart.
-        // Scroll zoom stays off everywhere: it zooms the map out of view while
-        // the user is scrolling the page. Use the +/- control instead.
+        layerKey={layerKeyOf(values, visibleCategories)}
         dragging={!isCompare}
         scrollWheelZoom={false}
-        onFeature={(feature) => ({
-          fillColor: DROUGHT_CATEGORY_COLOR?.[findCategory(values, feature)],
-        })}
+        onFeature={(feature) => {
+          const cat = findCategory(values, feature);
+          const visible = visibleCategories.has(cat);
+          return {
+            fillColor: visible
+              ? DROUGHT_CATEGORY_COLOR?.[cat]
+              : "transparent",
+            fillOpacity: visible ? 0.75 : 0,
+          };
+        }}
         onClick={(feature) =>
           setSelectedFeature({
             name: feature?.properties?.name,
@@ -75,20 +97,39 @@ const OverviewMap = ({ validatedValues = [], compareValues = [] }) => {
         )}
       </div>
 
-      {/* Legend - horizontal, white background */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-white">
-        {DROUGHT_CATEGORY.slice(0, -1).map((cat) => (
-          <span
-            key={cat.value}
-            className="flex items-center gap-1.5 text-xs text-neutral-500"
-          >
-            <span
-              className="inline-block w-3 h-3 border border-neutral-300"
-              style={{ backgroundColor: cat.color }}
-            />
-            {cat.label}
-          </span>
-        ))}
+      {/* Legend - interactive color-coded checkboxes */}
+      <div className="flex flex-wrap items-center gap-4 p-4 bg-white">
+        {DROUGHT_CATEGORY.slice(0, -1).map((cat) => {
+          const active = visibleCategories.has(cat.value);
+          return (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => toggleCategory(cat.value)}
+              className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer"
+            >
+              <span
+                className="inline-flex items-center justify-center w-5 h-5 rounded"
+                style={{
+                  backgroundColor: active ? cat.color : "#d4d4d4",
+                }}
+              >
+                {active && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path
+                      d="M2.5 6L5 8.5L9.5 3.5"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              {cat.label.replace(/ Drought$/, "").replace("Wet/normal conditions", "None").replace("Abnormally Dry", "Normal")}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

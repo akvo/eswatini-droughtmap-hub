@@ -58,6 +58,7 @@ const ZoneCard = ({ zone, breakdown, trend }) => {
 };
 
 const GRID_COLS = {
+  2: "lg:grid-cols-2",
   3: "lg:grid-cols-3",
   4: "lg:grid-cols-4",
 };

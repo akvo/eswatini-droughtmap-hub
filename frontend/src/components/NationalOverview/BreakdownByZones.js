@@ -55,11 +55,11 @@ const BreakdownByZones = () => {
           zones={zones}
           trends={trends}
           breakdowns={breakdowns}
-          columns={isClimatic ? 3 : 4}
+          columns={isClimatic ? 3 : 2}
         />
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 p-4 border-t border-neutral-200">
+        <div className="flex flex-wrap items-center gap-4 p-4">
           {LEGEND_ITEMS.map((item) => (
             <span
               key={item.value}

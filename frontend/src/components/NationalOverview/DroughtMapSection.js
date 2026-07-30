@@ -3,11 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Select } from "antd";
-import {
-  CalendarOutlined,
-  CloudOutlined,
-  DashboardOutlined,
-} from "@ant-design/icons";
+import Image from "next/image";
+import { CalendarOutlined } from "@ant-design/icons";
 import TabButtons from "@/components/TabButtons";
 import MetricCard from "./MetricCard";
 import { api } from "@/lib";
@@ -87,7 +84,7 @@ const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
               unit={metricsData.rainfall.unit}
               note={metricsData.rainfall.note}
               history={metricsData.rainfall.history}
-              icon={<CloudOutlined />}
+              icon={<Image src="/assets/icons/national-overview/precipitation.svg" alt="Precipitation" width={24} height={24} />}
             />
             <MetricCard
               label={metricsData.temperature.label}
@@ -95,14 +92,14 @@ const DroughtMapSection = ({ mapId, dates = [], validatedValues = [] }) => {
               unit={metricsData.temperature.unit}
               note={metricsData.temperature.note}
               history={metricsData.temperature.history}
-              icon={<DashboardOutlined />}
+              icon={<Image src="/assets/icons/national-overview/temperature-above-normal.svg" alt="Temperature" width={24} height={24} />}
             />
             <MetricCard
               label={metricsData.activeStations.label}
               value={`${metricsData.activeStations.online}/${metricsData.activeStations.total}`}
               note={metricsData.activeStations.note}
               percentage={metricsData.activeStations.onlinePct}
-              icon={<DashboardOutlined />}
+              icon={<Image src="/assets/icons/national-overview/active-stations.svg" alt="Active stations" width={24} height={24} />}
             />
             <MetricCard
               label={metricsData.fieldReports.label}
