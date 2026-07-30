@@ -142,7 +142,7 @@ const DroughtMapSection = ({
 
   return (
     <section className="w-full mb-4">
-      <div className="border border-neutral-200 bg-white">
+      <div className="border border-neutral-200 bg-white min-h-[640px]">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b border-neutral-200">
           <h2 className="text-lg font-semibold text-neutral-800">
@@ -158,9 +158,9 @@ const DroughtMapSection = ({
         </div>
 
         {/* Main content: KPIs left, Map right */}
-        <div className="flex flex-col lg:flex-row">
+        <div className="flex flex-col lg:flex-row min-h-[580px]">
           {/* Left column: Metric cards */}
-          <div className="w-full lg:w-1/3 flex flex-col min-h-[380px] lg:border-r border-neutral-200 [&>div:last-child]:border-b-0">
+          <div className="w-full lg:w-1/3 flex flex-col min-h-[580px] lg:border-r border-neutral-200 [&>div:last-child]:border-b-0">
             {selectedInkhundlaId && (
               <div className="p-3 bg-blue-50 border-b border-neutral-200 flex items-center justify-between">
                 <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
@@ -220,7 +220,7 @@ const DroughtMapSection = ({
           </div>
 
           {/* Right column: Date controls + Map */}
-          <div className="w-full lg:w-2/3 flex flex-col min-h-[380px]">
+          <div className="w-full lg:w-2/3 flex flex-col min-h-[580px]">
             {/* Date controls */}
             <div className="flex flex-wrap items-center gap-4 p-4 border-b border-neutral-200">
               <Select
@@ -246,7 +246,7 @@ const DroughtMapSection = ({
             </div>
 
             {/* Map */}
-            <div className="flex-1 relative min-h-[320px]">
+            <div className="flex-1 relative min-h-[835px]">
               {isMapLoading && (
                 <div className="absolute inset-0 z-10 bg-white/75 flex flex-col items-center justify-center gap-3 backdrop-blur-xs">
                   <Skeleton.Node active style={{ width: 260, height: 180 }}>
@@ -263,7 +263,7 @@ const DroughtMapSection = ({
                   onInkhundlaSelect={handleInkhundlaSelect}
                 />
               ) : (
-                <div className="w-full h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
+                <div className="w-full h-full min-h-[835px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
                   {layers.find((l) => l.key === activeLayer)?.label ||
                     activeLayer}{" "}
                   layer - coming soon
