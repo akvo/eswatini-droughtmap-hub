@@ -67,7 +67,7 @@ const ResponseActivities = ({ responseActivities }) => {
     lastUpdated = "-",
     summary = "No active response activities recorded.",
     sectors = [],
-    priorityAreasHref = "/insights/priority",
+    priorityAreasHref = "/detailed-insights/risk-level",
   } = responseActivities || {};
 
   return (

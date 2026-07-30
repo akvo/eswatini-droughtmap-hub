@@ -431,7 +431,7 @@ def get_response_activities_data():
         "lastUpdated": last_updated_str,
         "summary": summary_str,
         "sectors": sectors_list,
-        "priorityAreasHref": "/insights/priority",
+        "priorityAreasHref": "/detailed-insights/risk-level",
     }
 
 
