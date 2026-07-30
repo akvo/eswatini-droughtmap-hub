@@ -139,7 +139,10 @@ const Home = async () => {
             mapData={mapData}
           />
           <ResponseActivities responseActivities={responseActivities} />
-          <FeedbackSection />
+
+          <div className="pt-6">
+            <FeedbackSection />
+          </div>
         </div>
       </div>
     </div>

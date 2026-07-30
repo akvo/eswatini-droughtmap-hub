@@ -29,7 +29,7 @@ const BreakdownByZones = ({ regionsData, climaticData }) => {
   const breakdowns = currentData?.breakdowns || { data: [] };
 
   return (
-    <section className="w-full mb-4">
+    <section className="w-full mb-6">
       <div className="border border-neutral-200 bg-white">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-200">

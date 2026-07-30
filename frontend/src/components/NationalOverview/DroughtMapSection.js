@@ -141,7 +141,7 @@ const DroughtMapSection = ({
   const fieldReports = currentMetrics.fieldReports || {};
 
   return (
-    <section className="w-full mb-4">
+    <section className="w-full mb-6">
       <div className="border border-neutral-200 bg-white min-h-[640px]">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b border-neutral-200">
