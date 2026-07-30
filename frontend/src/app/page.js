@@ -83,8 +83,8 @@ const fetchSafe = async (method, url, payload) => {
 
 const Home = async () => {
   const [
-    { data } = {},
-    dates,
+    mapsResponse,
+    datesResponse,
     hero,
     regionsData,
     climaticData,
@@ -102,8 +102,17 @@ const Home = async () => {
     fetchSafe("GET", "/insights/map-data"),
   ]);
 
-  const map = data?.[0] || null;
+  const mapsList =
+    mapsResponse?.results ||
+    mapsResponse?.data ||
+    (Array.isArray(mapsResponse) ? mapsResponse : []);
+  const map = mapsList?.[0] || null;
   const validatedValues = map?.validated_values || [];
+
+  const dates =
+    datesResponse?.dates ||
+    datesResponse?.data ||
+    (Array.isArray(datesResponse) ? datesResponse : []);
 
   return (
     <div className="w-full">

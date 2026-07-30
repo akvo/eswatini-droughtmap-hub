@@ -6,10 +6,14 @@ import { DROUGHT_CATEGORY, DROUGHT_CATEGORY_COLOR } from "@/static/config";
 import CDIMap from "@/components/Map/CDIMap";
 import FeatureInfoCard from "@/components/Map/FeatureInfoCard";
 
-const findCategory = (values, feature) =>
-  values.find(
-    (d) => d?.administration_id === feature?.properties?.administration_id,
-  )?.category;
+const findCategory = (values, feature) => {
+  if (!values || !Array.isArray(values)) return undefined;
+  const adminId = feature?.properties?.administration_id;
+  const match = values.find(
+    (d) => String(d?.administration_id) === String(adminId),
+  );
+  return match?.category;
+};
 
 // Remounts the GeoJSON layer whenever the colors it paints change.
 const layerKeyOf = (values) => values.map((v) => v?.category).join("-");
@@ -33,10 +37,17 @@ const OverviewMap = ({
 
   const getFeatureColor = (values, feature) => {
     const cat = findCategory(values, feature);
+    const color =
+      cat !== undefined &&
+      cat !== null &&
+      DROUGHT_CATEGORY_COLOR[cat] !== undefined
+        ? DROUGHT_CATEGORY_COLOR[cat]
+        : "#E5E7EB";
+
     if (selectedCategory !== null && cat !== selectedCategory) {
       return "#E5E7EB"; // Dimmed background for unselected categories
     }
-    return DROUGHT_CATEGORY_COLOR?.[cat] || "#E5E7EB";
+    return color;
   };
 
   // ReactCompareSlider lays itemOne out as a flex child, so it needs a width of

@@ -1,11 +1,6 @@
 "use client";
 
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
-import {
-  breakdownsData as defaultBreakdowns,
-  trendsData as defaultTrends,
-  zonesData as defaultZones,
-} from "@/static/mocks/national-overview/zones";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
 import classNames from "classnames";
 
@@ -70,9 +65,9 @@ const GRID_COLS = {
 };
 
 const ZoneBreakdown = ({
-  zones = defaultZones,
-  trends = defaultTrends,
-  breakdowns = defaultBreakdowns,
+  zones = { data: [] },
+  trends = { data: [] },
+  breakdowns = { data: [] },
   columns = 4,
 }) => {
   const zoneList = zones.data || [];
