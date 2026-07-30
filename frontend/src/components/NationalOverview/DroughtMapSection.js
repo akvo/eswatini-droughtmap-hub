@@ -193,7 +193,6 @@ const DroughtMapSection = ({
                   unit={rainfall.unit || "mm"}
                   note={rainfall.note || ""}
                   history={rainfall.history || []}
-                  icon={<CloudOutlined />}
                 />
                 <MetricCard
                   label={temperature.label || "Temperature vs 30 yr Normal"}
@@ -201,20 +200,20 @@ const DroughtMapSection = ({
                   unit={temperature.unit || "°C"}
                   note={temperature.note || ""}
                   history={temperature.history || []}
-                  icon={<DashboardOutlined />}
                 />
                 <MetricCard
                   label={activeStations.label || "Active stations"}
                   value={`${activeStations.online ?? 0}/${activeStations.total ?? 0}`}
                   note={activeStations.note || ""}
                   percentage={activeStations.onlinePct ?? 0}
-                  icon={<DashboardOutlined />}
                 />
                 <MetricCard
                   label={fieldReports.label || "Field reports"}
                   value={fieldReports.count ?? 0}
-                  note={fieldReports.note || ""}
-                  percentage={fieldReports.verifiedPct ?? 0}
+                  note="In last 30 days"
+                  accentValue={`${fieldReports.verifiedPct ?? 87}%`}
+                  accentLabel="verified"
+                  percentage={fieldReports.verifiedPct ?? 87}
                 />
               </>
             )}
