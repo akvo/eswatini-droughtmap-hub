@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Button, Select, Tag } from "antd";
+import { Button, Select, Skeleton } from "antd";
 import {
   CalendarOutlined,
   CloseCircleOutlined,
@@ -16,6 +16,19 @@ import { api } from "@/lib";
 const OverviewMap = dynamic(() => import("./OverviewMap"), { ssr: false });
 
 const NO_COMPARE = 0;
+
+const MetricSkeletonCard = () => (
+  <div className="w-full flex-1 border-b border-neutral-200 p-4 flex flex-col justify-between min-h-[95px] animate-pulse">
+    <div className="flex items-center justify-between mb-2">
+      <div className="h-4 w-32 bg-neutral-200 rounded" />
+      <div className="h-5 w-5 bg-neutral-200 rounded-full" />
+    </div>
+    <div className="flex items-end justify-between gap-4 mt-2">
+      <div className="h-7 w-20 bg-neutral-200 rounded" />
+      <div className="h-6 w-12 bg-neutral-200 rounded" />
+    </div>
+  </div>
+);
 
 const DroughtMapSection = ({
   mapId,
@@ -31,10 +44,12 @@ const DroughtMapSection = ({
   const [values, setValues] = useState(validatedValues);
   const [compareValues, setCompareValues] = useState([]);
 
-  // Metrics state (starts with server prop, updated on inkhundla selection)
+  // Metrics state & loading
   const [metricsState, setMetricsState] = useState(metrics);
   const [selectedInkhundlaId, setSelectedInkhundlaId] = useState(null);
   const [selectedInkhundlaName, setSelectedInkhundlaName] = useState("");
+  const [isMetricsLoading, setIsMetricsLoading] = useState(false);
+  const [isMapLoading, setIsMapLoading] = useState(false);
 
   // Sync metricsState when parent metrics prop updates
   useEffect(() => {
@@ -57,12 +72,15 @@ const DroughtMapSection = ({
   }));
 
   const fetchValues = useCallback(async (id) => {
+    setIsMapLoading(true);
     try {
       const { validated_values: vv } = await api("GET", `/map/${id}`);
       return vv || [];
     } catch (err) {
       console.error(err);
       return [];
+    } finally {
+      setIsMapLoading(false);
     }
   }, []);
 
@@ -91,6 +109,7 @@ const DroughtMapSection = ({
       }
       setSelectedInkhundlaId(adminId);
       setSelectedInkhundlaName(adminName || `Inkhundla #${adminId}`);
+      setIsMetricsLoading(true);
 
       try {
         const res = await fetch(
@@ -102,6 +121,8 @@ const DroughtMapSection = ({
         }
       } catch (err) {
         console.error("Failed to fetch per-Inkhundla metrics:", err);
+      } finally {
+        setIsMetricsLoading(false);
       }
     },
     [selectedInkhundlaId, metrics],
@@ -139,7 +160,7 @@ const DroughtMapSection = ({
         {/* Main content: KPIs left, Map right */}
         <div className="flex flex-col lg:flex-row">
           {/* Left column: Metric cards */}
-          <div className="w-full lg:w-1/3 flex flex-col lg:border-r border-neutral-200 [&>div:last-child]:border-b-0">
+          <div className="w-full lg:w-1/3 flex flex-col min-h-[380px] lg:border-r border-neutral-200 [&>div:last-child]:border-b-0">
             {selectedInkhundlaId && (
               <div className="p-3 bg-blue-50 border-b border-neutral-200 flex items-center justify-between">
                 <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
@@ -156,39 +177,51 @@ const DroughtMapSection = ({
                 </Button>
               </div>
             )}
-            <MetricCard
-              label={rainfall.label || "Precipitation vs 30-yr normal"}
-              value={rainfall.value ?? 0}
-              unit={rainfall.unit || "mm"}
-              note={rainfall.note || ""}
-              history={rainfall.history || []}
-              icon={<CloudOutlined />}
-            />
-            <MetricCard
-              label={temperature.label || "Temperature vs 30 yr Normal"}
-              value={temperature.value ?? 0}
-              unit={temperature.unit || "°C"}
-              note={temperature.note || ""}
-              history={temperature.history || []}
-              icon={<DashboardOutlined />}
-            />
-            <MetricCard
-              label={activeStations.label || "Active stations"}
-              value={`${activeStations.online ?? 0}/${activeStations.total ?? 0}`}
-              note={activeStations.note || ""}
-              percentage={activeStations.onlinePct ?? 0}
-              icon={<DashboardOutlined />}
-            />
-            <MetricCard
-              label={fieldReports.label || "Field reports"}
-              value={fieldReports.count ?? 0}
-              note={fieldReports.note || ""}
-              percentage={fieldReports.verifiedPct ?? 0}
-            />
+
+            {isMetricsLoading ? (
+              <>
+                <MetricSkeletonCard />
+                <MetricSkeletonCard />
+                <MetricSkeletonCard />
+                <MetricSkeletonCard />
+              </>
+            ) : (
+              <>
+                <MetricCard
+                  label={rainfall.label || "Precipitation vs 30-yr normal"}
+                  value={rainfall.value ?? 0}
+                  unit={rainfall.unit || "mm"}
+                  note={rainfall.note || ""}
+                  history={rainfall.history || []}
+                  icon={<CloudOutlined />}
+                />
+                <MetricCard
+                  label={temperature.label || "Temperature vs 30 yr Normal"}
+                  value={temperature.value ?? 0}
+                  unit={temperature.unit || "°C"}
+                  note={temperature.note || ""}
+                  history={temperature.history || []}
+                  icon={<DashboardOutlined />}
+                />
+                <MetricCard
+                  label={activeStations.label || "Active stations"}
+                  value={`${activeStations.online ?? 0}/${activeStations.total ?? 0}`}
+                  note={activeStations.note || ""}
+                  percentage={activeStations.onlinePct ?? 0}
+                  icon={<DashboardOutlined />}
+                />
+                <MetricCard
+                  label={fieldReports.label || "Field reports"}
+                  value={fieldReports.count ?? 0}
+                  note={fieldReports.note || ""}
+                  percentage={fieldReports.verifiedPct ?? 0}
+                />
+              </>
+            )}
           </div>
 
           {/* Right column: Date controls + Map */}
-          <div className="w-full lg:w-2/3 flex flex-col">
+          <div className="w-full lg:w-2/3 flex flex-col min-h-[380px]">
             {/* Date controls */}
             <div className="flex flex-wrap items-center gap-4 p-4 border-b border-neutral-200">
               <Select
@@ -214,7 +247,16 @@ const DroughtMapSection = ({
             </div>
 
             {/* Map */}
-            <div className="flex-1">
+            <div className="flex-1 relative min-h-[320px]">
+              {isMapLoading && (
+                <div className="absolute inset-0 z-10 bg-white/75 flex flex-col items-center justify-center gap-3 backdrop-blur-xs">
+                  <Skeleton.Node active style={{ width: 260, height: 180 }}>
+                    <span className="text-xs text-neutral-400">
+                      Loading map data...
+                    </span>
+                  </Skeleton.Node>
+                </div>
+              )}
               {activeLayer === "drought-class" ? (
                 <OverviewMap
                   validatedValues={values}
