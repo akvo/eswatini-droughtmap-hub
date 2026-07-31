@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Tag } from "antd";
 import ActivityStatusTag from "./ActivityStatusTag";
-import { SECTOR_TAG_COLORS, SECTOR_ICONS } from "./ActivityTable";
+import { SectorBadge } from "@/components/DS";
+
 import TriggerConditionsView from "./TriggerConditionsView";
 import InkhundlaBanner from "./InkhundlaBanner";
 import OwnershipView from "./OwnershipView";
@@ -23,10 +23,7 @@ const ActivityDetailContent = ({ activity, showStatusTag = true }) => {
           ) : (
             <div />
           )}
-          <Tag color={SECTOR_TAG_COLORS[activity.sector] || "default"}>
-            {SECTOR_ICONS[activity.sector]}
-            {activity.sector_label}
-          </Tag>
+          <SectorBadge sector={activity.sector} label={activity.sector_label} />
         </div>
 
         {/* Title & Protocol ID */}

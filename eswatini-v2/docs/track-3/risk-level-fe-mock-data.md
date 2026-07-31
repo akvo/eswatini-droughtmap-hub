@@ -10,9 +10,15 @@
 **Track**: Track 3 — Operational Response
 **Author**: Galih Pratama
 **Date**: 2026-07-20
-**Status**: Approved — Ready for implementation
-
+**Status**: Implemented — Design polished
 **Figma**: [node 3542-145795](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3542-145795&m=dev)
+
+> [!NOTE]
+> **Design Refinements (Task #167)**:
+> - Updated Methodology button & active tabs to use the token primary brand color (`#3E5EB9`).
+> - Standardized container and panel borders to use `border-cardBorder` (`#D2D2D2`).
+> - Refined Risk score build-up chevrons to point up (expanded) / down (collapsed) and added `#F8FAFC` background box inside expanded panels.
+> - Custom SVGs (`SECTOR_CARD_ICONS`) mapped to Sector Cards to remove inline table margins, styling indicator boxes with sector-specific themes.
 
 ---
 

@@ -28,7 +28,7 @@ const BulkAcceptBanner = ({ count = 0, onOpen }) => {
     return null;
   }
   return (
-    <div className="m-2 flex flex-col gap-3 border border-[#eaecf0] bg-brandTint p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="m-2 flex flex-col gap-3 border border-cardBorder bg-brandTint p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex gap-3">
         <span className="mt-0.5 text-[#3E5EB9]">
           <AlertIcon />

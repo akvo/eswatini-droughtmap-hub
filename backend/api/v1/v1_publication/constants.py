@@ -222,6 +222,15 @@ class FilterStatus:
 
 
 class RasterIndicatorTypes:
+    """The CDI component indices extracted per publication.
+
+    Upstream (confirmed with the CDI pipeline 2026-07-27): esi=era5_esi_1mn,
+    evi2=evi2_1mn, sm=noah_soilm_1mn, spi=chirps_spi_3mn. The CDI explorer
+    charts these under titles naming DIFFERENT products ("LST", "NDVI",
+    "SMAP") — that copy is the frontend's; the API only ever speaks in these
+    four keys and their FieldStr names.
+    """
+
     esi = "esi"
     evi2 = "evi2"
     sm = "sm"
@@ -237,6 +246,17 @@ class RasterIndicatorTypes:
     @classmethod
     def choices(cls):
         return list(cls.FieldStr.items())
+
+
+# Every extracted index is a percentile rank on a common 0-1 scale
+# (publication-raster-extraction.md D-4), so one unit token covers all four.
+# There is no mm / °C / m³/m³ anywhere in the CDI explorer.
+PCT_RANK_UNITS = "pct_rank"
+
+# Explorer window bounds. 12 = the Figma D-class strip; 120 caps a crafted
+# from/to so it cannot walk the whole publication history.
+CDI_EXPLORER_DEFAULT_MONTHS = 12
+CDI_EXPLORER_MAX_MONTHS = 120
 
 
 class AdministrationZones(Enum):

@@ -242,23 +242,23 @@ export default function AddActivitySlideIn({
                 <React.Fragment key={st.number}>
                   {i > 0 && (
                     <div
-                      className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-blue-600" : "bg-neutral-200"}`}
+                      className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-primary" : "bg-neutral-200"}`}
                     />
                   )}
                   <div className="flex flex-col items-center gap-1.5 relative">
                     <div
                       className={`size-5 rounded-full flex items-center justify-center text-xs font-semibold ${
                         isCompleted
-                          ? "bg-blue-600 text-white"
+                          ? "bg-primary text-white"
                           : isActive
-                            ? "border-2 border-blue-600 text-blue-600 bg-white"
+                            ? "border-2 border-primary text-primary bg-white"
                             : "bg-neutral-100 text-neutral-400"
                       }`}
                     >
                       {isCompleted ? "✓" : st.number}
                     </div>
                     <span
-                      className={`text-xs font-medium ${isActive ? "text-blue-600 font-bold" : "text-neutral-500"}`}
+                      className={`text-xs font-medium ${isActive ? "text-primary font-bold" : "text-neutral-500"}`}
                     >
                       {st.label}
                     </span>
@@ -296,7 +296,7 @@ export default function AddActivitySlideIn({
             type="link"
             onClick={handleSaveAsDraft}
             loading={submitting}
-            className="text-blue-800 font-semibold p-0"
+            className="text-primary font-semibold p-0"
           >
             Save as draft
           </Button>
@@ -316,7 +316,7 @@ export default function AddActivitySlideIn({
               <Button
                 type="primary"
                 onClick={handleNext}
-                className="bg-blue-600 border-blue-600"
+                className="bg-primary border-primary"
               >
                 Next
               </Button>
@@ -327,7 +327,7 @@ export default function AddActivitySlideIn({
                     type="primary"
                     onClick={handlePublish}
                     loading={submitting}
-                    className="bg-blue-600 border-blue-600"
+                    className="bg-primary border-primary"
                   >
                     Publish
                   </Button>
@@ -338,7 +338,7 @@ export default function AddActivitySlideIn({
                       type="primary"
                       onClick={handlePublish}
                       loading={submitting}
-                      className="bg-blue-600 border-blue-600"
+                      className="bg-primary border-primary"
                     >
                       Submit for Review
                     </Button>

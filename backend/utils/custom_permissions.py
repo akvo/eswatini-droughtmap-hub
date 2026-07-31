@@ -18,6 +18,17 @@ class IsAdmin(BasePermission):
         return False
 
 
+class IsObserver(BasePermission):
+    """Citizen-science observer: must have the role AND a bound Inkhundla —
+    every observer endpoint scopes by request.user.administration."""
+
+    def has_permission(self, request, view):
+        return (
+            request.user.role == UserRoleTypes.observer
+            and request.user.administration_id is not None
+        )
+
+
 class HasApiKey(BasePermission):
     """Authenticates machine-to-machine pipeline push endpoints.
 

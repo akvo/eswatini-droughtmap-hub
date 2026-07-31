@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Import citizen-science readings</h1>
+<p>
+  Upload a CSV using the template columns
+  (<code>administration_id, year_month, min_temperature, max_temperature,
+  precipitation, soil_moisture, soil_temperature, notes</code>).
+  Rows upsert on (administration, month) and are marked as submitted.
+  Empty cells become "no value" — they are never treated as zero.
+</p>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="file" name="csv_file" accept=".csv,text/csv" required>
+  <input type="submit" value="Import">
+</form>
+{% endblock %}

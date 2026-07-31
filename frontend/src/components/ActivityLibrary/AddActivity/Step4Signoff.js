@@ -83,12 +83,12 @@ export default function Step4Signoff({ formData, setFormData }) {
         >
           {/* Cloud Upload Icon */}
           <div className="size-12 rounded-lg border border-neutral-300 flex items-center justify-center bg-white shadow-sm">
-            <span className="text-blue-600 text-xl font-semibold">&#8682;</span>
+            <span className="text-primary text-xl font-semibold">&#8682;</span>
           </div>
 
           <div className="flex flex-col gap-1">
             <span className="text-sm text-neutral-800 font-medium">
-              <span className="text-blue-600 hover:underline">
+              <span className="text-primary hover:underline">
                 Click to upload the source file
               </span>{" "}
               or drag and drop
@@ -106,7 +106,7 @@ export default function Step4Signoff({ formData, setFormData }) {
           )}
 
           {formData.source_file && (
-            <div className="bg-blue-50 text-blue-800 text-xs px-3 py-1.5 rounded border border-blue-200 mt-2 font-medium">
+            <div className="bg-brandTint text-primary text-xs px-3 py-1.5 rounded border border-inputBorderActive mt-2 font-medium">
               Selected: {formData.source_file.name} (
               {(formData.source_file.size / 1024).toFixed(1)} KB)
             </div>

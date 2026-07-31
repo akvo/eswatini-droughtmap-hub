@@ -93,7 +93,7 @@ const CDIColumn = ({ cdi }) => {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-start justify-between pb-4 border-b border-[#eaecf0]">
+      <div className="flex items-start justify-between pb-4 border-b border-cardBorder">
         <h3 className="text-lg font-semibold text-[#333333]">CDI-E</h3>
         <DroughtScore level={cdi.category} size="sm" />
       </div>
@@ -106,7 +106,7 @@ const CDIColumn = ({ cdi }) => {
         </div>
       </div>
 
-      <div className="border border-[#eaecf0] rounded overflow-hidden">
+      <div className="border border-cardBorder rounded overflow-hidden">
         <div className="bg-[#e8edf8] px-4 py-3">
           <span className="text-sm font-semibold text-[#333333]">
             Sub-indicators
@@ -115,7 +115,7 @@ const CDIColumn = ({ cdi }) => {
         {(cdi.indicators || []).map((ind) => (
           <div
             key={ind.key}
-            className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]"
+            className="flex items-center justify-between px-4 py-3 border-t border-cardBorder"
           >
             <span className="text-sm text-[#333333]">
               {CDI_SUBINDICATOR_LABELS[ind.key] || ind.key}
@@ -126,14 +126,14 @@ const CDIColumn = ({ cdi }) => {
           </div>
         ))}
         {!(cdi.indicators || []).length && (
-          <div className="px-4 py-3 border-t border-[#eaecf0] text-sm text-[#a4a4a4]">
+          <div className="px-4 py-3 border-t border-cardBorder text-sm text-[#a4a4a4]">
             Sub-indicators not yet extracted
           </div>
         )}
       </div>
 
       {history.length > 1 && (
-        <div className="border border-[#eaecf0] rounded p-4">
+        <div className="border border-cardBorder rounded p-4">
           <div className="flex items-center justify-between mb-1">
             <h4 className="text-sm font-bold text-[#333333]">
               CDI-E in the last 12 months
@@ -144,7 +144,7 @@ const CDIColumn = ({ cdi }) => {
               {dayjs(last?.period).format("MMM YYYY")}
             </span>
           </div>
-          <div className="border-t border-[#eaecf0] mt-3 pt-3">
+          <div className="border-t border-cardBorder mt-3 pt-3">
             <svg viewBox="0 0 500 180" className="w-full h-auto">
               <path d={path} fill="none" stroke="#3E5EB9" strokeWidth={2} />
               {history.map((h, i) => {
@@ -170,52 +170,79 @@ const CDIColumn = ({ cdi }) => {
   );
 };
 
-/* ── Weather Stations column — strict per-region (D-9) ── */
-const WeatherColumn = ({ weather }) => {
+/* ── One titled block of reading rows (shared by MET + citizen science) ── */
+const ReadingBlock = ({ title, rows, footnote }) => (
+  <div className="border border-cardBorder rounded overflow-hidden">
+    <div className="bg-[#e8edf8] px-4 py-3 flex items-center justify-between">
+      <span className="text-sm font-semibold text-[#333333]">{title}</span>
+    </div>
+    {rows.map((row) => (
+      <div
+        key={row.key}
+        className="flex items-center justify-between px-4 py-3 border-t border-cardBorder"
+      >
+        <span className="text-sm text-[#333333]">{row.label}</span>
+        <span className="text-sm font-semibold text-[#333333]">
+          {row.value != null ? (
+            <>
+              {row.value}
+              {row.units && (
+                <span className="text-[#a4a4a4] ml-0.5">{row.units}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-[#a4a4a4]">
+              {row.meta?.reason === "pending_sensor" ? "pending sensor" : "—"}
+            </span>
+          )}
+        </span>
+      </div>
+    ))}
+    {footnote && (
+      <div className="px-4 py-3 border-t border-cardBorder text-xs text-[#606060] italic">
+        {footnote}
+      </div>
+    )}
+  </div>
+);
+
+/* ── Weather Stations column — MET strict per-region (D-9) + citizen
+      science per-Inkhundla exact match, no fallback (WX-6) ── */
+const WeatherColumn = ({ weather, citizenScience }) => {
   const region = weather?.meta?.resolution === "region_station";
   return (
     <div className="flex flex-col gap-5">
-      <div className="pb-4 border-b border-[#eaecf0]">
+      <div className="pb-4 border-b border-cardBorder">
         <h3 className="text-lg font-semibold text-[#333333]">
           Weather Stations
         </h3>
       </div>
       {!region || !weather?.data ? (
-        <div className="flex items-start gap-2 bg-[#f9fafb] border border-[#eaecf0] rounded p-4 text-sm text-[#a4a4a4]">
+        <div className="flex items-start gap-2 bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
           No data available — no weather station in this Inkhundla&apos;s
           region.
         </div>
       ) : (
-        <div className="border border-[#eaecf0] rounded overflow-hidden">
-          <div className="bg-[#e8edf8] px-4 py-3 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#333333]">
-              Met Office: {weather.meta.station}
-            </span>
-          </div>
-          {weather.data.map((row) => (
-            <div
-              key={row.key}
-              className="flex items-center justify-between px-4 py-3 border-t border-[#eaecf0]"
-            >
-              <span className="text-sm text-[#333333]">{row.label}</span>
-              <span className="text-sm font-semibold text-[#333333]">
-                {row.value != null ? (
-                  <>
-                    {row.value}
-                    {row.units && (
-                      <span className="text-[#a4a4a4] ml-0.5">{row.units}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-[#a4a4a4]">
-                    {row.meta?.reason === "pending_sensor"
-                      ? "pending sensor"
-                      : "—"}
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
+        <ReadingBlock
+          title={`Met Office: ${weather.meta.station}`}
+          rows={weather.data}
+        />
+      )}
+      {citizenScience?.data ? (
+        <ReadingBlock
+          title={`Citizen science: ${
+            citizenScience.meta?.station || "Community station"
+          }`}
+          rows={citizenScience.data}
+          footnote={
+            citizenScience.meta?.notes
+              ? `Observer notes: ${citizenScience.meta.notes}`
+              : null
+          }
+        />
+      ) : (
+        <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
+          No citizen-science submission for this Inkhundla this month.
         </div>
       )}
     </div>
@@ -232,13 +259,13 @@ const IKSColumn = ({ iks }) => {
   const count = iks?.reports_count || 0;
   return (
     <div className="flex flex-col gap-5">
-      <div className="pb-4 border-b border-[#eaecf0]">
+      <div className="pb-4 border-b border-cardBorder">
         <h3 className="text-lg font-semibold text-[#333333]">
           Indigenous Knowledge
         </h3>
       </div>
       {count === 0 ? (
-        <div className="bg-[#f9fafb] border border-[#eaecf0] rounded p-4 text-sm text-[#a4a4a4]">
+        <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
           No IKS reports for this Inkhundla this month.
         </div>
       ) : (
@@ -271,7 +298,7 @@ const IKSColumn = ({ iks }) => {
                 className={`flex items-center justify-between rounded-lg px-4 py-3 border ${
                   ind.checked
                     ? "border-[#3E5EB9] bg-white"
-                    : "border-[#eaecf0] bg-[#f9fafb]"
+                    : "border-cardBorder bg-[#f9fafb]"
                 }`}
               >
                 <span
@@ -294,13 +321,13 @@ const IKSColumn = ({ iks }) => {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="border border-[#eaecf0] rounded p-3">
+            <div className="border border-cardBorder rounded p-3">
               <div className="text-xs text-[#606060]">Soil moisture</div>
               <div className="text-sm font-semibold text-[#333333] mt-1">
                 {iks?.soil_moisture?.value_label || "—"}
               </div>
             </div>
-            <div className="border border-[#eaecf0] rounded p-3">
+            <div className="border border-cardBorder rounded p-3">
               <div className="text-xs text-[#606060]">Vegetation greenness</div>
               <div className="text-sm font-semibold text-[#333333] mt-1">
                 {iks?.vegetation_greenness?.value_label || "—"}
@@ -322,6 +349,7 @@ const IndividualReview = ({
   administration,
   myReview,
   weather,
+  citizenScience,
   iks,
   orderedIds,
   queueQuery,
@@ -392,7 +420,7 @@ const IndividualReview = ({
     <div className="relative left-1/2 w-screen -translate-x-1/2 -mt-3 bg-brandTint px-4 sm:px-8 md:px-12 xl:px-20">
       <div className="mx-auto w-full max-w-[1280px] pt-10">
         {/* Breadcrumb + nav */}
-        <div className="flex items-center justify-between py-3 border border-[#eaecf0] border-b-0 bg-white px-6">
+        <div className="flex items-center justify-between py-3 border border-cardBorder border-b-0 bg-white px-6">
           <div className="flex items-center gap-2 text-sm">
             <HomeOutlined className="text-[#606060]" />
             <button
@@ -424,7 +452,7 @@ const IndividualReview = ({
         </div>
 
         {/* Summary + map */}
-        <div className="border border-[#eaecf0] bg-white">
+        <div className="border border-cardBorder bg-white">
           <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="p-6">
               <div className="flex items-start justify-between mb-2">
@@ -476,12 +504,12 @@ const IndividualReview = ({
         </div>
 
         {/* Three-column sources */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border border-[#eaecf0] border-t-0">
-          <div className="bg-white p-6 border-r border-[#eaecf0]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border border-cardBorder border-t-0">
+          <div className="bg-white p-6 border-r border-cardBorder">
             <CDIColumn cdi={cdi} />
           </div>
-          <div className="bg-white p-6 border-r border-[#eaecf0]">
-            <WeatherColumn weather={weather} />
+          <div className="bg-white p-6 border-r border-cardBorder">
+            <WeatherColumn weather={weather} citizenScience={citizenScience} />
           </div>
           <div className="bg-white p-6">
             <IKSColumn iks={iks} />
@@ -489,14 +517,14 @@ const IndividualReview = ({
         </div>
 
         {/* Review Decision */}
-        <div className="border border-[#eaecf0] border-t-0 bg-white">
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#eaecf0]">
+        <div className="border border-cardBorder border-t-0 bg-white">
+          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-cardBorder">
             <h2 className="text-lg font-semibold text-[#333333]">
               Review Decision
             </h2>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2">
-            <div className="p-6 border-r border-[#eaecf0]">
+            <div className="p-6 border-r border-cardBorder">
               <div className="flex items-start gap-3 text-sm text-[#606060] leading-relaxed bg-[#f0f2ff] rounded p-4">
                 <WarningFilled
                   className="shrink-0 mt-1"
@@ -553,8 +581,8 @@ const IndividualReview = ({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 border-t border-[#eaecf0]">
-            <div className="border-r border-[#eaecf0]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 border-t border-cardBorder">
+            <div className="border-r border-cardBorder">
               <ReviewDecisionHistory
                 history={administration?.decision_history}
               />
@@ -590,3 +618,4 @@ const IndividualReview = ({
 };
 
 export default IndividualReview;
+export { WeatherColumn };

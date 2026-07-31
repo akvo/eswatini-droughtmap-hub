@@ -176,8 +176,8 @@ const ReviewQueueTable = ({
   ];
 
   return (
-    <section className="w-full border border-[#eaecf0] bg-white">
-      <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 sm:flex-row sm:items-center sm:justify-between">
+    <section className="w-full border border-cardBorder bg-white">
+      <div className="flex flex-col gap-4 border-b border-cardBorder p-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold leading-7 text-[#333333]">
           Review queue
         </h2>
@@ -192,7 +192,7 @@ const ReviewQueueTable = ({
 
       {children}
 
-      <div className="flex flex-col gap-4 border-b border-[#eaecf0] p-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-4 border-b border-cardBorder p-4 xl:flex-row xl:items-center xl:justify-between">
         <TabButtons
           options={QUEUE_FILTERS}
           value={state.filter}

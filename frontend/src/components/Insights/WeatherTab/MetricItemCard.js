@@ -25,6 +25,7 @@ const MetricItemCard = ({
   label,
   value,
   footnote,
+  footnoteHint = "",
   change = null,
   changeUnits = "",
   isPlaceholder = false,
@@ -33,8 +34,11 @@ const MetricItemCard = ({
 }) => {
   const rising = change > 0;
 
+  // h-full + justify-between: grid rows stretch to the tallest card, so the
+  // value/footnote block sits on the card's bottom edge instead of hugging the
+  // label — cards with a one-line vs two-line label still align at the bottom.
   return (
-    <div className="bg-white p-4 flex flex-col gap-4">
+    <div className="bg-white p-4 flex flex-col gap-4 h-full justify-between">
       <div className="flex gap-2 items-start w-full">
         <p className="flex-1 text-base leading-6 text-[#333] mb-0">{label}</p>
         {isPlaceholder && (
@@ -73,9 +77,17 @@ const MetricItemCard = ({
               </span>
             )}
             {footnote && (
-              <p className="flex-1 text-sm leading-[21px] text-[#606060] mb-0">
-                {footnote}
-              </p>
+              <Tooltip title={footnoteHint}>
+                <p
+                  className={`flex-1 text-sm leading-[21px] text-[#606060] mb-0 ${
+                    footnoteHint
+                      ? "cursor-help underline decoration-dotted"
+                      : ""
+                  }`}
+                >
+                  {footnote}
+                </p>
+              </Tooltip>
             )}
           </div>
         </div>

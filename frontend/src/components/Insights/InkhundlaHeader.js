@@ -53,7 +53,7 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   // "No data" overflows the fixed-width chip, so it shortens to N/A.
   const code = isNoData ? "N/A" : DROUGHT_CATEGORY_CODE[category];
   // none's configured colour is white — invisible behind the white glyph.
-  const chipBg = isNoData ? "#ecf0f8" : DROUGHT_CATEGORY_COLOR[category];
+  const chipBg = isNoData ? "#3E5EB9" : DROUGHT_CATEGORY_COLOR[category];
   const label = zoneLabel(zone);
 
   return (
@@ -69,21 +69,21 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
       </div>
       <div
         style={{ backgroundColor: BADGE_PARENT_BG[category] || "#f9fafb" }}
-        className="flex gap-[8px] items-center pl-[2px] pr-[8px] py-[2px] rounded-[6px]"
+        className="flex gap-[12px] items-center pl-[2px] pr-[12px] py-[2px] rounded-[6px]"
       >
         <div
           style={{ backgroundColor: chipBg }}
-          className="flex items-center justify-center px-[4px] py-[1px] rounded-[4px] shrink-0 w-[36px]"
+          className="flex items-center justify-center px-[6px] py-[2px] rounded-[4px] shrink-0"
         >
           <p
             style={{ color: readableInk(chipBg) }}
-            className="font-['Inter'] font-semibold leading-[18px] text-[13px] text-center whitespace-nowrap mb-0"
+            className="font-['Inter'] font-semibold leading-[18px] text-[14px] text-center whitespace-nowrap mb-0"
           >
             {code}
           </p>
         </div>
         <div className="flex gap-[4px] items-center">
-          <span className="font-['Inter'] font-normal leading-[18px] text-[13px] text-[#333] whitespace-nowrap">
+          <span className="font-['Inter'] font-normal leading-[18px] text-[14px] text-[#333] whitespace-nowrap">
             {DROUGHT_CATEGORY_LABEL[category]}
           </span>
         </div>

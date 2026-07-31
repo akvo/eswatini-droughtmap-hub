@@ -37,6 +37,10 @@ class UpdateProfileTestCase(TestCase, ProfileTestHelperMixin):
                 "email_verified",
                 "abilities",
                 "technical_working_group",
+                "administration",
+                "station_name",
+                "station_sensors",
+                "station_type",
             ]
         )
         updated_user = SystemUser.objects.get(pk=self.user.id)

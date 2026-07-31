@@ -31,14 +31,22 @@ const asPeriod = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 
 /**
- * Trailing-N-month window as inclusive {from, to} "YYYY-MM" — `to` is the
- * current month, `from` is (n-1) months earlier. Default 12 = current month
- * plus the 11 before it, so the /series chart opens on the last 12 months with
- * the current month on the far right. `now` is injectable for testing.
+ * Trailing-N-month window as inclusive {from, to} "YYYY-MM", ending at the
+ * last **ended** month — `to` is the month before `now`, `from` is (n-1)
+ * months earlier still. Default 12 = last month plus the 11 before it.
+ *
+ * The in-progress month is deliberately excluded: every series these charts
+ * draw is a monthly aggregate, which is only knowable once the month closes.
+ * Including it puts a partial bar (or a null) on the far right that reads as a
+ * collapse in rainfall rather than as a month that has not finished. Same rule
+ * the citizen-science module reports on — "the month you report" is always the
+ * last ended one.
+ *
+ * `now` is injectable for testing.
  */
 export const lastNMonths = (n = 12, now = new Date()) => ({
-  from: asPeriod(new Date(now.getFullYear(), now.getMonth() - (n - 1), 1)),
-  to: asPeriod(now),
+  from: asPeriod(new Date(now.getFullYear(), now.getMonth() - n, 1)),
+  to: asPeriod(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
 });
 
 /**
@@ -171,11 +179,16 @@ export const getProfileDropdownItems = (user, isPublic = false) => {
           ...menuItems,
           {
             key: 2,
+            label: "Citizen Weather",
+            url: "/citizen-weather/admin",
+          },
+          {
+            key: 3,
             label: "User Management",
             url: "/admin/v1_users/systemuser/",
           },
           {
-            key: 3,
+            key: 4,
             label: "Settings",
             url: "/settings",
           },

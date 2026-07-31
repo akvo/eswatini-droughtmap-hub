@@ -45,6 +45,10 @@ class LoginTestCase(TestCase):
                 "email_verified",
                 "abilities",
                 "technical_working_group",
+                "administration",
+                "station_name",
+                "station_sensors",
+                "station_type",
             ]
         )
         self.assertEqual(len(res["user"]["abilities"]), 1)
