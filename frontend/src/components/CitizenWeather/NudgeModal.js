@@ -1,28 +1,50 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Modal, Input, Button } from "antd";
+import { Modal, Input, Button, message } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
+import { api } from "@/lib";
 import { NUDGE_TONES } from "@/static/mocks/citizen-weather";
 
 const { TextArea } = Input;
 
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const formatLastSubmission = (lastSubmission) => {
+  if (!lastSubmission) return "unknown";
+  const parts = lastSubmission.split("-");
+  if (parts.length === 2) {
+    const idx = parseInt(parts[1], 10) - 1;
+    return `${MONTH_NAMES_SHORT[idx]} ${parts[0]}`;
+  }
+  return lastSubmission;
+};
+
+const currentMonthLabel = () => {
+  const now = new Date();
+  return `${MONTH_NAMES_SHORT[now.getMonth()]} ${now.getFullYear()}`;
+};
+
 const NudgeModal = ({ open, onClose, station }) => {
   const [tone, setTone] = useState("friendly");
+  const [sending, setSending] = useState(false);
 
   const fillTemplate = useCallback(
-    () => (template) => {
+    (template) => {
       if (!station || !template) return "";
       return template
         .replace(/{name}/g, station.observer?.split(" ")[0] || "")
-        .replace(/{month}/g, "May 2026")
+        .replace(/{month}/g, currentMonthLabel())
         .replace(/{station}/g, station.name || "");
     },
     [station],
   );
 
   const toneData = NUDGE_TONES[tone];
-  const [message, setMessage] = useState(fillTemplate(toneData?.message));
+  const [nudgeMessage, setNudgeMessage] = useState(fillTemplate(toneData?.message));
   const subject = useMemo(
     () => fillTemplate(NUDGE_TONES[tone]?.subject),
     [tone, fillTemplate],
@@ -30,10 +52,33 @@ const NudgeModal = ({ open, onClose, station }) => {
 
   const handleToneChange = (newTone) => {
     setTone(newTone);
-    setMessage(fillTemplate(NUDGE_TONES[newTone]?.message));
+    setNudgeMessage(fillTemplate(NUDGE_TONES[newTone]?.message));
+  };
+
+  const handleSend = async () => {
+    const observerId = station.observer?.id || station.observerId;
+    if (!observerId) {
+      message.error("No observer ID found for this station.");
+      return;
+    }
+    setSending(true);
+    try {
+      await api("POST", "/weather/citizen-science/reminders", {
+        user_ids: [observerId],
+        message: nudgeMessage,
+      });
+      message.success("Nudge sent successfully.");
+      onClose();
+    } catch (err) {
+      message.error("Failed to send nudge. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   if (!station) return null;
+
+  const lastSub = formatLastSubmission(station.lastSubmission);
 
   return (
     <Modal
@@ -61,8 +106,8 @@ const NudgeModal = ({ open, onClose, station }) => {
           <CalendarOutlined />
         </div>
         <div className="text-xs text-[#333333] flex-1">
-          <b>Last submission:</b> {station.lastSubmission}. May 2026 reading is{" "}
-          <b>3 days overdue</b>.
+          <b>Last submission:</b> {lastSub}. {currentMonthLabel()} reading is{" "}
+          <b>overdue</b>.
         </div>
       </div>
 
@@ -94,8 +139,8 @@ const NudgeModal = ({ open, onClose, station }) => {
         </label>
         <TextArea
           rows={4}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          value={nudgeMessage}
+          onChange={(e) => setNudgeMessage(e.target.value)}
         />
       </div>
 
@@ -109,7 +154,9 @@ const NudgeModal = ({ open, onClose, station }) => {
           audit trail.
         </div>
         <Button onClick={onClose}>Cancel</Button>
-        <Button type="primary">Send nudge</Button>
+        <Button type="primary" onClick={handleSend} loading={sending}>
+          Send nudge
+        </Button>
       </div>
     </Modal>
   );

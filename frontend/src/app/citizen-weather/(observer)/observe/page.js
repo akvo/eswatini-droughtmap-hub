@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Tag, Table } from "antd";
+import { useState, useEffect, useMemo } from "react";
+import { Button, Tag, Table, Spin } from "antd";
 import Link from "next/link";
 import CWHeader from "@/components/CitizenWeather/CWHeader";
 import { TabButtons } from "@/components";
-import {
-  observerProfile,
-  reportingHistory,
-} from "@/static/mocks/citizen-weather";
+import { api } from "@/lib";
 
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
@@ -24,47 +21,126 @@ const STATUS_MAP = {
   draft: { color: "#FAAD14", label: "Draft" },
 };
 
-/** Convert "May 2026" to "2026-05" */
-const monthToPeriod = (monthStr) => {
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const parts = monthStr.split(" ");
-  const monthAbbr = parts[0].substring(0, 3);
-  const year = parts[parts.length - 1];
-  const idx = monthNames.indexOf(monthAbbr);
-  if (idx === -1) return null;
-  return `${year}-${String(idx + 1).padStart(2, "0")}`;
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const DATA_FIELDS = [
+  "min_temperature", "max_temperature", "precipitation",
+  "soil_moisture", "soil_temperature",
+];
+
+/** Convert "YYYY-MM" to display label like "May 2026" */
+const periodToLabel = (period) => {
+  const [year, month] = period.split("-");
+  const idx = parseInt(month, 10) - 1;
+  return `${MONTH_NAMES_SHORT[idx]} ${year}`;
+};
+
+/** Convert "YYYY-MM" to full label like "May 2026" */
+const periodToFullLabel = (period) => {
+  const [year, month] = period.split("-");
+  const idx = parseInt(month, 10) - 1;
+  return `${MONTH_NAMES[idx]} ${year}`;
+};
+
+/**
+ * Derive status from a data row.
+ * - submitted:true + all fields non-null -> "complete"
+ * - submitted:true + some fields null -> "partial"
+ * - submitted:false -> "draft"
+ */
+const deriveStatus = (row) => {
+  if (!row.submitted) return "draft";
+  const allFilled = DATA_FIELDS.every((f) => row[f] != null);
+  return allFilled ? "complete" : "partial";
+};
+
+/**
+ * Build the full 12-month window ending at the current month.
+ * Months not present in the API data array are marked as "missed".
+ */
+const buildHistory = (apiData) => {
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    months.push(period);
+  }
+
+  const dataByPeriod = {};
+  (apiData || []).forEach((row) => {
+    dataByPeriod[row.period] = row;
+  });
+
+  return months.map((period) => {
+    const row = dataByPeriod[period];
+    if (!row) {
+      return {
+        period,
+        month: periodToLabel(period),
+        min_temperature: null,
+        max_temperature: null,
+        precipitation: null,
+        soil_moisture: null,
+        soil_temperature: null,
+        status: "missed",
+      };
+    }
+    return {
+      period,
+      month: periodToLabel(period),
+      min_temperature: row.min_temperature,
+      max_temperature: row.max_temperature,
+      precipitation: row.precipitation,
+      soil_moisture: row.soil_moisture,
+      soil_temperature: row.soil_temperature,
+      status: deriveStatus(row),
+    };
+  });
 };
 
 const emptyCell = <span style={{ color: "#a4a4a4" }}>&mdash;</span>;
 
 const ObserverListPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [station, setStation] = useState(null);
+  const [completeness, setCompleteness] = useState({ reported: 0, of: 12 });
+  const [history, setHistory] = useState([]);
 
-  const completedMonths = reportingHistory.filter(
-    (r) => r.status === "complete" || r.status === "partial",
-  ).length;
+  useEffect(() => {
+    api("GET", "/weather/citizen-science/readings")
+      .then((res) => {
+        setStation(res.station || null);
+        setCompleteness(res.completeness || { reported: 0, of: 12 });
+        setHistory(buildHistory(res.data));
+      })
+      .catch((err) => {
+        console.error("Failed to load readings:", err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const latestUnsubmitted = reportingHistory.find(
-    (r) => r.status === "draft" || r.status === "missed",
+  const completedMonths = completeness.reported;
+  const totalMonths = completeness.of;
+
+  const latestUnsubmitted = useMemo(
+    () => history.find((r) => r.status === "draft" || r.status === "missed"),
+    [history]
   );
 
   const filteredData =
     statusFilter === "all"
-      ? reportingHistory
-      : reportingHistory.filter((r) => r.status === statusFilter);
+      ? history
+      : history.filter((r) => r.status === statusFilter);
 
   const columns = [
     {
@@ -72,33 +148,28 @@ const ObserverListPage = () => {
       dataIndex: "month",
       key: "month",
       width: "18%",
-      render: (v) => {
-        const period = monthToPeriod(v);
-        return period ? (
-          <Link href={`/citizen-weather/observe/${period}`}>{v}</Link>
-        ) : (
-          v
-        );
-      },
+      render: (v, record) => (
+        <Link href={`/citizen-weather/observe/${record.period}`}>{v}</Link>
+      ),
     },
     {
       title: "T MIN",
-      dataIndex: "temp_min",
-      key: "temp_min",
+      dataIndex: "min_temperature",
+      key: "min_temperature",
       width: "14%",
       render: (v) => (v != null ? `${v} \u00B0C` : emptyCell),
     },
     {
       title: "T MAX",
-      dataIndex: "temp_max",
-      key: "temp_max",
+      dataIndex: "max_temperature",
+      key: "max_temperature",
       width: "14%",
       render: (v) => (v != null ? `${v} \u00B0C` : emptyCell),
     },
     {
       title: "RAINFALL",
-      dataIndex: "rainfall",
-      key: "rainfall",
+      dataIndex: "precipitation",
+      key: "precipitation",
       width: "14%",
       render: (v) => (v != null ? `${v} mm` : emptyCell),
     },
@@ -111,8 +182,8 @@ const ObserverListPage = () => {
     },
     {
       title: "SOIL TEMP",
-      dataIndex: "soil_temp",
-      key: "soil_temp",
+      dataIndex: "soil_temperature",
+      key: "soil_temperature",
       width: "14%",
       render: (v) => (v != null ? `${v} \u00B0C` : emptyCell),
     },
@@ -132,15 +203,27 @@ const ObserverListPage = () => {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="w-full h-auto flex items-center justify-center py-40">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  const stationLabel = station?.label || "Your station";
+  const stationAdmin = station?.administration || "";
+  const stationGroup = station?.group || "";
+
   return (
     <div className="w-full h-auto">
       {/* Header */}
       <div className="px-4 sm:px-8 md:px-12 xl:px-20 pt-4 pb-0">
         <div className="mx-auto w-full max-w-[1280px]">
           <CWHeader
-            subtitle={`Your station \u00B7 ${observerProfile.station.shortName} \u00B7 ${observerProfile.station.region} region`}
-            userName={observerProfile.name}
-            userInitials={observerProfile.initials}
+            subtitle={`Your station \u00B7 ${stationLabel} \u00B7 ${stationGroup} region`}
+            userName={null}
+            userInitials={null}
           />
         </div>
       </div>
@@ -153,19 +236,19 @@ const ObserverListPage = () => {
         />
         <div className="relative mx-auto w-full max-w-[1280px]">
           <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
-            {observerProfile.station.name}
+            {stationLabel}
           </h1>
           <p className="text-sm leading-6 text-[#606060] mb-4">
-            {observerProfile.station.inkhundla} &middot;{" "}
-            {observerProfile.station.region} region &middot;{" "}
-            {observerProfile.station.zone}
+            {stationAdmin} &middot;{" "}
+            {stationGroup} region &middot;{" "}
+            {station?.station_type || ""}
           </p>
           <div className="flex items-center gap-3">
             <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#333333] font-semibold">
-              {Math.round((completedMonths / 12) * 100)}% completeness
+              {totalMonths > 0 ? Math.round((completedMonths / totalMonths) * 100) : 0}% completeness
             </span>
             <span className="text-sm text-[#606060]">
-              {completedMonths} of the last 12 months submitted
+              {completedMonths} of the last {totalMonths} months submitted
             </span>
           </div>
         </div>
@@ -183,11 +266,9 @@ const ObserverListPage = () => {
               Reporting history
             </h2>
             {latestUnsubmitted && (
-              <Link
-                href={`/citizen-weather/observe/${monthToPeriod(latestUnsubmitted.month)}`}
-              >
+              <Link href={`/citizen-weather/observe/${latestUnsubmitted.period}`}>
                 <Button type="primary">
-                  Log {latestUnsubmitted.month} reading
+                  Log {periodToFullLabel(latestUnsubmitted.period)} reading
                 </Button>
               </Link>
             )}

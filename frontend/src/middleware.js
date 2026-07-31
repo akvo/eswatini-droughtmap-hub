@@ -59,6 +59,13 @@ export default async function middleware(request) {
     const isDecisionPage = /^\/validations\/\d+\/\d+/.test(pathName);
 
     if (
+      role !== USER_ROLES.observer &&
+      pathName.startsWith("/citizen-weather/observe")
+    ) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
+    }
+
+    if (
       (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||

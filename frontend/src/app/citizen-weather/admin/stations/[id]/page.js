@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Space, Tag } from "antd";
+import { useState, useEffect, useCallback } from "react";
+import { Button, Space, Tag, Spin, message } from "antd";
 import {
   UserOutlined,
   MailOutlined,
   BarChartOutlined,
   InboxOutlined,
   ArrowLeftOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
-import { PageHeader } from "@/components";
+import { useParams } from "next/navigation";
+import { Can, PageHeader } from "@/components";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
-import { stationDetail } from "@/static/mocks/citizen-weather";
+import { api, apiText } from "@/lib";
 
 const TIMELINE_COLORS = {
   full: { bg: "#12b76a", text: "#fff" },
@@ -21,22 +23,136 @@ const TIMELINE_COLORS = {
 };
 
 const StationDetailPage = () => {
+  const params = useParams();
+  const id = params.id;
   const [showNudge, setShowNudge] = useState(false);
-  const s = stationDetail;
-  const obs = s.observer;
+  const [loading, setLoading] = useState(true);
+  const [station, setStation] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [completeness, setCompleteness] = useState(0);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [stationsRes, timelineRes] = await Promise.all([
+        api("GET", "/weather/citizen-science/stations"),
+        api("GET", `/weather/administrations/${id}/citizen-science?history=12`),
+      ]);
+
+      const row = (stationsRes.data || []).find(
+        (r) => String(r.key) === String(id),
+      );
+      if (row) {
+        const pct =
+          row.completeness.of > 0
+            ? Math.round(
+                (row.completeness.reported / row.completeness.of) * 100,
+              )
+            : 0;
+        setStation(row);
+        setCompleteness(pct);
+      }
+
+      if (timelineRes) {
+        const months = Array.isArray(timelineRes)
+          ? timelineRes
+          : timelineRes.data || timelineRes.timeline || [];
+        setTimeline(months);
+      }
+    } catch (err) {
+      message.error("Failed to load station details.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleExportCSV = async () => {
+    try {
+      const csv = await apiText("GET", "/weather/citizen-science/export");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "citizen-weather-stations.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      message.error("Failed to export CSV.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full h-auto">
+        <PageHeader
+          title="Loading..."
+          description=""
+          actions={
+            <Link href="/citizen-weather/admin">
+              <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
+            </Link>
+          }
+        />
+        <div className="flex items-center justify-center py-16">
+          <Spin size="large" />
+        </div>
+      </div>
+    );
+  }
+
+  // D-10: No observer assigned state — not a 404
+  if (!station) {
+    return (
+      <Can I="read" a="CitizenScience">
+      <div className="w-full h-auto">
+        <PageHeader
+          title="No observer assigned"
+          description="This Inkhundla does not have an active observer yet."
+          actions={
+            <Space>
+              <Link href="/citizen-weather/admin">
+                <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
+              </Link>
+              <Can I="create" a="CitizenScience">
+                <Link href="/citizen-weather/admin/stations/add">
+                  <Button type="primary" icon={<PlusOutlined />}>
+                    Add station + observer
+                  </Button>
+                </Link>
+              </Can>
+            </Space>
+          }
+        />
+      </div>
+      </Can>
+    );
+  }
+
+  const obs = station.observer || {};
+  const sensors = station.sensors || [];
+  const stationName = station.label || "";
+  const region = station.group || "";
 
   const nudgeStation = {
-    name: s.name,
+    name: stationName,
     observer: obs.name,
+    observerId: obs.id,
     email: obs.email,
-    lastSubmission: "April 2026 \u00B7 3 May",
+    lastSubmission: station.last_submission || "",
   };
 
   return (
+    <Can I="read" a="CitizenScience">
     <div className="w-full h-auto">
       <PageHeader
-        title={s.name}
-        description={`${s.inkhundla} · ${s.region} region · ${s.zone} · ${s.completeness}% completeness`}
+        title={stationName}
+        description={`${region} region · ${completeness}% completeness`}
         actions={
           <Link href="/citizen-weather/admin">
             <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
@@ -63,26 +179,19 @@ const StationDetailPage = () => {
                 </Button>
               </div>
               <div className="p-4 sm:p-6">
-                <KVRow label="Registered" value={s.registered} />
+                <KVRow label="Station name" value={stationName} />
+                <KVRow label="Region" value={region} />
                 <KVRow
-                  label="Coordinates"
-                  value={
-                    <span className="font-mono text-xs text-[#606060]">
-                      {s.coordinates[0]}, {s.coordinates[1]}
-                    </span>
-                  }
+                  label="Station type"
+                  value={station.station_type || "Not specified"}
                 />
-                <KVRow label="Inkhundla" value={s.inkhundla} />
-                <KVRow label="Region" value={s.region} />
-                <KVRow label="Agro-ecological zone" value={s.zone} />
-                <KVRow label="Station type" value={s.type} />
                 <KVRow
                   label="Sensors"
                   value={
                     <div className="flex flex-wrap gap-1.5">
-                      {s.sensors.map((sen) => (
+                      {sensors.map((sen, i) => (
                         <Tag
-                          key={sen.key}
+                          key={sen.key || i}
                           className={sen.active ? "edm-reviews-status-tag" : ""}
                           color={sen.active ? "#12b76a" : undefined}
                           style={
@@ -116,41 +225,12 @@ const StationDetailPage = () => {
                 </Button>
               </div>
               <div className="p-4 sm:p-6">
-                <KVRow label="Name" value={obs.name} />
+                <KVRow label="Name" value={obs.name || ""} />
                 <KVRow
                   label="Email"
                   value={
                     <span className="font-mono text-xs text-[#606060]">
-                      {obs.email}
-                    </span>
-                  }
-                />
-                <KVRow
-                  label="Phone"
-                  value={
-                    <span className="font-mono text-xs text-[#606060]">
-                      {obs.phone}
-                    </span>
-                  }
-                />
-                <KVRow
-                  label="Preferred language"
-                  value={`EN ${obs.language}`}
-                />
-                <KVRow label="Assigned admin" value={obs.assignedAdmin} />
-                <KVRow
-                  label="Admin notes"
-                  value={
-                    <span className="text-xs text-[#606060] font-normal">
-                      {obs.notes}
-                    </span>
-                  }
-                />
-                <KVRow
-                  label="Last sign-in"
-                  value={
-                    <span className="font-mono text-xs text-[#606060]">
-                      {obs.lastSignIn}
+                      {obs.email || ""}
                     </span>
                   }
                   noBorder
@@ -167,27 +247,35 @@ const StationDetailPage = () => {
               </h2>
             </div>
             <div className="p-4 sm:p-6">
-              <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5 mb-4">
-                {s.timeline.map((t, i) => {
-                  const color =
-                    TIMELINE_COLORS[t.status] || TIMELINE_COLORS.miss;
-                  const isCurrent = i === s.timeline.length - 1;
-                  return (
-                    <div
-                      key={i}
-                      className="aspect-square rounded-md flex items-end justify-center p-1 text-[9px] font-semibold transition-transform hover:scale-105"
-                      style={{
-                        background: color.bg,
-                        color: color.text,
-                        outline: isCurrent ? "2px solid #333333" : undefined,
-                        outlineOffset: isCurrent ? 2 : undefined,
-                      }}
-                    >
-                      {t.month}
-                    </div>
-                  );
-                })}
-              </div>
+              {timeline.length > 0 ? (
+                <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5 mb-4">
+                  {timeline.map((t, i) => {
+                    const color =
+                      TIMELINE_COLORS[t.status] || TIMELINE_COLORS.miss;
+                    const isCurrent = i === timeline.length - 1;
+                    return (
+                      <div
+                        key={i}
+                        className="aspect-square rounded-md flex items-end justify-center p-1 text-[9px] font-semibold transition-transform hover:scale-105"
+                        style={{
+                          background: color.bg,
+                          color: color.text,
+                          outline: isCurrent
+                            ? "2px solid #333333"
+                            : undefined,
+                          outlineOffset: isCurrent ? 2 : undefined,
+                        }}
+                      >
+                        {t.month}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-[#606060] py-4 text-center">
+                  No timeline data available.
+                </div>
+              )}
               <div className="flex flex-wrap gap-4 text-xs text-[#606060]">
                 <div className="flex items-center gap-1.5">
                   <span
@@ -221,18 +309,22 @@ const StationDetailPage = () => {
               trail with your identity + timestamp.
             </span>
             <Space wrap>
-              <Button icon={<BarChartOutlined />}>Export CSV</Button>
+              <Button icon={<BarChartOutlined />} onClick={handleExportCSV}>
+                Export CSV
+              </Button>
               <Button icon={<UserOutlined />}>Reassign observer</Button>
               <Button danger icon={<InboxOutlined />}>
                 Archive station
               </Button>
-              <Button
-                type="primary"
-                icon={<MailOutlined />}
-                onClick={() => setShowNudge(true)}
-              >
-                Nudge observer
-              </Button>
+              <Can I="update" a="CitizenScience">
+                <Button
+                  type="primary"
+                  icon={<MailOutlined />}
+                  onClick={() => setShowNudge(true)}
+                >
+                  Nudge observer
+                </Button>
+              </Can>
             </Space>
           </div>
         </div>
@@ -244,6 +336,7 @@ const StationDetailPage = () => {
         station={nudgeStation}
       />
     </div>
+    </Can>
   );
 };
 

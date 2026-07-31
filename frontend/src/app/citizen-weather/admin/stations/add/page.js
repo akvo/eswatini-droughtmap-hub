@@ -1,59 +1,62 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Input, Select, Button, Switch, message } from "antd";
-import {
-  MailOutlined,
-  CheckCircleOutlined,
-  ArrowLeftOutlined,
-} from "@ant-design/icons";
+import { useState, useEffect, useCallback } from "react";
+import { Input, Select, Button, Switch, message, Spin } from "antd";
+import { MailOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import Link from "next/link";
-import { PageHeader } from "@/components";
-import {
-  INKHUNDLA_OPTIONS,
-  AEZ_BY_INKHUNDLA,
-  REGION_BY_INKHUNDLA,
-  SENSOR_OPTIONS,
-  STATION_TYPES,
-  ADMIN_USERS,
-} from "@/static/mocks/citizen-weather";
-
-const { TextArea } = Input;
+import { useRouter } from "next/navigation";
+import { Can, PageHeader } from "@/components";
+import { api } from "@/lib";
+import { SENSOR_OPTIONS, STATION_TYPES } from "@/static/mocks/citizen-weather";
 
 const AddStationPage = () => {
-  const [stationName, setStationName] = useState("Sithobela Community Station");
-  const [inkhundla, setInkhundla] = useState("Sithobela");
-  const [lat, setLat] = useState("-26.6812");
-  const [lng, setLng] = useState("31.7245");
-  const [sensors, setSensors] = useState([
-    "min_temp",
-    "max_temp",
-    "rain_gauge",
-    "soil_moisture",
-  ]);
-  const [stationType, setStationType] = useState("Davis Vantage Pro2");
-  const [observerName, setObserverName] = useState("Nomsa Simelane");
-  const [observerEmail, setObserverEmail] = useState(
-    "nomsa.simelane@example.sz",
-  );
-  const [phone, setPhone] = useState("+268 76 12 3456");
-  const [language, setLanguage] = useState("en");
-  const [adminNotes, setAdminNotes] = useState(
-    "Chairs the Inkhundla DRMC. Best contacted in the mornings.",
-  );
-  const [assignedAdmin, setAssignedAdmin] = useState(ADMIN_USERS[0]);
+  const router = useRouter();
+  const [stationName, setStationName] = useState("");
+  const [administrationId, setAdministrationId] = useState(null);
+  const [sensors, setSensors] = useState([]);
+  const [stationType, setStationType] = useState("Not specified");
+  const [observerName, setObserverName] = useState("");
+  const [observerEmail, setObserverEmail] = useState("");
   const [sendWelcome, setSendWelcome] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const region = useMemo(
-    () => REGION_BY_INKHUNDLA[inkhundla] || "",
-    [inkhundla],
+  const [administrations, setAdministrations] = useState([]);
+  const [loadingAdministrations, setLoadingAdministrations] = useState(true);
+
+  // Selected administration details for display
+  const selectedAdmin = administrations.find(
+    (a) => a.id === administrationId,
   );
-  const aez = useMemo(() => AEZ_BY_INKHUNDLA[inkhundla] || "", [inkhundla]);
+  const region = selectedAdmin?.region || "";
 
-  const inkhundlaSelectOptions = INKHUNDLA_OPTIONS.map((group) => ({
-    label: group.label,
-    options: group.options.map((ink) => ({ label: ink, value: ink })),
-  }));
+  const fetchAdministrations = useCallback(async () => {
+    setLoadingAdministrations(true);
+    try {
+      const res = await api("GET", "/iks/administrations");
+      const data = Array.isArray(res) ? res : res.data || [];
+      setAdministrations(data);
+    } catch (err) {
+      message.error("Failed to load Inkhundla list.");
+    } finally {
+      setLoadingAdministrations(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAdministrations();
+  }, [fetchAdministrations]);
+
+  // Group administrations by region for the Select dropdown
+  const inkhundlaSelectOptions = administrations.reduce((groups, admin) => {
+    const regionLabel = `${admin.region} region`;
+    let group = groups.find((g) => g.label === regionLabel);
+    if (!group) {
+      group = { label: regionLabel, options: [] };
+      groups.push(group);
+    }
+    group.options.push({ label: admin.name, value: admin.id });
+    return groups;
+  }, []);
 
   const toggleSensor = (key) => {
     setSensors((prev) =>
@@ -61,19 +64,49 @@ const AddStationPage = () => {
     );
   };
 
-  const handleSave = () => {
-    if (!stationName || !inkhundla || !observerName || !observerEmail) {
+  const handleSave = async () => {
+    if (!stationName || !administrationId || !observerName || !observerEmail) {
       message.warning("Please fill in all required fields.");
       return;
     }
-    message.success(
-      sendWelcome
-        ? "Station created and welcome email sent!"
-        : "Station created (no email sent).",
-    );
+    setSaving(true);
+    try {
+      await api("POST", "/weather/citizen-science/stations", {
+        name: observerName,
+        email: observerEmail,
+        administration_id: administrationId,
+        station_name: stationName,
+        sensors,
+        station_type: stationType,
+        send_welcome_email: sendWelcome,
+      });
+      message.success(
+        sendWelcome
+          ? "Station created and welcome email sent!"
+          : "Station created (no email sent).",
+      );
+      router.push("/citizen-weather/admin");
+    } catch (err) {
+      // Handle known 400 errors
+      const errMsg =
+        err?.message || err?.toString() || "Failed to create station.";
+      if (errMsg.toLowerCase().includes("email")) {
+        message.error("This email address is already taken.");
+      } else if (
+        errMsg.toLowerCase().includes("inkhundla") ||
+        errMsg.toLowerCase().includes("administration")
+      ) {
+        message.error("This Inkhundla already has an active observer.");
+      } else {
+        message.error("Failed to create station. Please try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
+    <Can I="create" a="CitizenScience">
     <div className="w-full h-auto">
       <PageHeader
         title="Add station + observer"
@@ -121,15 +154,19 @@ const AddStationPage = () => {
                   required
                   hint="search or scroll to find"
                 >
-                  <Select
-                    showSearch
-                    style={{ width: "100%" }}
-                    placeholder="Select the Inkhundla"
-                    value={inkhundla || undefined}
-                    onChange={setInkhundla}
-                    options={inkhundlaSelectOptions}
-                    optionFilterProp="label"
-                  />
+                  {loadingAdministrations ? (
+                    <Spin size="small" />
+                  ) : (
+                    <Select
+                      showSearch
+                      style={{ width: "100%" }}
+                      placeholder="Select the Inkhundla"
+                      value={administrationId || undefined}
+                      onChange={setAdministrationId}
+                      options={inkhundlaSelectOptions}
+                      optionFilterProp="label"
+                    />
+                  )}
                 </FieldGroup>
 
                 <FieldGroup label="Region" hint="auto-filled from Inkhundla">
@@ -138,53 +175,6 @@ const AddStationPage = () => {
                     disabled
                     className="bg-[#f9fafb] italic"
                   />
-                </FieldGroup>
-
-                <FieldGroup
-                  label="Agro-ecological zone"
-                  hint="auto-filled from Inkhundla"
-                >
-                  <Input value={aez} disabled className="bg-[#f9fafb] italic" />
-                </FieldGroup>
-
-                <FieldGroup
-                  label="Coordinates"
-                  required
-                  hint="decimal degrees, WGS84"
-                >
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <Input
-                      placeholder="Latitude · e.g. -26.6812"
-                      value={lat}
-                      onChange={(e) => setLat(e.target.value)}
-                    />
-                    <Input
-                      placeholder="Longitude · e.g. 31.7245"
-                      value={lng}
-                      onChange={(e) => setLng(e.target.value)}
-                    />
-                  </div>
-                  <div className="mt-3 rounded-lg bg-gradient-to-br from-[#dbeafe] to-[#fef3c7] h-[120px] flex items-center justify-center relative">
-                    <svg
-                      width="26"
-                      height="26"
-                      viewBox="0 0 24 24"
-                      fill="#FF4D4F"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
-                    </svg>
-                    <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-1.5 flex items-center justify-between text-xs text-[#606060]">
-                      <span className="font-mono">
-                        {lat || "\u2014"}, {lng || "\u2014"}
-                      </span>
-                      {lat && lng && (
-                        <span className="text-[#12b76a] font-semibold inline-flex items-center gap-1">
-                          <CheckCircleOutlined /> inside Eswatini
-                        </span>
-                      )}
-                    </div>
-                  </div>
                 </FieldGroup>
 
                 <FieldGroup
@@ -269,63 +259,6 @@ const AddStationPage = () => {
                     onChange={(e) => setObserverEmail(e.target.value)}
                   />
                 </FieldGroup>
-
-                <FieldGroup
-                  label="Phone number"
-                  hint="optional · used only as fallback"
-                >
-                  <Input
-                    placeholder="e.g. +268 76 XX XXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </FieldGroup>
-
-                <FieldGroup label="Preferred language for reminders">
-                  <div className="flex gap-2">
-                    {[
-                      { key: "en", label: "EN English" },
-                      { key: "ss", label: "SS siSwati" },
-                    ].map((lang) => (
-                      <button
-                        key={lang.key}
-                        type="button"
-                        className={`flex-1 py-2 px-3 border rounded-lg text-center cursor-pointer text-xs transition-all select-none ${
-                          language === lang.key
-                            ? "border-[#3E5EB9] bg-[#f0f4ff] text-[#333333] font-semibold"
-                            : "border-cardBorder bg-white text-[#606060]"
-                        }`}
-                        onClick={() => setLanguage(lang.key)}
-                      >
-                        {lang.label}
-                      </button>
-                    ))}
-                  </div>
-                </FieldGroup>
-
-                <FieldGroup
-                  label="Notes about this observer"
-                  hint="optional · admin-only"
-                >
-                  <TextArea
-                    rows={3}
-                    placeholder="e.g. teaches at the local school, best contacted after 15:00"
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                  />
-                </FieldGroup>
-
-                <FieldGroup
-                  label="Assigned admin"
-                  hint="who follows up if this observer stops reporting"
-                >
-                  <Select
-                    style={{ width: "100%" }}
-                    value={assignedAdmin}
-                    onChange={setAssignedAdmin}
-                    options={ADMIN_USERS.map((a) => ({ label: a, value: a }))}
-                  />
-                </FieldGroup>
               </div>
             </section>
           </div>
@@ -349,14 +282,17 @@ const AddStationPage = () => {
                   Welcome to Citizen Science Weather &mdash; your first sign-in
                   link
                 </div>
-                <div>Sanibonani {observerName?.split(" ")[0] || "\u2014"},</div>
+                <div>
+                  Sanibonani {observerName?.split(" ")[0] || "\u2014"},
+                </div>
                 <br />
                 <div>
                   You&apos;ve been registered as the observer for the{" "}
-                  <b>{stationName || "\u2014"}</b> in {region || "\u2014"}. On
-                  the 1st of every month, we&apos;ll email you a link to submit
-                  that month&apos;s weather reading &mdash; no password to
-                  remember, just click and fill in what your station measured.
+                  <b>{stationName || "\u2014"}</b> in {region || "\u2014"}.
+                  On the 1st of every month, we&apos;ll email you a link to
+                  submit that month&apos;s weather reading &mdash; no password
+                  to remember, just click and fill in what your station
+                  measured.
                 </div>
                 <br />
                 <div>
@@ -387,13 +323,14 @@ const AddStationPage = () => {
             <Link href="/citizen-weather/admin">
               <Button>Cancel</Button>
             </Link>
-            <Button type="primary" onClick={handleSave}>
+            <Button type="primary" onClick={handleSave} loading={saving}>
               {sendWelcome ? "Save + send welcome email" : "Save station"}
             </Button>
           </div>
         </div>
       </div>
     </div>
+    </Can>
   );
 };
 

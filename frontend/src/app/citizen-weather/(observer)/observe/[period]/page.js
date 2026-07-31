@@ -1,25 +1,32 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { InputNumber, Input, Button, message } from "antd";
+import { InputNumber, Input, Button, Spin, Alert, message } from "antd";
 import {
   CalendarOutlined,
   FormOutlined,
   CheckCircleOutlined,
 } from "@ant-design/icons";
+import Link from "next/link";
 import CWHeader from "@/components/CitizenWeather/CWHeader";
 import { Thermometer, Droplet } from "@/components/CitizenWeather/CWIcons";
-import {
-  observerProfile,
-  currentReading,
-} from "@/static/mocks/citizen-weather";
+import { api } from "@/lib";
 
 const { TextArea } = Input;
 
-const FIELDS = [
+/** Sensor key -> form field key mapping */
+const SENSOR_TO_FIELD = {
+  min_temp: "min_temperature",
+  max_temp: "max_temperature",
+  rain_gauge: "precipitation",
+  soil_moisture: "soil_moisture",
+  soil_temperature: "soil_temperature",
+};
+
+const ALL_FIELDS = [
   {
-    key: "temp_min",
+    key: "min_temperature",
     label: "Monthly minimum temperature",
     unit: "\u00B0C",
     icon: <Thermometer size={18} />,
@@ -28,7 +35,7 @@ const FIELDS = [
     hint: "The lowest temperature reading you recorded this month.",
   },
   {
-    key: "temp_max",
+    key: "max_temperature",
     label: "Monthly maximum temperature",
     unit: "\u00B0C",
     icon: <Thermometer size={18} />,
@@ -37,7 +44,7 @@ const FIELDS = [
     hint: "The highest temperature reading you recorded this month.",
   },
   {
-    key: "rainfall",
+    key: "precipitation",
     label: "Total rainfall for the month",
     unit: "mm",
     icon: <Droplet size={18} />,
@@ -55,7 +62,7 @@ const FIELDS = [
     hint: "Skip if your station doesn't have a soil moisture probe.",
   },
   {
-    key: "soil_temp",
+    key: "soil_temperature",
     label: "Average soil temperature",
     unit: "\u00B0C",
     icon: <Thermometer size={18} />,
@@ -65,6 +72,24 @@ const FIELDS = [
   },
 ];
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** Build the 12-month trailing window as YYYY-MM strings. */
+const buildTrailingWindow = () => {
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+    );
+  }
+  return months;
+};
+
 const PeriodFormPage = () => {
   const params = useParams();
   const router = useRouter();
@@ -73,40 +98,140 @@ const PeriodFormPage = () => {
   const periodLabel = useMemo(() => {
     if (!period) return "";
     const [year, month] = period.split("-");
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
     const monthIndex = parseInt(month, 10) - 1;
-    return `${monthNames[monthIndex] || month} ${year}`;
+    return `${MONTH_NAMES[monthIndex] || month} ${year}`;
   }, [period]);
 
-  const [values, setValues] = useState({
-    temp_min: currentReading.values.temp_min,
-    temp_max: currentReading.values.temp_max,
-    rainfall: currentReading.values.rainfall,
-    soil_moisture: currentReading.values.soil_moisture,
-    soil_temp: currentReading.values.soil_temp,
-  });
-  const [notes, setNotes] = useState(currentReading.notes || "");
-
-  const filledCount = useMemo(
-    () => FIELDS.filter((f) => values[f.key] != null).length,
-    [values],
+  // Client-side window check (D-2 / D-8: UX guard, server enforces too)
+  const isInWindow = useMemo(
+    () => buildTrailingWindow().includes(period),
+    [period],
   );
 
-  const totalFields = FIELDS.length;
-  const progressPct = (filledCount / totalFields) * 100;
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [station, setStation] = useState(null);
+  const [visibleFields, setVisibleFields] = useState(ALL_FIELDS);
+  const [values, setValues] = useState({
+    min_temperature: null,
+    max_temperature: null,
+    precipitation: null,
+    soil_moisture: null,
+    soil_temperature: null,
+  });
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (!isInWindow) {
+      setLoading(false);
+      return;
+    }
+    api("GET", "/weather/citizen-science/readings")
+      .then((res) => {
+        setStation(res.station || null);
+
+        // Determine visible fields based on station sensors
+        const sensors = res.station?.sensors || [];
+        if (sensors.length > 0) {
+          const allowedFields = new Set(
+            sensors
+              .map((s) => SENSOR_TO_FIELD[s])
+              .filter(Boolean)
+          );
+          setVisibleFields(
+            ALL_FIELDS.filter((f) => allowedFields.has(f.key))
+          );
+        }
+
+        // Find the matching period row and preload values
+        const row = (res.data || []).find((d) => d.period === period);
+        if (row) {
+          setValues({
+            min_temperature: row.min_temperature ?? null,
+            max_temperature: row.max_temperature ?? null,
+            precipitation: row.precipitation ?? null,
+            soil_moisture: row.soil_moisture ?? null,
+            soil_temperature: row.soil_temperature ?? null,
+          });
+          setNotes(row.notes || "");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load readings:", err);
+      })
+      .finally(() => setLoading(false));
+  }, [period, isInWindow]);
+
+  const filledCount = useMemo(
+    () => visibleFields.filter((f) => values[f.key] != null).length,
+    [values, visibleFields]
+  );
+
+  const totalFields = visibleFields.length;
+  const progressPct = totalFields > 0 ? (filledCount / totalFields) * 100 : 0;
+
+  const handleSave = async (submit) => {
+    setSaving(true);
+    try {
+      const payload = {
+        ...values,
+        notes,
+        submit,
+      };
+      const res = await api(
+        "PUT",
+        `/weather/citizen-science/readings/${period}`,
+        payload
+      );
+
+      // Surface warnings
+      if (res.warnings && res.warnings.length > 0) {
+        res.warnings.forEach((w) => message.warning(w));
+      }
+
+      if (submit) {
+        message.success("Reading submitted. Siyabonga!");
+        router.push("/citizen-weather/observe");
+      } else {
+        message.info("Draft saved.");
+      }
+    } catch (err) {
+      console.error("Save failed:", err);
+      message.error("Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full h-auto flex items-center justify-center py-40">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Out-of-window: show a clear message with a link back
+  if (!isInWindow) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center py-16">
+        <div className="w-[420px] max-w-full mx-auto flex flex-col gap-6 items-center text-center">
+          <Alert
+            message="Month not open for reporting"
+            description={`${periodLabel} is outside the reportable window. You can only submit readings for the last 12 months.`}
+            type="warning"
+            showIcon
+          />
+          <Link href="/citizen-weather/observe">
+            <Button type="primary">Back to reporting history</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const stationLabel = station?.label || "Your station";
+  const stationGroup = station?.group || "";
 
   return (
     <div className="w-full h-auto">
@@ -114,9 +239,9 @@ const PeriodFormPage = () => {
       <div className="px-4 sm:px-8 md:px-12 xl:px-20 pt-4 pb-0">
         <div className="mx-auto w-full max-w-[1280px]">
           <CWHeader
-            subtitle={`Your station \u00B7 ${observerProfile.station.shortName} \u00B7 ${observerProfile.station.region} region`}
-            userName={observerProfile.name}
-            userInitials={observerProfile.initials}
+            subtitle={`Your station \u00B7 ${stationLabel} \u00B7 ${stationGroup} region`}
+            userName={null}
+            userInitials={null}
           />
         </div>
       </div>
@@ -134,8 +259,8 @@ const PeriodFormPage = () => {
             </span>
           </div>
           <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
-            Sanibonani {observerProfile.name.split(" ")[0]} &mdash; let&apos;s
-            log {periodLabel.split(" ")[0]}&apos;s weather.
+            Sanibonani &mdash; let&apos;s log{" "}
+            {periodLabel.split(" ")[0]}&apos;s weather.
           </h1>
           <p className="text-sm leading-6 text-[#606060] mb-4">
             Fill in whatever your station recorded. You can skip any field you
@@ -171,7 +296,7 @@ const PeriodFormPage = () => {
             </div>
             <div className="p-4 sm:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {FIELDS.map((field) => (
+                {visibleFields.map((field) => (
                   <div
                     key={field.key}
                     className="border border-[#eaecf0] rounded-lg p-4"
@@ -245,15 +370,16 @@ const PeriodFormPage = () => {
             <span className="text-sm text-[#606060] mr-auto">
               You can save what you have and come back later, or submit now.
             </span>
-            <Button onClick={() => message.info("Draft saved.")}>
+            <Button
+              loading={saving}
+              onClick={() => handleSave(false)}
+            >
               Save draft
             </Button>
             <Button
               type="primary"
-              onClick={() => {
-                message.success("Reading submitted. Siyabonga!");
-                router.push("/citizen-weather/observe");
-              }}
+              loading={saving}
+              onClick={() => handleSave(true)}
             >
               Submit {periodLabel} reading
             </Button>
