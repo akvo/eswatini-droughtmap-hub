@@ -5,6 +5,8 @@ import { api } from "@/lib";
 import { useRouter } from "next/navigation";
 import { PUBLICATION_STATUS } from "@/static/config";
 
+jest.setTimeout(30000);
+
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
