@@ -156,52 +156,77 @@ export const transformReviews = (
     });
 };
 
-export const getProfileDropdownItems = (user, isPublic = false) => {
-  const menuItems = [
-    {
-      key: 11,
-      label: isPublic ? "Dashboard" : "View Map",
-      url: isPublic
-        ? user?.role === USER_ROLES.admin
-          ? "/publications"
-          : "/reviews"
-        : "/",
+export const getProfileDropdownItems = (user) => {
+  const userName = user?.name || "User";
+  const userEmail = user?.email || "";
+  const isAdmin = user?.role === USER_ROLES.admin;
+
+  const navItems = [
+    isAdmin && {
+      key: "nav-validation",
+      label: "Drought validation",
+      url: "/publications",
     },
     {
-      key: 1,
-      label: "Profile",
-      url: "/profile",
+      key: "nav-reviews",
+      label: "Drought reviews",
+      url: isAdmin ? "/publications" : "/reviews",
+    },
+    isAdmin && {
+      key: "nav-publications",
+      label: "CDI publications",
+      url: "/publications",
+    },
+    isAdmin && {
+      key: "nav-activity",
+      label: "Activity library",
+      url: "/activity-library",
+    },
+  ].filter(Boolean);
+
+  const utilItems = [
+    {
+      key: "util-settings",
+      label: "Settings",
+      url: isAdmin ? "/settings" : "/profile",
+    },
+    {
+      key: "util-support",
+      label: "Support",
+      url: "/feedback",
     },
   ];
-  const menuByRoles =
-    user?.role === USER_ROLES.admin
-      ? [
-          ...menuItems,
-          {
-            key: 2,
-            label: "Citizen Weather",
-            url: "/citizen-weather/admin",
-          },
-          {
-            key: 3,
-            label: "User Management",
-            url: "/admin/v1_users/systemuser/",
-          },
-          {
-            key: 4,
-            label: "Settings",
-            url: "/settings",
-          },
-        ]
-      : menuItems;
-  return menuByRoles.map(({ key, label, url }) => ({
-    key,
-    label: (
-      <Link href={url}>
-        <Button type="link" className="dropdown-item">
-          {label}
-        </Button>
-      </Link>
-    ),
-  }));
+
+  return [
+    {
+      key: "profile-header",
+      label: (
+        <div className="px-1 py-1">
+          <div className="text-sm font-semibold text-[#333333]">{userName}</div>
+          <div className="text-xs text-[#606060]">{userEmail}</div>
+        </div>
+      ),
+      disabled: true,
+      className: "profile-dropdown-header",
+    },
+    { type: "divider" },
+    ...navItems.map(({ key, label, url }) => ({
+      key,
+      label: (
+        <Link href={url}>
+          <span className="dropdown-item-label">{label}</span>
+        </Link>
+      ),
+    })),
+    { type: "divider" },
+    ...utilItems.map(({ key, label, url }) => ({
+      key,
+      label: (
+        <Link href={url}>
+          <span className="dropdown-item-label">{label}</span>
+        </Link>
+      ),
+    })),
+    { type: "divider" },
+  ];
 };
