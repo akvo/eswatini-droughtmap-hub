@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import WeatherTab from "../WeatherTab";
-import { api } from "../../../../lib/api";
+import { api } from "@/lib/api";
 
-// Alias paths do not resolve inside jest.mock — same relative form as IksTab.
-jest.mock("../../../../lib/api", () => ({
+jest.mock("@/lib/api", () => ({
   api: jest.fn(),
 }));
 

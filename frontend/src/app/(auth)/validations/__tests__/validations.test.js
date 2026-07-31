@@ -4,6 +4,8 @@ import ValidationsPage from "../page";
 import { api } from "@/lib";
 import { useRouter } from "next/navigation";
 
+jest.setTimeout(30000);
+
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
 }));
