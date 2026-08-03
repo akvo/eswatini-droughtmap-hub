@@ -135,6 +135,7 @@ const table = {
   border: border.section, // Gray/200
   hoverBg: "#F9FAFB", // Gray/50
   cellInline: 16,
+  cellBlock: 12,
 };
 
 // Sector palette (Figma node 3487-101737) — one hex per sector id, shared by
