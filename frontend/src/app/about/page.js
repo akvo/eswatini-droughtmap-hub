@@ -6,6 +6,12 @@ import { howCdiComputedConfig } from "@/static/about/how-cdi-computed";
 import { whatCdiCategoriesMeanConfig } from "@/static/about/what-cdi-categories-mean";
 import { whoInvolvedValidationConfig } from "@/static/about/who-involved-validation";
 
+// Section separators run edge-to-edge in the design while the content stays in
+// the shell's centered container — same breakout idiom used across the app.
+const SectionLine = () => (
+  <hr className="relative left-1/2 w-screen -translate-x-1/2 border-t border-cardBorder" />
+);
+
 const AboutPage = () => {
   return (
     <div className="w-full">
@@ -33,7 +39,7 @@ const AboutPage = () => {
       </div>
 
       {/* How is the CDI Computed? */}
-      <div className="border-b border-gray-200">
+      <div>
         <AboutSection
           title={howCdiComputedConfig.title}
           description={howCdiComputedConfig.description}
@@ -52,8 +58,10 @@ const AboutPage = () => {
         </AboutSection>
       </div>
 
+      <SectionLine />
+
       {/* What Do the CDI Categories Mean? */}
-      <div className="border-b border-gray-200">
+      <div>
         <AboutSection
           title={whatCdiCategoriesMeanConfig.title}
           description={whatCdiCategoriesMeanConfig.description}
@@ -95,6 +103,8 @@ const AboutPage = () => {
           </div>
         </AboutSection>
       </div>
+
+      <SectionLine />
 
       {/* Who is Involved in Validation? */}
       <AboutSection
