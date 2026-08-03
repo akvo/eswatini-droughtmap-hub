@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import IksTab from "../IksTab";
-import { api } from "../../../../lib/api";
+import { api } from "@/lib/api";
 
 // Mock the API wrapper
-jest.mock("../../../../lib/api", () => ({
+jest.mock("@/lib/api", () => ({
   api: jest.fn(),
 }));
 

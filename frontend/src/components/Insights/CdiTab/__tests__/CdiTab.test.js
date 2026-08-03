@@ -1,9 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import CdiTab from "../CdiTab";
-import { api } from "../../../../lib/api";
+import { api } from "@/lib/api";
 
-jest.mock("../../../../lib/api", () => ({
+jest.mock("@/lib/api", () => ({
   api: jest.fn(),
 }));
 
