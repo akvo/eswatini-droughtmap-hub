@@ -36,7 +36,7 @@ const BreakdownByZones = () => {
   const breakdowns = isClimatic ? climaticBreakdownsData : breakdownsData;
 
   return (
-    <section className="w-full mb-4">
+    <section className="w-full">
       <div className="border border-neutral-200 bg-white">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-200">
@@ -55,11 +55,11 @@ const BreakdownByZones = () => {
           zones={zones}
           trends={trends}
           breakdowns={breakdowns}
-          columns={isClimatic ? 3 : 4}
+          columns={isClimatic ? 3 : 2}
         />
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 p-4 border-t border-neutral-200">
+        <div className="flex flex-wrap items-center gap-4 p-4">
           {LEGEND_ITEMS.map((item) => (
             <span
               key={item.value}

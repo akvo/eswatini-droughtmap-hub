@@ -9,7 +9,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
       class="w-full bg-neutral-200"
     >
       <div
-        class="container w-full flex flex-row items-center justify-between py-2 text-neutral-600"
+        class="w-full px-8 flex flex-row items-center justify-between py-2 text-neutral-600"
       >
         <div
           class="flex flex-row items-center gap-1.5 text-xs"
@@ -42,7 +42,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
       class="w-full bg-primary"
     >
       <div
-        class="container w-full flex flex-row items-center justify-between"
+        class="w-full px-8 flex flex-row items-center justify-between"
       >
         <nav
           class="flex flex-row items-center text-base"
