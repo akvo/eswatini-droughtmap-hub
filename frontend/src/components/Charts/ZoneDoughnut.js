@@ -25,7 +25,13 @@ const ZoneDoughnut = ({ byClass = {}, centerLabel, size = 80 }) => {
       borderColor: "transparent",
       borderWidth: 0,
       padding: 0,
-      textStyle: { color: "#606060", fontFamily: "Inter", fontSize: 14, fontWeight: 400, lineHeight: 21 },
+      textStyle: {
+        color: "#606060",
+        fontFamily: "Inter",
+        fontSize: 14,
+        fontWeight: 400,
+        lineHeight: 21,
+      },
       extraCssText:
         "border-radius: 6px; box-shadow: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03); overflow: visible;",
       position: (point, params, dom, rect, size) => {

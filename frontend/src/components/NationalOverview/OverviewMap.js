@@ -13,7 +13,9 @@ const findCategory = (values, feature) =>
 
 // Remounts the GeoJSON layer whenever the colors it paints change.
 const layerKeyOf = (values, visible) =>
-  values.map((v) => v?.category).join("-") + "|" + [...visible].sort().join(",");
+  values.map((v) => v?.category).join("-") +
+  "|" +
+  [...visible].sort().join(",");
 
 const allCategoryValues = new Set(
   DROUGHT_CATEGORY.slice(0, -1).map((c) => c.value),
@@ -52,9 +54,7 @@ const OverviewMap = ({ validatedValues = [], compareValues = [] }) => {
           const cat = findCategory(values, feature);
           const visible = visibleCategories.has(cat);
           return {
-            fillColor: visible
-              ? DROUGHT_CATEGORY_COLOR?.[cat]
-              : "transparent",
+            fillColor: visible ? DROUGHT_CATEGORY_COLOR?.[cat] : "transparent",
             fillOpacity: visible ? 0.75 : 0,
           };
         }}
@@ -126,7 +126,10 @@ const OverviewMap = ({ validatedValues = [], compareValues = [] }) => {
                   </svg>
                 )}
               </span>
-              {cat.label.replace(/ Drought$/, "").replace("Wet/normal conditions", "None").replace("Abnormally Dry", "Normal")}
+              {cat.label
+                .replace(/ Drought$/, "")
+                .replace("Wet/normal conditions", "None")
+                .replace("Abnormally Dry", "Normal")}
             </button>
           );
         })}
