@@ -148,12 +148,24 @@ class ReviewQueueAPIsTestCase(APITestCase):
         )
 
     def test_stats_delta_against_previous_publication(self):
-        earliest = Publication.objects.order_by("year_month").first()
+        # Anchor on the NEWEST publication, so the one created below is
+        # unambiguously its successor and _previous_rows resolves back to it.
+        #
+        # This used to anchor on the earliest and add 31 days. The seeder lays
+        # publications down on consecutive months, so that only landed on the
+        # next seeded month when the earliest month happened to have 31 days —
+        # otherwise it overshot *past* it, the delta was measured against the
+        # wrong publication, and the assertions below failed. That made the
+        # test fail every March, May, August and October and pass the rest of
+        # the year.
+        previous = Publication.objects.order_by("-year_month").first()
         # One Inkhundla reviewed last month -> one fewer "not started" there.
-        review = earliest.reviews.first()
+        # Explicitly this reviewer's own row: tinkhundla_reviewed tracks the
+        # requesting user, so any other reviewer's sign-off leaves it flat.
+        review = previous.reviews.get(user_id=self.user.id)
         review.suggestion_values = [{
             "administration_id": (
-                earliest.initial_values[0]["administration_id"]
+                previous.initial_values[0]["administration_id"]
             ),
             "category": DroughtCategory.d2,
             "reviewed": True,
@@ -163,11 +175,12 @@ class ReviewQueueAPIsTestCase(APITestCase):
         review.save()
 
         # A later publication with no reviews at all -> everything not started.
+        # Nothing is seeded beyond `previous`, so any positive offset is safe.
         later = Publication.objects.create(
-            year_month=earliest.year_month + timedelta(days=31),
+            year_month=previous.year_month + timedelta(days=31),
             cdi_geonode_id=987654,
-            initial_values=earliest.initial_values,
-            due_date=earliest.due_date + timedelta(days=31),
+            initial_values=previous.initial_values,
+            due_date=previous.due_date + timedelta(days=31),
         )
         res = self.client.get(
             reverse(
