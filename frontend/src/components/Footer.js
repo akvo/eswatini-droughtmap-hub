@@ -9,7 +9,7 @@ import { APP_SETTINGS, FOOTER_LINK_COLUMNS } from "@/static/config";
 const Footer = () => {
   return (
     <footer className="w-full bg-white border-t border-t-neutral-300 flex flex-col items-center gap-16 pt-16">
-      <div className="container w-full flex flex-col gap-10 lg:flex-row lg:justify-between">
+      <div className="container mx-auto w-full flex flex-col gap-10 lg:flex-row lg:justify-between">
         <p className="w-full lg:w-80 text-base text-[#606060]">
           {APP_SETTINGS.about}
         </p>
@@ -48,7 +48,7 @@ const Footer = () => {
       </div>
 
       <div className="w-full bg-primary">
-        <div className="container w-full py-10 flex flex-row items-center justify-between gap-4 text-white text-sm">
+        <div className="container mx-auto w-full py-10 flex flex-row items-center justify-between gap-4 text-white text-sm">
           <p>
             &copy; {dayjs().format("YYYY")} - {APP_SETTINGS.copy}
           </p>
@@ -60,7 +60,7 @@ const Footer = () => {
           >
             <span>Powered by</span>
             <Image
-              src="/images/logo-akvo.png"
+              src="/images/logo-akvo.svg"
               alt="Akvo Foundation Logo"
               width={64}
               height={24}

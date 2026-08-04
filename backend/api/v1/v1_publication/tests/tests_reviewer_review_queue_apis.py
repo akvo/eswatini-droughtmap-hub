@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date
 
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -7,7 +7,11 @@ from django.core.management import call_command
 from django.test.utils import override_settings
 from django.utils import timezone
 from api.v1.v1_users.models import SystemUser
-from api.v1.v1_publication.models import Publication, Administration
+from api.v1.v1_publication.models import (
+    Publication,
+    Administration,
+    Review,
+)
 from api.v1.v1_publication.constants import DroughtCategory
 
 
@@ -148,39 +152,40 @@ class ReviewQueueAPIsTestCase(APITestCase):
         )
 
     def test_stats_delta_against_previous_publication(self):
-        # Anchor on the NEWEST publication, so the one created below is
-        # unambiguously its successor and _previous_rows resolves back to it.
-        #
-        # This used to anchor on the earliest and add 31 days. The seeder lays
-        # publications down on consecutive months, so that only landed on the
-        # next seeded month when the earliest month happened to have 31 days —
-        # otherwise it overshot *past* it, the delta was measured against the
-        # wrong publication, and the assertions below failed. That made the
-        # test fail every March, May, August and October and pass the rest of
-        # the year.
-        previous = Publication.objects.order_by("-year_month").first()
+        # Two publications on fixed months, replacing the seeded ones. The
+        # seeder anchors its months on "now", so deriving `later` from a
+        # seeded month with `+31 days` skipped past the next seeded month
+        # whenever that month was shorter than 31 days — `_previous_rows` then
+        # compared against a publication this test never touched.
+        initial_values = self.publication.initial_values
+        Publication.objects.all().delete()
+
+        previous = Publication.objects.create(
+            year_month=date(2026, 1, 1),
+            cdi_geonode_id=987653,
+            initial_values=initial_values,
+            due_date=date(2026, 1, 15),
+        )
         # One Inkhundla reviewed last month -> one fewer "not started" there.
-        # Explicitly this reviewer's own row: tinkhundla_reviewed tracks the
-        # requesting user, so any other reviewer's sign-off leaves it flat.
-        review = previous.reviews.get(user_id=self.user.id)
-        review.suggestion_values = [{
-            "administration_id": (
-                previous.initial_values[0]["administration_id"]
-            ),
-            "category": DroughtCategory.d2,
-            "reviewed": True,
-        }]
-        review.is_completed = True
-        review.completed_at = timezone.now()
-        review.save()
+        Review.objects.create(
+            publication=previous,
+            user=self.user,
+            is_completed=True,
+            completed_at=timezone.now(),
+            suggestion_values=[{
+                "administration_id": initial_values[0]["administration_id"],
+                "category": DroughtCategory.d2,
+                "reviewed": True,
+            }],
+        )
 
         # A later publication with no reviews at all -> everything not started.
         # Nothing is seeded beyond `previous`, so any positive offset is safe.
         later = Publication.objects.create(
-            year_month=previous.year_month + timedelta(days=31),
+            year_month=date(2026, 2, 1),
             cdi_geonode_id=987654,
-            initial_values=previous.initial_values,
-            due_date=previous.due_date + timedelta(days=31),
+            initial_values=initial_values,
+            due_date=date(2026, 2, 15),
         )
         res = self.client.get(
             reverse(
