@@ -10,6 +10,26 @@ import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
 // WEBDOMAIN so existing deployments keep working if BACKEND_URL is unset.
 const backendBaseURL = process.env.BACKEND_URL || process.env.WEBDOMAIN;
 
+// DRF error bodies come in three shapes: {field: ["msg"]} from serializer
+// validation, {"detail": "msg"} from permission/404 exceptions, and ["msg"]
+// from a bare ValidationError. Flatten all three to one readable sentence.
+// Not exported — "use server" modules may only export async functions.
+const errorMessage = (body, status) => {
+  if (typeof body === "string" && body) {
+    return body;
+  }
+  if (Array.isArray(body)) {
+    return body.join(" ") || `HTTP ${status}`;
+  }
+  if (typeof body?.detail === "string") {
+    return body.detail;
+  }
+  const messages = Object.values(body || {})
+    .flat()
+    .filter((value) => typeof value === "string");
+  return messages.length ? messages.join(" ") : `HTTP ${status}`;
+};
+
 export const api = (method, url, payload = {}) =>
   new Promise(async (resolve, reject) => {
     const _session = await getSession();
@@ -46,6 +66,14 @@ export const api = (method, url, payload = {}) =>
               `${raw.slice(0, 200)}`,
           ),
         );
+      }
+      // ponytail: 4xx/5xx used to resolve, so every caller's catch block was
+      // dead code and a rejected POST looked like a success. Next.js masks
+      // Server Action error messages in production builds — the user then sees
+      // the caller's fallback text instead of the backend's. Upgrade path if
+      // that matters: return {ok, status, data} and migrate the ~40 callers.
+      if (!res.ok) {
+        return reject(new Error(errorMessage(body, res.status)));
       }
       return resolve(body);
     } catch (err) {

@@ -32,10 +32,19 @@ const AddStationPage = () => {
   const fetchAdministrations = useCallback(async () => {
     setLoadingAdministrations(true);
     try {
-      const res = await api("GET", "/iks/administrations");
+      // One observer per Inkhundla — the backend rejects a second one with
+      // "This Inkhundla already has an active observer." The admin network
+      // rows are keyed by administration_id, so they are the taken set:
+      // drop those instead of letting the admin discover it on save.
+      const [res, network] = await Promise.all([
+        api("GET", "/iks/administrations"),
+        api("GET", "/weather/citizen-science/stations"),
+      ]);
       const data = Array.isArray(res) ? res : res.data || [];
-      setAdministrations(data);
+      const taken = new Set((network?.data || []).map((row) => row.key));
+      setAdministrations(data.filter((a) => !taken.has(a.id)));
     } catch (err) {
+      console.error(err);
       message.error("Failed to load Inkhundla list.");
     } finally {
       setLoadingAdministrations(false);
@@ -87,19 +96,11 @@ const AddStationPage = () => {
       );
       router.push("/citizen-weather/admin");
     } catch (err) {
-      // Handle known 400 errors
-      const errMsg =
-        err?.message || err?.toString() || "Failed to create station.";
-      if (errMsg.toLowerCase().includes("email")) {
-        message.error("This email address is already taken.");
-      } else if (
-        errMsg.toLowerCase().includes("inkhundla") ||
-        errMsg.toLowerCase().includes("administration")
-      ) {
-        message.error("This Inkhundla already has an active observer.");
-      } else {
-        message.error("Failed to create station. Please try again.");
-      }
+      // api() flattens the DRF 400 body ("A user with this email already
+      // exists.", "This Inkhundla already has an active observer.") into the
+      // error message, so show it rather than guessing from keywords.
+      console.error(err);
+      message.error(err?.message || "Failed to create station. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -152,7 +153,7 @@ const AddStationPage = () => {
                 <FieldGroup
                   label="Inkhundla"
                   required
-                  hint="search or scroll to find"
+                  hint="only Inkhundla without an observer are listed"
                 >
                   {loadingAdministrations ? (
                     <Spin size="small" />

@@ -3,7 +3,8 @@ export const SENSOR_OPTIONS = [
   { key: "max_temp", label: "Max temperature" },
   { key: "rain_gauge", label: "Rain gauge" },
   { key: "soil_moisture", label: "Soil moisture" },
-  { key: "soil_temp", label: "Soil temperature" },
+  // keys must match backend CS_SENSORS — this one is not abbreviated
+  { key: "soil_temperature", label: "Soil temperature" },
   { key: "wind_speed", label: "Wind speed" },
 ];
 
