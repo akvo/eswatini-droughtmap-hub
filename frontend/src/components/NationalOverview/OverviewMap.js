@@ -132,7 +132,9 @@ const OverviewMap = ({
       </div>
 
       {/* Legend - interactive color-coded checkboxes */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-white">
+      {/* ponytail: fixed 48px strip — no wrap, scroll instead, so the legend
+          never changes the card height */}
+      <div className="w-full h-12 shrink-0 flex flex-nowrap items-center gap-4 px-4 bg-white overflow-x-auto">
         {DROUGHT_CATEGORY.slice(0, -1).map((cat) => {
           const active = visibleCategories.has(cat.value);
           return (
@@ -140,7 +142,7 @@ const OverviewMap = ({
               key={cat.value}
               type="button"
               onClick={() => toggleCategory(cat.value)}
-              className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer"
+              className="flex shrink-0 items-center gap-2 text-sm text-neutral-700 cursor-pointer"
             >
               <span
                 className="inline-flex items-center justify-center w-5 h-5 rounded"

@@ -1,22 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import { DROUGHT_CATEGORY } from "@/static/config";
 import TabButtons from "@/components/TabButtons";
 import ZoneBreakdown from "@/components/ZoneBreakdown";
 
 const GROUPING_OPTIONS = [
   { value: "climatic", label: "Agro-ecological zones" },
   { value: "regions", label: "Regions" },
-];
-
-const LEGEND_ITEMS = [
-  { value: 0, label: "None" },
-  { value: 1, label: "D0 Normal" },
-  { value: 2, label: "D1 Moderate" },
-  { value: 3, label: "D2 Severe" },
-  { value: 4, label: "D3 Extreme" },
-  { value: 5, label: "D4 Exceptional" },
 ];
 
 const BreakdownByZones = ({ regionsData, climaticData }) => {
@@ -53,14 +44,14 @@ const BreakdownByZones = ({ regionsData, climaticData }) => {
 
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 p-4">
-          {LEGEND_ITEMS.map((item) => (
+          {DROUGHT_CATEGORY.map((item) => (
             <span
               key={item.value}
               className="flex items-center gap-1.5 text-xs text-neutral-500"
             >
               <span
                 className="inline-block w-3 h-3 rounded-sm border border-neutral-300"
-                style={{ backgroundColor: DROUGHT_CATEGORY_COLOR[item.value] }}
+                style={{ backgroundColor: item.color }}
               />
               {item.label}
             </span>

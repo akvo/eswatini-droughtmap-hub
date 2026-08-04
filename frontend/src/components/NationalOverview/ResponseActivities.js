@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "antd";
+import { Button, Skeleton } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
 import { SECTOR_CARD_ICONS } from "@/static/config";
 

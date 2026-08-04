@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Select } from "antd";
-import Image from "next/image";
-import { CalendarOutlined } from "@ant-design/icons";
+import { Button, Select, Skeleton } from "antd";
+import { CalendarOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import TabButtons from "@/components/TabButtons";
 import MetricCard from "./MetricCard";
 import { api } from "@/lib";
@@ -242,7 +241,10 @@ const DroughtMapSection = ({
             </div>
 
             {/* Map */}
-            <div className="flex-1 relative min-h-[835px]">
+            {/* No min-h here: OverviewMap is calc(100vh-250px) tall plus a
+                48px legend, so a hardcoded floor just reserves dead space
+                under the legend on shorter viewports. */}
+            <div className="flex-1 relative">
               {isMapLoading && (
                 <div className="absolute inset-0 z-10 bg-white/75 flex flex-col items-center justify-center gap-3 backdrop-blur-xs">
                   <Skeleton.Node active style={{ width: 260, height: 180 }}>
@@ -259,7 +261,7 @@ const DroughtMapSection = ({
                   onInkhundlaSelect={handleInkhundlaSelect}
                 />
               ) : (
-                <div className="w-full h-full min-h-[835px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
+                <div className="w-full h-full min-h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
                   {layers.find((l) => l.key === activeLayer)?.label ||
                     activeLayer}{" "}
                   layer - coming soon
