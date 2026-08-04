@@ -7,6 +7,7 @@ from api.v1.v1_indicators.constants import (
     HAZARD_RESCALE,
     IPC_RESCALE,
     RISK_BANDS,
+    EXPOSURE_NORM_KEYS,
     EXPOSURE_SUBINDICATORS,
 )
 
@@ -22,10 +23,14 @@ _DROUGHT_CATEGORY_TO_HAZARD_KEY = {
 }
 
 
-def _latest_hazard_map() -> dict[int, str]:
+def _latest_category_map() -> dict[int, int]:
     """
     Fetch latest published publication and return
-    {administration_id: hazard_key}.
+    {administration_id: validated DroughtCategory}.
+
+    The raw category, not the hazard key: `normal` (wet conditions) and `none`
+    (no signal) are both hazard 0.0, so a consumer that needs to tell them
+    apart — any D-class label — cannot recover it from the rescaled float.
     """
     pub = (
         Publication.objects.filter(
@@ -48,9 +53,7 @@ def _latest_hazard_map() -> dict[int, str]:
         adm_id = item.get("administration_id")
         if adm_id is None:
             continue
-        cat = item.get("category")
-        hazard_key = _DROUGHT_CATEGORY_TO_HAZARD_KEY.get(cat, "None")
-        res[adm_id] = hazard_key
+        res[adm_id] = item.get("category")
     return res
 
 
@@ -103,8 +106,8 @@ def score_all(cycle: str = "latest") -> list[dict]:
         .all()
         .order_by("administration_id")
     )
-    hazard_map = _latest_hazard_map()
-    has_publication = bool(hazard_map)
+    category_map = _latest_category_map()
+    has_publication = bool(category_map)
 
     # Collect raw exposure values for cross-row min-max normalisation
     normed_by_subind = {}
@@ -118,7 +121,12 @@ def score_all(cycle: str = "latest") -> list[dict]:
         adm_id = adm.id
 
         # 1. Hazard component
-        h_key = hazard_map.get(adm_id)
+        category = category_map.get(adm_id)
+        h_key = (
+            _DROUGHT_CATEGORY_TO_HAZARD_KEY.get(category, "None")
+            if adm_id in category_map
+            else None
+        )
         hazard = HAZARD_RESCALE.get(h_key, 0.0) if h_key else 0.0
 
         # 2. Vulnerability component (None when IPC absent; matches notebook)
@@ -136,11 +144,7 @@ def score_all(cycle: str = "latest") -> list[dict]:
 
         for subind in EXPOSURE_SUBINDICATORS:
             norm_val = normed_by_subind[subind][idx]
-            sub_norm_key = f"{subind}_norm"
-            if subind == "land_use_dvi_agri":
-                sub_norm_key = "land_use_norm"
-
-            sub_norms[sub_norm_key] = norm_val
+            sub_norms[EXPOSURE_NORM_KEYS[subind]] = norm_val
 
             if norm_val is not None:
                 valid_norms.append(norm_val)
@@ -173,6 +177,11 @@ def score_all(cycle: str = "latest") -> list[dict]:
                 "administration": adm_id,
                 "administration_name": adm.name,
                 "region": adm.region,
+                # Validated DroughtCategory, or None when this cycle carries
+                # no decision for the Inkhundla. Kept beside the rescaled
+                # hazard because the float cannot distinguish normal from
+                # no-data.
+                "category": category,
                 "hazard": round(hazard, 4),
                 "exposure": _round(exposure),
                 "vulnerability": _round(vulnerability),

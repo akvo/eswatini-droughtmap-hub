@@ -6,9 +6,18 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
-from api.v1.v1_risk_level.service import compute_risk_level_list
+from django.shortcuts import get_object_or_404
+
+from api.v1.v1_publication.models import Administration
+from api.v1.v1_risk_level.service import (
+    compute_risk_level_detail,
+    compute_risk_level_list,
+)
 from api.v1.v1_risk_level.constants import VALID_BANDS
-from api.v1.v1_risk_level.serializers import RiskLevelListResponseSerializer
+from api.v1.v1_risk_level.serializers import (
+    RiskLevelDetailResponseSerializer,
+    RiskLevelListResponseSerializer,
+)
 
 
 class RiskLevelsView(APIView):
@@ -56,3 +65,33 @@ class RiskLevelsView(APIView):
 
         data = compute_risk_level_list(region=region, band=band)
         return Response(data, status=status.HTTP_200_OK)
+
+
+class RiskLevelDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Public Risk Level score build-up for one Inkhundla",
+        description=(
+            "Drought, exposure and vulnerability build-up behind one "
+            "Inkhundla's risk score, plus its rank in the public list. "
+            "Public endpoint (AllowAny). The score is the canonical 0-1 "
+            "value; `risk_score.meta.scale` states the scale and "
+            "`band_thresholds` the band floors. Rows flagged "
+            "`scored: false` are context only and never move the score."
+        ),
+        responses={
+            200: RiskLevelDetailResponseSerializer,
+            404: OpenApiTypes.OBJECT,
+        },
+        tags=["Risk Level"],
+    )
+    def get(self, request, administration_id, version=None):
+        administration = get_object_or_404(
+            Administration.objects.select_related("indicator"),
+            pk=administration_id,
+        )
+        return Response(
+            compute_risk_level_detail(administration),
+            status=status.HTTP_200_OK,
+        )

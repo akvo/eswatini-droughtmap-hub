@@ -5,9 +5,10 @@ from api.v1.v1_publication.models import (
     Publication,
     PublicationStatus,
 )
+from api.v1.v1_publication.constants import DroughtCategory
 from api.v1.v1_risk_level.service import (
     compute_risk_level_list,
-    _hazard_to_dclass,
+    _dclass,
 )
 
 
@@ -28,13 +29,22 @@ class RiskLevelServiceTestCase(TestCase):
         result = compute_risk_level_list()
         self.assertEqual(result, {"publication": None, "count": 0, "data": []})
 
-    def test_hazard_to_dclass_conversion(self):
-        self.assertEqual(_hazard_to_dclass(0.0), "None")
-        self.assertEqual(_hazard_to_dclass(0.2), "D0")
-        self.assertEqual(_hazard_to_dclass(0.4), "D1")
-        self.assertEqual(_hazard_to_dclass(0.6), "D2")
-        self.assertEqual(_hazard_to_dclass(0.8), "D3")
-        self.assertEqual(_hazard_to_dclass(1.0), "D4")
+    def test_dclass_from_validated_category(self):
+        self.assertEqual(_dclass(DroughtCategory.d0), "D0")
+        self.assertEqual(_dclass(DroughtCategory.d1), "D1")
+        self.assertEqual(_dclass(DroughtCategory.d2), "D2")
+        self.assertEqual(_dclass(DroughtCategory.d3), "D3")
+        self.assertEqual(_dclass(DroughtCategory.d4), "D4")
+
+    def test_normal_is_labelled_not_reported_as_no_data(self):
+        """Wet/normal is a validated decision. It rescales to hazard 0.0 —
+        same as no-data — so labelling from the float published it as
+        "No Data" on the public page."""
+        self.assertEqual(_dclass(DroughtCategory.normal), "Normal")
+
+    def test_missing_and_no_signal_are_null(self):
+        self.assertIsNone(_dclass(DroughtCategory.none))
+        self.assertIsNone(_dclass(None))
 
     @patch("api.v1.v1_risk_level.service.score_all")
     def test_band_mapping(self, mock_score_all):

@@ -19,7 +19,20 @@ class IndicatorViewSet(viewsets.ModelViewSet):
     pagination_class = Pagination
 
 
-@extend_schema(tags=["Risk Level - Scoring"])
+@extend_schema(
+    tags=["Risk Level - Scoring"],
+    # RL-2 D-1/OQ-6: superseded by /api/v1/risk-levels[/{administration_id}],
+    # which serves the same numbers with publication meta, band and rank.
+    # Public for one release so any unknown caller shows up in the logs, then
+    # back to IsAuthenticated & IsAdmin as the raw-scoring QA view.
+    deprecated=True,
+    description=(
+        "DEPRECATED — use /api/v1/risk-levels for the ranked list and "
+        "/api/v1/risk-levels/{administration_id} for one Inkhundla's "
+        "build-up. This route returns the raw scoring output and will "
+        "become admin-only."
+    ),
+)
 class RiskLevelView(APIView):
     permission_classes = [AllowAny]
 
