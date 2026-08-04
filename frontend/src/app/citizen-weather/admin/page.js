@@ -154,7 +154,9 @@ const AdminDashboardPage = () => {
       width: "26%",
       render: (_, record) => (
         <div>
-          <div className="text-sm font-medium text-[#333333]">{record.name}</div>
+          <div className="text-sm font-medium text-[#333333]">
+            {record.name}
+          </div>
           <div className="text-xs text-[#606060]">{record.region}</div>
         </div>
       ),
@@ -243,96 +245,100 @@ const AdminDashboardPage = () => {
 
   return (
     <Can I="read" a="CitizenScience">
-    <div className="w-full h-auto">
-      <PageHeader
-        title="Citizen science weather"
-        description="Monitor observer coverage and monthly reporting across the station network."
-      />
-
-      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
-        <div
-          aria-hidden
-          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+      <div className="w-full h-auto">
+        <PageHeader
+          title="Citizen science weather"
+          description="Monitor observer coverage and monthly reporting across the station network."
         />
 
-        {/* Network overview stat cards */}
-        <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] flex flex-wrap gap-4 mb-4">
-          <StatCard label="Total stations" value={stats.totalStations} />
-          <StatCard label="Reporting well" value={stats.reportingWell} color="#12b76a" />
-          <StatCard label="At risk" value={stats.atRisk} color="#FF4D4F" />
-          <StatCard label="Reminders sent" value={stats.remindersSent} />
-        </div>
+        <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+          <div
+            aria-hidden
+            className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+          />
 
-        <section className="relative z-10 mx-auto w-full max-w-[1280px] border border-cardBorder bg-white">
-          <div className="flex flex-col gap-4 border-b border-cardBorder px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-            <h2 className="text-xl font-semibold leading-7 text-[#333333]">
-              Stations
-            </h2>
-            <Space wrap>
-              <Link href="/citizen-weather/admin/reminders">
-                <Button icon={<MailOutlined />}>Reminder schedule</Button>
-              </Link>
-              <Can I="update" a="CitizenScience">
-                <Button
-                  icon={<MailOutlined />}
-                  onClick={handleTriggerReminders}
-                  loading={triggeringReminders}
-                >
-                  Trigger reminders
-                </Button>
-              </Can>
-              <Button icon={<ExportOutlined />} onClick={handleExportCSV}>
-                Export CSV
-              </Button>
-              <Can I="create" a="CitizenScience">
-                <Link href="/citizen-weather/admin/stations/add">
-                  <Button type="primary">+ Add station / observer</Button>
+          {/* Network overview stat cards */}
+          <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] flex flex-wrap gap-4 mb-4">
+            <StatCard label="Total stations" value={stats.totalStations} />
+            <StatCard
+              label="Reporting well"
+              value={stats.reportingWell}
+              color="#12b76a"
+            />
+            <StatCard label="At risk" value={stats.atRisk} color="#FF4D4F" />
+            <StatCard label="Reminders sent" value={stats.remindersSent} />
+          </div>
+
+          <section className="relative z-10 mx-auto w-full max-w-[1280px] border border-cardBorder bg-white">
+            <div className="flex flex-col gap-4 border-b border-cardBorder px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+              <h2 className="text-xl font-semibold leading-7 text-[#333333]">
+                Stations
+              </h2>
+              <Space wrap>
+                <Link href="/citizen-weather/admin/reminders">
+                  <Button icon={<MailOutlined />}>Reminder schedule</Button>
                 </Link>
-              </Can>
-            </Space>
-          </div>
-          <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
-            <TabButtons
-              options={STATUS_FILTERS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-            />
-            <TabButtons
-              options={REGION_FILTERS}
-              value={regionFilter}
-              onChange={setRegionFilter}
-            />
-          </div>
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Spin size="large" />
+                <Can I="update" a="CitizenScience">
+                  <Button
+                    icon={<MailOutlined />}
+                    onClick={handleTriggerReminders}
+                    loading={triggeringReminders}
+                  >
+                    Trigger reminders
+                  </Button>
+                </Can>
+                <Button icon={<ExportOutlined />} onClick={handleExportCSV}>
+                  Export CSV
+                </Button>
+                <Can I="create" a="CitizenScience">
+                  <Link href="/citizen-weather/admin/stations/add">
+                    <Button type="primary">+ Add station / observer</Button>
+                  </Link>
+                </Can>
+              </Space>
             </div>
-          ) : (
-            <Table
-              className="edm-reviews-table"
-              dataSource={stations}
-              columns={columns}
-              pagination={false}
-              tableLayout="fixed"
-              scroll={{ x: 900 }}
-            />
-          )}
-        </section>
-        <div className="relative z-10 mx-auto max-w-[1280px] text-center text-xs text-[#606060] italic py-3">
-          Showing {stations.length} of {stats.totalStations} stations ·
-          admin actions logged in the audit trail
+            <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">
+              <TabButtons
+                options={STATUS_FILTERS}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+              <TabButtons
+                options={REGION_FILTERS}
+                value={regionFilter}
+                onChange={setRegionFilter}
+              />
+            </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <Spin size="large" />
+              </div>
+            ) : (
+              <Table
+                className="edm-reviews-table"
+                dataSource={stations}
+                columns={columns}
+                pagination={false}
+                tableLayout="fixed"
+                scroll={{ x: 900 }}
+              />
+            )}
+          </section>
+          <div className="relative z-10 mx-auto max-w-[1280px] text-center text-xs text-[#606060] italic py-3">
+            Showing {stations.length} of {stats.totalStations} stations · admin
+            actions logged in the audit trail
+          </div>
+          <div className="relative z-10 mx-auto w-full max-w-[1280px] py-8">
+            <FeedbackSection />
+          </div>
         </div>
-        <div className="relative z-10 mx-auto w-full max-w-[1280px] py-8">
-          <FeedbackSection />
-        </div>
-      </div>
 
-      <NudgeModal
-        open={!!nudgeStation}
-        onClose={() => setNudgeStation(null)}
-        station={nudgeStation}
-      />
-    </div>
+        <NudgeModal
+          open={!!nudgeStation}
+          onClose={() => setNudgeStation(null)}
+          station={nudgeStation}
+        />
+      </div>
     </Can>
   );
 };

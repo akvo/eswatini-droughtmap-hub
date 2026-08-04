@@ -9,8 +9,18 @@ import { NUDGE_TONES } from "@/static/mocks/citizen-weather";
 const { TextArea } = Input;
 
 const MONTH_NAMES_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 const formatLastSubmission = (lastSubmission) => {
@@ -44,7 +54,9 @@ const NudgeModal = ({ open, onClose, station }) => {
   );
 
   const toneData = NUDGE_TONES[tone];
-  const [nudgeMessage, setNudgeMessage] = useState(fillTemplate(toneData?.message));
+  const [nudgeMessage, setNudgeMessage] = useState(
+    fillTemplate(toneData?.message),
+  );
   const subject = useMemo(
     () => fillTemplate(NUDGE_TONES[tone]?.subject),
     [tone, fillTemplate],

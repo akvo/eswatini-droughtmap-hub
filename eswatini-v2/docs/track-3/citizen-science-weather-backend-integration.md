@@ -2,7 +2,7 @@
 
 **Task ID**: WX-9 (Track 3 — closes [WX-8](citizen-science-weather-ui-and-emails.md) D-8 and [WX-6](citizen-science-weather.md) work plan §10.8)
 **Author**: Iwan Firmawan (with Claude)
-**Date**: 2026-08-04 (rev. 4 — integration bug-fix pass: WX-8 G-3 magic-link path fixed, `api()` now surfaces 4xx, taken Tinkhundla filtered out of the add-station dropdown, `soil_temp`→`soil_temperature` key mismatch corrected. See **D-14**. rev. 3 — WX-8 Part A landed; §B.3 middleware implemented ahead of this plan, see D-13)
+**Date**: 2026-08-04 (rev. 4 — integration bug-fix pass: WX-8 G-3 magic-link path fixed, `api()` now surfaces 4xx, taken Tinkhundla filtered out of the add-station dropdown, `soil_temp`→`soil_temperature` key mismatch corrected, and signed-in visitors now bounce off both sign-in screens by role. See **D-14**, **D-15**. rev. 3 — WX-8 Part A landed; §B.3 middleware implemented ahead of this plan, see D-13)
 **Status**: Approved for implementation — **work-plan item 5 (middleware) is done**; see D-14 for what rev. 4 corrected
 
 ---
@@ -169,12 +169,23 @@ Verified against the dev server, logged out:
 - `/citizen-weather/admin` is in the existing admin-role block, so a signed-in reviewer is sent to `/unauthorized`. ✅
 - `/citizen-weather/observe` has **no role check** — any authenticated user reaches it. **Deliberate, D-13**: `USER_ROLES.observer` does not exist yet, so there is no role to compare against.
 
-**Still to do here** (unchanged from rev. 2): add `observer: 3` to `USER_ROLES`, `[USER_ROLES.observer]: "/citizen-weather/observe"` to `HOME_PAGE`, and then the observer-area role check — one clause, once the constant exists:
+**Done since rev. 3**: `USER_ROLES.observer = 3` and its `HOME_PAGE` entry exist, and the observer-area role check landed as the one clause this section predicted:
 
 ```js
 (role !== USER_ROLES.observer && pathName.startsWith("/citizen-weather/observe"))
   → /unauthorized
 ```
+
+**Added 2026-08-04 — sign-in screens bounce signed-in visitors (D-15).** `authRoutes` was `["/login"]` with a hardcoded `→ /profile`. `/citizen-weather` is the observer's sign-in screen and was not in it, so a signed-in observer landing there saw the "enter your email for a link" form instead of their station. Both screens now redirect by role via `HOME_PAGE` — the same table `login/page.js` already used, which the hardcoded `/profile` had been quietly contradicting.
+
+| Session | `/citizen-weather` | `/login` |
+|---|---|---|
+| observer | → `/citizen-weather/observe` | → `/citizen-weather/observe` |
+| admin | → `/publications` | → `/publications` |
+| reviewer | → `/reviews` | → `/reviews` |
+| anonymous | 200 (sign-in form) | 200 (sign-in form) |
+
+Exact match, not prefix — `/citizen-weather/observe` sits under a sign-in route and must not bounce. And `?token=` is exempt: a magic link has to reach the page even when a session already exists, because the cookie may belong to a different account and only the page can exchange the token (D-15).
 
 ---
 
@@ -585,6 +596,22 @@ None of these were design gaps — every one was code disagreeing with a contrac
 **(d) The `CitizenScience` ability rows were never seeded.** §7 already requires re-running `generate_roles_n_abilities_seeder` after deploy — this is what it looks like when that is skipped: `<Can>` denies an admin, and §C.1's *"denial renders a blank page, not a redirect"* plays out exactly as predicted, on the whole `/citizen-weather/admin` subtree. §9 guessed the missing **provider** would be the likely ship-blocker; the provider was there and the **data** was missing, which is indistinguishable on screen. Abilities are also frozen into the `currentUser` cookie at sign-in, so re-seeding is not enough — **existing sessions must sign out and back in.** That second half is the part not written down anywhere before now.
 
 `// ponytail: <Can> failing closed is silent by design. If a whole route renders blank, check the ability rows before the component.`
+
+### D-15: Signed-in visitors are redirected off both sign-in screens, by role (added rev. 4, 2026-08-04)
+
+**Decision (Iwan)**: a session on `/login` or `/citizen-weather` redirects to that role's home rather than rendering a sign-in form to someone already signed in.
+
+**Destination comes from `HOME_PAGE`**, not a constant. The middleware previously hardcoded `/profile` for everyone, which was already wrong twice over: `login/page.js` has always redirected through `HOME_PAGE` after a successful sign-in, so the two disagreed; and `/profile` is a staff screen inside `AppShell`, so an observer bounced there would get the wrong shell and no data. Reusing the existing table removes the disagreement instead of adding a second one.
+**Consequence worth naming**: admins and reviewers hitting `/login` with a live session now land on `/publications` / `/reviews` instead of `/profile`. That is a behaviour change beyond the observer fix, and it is the direction `login/page.js` already pointed.
+
+**Two boundaries this rule must not cross:**
+
+- **Exact match, not prefix.** `/citizen-weather` is a sign-in screen and `/citizen-weather/observe` is the app underneath it. `protectedRoutes` is deliberately prefix-matched (§B.3); `authRoutes` is deliberately not. Sharing the matcher would bounce observers out of the app they just signed into.
+- **`?token=` is exempt.** A magic link must reach the page even when a session exists — the browser may hold a different account's cookie (an admin testing an observer's link), and only the page can exchange the token. Redirecting would sign them in as the wrong user and drop the link with no error.
+
+`// ponytail: two lines and an existing lookup table, not a redirect policy module.`
+
+Covered by `src/__tests__/middleware.test.js` — 12 cases across all three roles, anonymous, the prefix boundary and the token exemption. Verified against the dev server with minted session cookies before the test was written.
 
 ## 6. Type/Constant Mappings
 

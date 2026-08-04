@@ -73,8 +73,18 @@ const ALL_FIELDS = [
 ];
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 /** Build the 12-month trailing window as YYYY-MM strings. */
@@ -134,13 +144,9 @@ const PeriodFormPage = () => {
         const sensors = res.station?.sensors || [];
         if (sensors.length > 0) {
           const allowedFields = new Set(
-            sensors
-              .map((s) => SENSOR_TO_FIELD[s])
-              .filter(Boolean)
+            sensors.map((s) => SENSOR_TO_FIELD[s]).filter(Boolean),
           );
-          setVisibleFields(
-            ALL_FIELDS.filter((f) => allowedFields.has(f.key))
-          );
+          setVisibleFields(ALL_FIELDS.filter((f) => allowedFields.has(f.key)));
         }
 
         // Find the matching period row and preload values
@@ -164,7 +170,7 @@ const PeriodFormPage = () => {
 
   const filledCount = useMemo(
     () => visibleFields.filter((f) => values[f.key] != null).length,
-    [values, visibleFields]
+    [values, visibleFields],
   );
 
   const totalFields = visibleFields.length;
@@ -181,7 +187,7 @@ const PeriodFormPage = () => {
       const res = await api(
         "PUT",
         `/weather/citizen-science/readings/${period}`,
-        payload
+        payload,
       );
 
       // Surface warnings
@@ -259,8 +265,8 @@ const PeriodFormPage = () => {
             </span>
           </div>
           <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
-            Sanibonani &mdash; let&apos;s log{" "}
-            {periodLabel.split(" ")[0]}&apos;s weather.
+            Sanibonani &mdash; let&apos;s log {periodLabel.split(" ")[0]}&apos;s
+            weather.
           </h1>
           <p className="text-sm leading-6 text-[#606060] mb-4">
             Fill in whatever your station recorded. You can skip any field you
@@ -370,10 +376,7 @@ const PeriodFormPage = () => {
             <span className="text-sm text-[#606060] mr-auto">
               You can save what you have and come back later, or submit now.
             </span>
-            <Button
-              loading={saving}
-              onClick={() => handleSave(false)}
-            >
+            <Button loading={saving} onClick={() => handleSave(false)}>
               Save draft
             </Button>
             <Button

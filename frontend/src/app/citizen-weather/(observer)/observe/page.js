@@ -22,18 +22,41 @@ const STATUS_MAP = {
 };
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const MONTH_NAMES_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 const DATA_FIELDS = [
-  "min_temperature", "max_temperature", "precipitation",
-  "soil_moisture", "soil_temperature",
+  "min_temperature",
+  "max_temperature",
+  "precipitation",
+  "soil_moisture",
+  "soil_temperature",
 ];
 
 /** Convert "YYYY-MM" to display label like "May 2026" */
@@ -134,7 +157,7 @@ const ObserverListPage = () => {
 
   const latestUnsubmitted = useMemo(
     () => history.find((r) => r.status === "draft" || r.status === "missed"),
-    [history]
+    [history],
   );
 
   const filteredData =
@@ -239,13 +262,15 @@ const ObserverListPage = () => {
             {stationLabel}
           </h1>
           <p className="text-sm leading-6 text-[#606060] mb-4">
-            {stationAdmin} &middot;{" "}
-            {stationGroup} region &middot;{" "}
+            {stationAdmin} &middot; {stationGroup} region &middot;{" "}
             {station?.station_type || ""}
           </p>
           <div className="flex items-center gap-3">
             <span className="rounded border border-[#d2d2d2] px-2.5 py-1 text-sm text-[#333333] font-semibold">
-              {totalMonths > 0 ? Math.round((completedMonths / totalMonths) * 100) : 0}% completeness
+              {totalMonths > 0
+                ? Math.round((completedMonths / totalMonths) * 100)
+                : 0}
+              % completeness
             </span>
             <span className="text-sm text-[#606060]">
               {completedMonths} of the last {totalMonths} months submitted
@@ -266,7 +291,9 @@ const ObserverListPage = () => {
               Reporting history
             </h2>
             {latestUnsubmitted && (
-              <Link href={`/citizen-weather/observe/${latestUnsubmitted.period}`}>
+              <Link
+                href={`/citizen-weather/observe/${latestUnsubmitted.period}`}
+              >
                 <Button type="primary">
                   Log {periodToFullLabel(latestUnsubmitted.period)} reading
                 </Button>

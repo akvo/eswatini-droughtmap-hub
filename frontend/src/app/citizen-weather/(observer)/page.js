@@ -65,7 +65,7 @@ const SignInPage = () => {
   }
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center py-16 relative">
+    <div className="w-full flex items-center justify-center py-16 relative">
       <div className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none" />
       <div className="w-[360px] max-w-full mx-auto flex flex-col gap-8 relative z-10">
         <div className="flex flex-col gap-3 text-center">

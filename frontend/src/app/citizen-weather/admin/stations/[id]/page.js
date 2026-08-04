@@ -110,26 +110,26 @@ const StationDetailPage = () => {
   if (!station) {
     return (
       <Can I="read" a="CitizenScience">
-      <div className="w-full h-auto">
-        <PageHeader
-          title="No observer assigned"
-          description="This Inkhundla does not have an active observer yet."
-          actions={
-            <Space>
-              <Link href="/citizen-weather/admin">
-                <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
-              </Link>
-              <Can I="create" a="CitizenScience">
-                <Link href="/citizen-weather/admin/stations/add">
-                  <Button type="primary" icon={<PlusOutlined />}>
-                    Add station + observer
-                  </Button>
+        <div className="w-full h-auto">
+          <PageHeader
+            title="No observer assigned"
+            description="This Inkhundla does not have an active observer yet."
+            actions={
+              <Space>
+                <Link href="/citizen-weather/admin">
+                  <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
                 </Link>
-              </Can>
-            </Space>
-          }
-        />
-      </div>
+                <Can I="create" a="CitizenScience">
+                  <Link href="/citizen-weather/admin/stations/add">
+                    <Button type="primary" icon={<PlusOutlined />}>
+                      Add station + observer
+                    </Button>
+                  </Link>
+                </Can>
+              </Space>
+            }
+          />
+        </div>
       </Can>
     );
   }
@@ -149,193 +149,195 @@ const StationDetailPage = () => {
 
   return (
     <Can I="read" a="CitizenScience">
-    <div className="w-full h-auto">
-      <PageHeader
-        title={stationName}
-        description={`${region} region · ${completeness}% completeness`}
-        actions={
-          <Link href="/citizen-weather/admin">
-            <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
-          </Link>
-        }
-      />
-
-      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
-        <div
-          aria-hidden
-          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+      <div className="w-full h-auto">
+        <PageHeader
+          title={stationName}
+          description={`${region} region · ${completeness}% completeness`}
+          actions={
+            <Link href="/citizen-weather/admin">
+              <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
+            </Link>
+          }
         />
-        <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px]">
-          {/* Detail cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            {/* Station card */}
-            <section className="border border-cardBorder bg-white">
-              <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-[#333333]">
-                  Station
-                </h2>
-                <Button type="link" className="edm-reviews-action">
-                  Edit
-                </Button>
-              </div>
-              <div className="p-4 sm:p-6">
-                <KVRow label="Station name" value={stationName} />
-                <KVRow label="Region" value={region} />
-                <KVRow
-                  label="Station type"
-                  value={station.station_type || "Not specified"}
-                />
-                <KVRow
-                  label="Sensors"
-                  value={
-                    <div className="flex flex-wrap gap-1.5">
-                      {sensors.map((sen, i) => (
-                        <Tag
-                          key={sen.key || i}
-                          className={sen.active ? "edm-reviews-status-tag" : ""}
-                          color={sen.active ? "#12b76a" : undefined}
-                          style={
-                            !sen.active
-                              ? {
-                                  background: "#f2f4f7",
-                                  color: "#667085",
-                                  border: "none",
-                                }
-                              : undefined
-                          }
-                        >
-                          {sen.label}
-                        </Tag>
-                      ))}
-                    </div>
-                  }
-                  noBorder
-                />
-              </div>
-            </section>
 
-            {/* Observer card */}
-            <section className="border border-cardBorder bg-white">
-              <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-[#333333]">
-                  Observer
-                </h2>
-                <Button type="link" className="edm-reviews-action">
-                  Edit
-                </Button>
-              </div>
-              <div className="p-4 sm:p-6">
-                <KVRow label="Name" value={obs.name || ""} />
-                <KVRow
-                  label="Email"
-                  value={
-                    <span className="font-mono text-xs text-[#606060]">
-                      {obs.email || ""}
-                    </span>
-                  }
-                  noBorder
-                />
-              </div>
-            </section>
-          </div>
-
-          {/* Timeline */}
-          <section className="border border-cardBorder bg-white mb-4">
-            <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
-              <h2 className="text-base font-semibold text-[#333333]">
-                Submission timeline &mdash; last 12 months
-              </h2>
-            </div>
-            <div className="p-4 sm:p-6">
-              {timeline.length > 0 ? (
-                <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5 mb-4">
-                  {timeline.map((t, i) => {
-                    const color =
-                      TIMELINE_COLORS[t.status] || TIMELINE_COLORS.miss;
-                    const isCurrent = i === timeline.length - 1;
-                    return (
-                      <div
-                        key={i}
-                        className="aspect-square rounded-md flex items-end justify-center p-1 text-[9px] font-semibold transition-transform hover:scale-105"
-                        style={{
-                          background: color.bg,
-                          color: color.text,
-                          outline: isCurrent
-                            ? "2px solid #333333"
-                            : undefined,
-                          outlineOffset: isCurrent ? 2 : undefined,
-                        }}
-                      >
-                        {t.month}
+        <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+          <div
+            aria-hidden
+            className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+          />
+          <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px]">
+            {/* Detail cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              {/* Station card */}
+              <section className="border border-cardBorder bg-white">
+                <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-[#333333]">
+                    Station
+                  </h2>
+                  <Button type="link" className="edm-reviews-action">
+                    Edit
+                  </Button>
+                </div>
+                <div className="p-4 sm:p-6">
+                  <KVRow label="Station name" value={stationName} />
+                  <KVRow label="Region" value={region} />
+                  <KVRow
+                    label="Station type"
+                    value={station.station_type || "Not specified"}
+                  />
+                  <KVRow
+                    label="Sensors"
+                    value={
+                      <div className="flex flex-wrap gap-1.5">
+                        {sensors.map((sen, i) => (
+                          <Tag
+                            key={sen.key || i}
+                            className={
+                              sen.active ? "edm-reviews-status-tag" : ""
+                            }
+                            color={sen.active ? "#12b76a" : undefined}
+                            style={
+                              !sen.active
+                                ? {
+                                    background: "#f2f4f7",
+                                    color: "#667085",
+                                    border: "none",
+                                  }
+                                : undefined
+                            }
+                          >
+                            {sen.label}
+                          </Tag>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-xs text-[#606060] py-4 text-center">
-                  No timeline data available.
-                </div>
-              )}
-              <div className="flex flex-wrap gap-4 text-xs text-[#606060]">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="w-3 h-3 rounded"
-                    style={{ background: "#12b76a" }}
+                    }
+                    noBorder
                   />
-                  Complete (all sensors reported)
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="w-3 h-3 rounded"
-                    style={{ background: "#FAAD14" }}
-                  />
-                  Partial (some fields skipped)
+              </section>
+
+              {/* Observer card */}
+              <section className="border border-cardBorder bg-white">
+                <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-[#333333]">
+                    Observer
+                  </h2>
+                  <Button type="link" className="edm-reviews-action">
+                    Edit
+                  </Button>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="w-3 h-3 rounded border border-[#d2d2d2]"
-                    style={{ background: "#eaecf0" }}
+                <div className="p-4 sm:p-6">
+                  <KVRow label="Name" value={obs.name || ""} />
+                  <KVRow
+                    label="Email"
+                    value={
+                      <span className="font-mono text-xs text-[#606060]">
+                        {obs.email || ""}
+                      </span>
+                    }
+                    noBorder
                   />
-                  Missed
+                </div>
+              </section>
+            </div>
+
+            {/* Timeline */}
+            <section className="border border-cardBorder bg-white mb-4">
+              <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
+                <h2 className="text-base font-semibold text-[#333333]">
+                  Submission timeline &mdash; last 12 months
+                </h2>
+              </div>
+              <div className="p-4 sm:p-6">
+                {timeline.length > 0 ? (
+                  <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5 mb-4">
+                    {timeline.map((t, i) => {
+                      const color =
+                        TIMELINE_COLORS[t.status] || TIMELINE_COLORS.miss;
+                      const isCurrent = i === timeline.length - 1;
+                      return (
+                        <div
+                          key={i}
+                          className="aspect-square rounded-md flex items-end justify-center p-1 text-[9px] font-semibold transition-transform hover:scale-105"
+                          style={{
+                            background: color.bg,
+                            color: color.text,
+                            outline: isCurrent
+                              ? "2px solid #333333"
+                              : undefined,
+                            outlineOffset: isCurrent ? 2 : undefined,
+                          }}
+                        >
+                          {t.month}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-[#606060] py-4 text-center">
+                    No timeline data available.
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-4 text-xs text-[#606060]">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="w-3 h-3 rounded"
+                      style={{ background: "#12b76a" }}
+                    />
+                    Complete (all sensors reported)
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="w-3 h-3 rounded"
+                      style={{ background: "#FAAD14" }}
+                    />
+                    Partial (some fields skipped)
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="w-3 h-3 rounded border border-[#d2d2d2]"
+                      style={{ background: "#eaecf0" }}
+                    />
+                    Missed
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* Actions */}
-          <div className="flex flex-wrap items-center gap-3 py-4">
-            <span className="text-xs text-[#606060] mr-auto">
-              Admin actions on this station. All actions are logged in the audit
-              trail with your identity + timestamp.
-            </span>
-            <Space wrap>
-              <Button icon={<BarChartOutlined />} onClick={handleExportCSV}>
-                Export CSV
-              </Button>
-              <Button icon={<UserOutlined />}>Reassign observer</Button>
-              <Button danger icon={<InboxOutlined />}>
-                Archive station
-              </Button>
-              <Can I="update" a="CitizenScience">
-                <Button
-                  type="primary"
-                  icon={<MailOutlined />}
-                  onClick={() => setShowNudge(true)}
-                >
-                  Nudge observer
+            {/* Actions */}
+            <div className="flex flex-wrap items-center gap-3 py-4">
+              <span className="text-xs text-[#606060] mr-auto">
+                Admin actions on this station. All actions are logged in the
+                audit trail with your identity + timestamp.
+              </span>
+              <Space wrap>
+                <Button icon={<BarChartOutlined />} onClick={handleExportCSV}>
+                  Export CSV
                 </Button>
-              </Can>
-            </Space>
+                <Button icon={<UserOutlined />}>Reassign observer</Button>
+                <Button danger icon={<InboxOutlined />}>
+                  Archive station
+                </Button>
+                <Can I="update" a="CitizenScience">
+                  <Button
+                    type="primary"
+                    icon={<MailOutlined />}
+                    onClick={() => setShowNudge(true)}
+                  >
+                    Nudge observer
+                  </Button>
+                </Can>
+              </Space>
+            </div>
           </div>
         </div>
-      </div>
 
-      <NudgeModal
-        open={showNudge}
-        onClose={() => setShowNudge(false)}
-        station={nudgeStation}
-      />
-    </div>
+        <NudgeModal
+          open={showNudge}
+          onClose={() => setShowNudge(false)}
+          station={nudgeStation}
+        />
+      </div>
     </Can>
   );
 };

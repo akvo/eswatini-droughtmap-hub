@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "./lib";
-import { USER_ROLES } from "./static/config";
+import { HOME_PAGE, USER_ROLES } from "./static/config";
 
 // route prefix -> where anonymous visitors are sent.
 // observers sign in with an emailed magic link, not the password form.
@@ -14,7 +14,9 @@ const protectedRoutes = {
   "/settings": "/login",
   "/validations": "/login",
 };
-const authRoutes = ["/login"];
+// Sign-in screens. Exact match, not prefix: /citizen-weather is the observer's
+// sign-in page but /citizen-weather/observe underneath it is their app.
+const authRoutes = ["/login", "/citizen-weather"];
 
 export default async function middleware(request) {
   const session = request.cookies.get("currentUser")?.value;
@@ -31,10 +33,18 @@ export default async function middleware(request) {
     return NextResponse.redirect(new URL(signInPath, request.url));
   }
   if (session) {
-    if (authRoutes.includes(pathName)) {
-      return NextResponse.redirect(new URL("/profile", request.url));
-    }
     const { token: authToken, role } = await auth.decrypt(session);
+
+    // A magic link always wins over the current session — the browser may
+    // already hold a different account's cookie, and only the page can
+    // exchange the token. Redirecting here would sign them in as the wrong
+    // user and silently drop the link.
+    const hasMagicLink = request.nextUrl.searchParams.has("token");
+    if (authRoutes.includes(pathName) && !hasMagicLink) {
+      return NextResponse.redirect(
+        new URL(HOME_PAGE[role] || "/profile", request.url),
+      );
+    }
     const req = await fetch(
       `${process.env.WEBDOMAIN}/api/v1/users/me?format=json`,
       {
