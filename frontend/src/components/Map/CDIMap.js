@@ -53,16 +53,43 @@ const CDIMap = ({
     appContext?.geoData ||
     (typeof window !== "undefined" ? window.topojson : undefined);
 
-  const onEachFeature = (feature, layer, currentMap) => {
-    const { fillColor, fillOpacity, weight, color } =
-      typeof onFeature === "function" ? onFeature(feature) : {};
-    layer.setStyle({
+  const getStyle = (feature) => {
+    const extraStyle =
+      typeof style === "function" ? style(feature) : style || {};
+    const custom = typeof onFeature === "function" ? onFeature(feature) : {};
+
+    const strokeColor =
+      custom?.color || extraStyle?.color || styleOptions?.color;
+    const strokeWeight =
+      custom?.weight ?? extraStyle?.weight ?? styleOptions?.weight;
+    const strokeOpacity =
+      custom?.opacity ?? extraStyle?.opacity ?? styleOptions?.opacity;
+    const fillColor =
+      custom?.fillColor ||
+      extraStyle?.fillColor ||
+      styleOptions?.fillColor ||
+      dotShapeOptions?.fillColor;
+    const fillOpacity =
+      custom?.fillOpacity ??
+      extraStyle?.fillOpacity ??
+      styleOptions?.fillOpacity ??
+      0.8;
+
+    return {
       ...styleOptions,
-      fillColor: fillColor || dotShapeOptions?.fillColor,
-      ...(fillOpacity !== undefined && { fillOpacity }),
-      weight: weight || styleOptions?.weight,
-      color: color || styleOptions?.color,
-    });
+      ...extraStyle,
+      ...custom,
+      color: strokeColor,
+      weight: strokeWeight,
+      opacity: strokeOpacity,
+      fillColor: fillColor,
+      fillOpacity: fillOpacity,
+    };
+  };
+
+  const onEachFeature = (feature, layer, currentMap) => {
+    const s = getStyle(feature);
+    layer.setStyle(s);
     layer.on({
       click: () => (typeof onClick === "function" ? onClick(feature) : null),
     });
@@ -84,7 +111,10 @@ const CDIMap = ({
         {...props}
       >
         {() => (
-          <CDIGeoJSON {...{ geoData, onEachFeature, layerKey }} style={style} />
+          <CDIGeoJSON
+            {...{ geoData, onEachFeature, layerKey }}
+            style={getStyle}
+          />
         )}
       </Map>
     </div>

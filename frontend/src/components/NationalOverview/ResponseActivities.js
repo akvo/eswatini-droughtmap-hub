@@ -1,10 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { Button } from "antd";
+import { Button, Skeleton } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
 import { SECTOR_CARD_ICONS } from "@/static/config";
-import { responseActivitiesData } from "@/static/mocks/national-overview/response-activities";
 
 // response-activities mock key -> SECTORS id in static/config (owns the icons)
 const SECTOR_ID = { water: 3, agriculture: 1, environment: 5, health: 2 };
@@ -41,9 +38,29 @@ const SectorCard = ({ sector }) => (
   </div>
 );
 
-const ResponseActivities = () => {
-  const { lastUpdated, summary, sectors, priorityAreasHref } =
-    responseActivitiesData;
+const ResponseActivities = ({ responseActivities }) => {
+  if (!responseActivities) {
+    return (
+      <section className="w-full">
+        <div className="border border-neutral-200 bg-white p-4 min-h-[240px] flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+            <Skeleton.Input active size="small" style={{ width: 200 }} />
+            <Skeleton.Input active size="small" style={{ width: 140 }} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <Skeleton.Node active style={{ width: "100%", height: 90 }} />
+            <Skeleton.Node active style={{ width: "100%", height: 90 }} />
+          </div>
+        </div>
+      </section>
+    );
+  }
+  const {
+    lastUpdated = "-",
+    summary = "No active response activities recorded.",
+    sectors = [],
+    priorityAreasHref = "/detailed-insights/risk-level",
+  } = responseActivities || {};
 
   return (
     <section className="w-full">

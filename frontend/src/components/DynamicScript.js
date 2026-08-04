@@ -18,27 +18,28 @@ const DynamicScript = () => {
             payload: window.zones,
           });
         }
-        if (window?.topojson) {
-          const geoData = feature(
-            window.topojson,
-            window.topojson.objects[Object.keys(window.topojson.objects)[0]],
-          );
-          appDispatch({
-            type: "SET_GEODATA",
-            payload: geoData,
-          });
+        if (window?.topojson?.objects) {
+          const objects = window.topojson.objects;
+          const firstKey = Object.keys(objects)[0];
+          if (firstKey && objects[firstKey]) {
+            const geoData = feature(window.topojson, objects[firstKey]);
+            appDispatch({
+              type: "SET_GEODATA",
+              payload: geoData,
+            });
 
-          const { features } = geoData;
-          const administrations = features
-            ?.map(({ properties }) => properties)
-            ?.map(({ administration_id, name }) => ({
-              administration_id,
-              name,
-            }));
-          appDispatch({
-            type: "SET_ADM",
-            payload: administrations,
-          });
+            const { features } = geoData;
+            const administrations = features
+              ?.map(({ properties }) => properties)
+              ?.map(({ administration_id, name }) => ({
+                administration_id,
+                name,
+              }));
+            appDispatch({
+              type: "SET_ADM",
+              payload: administrations,
+            });
+          }
         }
       }}
     />

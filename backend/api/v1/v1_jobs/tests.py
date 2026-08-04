@@ -130,7 +130,7 @@ class CronJobScriptTestCase(SimpleTestCase):
         # silently drops it from BOTH assertions below — the drift check then
         # passes while ignoring the very task it should be guarding.
         job_sh = (self.base_dir / "job.sh").read_text()
-        return set(re.findall(r"^\s{2}([\w-]+)\)", job_sh, re.MULTILINE))
+        return set(re.findall(r"^\s*([\w-]+)\)", job_sh, re.MULTILINE))
 
     def _cron_tasks(self):
         cron = (self.base_dir / "eswatini-cron").read_text()
