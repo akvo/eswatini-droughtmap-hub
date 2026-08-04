@@ -40,7 +40,7 @@ const Navbar = ({ session }) => {
     <header className="w-full">
       {/* Notice bar */}
       <div className="w-full bg-neutral-200">
-        <div className="container w-full flex flex-row items-center justify-between py-2 text-neutral-600">
+        <div className="w-full px-8 flex flex-row items-center justify-between py-2 text-neutral-600">
           <div className="flex flex-row items-center gap-1.5 text-xs">
             <WarningCicle size={16} />
             <span>{APP_SETTINGS.notice}</span>
@@ -53,7 +53,7 @@ const Navbar = ({ session }) => {
 
       {/* Header navigation */}
       <div className="w-full bg-primary">
-        <div className="container w-full flex flex-row items-center justify-between">
+        <div className="w-full px-8 flex flex-row items-center justify-between">
           <nav className="flex flex-row items-center text-base">
             {leftItems
               .filter(

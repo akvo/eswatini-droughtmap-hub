@@ -54,19 +54,12 @@ const CDIMap = ({
     (typeof window !== "undefined" ? window.topojson : undefined);
 
   const onEachFeature = (feature, layer, currentMap) => {
-    const { fillColor, weight, color } =
+    const { fillColor, fillOpacity, weight, color } =
       typeof onFeature === "function" ? onFeature(feature) : {};
-    // const shape = new L.PatternCircle({
-    //   ...dotShapeOptions,
-    //   fillColor: fillColor || dotShapeOptions?.fillColor,
-    // });
-    // const pattern = new L.Pattern(patternOptions);
-    // pattern.addShape(shape);
-    // pattern.addTo(currentMap);
     layer.setStyle({
       ...styleOptions,
-      // fillPattern: pattern,
       fillColor: fillColor || dotShapeOptions?.fillColor,
+      ...(fillOpacity !== undefined && { fillOpacity }),
       weight: weight || styleOptions?.weight,
       color: color || styleOptions?.color,
     });
