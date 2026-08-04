@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { ReactCompareSlider } from "react-compare-slider";
-import { DROUGHT_CATEGORY, DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import {
+  DROUGHT_CATEGORY,
+  DROUGHT_CATEGORY_CODE,
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
+import { textOn } from "@/lib/helper";
 import CDIMap from "@/components/Map/CDIMap";
 import FeatureInfoCard from "@/components/Map/FeatureInfoCard";
+
+const NO_DATA = DROUGHT_CATEGORY_VALUE.none;
 
 const findCategory = (values, feature) => {
   if (!values || !Array.isArray(values)) return undefined;
@@ -15,15 +23,21 @@ const findCategory = (values, feature) => {
   return match?.category;
 };
 
+// An Inkhundla the payload never mentions, or one carrying null/-9999, is
+// No Data — a class of its own, so the legend can toggle it like any other.
+const categoryKey = (values, feature) => {
+  const cat = findCategory(values, feature);
+  return DROUGHT_CATEGORY_COLOR[cat] === undefined ? NO_DATA : cat;
+};
+
 // Remounts the GeoJSON layer whenever the colors it paints change.
 const layerKeyOf = (values, visible) =>
   values.map((v) => v?.category).join("-") +
   "|" +
   [...visible].sort().join(",");
 
-const allCategoryValues = new Set(
-  DROUGHT_CATEGORY.slice(0, -1).map((c) => c.value),
-);
+// Every class including No Data — all start ticked.
+const allCategoryValues = new Set(DROUGHT_CATEGORY.map((c) => c.value));
 
 const OverviewMap = ({
   validatedValues = [],
@@ -79,7 +93,7 @@ const OverviewMap = ({
         dragging={!isCompare}
         scrollWheelZoom={false}
         onFeature={(feature) => {
-          const cat = findCategory(values, feature);
+          const cat = categoryKey(values, feature);
           const visible = visibleCategories.has(cat);
           return {
             fillColor: visible ? DROUGHT_CATEGORY_COLOR?.[cat] : "transparent",
@@ -89,7 +103,7 @@ const OverviewMap = ({
         onClick={(feature) => {
           const adminId = feature?.properties?.administration_id;
           const adminName = feature?.properties?.name;
-          const cat = findCategory(values, feature);
+          const cat = categoryKey(values, feature);
           setSelectedFeature({
             name: adminName,
             category: cat,
@@ -135,17 +149,23 @@ const OverviewMap = ({
       {/* ponytail: fixed 48px strip — no wrap, scroll instead, so the legend
           never changes the card height */}
       <div className="w-full h-12 shrink-0 flex flex-nowrap items-center gap-4 px-4 bg-white overflow-x-auto">
-        {DROUGHT_CATEGORY.slice(0, -1).map((cat) => {
+        {DROUGHT_CATEGORY.map((cat) => {
           const active = visibleCategories.has(cat.value);
           return (
             <button
               key={cat.value}
               type="button"
               onClick={() => toggleCategory(cat.value)}
+              // Short code on screen, full drought copy on hover — the long
+              // labels ran the legend off the edge of the card.
+              title={cat.label}
+              aria-label={cat.label}
+              aria-pressed={active}
               className="flex shrink-0 items-center gap-2 text-sm text-neutral-700 cursor-pointer"
             >
               <span
-                className="inline-flex items-center justify-center w-5 h-5 rounded"
+                // No Data is white; the border is what makes its box visible.
+                className="inline-flex items-center justify-center w-5 h-5 rounded border border-neutral-300"
                 style={{
                   backgroundColor: active ? cat.color : "#d4d4d4",
                 }}
@@ -154,7 +174,7 @@ const OverviewMap = ({
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path
                       d="M2.5 6L5 8.5L9.5 3.5"
-                      stroke="white"
+                      stroke={textOn(cat.color)}
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -162,10 +182,7 @@ const OverviewMap = ({
                   </svg>
                 )}
               </span>
-              {cat.label
-                .replace(/ Drought$/, "")
-                .replace("Wet/normal conditions", "None")
-                .replace("Abnormally Dry", "Normal")}
+              {DROUGHT_CATEGORY_CODE[cat.value]}
             </button>
           );
         })}
