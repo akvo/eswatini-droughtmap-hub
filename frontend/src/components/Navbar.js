@@ -2,6 +2,7 @@
 
 import { getProfileDropdownItems } from "@/lib";
 import { Button, Dropdown } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserCircle, WarningCicle } from "./Icons";
@@ -28,7 +29,7 @@ const NavItem = ({ pathname, url, label }) => {
 
 const Navbar = ({ session }) => {
   const pathname = usePathname();
-  const profileItems = getProfileDropdownItems(session, true);
+  const profileItems = getProfileDropdownItems(session);
   const menuItems = PUBLIC_MENU_ITEMS.filter(
     (m) => !m.authenticated || session,
   );
@@ -78,24 +79,34 @@ const Navbar = ({ session }) => {
                 ))}
             </nav>
             {session ? (
-              <Dropdown
-                placement="bottomRight"
-                menu={{
-                  items: [
-                    ...profileItems,
-                    {
-                      key: 99,
-                      label: <LogoutButton className="dropdown-item" />,
-                    },
-                  ],
-                }}
-                trigger={["click"]}
-                overlayClassName="dropdown-profile"
-              >
-                <a role="button" className="text-white" aria-label="Profile">
-                  <UserCircle size={32} />
-                </a>
-              </Dropdown>
+              <div className="relative">
+                <Dropdown
+                  placement="bottomRight"
+                  menu={{
+                    items: [
+                      ...profileItems,
+                      {
+                        key: 99,
+                        label: (
+                          <div className="profile-dropdown-logout">
+                            <LogoutButton className="dropdown-item" />
+                            <UploadOutlined
+                              style={{ transform: "rotate(90deg)" }}
+                            />
+                          </div>
+                        ),
+                      },
+                    ],
+                  }}
+                  trigger={["click"]}
+                  overlayClassName="dropdown-profile"
+                  getPopupContainer={(trigger) => trigger.parentElement}
+                >
+                  <a role="button" className="text-white" aria-label="Profile">
+                    <UserCircle size={32} />
+                  </a>
+                </Dropdown>
+              </div>
             ) : (
               <Link href={"/login"}>
                 <Button ghost>Login</Button>

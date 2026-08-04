@@ -1,20 +1,19 @@
 "use client";
 
 import { MinusCircleIcon, PlusCircleIcon } from "@/components/Icons";
+import { PageHeader } from "@/components";
 import { api } from "@/lib";
 import {
   Badge,
   Button,
   DatePicker,
   Divider,
-  Flex,
   Form,
   Input,
   InputNumber,
   message,
   Select,
   Skeleton,
-  Space,
   Table,
   Typography,
 } from "antd";
@@ -45,54 +44,50 @@ const EmailListForm = ({ label, name }) => (
     ]}
   >
     {(fields, { add, remove }, { errors }) => (
-      <div className="w-full">
-        <Flex align="center" justify="space-between">
-          <div>
-            <Text strong>{label}</Text>
-          </div>
-          <div>
-            <Button
-              type="dashed"
-              onClick={() => add()}
-              icon={<PlusCircleIcon />}
-            >
-              Add new
-            </Button>
-          </div>
-        </Flex>
+      <div className="w-full mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <Text strong>{label}</Text>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => add()}
+            icon={<PlusCircleIcon />}
+            className="text-xs"
+          >
+            Add new
+          </Button>
+        </div>
         {fields.map(({ key, ...field }) => (
-          <Flex key={key} vertical>
-            <Space className="w-full mb-4">
-              <Form.Item
-                {...field}
-                validateTrigger={["onChange", "onBlur"]}
-                rules={[
-                  {
-                    required: true,
-                    whitespace: true,
-                    type: "email",
-                    message: "This is not a valid email",
-                  },
-                ]}
-                className="w-full"
+          <div key={key} className="flex items-center gap-2 mb-2">
+            <Form.Item
+              {...field}
+              validateTrigger={["onChange", "onBlur"]}
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  type: "email",
+                  message: "This is not a valid email",
+                },
+              ]}
+              className="flex-1 !mb-0"
+            >
+              <Input placeholder="Email" type="email" />
+            </Form.Item>
+            {fields.length > 0 && (
+              <a
+                role="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  remove(field.name);
+                }}
               >
-                <Input placeholder="Email" type="email" className="w-full" />
-              </Form.Item>
-              {fields.length > 0 ? (
-                <a
-                  role="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    remove(field.name);
-                  }}
-                >
-                  <MinusCircleIcon />
-                </a>
-              ) : null}
-            </Space>
-          </Flex>
+                <MinusCircleIcon />
+              </a>
+            )}
+          </div>
         ))}
-        <Form.Item>
+        <Form.Item className="!mb-0">
           <Form.ErrorList errors={errors} />
         </Form.Item>
       </div>
@@ -311,292 +306,298 @@ const SettingsPage = () => {
   }, [form, settingsValues]);
 
   return (
-    <div className="w-full h-auto space-y-4 pt-6">
-      <Title level={2}>Automation Settings</Title>
-      <Skeleton loading={fetching} title paragraph>
-        {newSetup ? (
-          <div className="w-1/2 space-y-6">
-            <Title level={3}>Rundeck Integration Setup</Title>
-            <Form form={form} onFinish={onFinishSetup} layout="vertical">
-              <Form.Item
-                label="Project"
-                name="project_name"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-              >
-                <Select
-                  placeholder="Select Project"
-                  onSelect={onSelectProject}
-                  options={projects}
-                />
-              </Form.Item>
-              <Form.Item
-                label="Job"
-                name="job_id"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-              >
-                <Select placeholder="Select Job" options={jobs} />
-              </Form.Item>
-              <Button
-                htmlType="submit"
-                disabled={!submittable}
-                loading={loading}
-              >
-                Submit
-              </Button>
-            </Form>
-          </div>
-        ) : (
-          <div className="w-full h-auto flex flex-col lg:flex-row align-start justify-between gap-6 pb-12">
-            <div className="w-full lg:w-4/12 space-y-2">
-              <Form
-                form={form}
-                initialValues={settings}
-                onFinish={onFinish}
-                layout="vertical"
-              >
-                <Title level={3}>Email Notifications</Title>
-                <Form.Item
-                  label={<Text strong>On Success (DH Admins)</Text>}
-                  name="on_success_emails"
-                  rules={[
-                    {
-                      validator: async (_, values) => {
-                        if (!values || values.length < 1) {
-                          return Promise.reject(new Error("At least 1 emails"));
-                        }
-                      },
-                    },
-                  ]}
-                >
-                  <Select options={admins} mode="multiple" />
-                </Form.Item>
-                <EmailListForm
-                  label="On Failure (Technical Support)"
-                  name="on_failure_emails"
-                />
-                <EmailListForm
-                  label="On Job Exceeded"
-                  name="on_exceeded_emails"
-                />
+    <div className="w-full h-auto">
+      <PageHeader
+        title="Automation Settings"
+        description="Manage email notifications, CDI weights, and Rundeck job executions."
+      />
 
-                <Title level={3}>CDI Weight</Title>
-                <Form.Item
-                  label="LST Weight"
-                  name="lst_weight"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    placeholder="LST Weight"
-                    style={{ width: "50%" }}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label="NDVI Weight"
-                  name="ndvi_weight"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    placeholder="NDVI Weight"
-                    style={{ width: "50%" }}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label="SPI Weight"
-                  name="spi_weight"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    placeholder="SPI Weight"
-                    style={{ width: "50%" }}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label="SM Weight"
-                  name="sm_weight"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    placeholder="SM Weight"
-                    style={{ width: "50%" }}
-                  />
-                </Form.Item>
-                <div className="w-full">
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 pb-8 sm:px-8 md:px-12 xl:px-20">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
+        />
+        <div className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px]">
+          <Skeleton loading={fetching} title paragraph>
+            {newSetup ? (
+              <section className="border border-cardBorder bg-white p-6">
+                <Title level={3}>Rundeck Integration Setup</Title>
+                <Form form={form} onFinish={onFinishSetup} layout="vertical">
+                  <Form.Item
+                    label="Project"
+                    name="project_name"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      placeholder="Select Project"
+                      onSelect={onSelectProject}
+                      options={projects}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label="Job"
+                    name="job_id"
+                    rules={[{ required: true }]}
+                  >
+                    <Select placeholder="Select Job" options={jobs} />
+                  </Form.Item>
                   <Button
-                    type="primary"
                     htmlType="submit"
-                    size="large"
                     disabled={!submittable}
                     loading={loading}
-                    block
                   >
-                    Save
+                    Submit
                   </Button>
-                </div>
-              </Form>
-            </div>
-            <div className="w-full lg:w-8/12 border-l border-l-grey-100 px-6 space-y-6">
-              <Flex align="center" justify="space-between">
-                <div>
-                  <Title level={3}>Manual Executions</Title>
-                </div>
-                <div>
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      window.open(
-                        `/rundeck/project/${settings?.project_name}/home`,
-                        "_blank",
-                      );
-                    }}
-                    ghost
-                  >
-                    Open Rundeck
-                  </Button>
-                </div>
-              </Flex>
-              <Flex align="center" justify="space-between" className="w-full">
-                <div>
-                  {execList?.[0]?.date_started && (
-                    <Text type="secondary">
-                      Last executed:{" "}
-                      {dayjs
-                        .utc(execList[0].date_started)
-                        .local()
-                        .format("MMMM Do, YYYY - h:mm A")}
-                    </Text>
-                  )}
-                </div>
-                <div>
-                  <Form onFinish={onRunJob} layout="inline">
-                    <Form.Item
-                      name="year_month"
-                      label="Publication Date"
-                      rules={[
-                        {
-                          required: true,
-                        },
-                      ]}
-                    >
-                      <DatePicker
-                        format={{
-                          format: "YYYY-MM",
-                          type: "mask",
-                        }}
-                        picker="month"
-                      />
-                    </Form.Item>
-                    <Button
-                      htmlType="submit"
-                      type="primary"
-                      loading={jobExecuting}
-                      disabled={runJobNowIsDisabled}
-                    >
-                      Run Job Now
-                    </Button>
-                  </Form>
-                </div>
-              </Flex>
-              <Divider />
-              <div className="w-full space-y-2 pt-4">
-                <Flex align="center" justify="space-between">
-                  <div>
-                    <Title level={4}>Recent Executions</Title>
+                </Form>
+              </section>
+            ) : (
+              <div className="w-full h-auto flex flex-col lg:flex-row gap-4">
+                {/* Left column — Email & CDI Weight */}
+                <section className="w-full lg:w-5/12 border border-cardBorder bg-white">
+                  <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
+                    <h2 className="text-xl font-semibold leading-7 text-[#333333]">
+                      Email Notifications
+                    </h2>
                   </div>
-                  <Button
-                    onClick={() => {
-                      setJobChecking(true);
-                    }}
-                  >
-                    Refresh
-                  </Button>
-                </Flex>
-                <Table
-                  dataSource={execList}
-                  rowKey="id"
-                  columns={[
-                    {
-                      key: "id",
-                      dataIndex: "id",
-                      title: "#",
-                    },
-                    {
-                      key: "year_month",
-                      dataIndex: "year_month",
-                      title: "PUBLICATION DATE",
-                    },
-                    {
-                      key: "date_started",
-                      dataIndex: "date_started",
-                      title: "CREATED AT",
-                      render: (value) =>
-                        dayjs.utc(value).local().format("DD/MM/YYYY h:mm A"),
-                    },
-                    {
-                      key: "date_ended",
-                      dataIndex: "date_ended",
-                      title: "FINISHED AT",
-                      render: (value) =>
-                        value
-                          ? dayjs.utc(value).local().format("DD/MM/YYYY h:mm A")
-                          : "-",
-                    },
-                    {
-                      key: "status",
-                      dataIndex: "status",
-                      title: "STATUS",
-                      render: (status, { permalink }) => (
-                        <a target="_blank" href={permalink}>
-                          <Badge
-                            color={RUNDECK_JOB_STATUS_COLOR?.[status]}
-                            text={status}
-                          />
-                        </a>
-                      ),
-                    },
-                  ]}
-                  {...tableProps}
-                />
+                  <div className="p-4 sm:p-6">
+                    <Form
+                      form={form}
+                      initialValues={settings}
+                      onFinish={onFinish}
+                      layout="vertical"
+                    >
+                      <Form.Item
+                        label={<Text strong>On Success (DH Admins)</Text>}
+                        name="on_success_emails"
+                        rules={[
+                          {
+                            validator: async (_, values) => {
+                              if (!values || values.length < 1) {
+                                return Promise.reject(
+                                  new Error("At least 1 emails"),
+                                );
+                              }
+                            },
+                          },
+                        ]}
+                      >
+                        <Select options={admins} mode="multiple" />
+                      </Form.Item>
+                      <EmailListForm
+                        label="On Failure (Technical Support)"
+                        name="on_failure_emails"
+                      />
+                      <EmailListForm
+                        label="On Job Exceeded"
+                        name="on_exceeded_emails"
+                      />
+
+                      <Divider />
+                      <h3 className="text-base font-semibold text-[#333333] mb-4">
+                        CDI Weight
+                      </h3>
+                      <Form.Item
+                        label="LST Weight"
+                        name="lst_weight"
+                        rules={[{ required: true }]}
+                      >
+                        <InputNumber
+                          step={0.1}
+                          min={0}
+                          max={1}
+                          placeholder="LST Weight"
+                          style={{ width: "50%" }}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        label="NDVI Weight"
+                        name="ndvi_weight"
+                        rules={[{ required: true }]}
+                      >
+                        <InputNumber
+                          step={0.1}
+                          min={0}
+                          max={1}
+                          placeholder="NDVI Weight"
+                          style={{ width: "50%" }}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        label="SPI Weight"
+                        name="spi_weight"
+                        rules={[{ required: true }]}
+                      >
+                        <InputNumber
+                          step={0.1}
+                          min={0}
+                          max={1}
+                          placeholder="SPI Weight"
+                          style={{ width: "50%" }}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        label="SM Weight"
+                        name="sm_weight"
+                        rules={[{ required: true }]}
+                      >
+                        <InputNumber
+                          step={0.1}
+                          min={0}
+                          max={1}
+                          placeholder="SM Weight"
+                          style={{ width: "50%" }}
+                        />
+                      </Form.Item>
+                      <div className="w-full">
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          size="large"
+                          disabled={!submittable}
+                          loading={loading}
+                          block
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </Form>
+                  </div>
+                </section>
+
+                {/* Right column — Manual Executions */}
+                <section className="w-full lg:w-7/12 border border-cardBorder bg-white">
+                  <div className="border-b border-cardBorder px-4 py-4 sm:px-6 flex items-center justify-between">
+                    <h2 className="text-xl font-semibold leading-7 text-[#333333]">
+                      Manual Executions
+                    </h2>
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        window.open(
+                          `/rundeck/project/${settings?.project_name}/home`,
+                          "_blank",
+                        );
+                      }}
+                      ghost
+                    >
+                      Open Rundeck
+                    </Button>
+                  </div>
+                  <div className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+                      {execList?.[0]?.date_started && (
+                        <Text type="secondary" className="text-xs">
+                          Last executed:{" "}
+                          {dayjs
+                            .utc(execList[0].date_started)
+                            .local()
+                            .format("MMMM Do, YYYY - h:mm A")}
+                        </Text>
+                      )}
+                      <div className="ml-auto">
+                        <Form
+                          onFinish={onRunJob}
+                          layout="inline"
+                          className="flex items-center gap-2"
+                        >
+                          <Form.Item
+                            name="year_month"
+                            label="Publication Date"
+                            rules={[{ required: true }]}
+                            className="!mb-0"
+                          >
+                            <DatePicker
+                              format={{
+                                format: "YYYY-MM",
+                                type: "mask",
+                              }}
+                              picker="month"
+                            />
+                          </Form.Item>
+                          <Button
+                            htmlType="submit"
+                            type="primary"
+                            loading={jobExecuting}
+                            disabled={runJobNowIsDisabled}
+                          >
+                            Run Job Now
+                          </Button>
+                        </Form>
+                      </div>
+                    </div>
+                    <Divider className="!my-4" />
+                    <div className="w-full">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-semibold text-[#333333]">
+                          Recent Executions
+                        </h3>
+                        <Button
+                          size="small"
+                          onClick={() => setJobChecking(true)}
+                        >
+                          Refresh
+                        </Button>
+                      </div>
+                      <Table
+                        dataSource={execList}
+                        rowKey="id"
+                        columns={[
+                          {
+                            key: "id",
+                            dataIndex: "id",
+                            title: "#",
+                          },
+                          {
+                            key: "year_month",
+                            dataIndex: "year_month",
+                            title: "PUBLICATION DATE",
+                          },
+                          {
+                            key: "date_started",
+                            dataIndex: "date_started",
+                            title: "CREATED AT",
+                            render: (value) =>
+                              dayjs
+                                .utc(value)
+                                .local()
+                                .format("DD/MM/YYYY h:mm A"),
+                          },
+                          {
+                            key: "date_ended",
+                            dataIndex: "date_ended",
+                            title: "FINISHED AT",
+                            render: (value) =>
+                              value
+                                ? dayjs
+                                    .utc(value)
+                                    .local()
+                                    .format("DD/MM/YYYY h:mm A")
+                                : "-",
+                          },
+                          {
+                            key: "status",
+                            dataIndex: "status",
+                            title: "STATUS",
+                            render: (status, { permalink }) => (
+                              <a target="_blank" href={permalink}>
+                                <Badge
+                                  color={RUNDECK_JOB_STATUS_COLOR?.[status]}
+                                  text={status}
+                                />
+                              </a>
+                            ),
+                          },
+                        ]}
+                        {...tableProps}
+                      />
+                    </div>
+                  </div>
+                </section>
               </div>
-            </div>
-          </div>
-        )}
-      </Skeleton>
+            )}
+          </Skeleton>
+        </div>
+      </div>
     </div>
   );
 };
