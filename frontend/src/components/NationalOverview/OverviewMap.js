@@ -16,7 +16,14 @@ const findCategory = (values, feature) => {
 };
 
 // Remounts the GeoJSON layer whenever the colors it paints change.
-const layerKeyOf = (values) => values.map((v) => v?.category).join("-");
+const layerKeyOf = (values, visible) =>
+  values.map((v) => v?.category).join("-") +
+  "|" +
+  [...visible].sort().join(",");
+
+const allCategoryValues = new Set(
+  DROUGHT_CATEGORY.slice(0, -1).map((c) => c.value),
+);
 
 const OverviewMap = ({
   validatedValues = [],
@@ -24,30 +31,43 @@ const OverviewMap = ({
   onInkhundlaSelect,
 }) => {
   const [selectedFeature, setSelectedFeature] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  // const [selectedCategory, setSelectedCategory] = useState(null);
+  const [visibleCategories, setVisibleCategories] = useState(allCategoryValues);
   const isCompare = compareValues.length > 0;
 
   useEffect(() => {
     setSelectedFeature(null);
   }, [validatedValues, compareValues]);
 
-  const toggleCategory = (categoryVal) => {
-    setSelectedCategory((prev) => (prev === categoryVal ? null : categoryVal));
-  };
+  // const toggleCategory = (categoryVal) => {
+  //   setSelectedCategory((prev) => (prev === categoryVal ? null : categoryVal));
+  // };
 
-  const getFeatureColor = (values, feature) => {
-    const cat = findCategory(values, feature);
-    const color =
-      cat !== undefined &&
-      cat !== null &&
-      DROUGHT_CATEGORY_COLOR[cat] !== undefined
-        ? DROUGHT_CATEGORY_COLOR[cat]
-        : "#E5E7EB";
+  // const getFeatureColor = (values, feature) => {
+  //   const cat = findCategory(values, feature);
+  //   const color =
+  //     cat !== undefined &&
+  //     cat !== null &&
+  //     DROUGHT_CATEGORY_COLOR[cat] !== undefined
+  //       ? DROUGHT_CATEGORY_COLOR[cat]
+  //       : "#E5E7EB";
 
-    if (selectedCategory !== null && cat !== selectedCategory) {
-      return "#E5E7EB"; // Dimmed background for unselected categories
-    }
-    return color;
+  //   if (selectedCategory !== null && cat !== selectedCategory) {
+  //     return "#E5E7EB"; // Dimmed background for unselected categories
+  //   }
+  //   return color;
+  // };
+
+  const toggleCategory = (value) => {
+    setVisibleCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
   };
 
   // ReactCompareSlider lays itemOne out as a flex child, so it needs a width of
@@ -55,15 +75,17 @@ const OverviewMap = ({
   const renderMap = (values, withCard) => (
     <div className="w-full">
       <CDIMap
-        layerKey={`${layerKeyOf(values)}-cat-${selectedCategory}`}
-        // ponytail: pan off while comparing — two Leaflet maps would drift apart.
-        // Scroll zoom stays off everywhere: it zooms the map out of view while
-        // the user is scrolling the page. Use the +/- control instead.
+        layerKey={layerKeyOf(values, visibleCategories)}
         dragging={!isCompare}
         scrollWheelZoom={false}
-        onFeature={(feature) => ({
-          fillColor: getFeatureColor(values, feature),
-        })}
+        onFeature={(feature) => {
+          const cat = findCategory(values, feature);
+          const visible = visibleCategories.has(cat);
+          return {
+            fillColor: visible ? DROUGHT_CATEGORY_COLOR?.[cat] : "transparent",
+            fillOpacity: visible ? 0.75 : 0,
+          };
+        }}
         onClick={(feature) => {
           const adminId = feature?.properties?.administration_id;
           const adminName = feature?.properties?.name;
@@ -109,33 +131,43 @@ const OverviewMap = ({
         )}
       </div>
 
-      {/* Legend - horizontal, clickable filter tags */}
-      <div className="flex flex-wrap items-center gap-2.5 p-4 bg-white border-t border-neutral-200">
-        <span className="text-xs font-medium text-neutral-500 mr-1">
-          Filter:
-        </span>
+      {/* Legend - interactive color-coded checkboxes */}
+      <div className="flex flex-wrap items-center gap-4 p-4 bg-white">
         {DROUGHT_CATEGORY.slice(0, -1).map((cat) => {
-          const isSelected = selectedCategory === cat.value;
+          const active = visibleCategories.has(cat.value);
           return (
             <button
               key={cat.value}
               type="button"
               onClick={() => toggleCategory(cat.value)}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-all cursor-pointer border ${
-                isSelected
-                  ? "border-neutral-800 bg-neutral-100 font-semibold shadow-xs"
-                  : "border-neutral-200 bg-white hover:border-neutral-300 text-neutral-600"
-              }`}
+              className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer"
             >
               <span
-                className="inline-block w-3 h-3 rounded-xs border border-black/10"
-                style={{ backgroundColor: cat.color }}
-              />
-              {cat.label}
+                className="inline-flex items-center justify-center w-5 h-5 rounded"
+                style={{
+                  backgroundColor: active ? cat.color : "#d4d4d4",
+                }}
+              >
+                {active && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path
+                      d="M2.5 6L5 8.5L9.5 3.5"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              {cat.label
+                .replace(/ Drought$/, "")
+                .replace("Wet/normal conditions", "None")
+                .replace("Abnormally Dry", "Normal")}
             </button>
           );
         })}
-        {selectedCategory !== null && (
+        {/* {selectedCategory !== null && (
           <button
             type="button"
             onClick={() => setSelectedCategory(null)}
@@ -143,7 +175,7 @@ const OverviewMap = ({
           >
             Reset legend filter
           </button>
-        )}
+        )} */}
       </div>
     </div>
   );

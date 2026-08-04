@@ -2,13 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Button, Select, Skeleton } from "antd";
-import {
-  CalendarOutlined,
-  CloseCircleOutlined,
-  CloudOutlined,
-  DashboardOutlined,
-} from "@ant-design/icons";
+import { Select } from "antd";
+import Image from "next/image";
+import { CalendarOutlined } from "@ant-design/icons";
 import TabButtons from "@/components/TabButtons";
 import MetricCard from "./MetricCard";
 import { api } from "@/lib";
@@ -141,8 +137,8 @@ const DroughtMapSection = ({
   const fieldReports = currentMetrics.fieldReports || {};
 
   return (
-    <section className="w-full mb-6">
-      <div className="border border-neutral-200 bg-white min-h-[640px]">
+    <section className="w-full">
+      <div className="border border-neutral-200 bg-white">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b border-neutral-200">
           <h2 className="text-lg font-semibold text-neutral-800">

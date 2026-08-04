@@ -126,7 +126,7 @@ const Home = async () => {
         className="relative w-screen left-1/2 -translate-x-1/2 pt-8 pb-16 min-h-[600px]"
         style={{ backgroundColor: "#ECEFF8" }}
       >
-        <div className="container mx-auto px-4 -mt-32">
+        <div className="container mx-auto px-4 -mt-32 flex flex-col gap-6">
           <BreakdownByZones
             regionsData={regionsData}
             climaticData={climaticData}

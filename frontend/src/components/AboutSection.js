@@ -10,7 +10,7 @@ const AboutSection = ({
 }) => {
   const descriptions = Array.isArray(description) ? description : [description];
   return (
-    <section className={classNames("w-full py-16", textAlign, className)}>
+    <section className={classNames("w-full py-8", textAlign, className)}>
       {title && (
         <h2 className={classNames("font-bold text-[#333333] mb-4", titleSize)}>
           {title}

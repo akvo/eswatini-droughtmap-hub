@@ -105,7 +105,7 @@ const space = { tableX: 8, tableY: 4, formItem: 16 };
 
 const font = {
   heading: "var(--font-inter)",
-  body: "var(--font-roboto)",
+  body: "var(--font-inter)",
   mono: "var(--font-roboto-mono)",
 };
 

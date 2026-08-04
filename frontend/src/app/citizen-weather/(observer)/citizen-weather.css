@@ -1074,7 +1074,11 @@
 }
 
 /* Override global last-column right-align — observe table ends with STATUS, not ACTIONS */
-.cw-app .edm-reviews-table.ant-table-wrapper .ant-table-thead > tr > th:last-child {
+.cw-app
+  .edm-reviews-table.ant-table-wrapper
+  .ant-table-thead
+  > tr
+  > th:last-child {
   text-align: left;
 }
 

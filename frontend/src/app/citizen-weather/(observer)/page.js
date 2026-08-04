@@ -30,7 +30,8 @@ const SignInPage = () => {
           </h1>
           <p className="text-sm text-[#606060]">
             Enter the email address linked to your weather station and
-            we&apos;ll send you a fresh sign-in link. <b>No password to remember.</b>
+            we&apos;ll send you a fresh sign-in link.{" "}
+            <b>No password to remember.</b>
           </p>
         </div>
 
@@ -43,7 +44,12 @@ const SignInPage = () => {
           />
         )}
 
-        <Form layout="vertical" name="cw-signin" form={form} onFinish={onFinish}>
+        <Form
+          layout="vertical"
+          name="cw-signin"
+          form={form}
+          onFinish={onFinish}
+        >
           <Form.Item
             label="Email"
             name="email"
@@ -73,9 +79,10 @@ const SignInPage = () => {
             lineHeight: 1.55,
           }}
         >
-          <b>How this works</b> &middot; Each observer looks after one weather station.
-          You receive a monthly reminder email with a one-click link &mdash; no
-          password. If you&apos;ve lost that email, request a new link here.
+          <b>How this works</b> &middot; Each observer looks after one weather
+          station. You receive a monthly reminder email with a one-click link
+          &mdash; no password. If you&apos;ve lost that email, request a new
+          link here.
         </div>
 
         <div

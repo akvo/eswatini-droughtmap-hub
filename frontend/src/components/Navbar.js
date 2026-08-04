@@ -2,6 +2,7 @@
 
 import { getProfileDropdownItems } from "@/lib";
 import { Button, Dropdown } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserCircle, WarningCicle } from "./Icons";
@@ -28,7 +29,7 @@ const NavItem = ({ pathname, url, label }) => {
 
 const Navbar = ({ session }) => {
   const pathname = usePathname();
-  const profileItems = getProfileDropdownItems(session, true);
+  const profileItems = getProfileDropdownItems(session);
   const menuItems = PUBLIC_MENU_ITEMS.filter(
     (m) => !m.authenticated || session,
   );
@@ -39,7 +40,7 @@ const Navbar = ({ session }) => {
     <header className="w-full">
       {/* Notice bar */}
       <div className="w-full bg-neutral-200">
-        <div className="container w-full flex flex-row items-center justify-between py-2 text-neutral-600">
+        <div className="w-full px-8 flex flex-row items-center justify-between py-2 text-neutral-600">
           <div className="flex flex-row items-center gap-1.5 text-xs">
             <WarningCicle size={16} />
             <span>{APP_SETTINGS.notice}</span>
@@ -52,7 +53,7 @@ const Navbar = ({ session }) => {
 
       {/* Header navigation */}
       <div className="w-full bg-primary">
-        <div className="container w-full flex flex-row items-center justify-between">
+        <div className="w-full px-8 flex flex-row items-center justify-between">
           <nav className="flex flex-row items-center text-base">
             {leftItems
               .filter(
@@ -78,24 +79,34 @@ const Navbar = ({ session }) => {
                 ))}
             </nav>
             {session ? (
-              <Dropdown
-                placement="bottomRight"
-                menu={{
-                  items: [
-                    ...profileItems,
-                    {
-                      key: 99,
-                      label: <LogoutButton className="dropdown-item" />,
-                    },
-                  ],
-                }}
-                trigger={["click"]}
-                overlayClassName="dropdown-profile"
-              >
-                <a role="button" className="text-white" aria-label="Profile">
-                  <UserCircle size={32} />
-                </a>
-              </Dropdown>
+              <div className="relative">
+                <Dropdown
+                  placement="bottomRight"
+                  menu={{
+                    items: [
+                      ...profileItems,
+                      {
+                        key: 99,
+                        label: (
+                          <div className="profile-dropdown-logout">
+                            <LogoutButton className="dropdown-item" />
+                            <UploadOutlined
+                              style={{ transform: "rotate(90deg)" }}
+                            />
+                          </div>
+                        ),
+                      },
+                    ],
+                  }}
+                  trigger={["click"]}
+                  overlayClassName="dropdown-profile"
+                  getPopupContainer={(trigger) => trigger.parentElement}
+                >
+                  <a role="button" className="text-white" aria-label="Profile">
+                    <UserCircle size={32} />
+                  </a>
+                </Dropdown>
+              </div>
             ) : (
               <Link href={"/login"}>
                 <Button ghost>Login</Button>

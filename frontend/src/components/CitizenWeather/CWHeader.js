@@ -3,12 +3,7 @@
 import { SettingOutlined } from "@ant-design/icons";
 import { CloudSun } from "@/components/CitizenWeather/CWIcons";
 
-const CWHeader = ({
-  isAdmin = false,
-  subtitle,
-  userName,
-  userInitials,
-}) => {
+const CWHeader = ({ isAdmin = false, subtitle, userName, userInitials }) => {
   return (
     <div className="cw-header">
       <div className={`cw-logo ${isAdmin ? "admin" : "observer"}`}>
@@ -24,7 +19,9 @@ const CWHeader = ({
         <div className="cw-user">
           <div
             className="cw-avatar"
-            style={{ background: isAdmin ? "var(--cw-navy)" : "var(--cw-gold)" }}
+            style={{
+              background: isAdmin ? "var(--cw-navy)" : "var(--cw-gold)",
+            }}
           >
             {userInitials}
           </div>
