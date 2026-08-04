@@ -9,6 +9,7 @@ from api.v1.v1_publication.constants import (
     PublicationStatus,
     DroughtCategory,
     AdministrationZones,
+    is_validated,
 )
 from api.v1.v1_weather.models import (
     WeatherStation,
@@ -39,10 +40,14 @@ SECTOR_MAP = {
 def compute_linear_slope(series):
     """
     Calculate slope for series [(month_str, float_val)].
-    Returns 'worsening', 'improving', or 'stable'.
+    Returns 'worsening', 'improving', 'stable' or 'unknown'.
+
+    Fewer than two readings is 'unknown', not 'stable': with nothing to
+    compare against, "stable" claims the drought level held steady when in
+    fact no trend was ever measured.
     """
     if len(series) < 2:
-        return "stable"
+        return "unknown"
     n = len(series)
     x = list(range(n))
     y = [val for _, val in series]
@@ -115,24 +120,17 @@ def get_hero_data():
 
 def get_zones_data(group="regions"):
     """Service for GET /api/v1/insights/zones?group=regions|climatic"""
-    latest_pub = (
-        Publication.objects.filter(status=PublicationStatus.published)
-        .order_by("-year_month", "-id")
-        .first()
+    published = Publication.objects.filter(
+        status=PublicationStatus.published, published_at__isnull=False
     )
+    latest_pub = published.order_by("-year_month", "-id").first()
 
-    period_str = (
-        latest_pub.year_month.strftime("%Y-%m")
-        if latest_pub
-        else timezone.now().strftime("%Y-%m")
-    )
+    # No publication means no period — the current month would read as a
+    # bulletin that does not exist.
+    period_str = latest_pub.year_month.strftime("%Y-%m") if latest_pub else None
 
     # Fetch last 6 published publications
-    recent_pubs = list(
-        Publication.objects.filter(
-            status=PublicationStatus.published
-        ).order_by("-year_month", "-id")[:6]
-    )
+    recent_pubs = list(published.order_by("-year_month", "-id")[:6])
     recent_pubs.reverse()  # chronological
 
     admins = list(Administration.objects.all())
@@ -165,11 +163,15 @@ def get_zones_data(group="regions"):
     trends_list = []
     breakdowns_list = []
 
+    # Only real, admin-assigned D-classes land here. An Inkhundla with no
+    # published category is simply absent — never defaulted to 0, which the
+    # frontend paints as a genuine "Wet/normal conditions" verdict.
     latest_vals = {}
     if latest_pub and latest_pub.validated_values:
         latest_vals = {
-            v["administration_id"]: v.get("category", 0)
+            v["administration_id"]: v["category"]
             for v in latest_pub.validated_values
+            if is_validated(v.get("category"))
         }
 
     for g_key, g_info in groups_map.items():
@@ -178,11 +180,19 @@ def get_zones_data(group="regions"):
         g_admins = g_info["admins"]
         admin_ids = [a.id for a in g_admins]
 
-        # Calculate current modal category and confidence
-        cat_counts = Counter(latest_vals.get(aid, 0) for aid in admin_ids)
-        modal_cat = cat_counts.most_common(1)[0][0] if cat_counts else 0
+        # Modal category over the Tinkhundla that actually have a published
+        # category; confidence stays a share of the whole group, so missing
+        # data shows up as low confidence rather than silent agreement.
+        cat_counts = Counter(
+            latest_vals[aid] for aid in admin_ids if aid in latest_vals
+        )
         total_count = len(admin_ids) or 1
-        confidence_pct = round((cat_counts[modal_cat] / total_count) * 100)
+        if cat_counts:
+            modal_cat, modal_count = cat_counts.most_common(1)[0]
+            confidence_pct = round((modal_count / total_count) * 100)
+        else:
+            modal_cat = DroughtCategory.none
+            confidence_pct = 0
 
         zones_list.append(
             {
@@ -195,20 +205,30 @@ def get_zones_data(group="regions"):
 
         # Breakdowns
         names_by_cat = defaultdict(list)
-        for aid in admin_ids:
-            cat = latest_vals.get(aid, 0)
-            adm_obj = next((a for a in g_admins if a.id == aid), None)
-            if adm_obj and adm_obj.name:
-                names_by_cat[cat].append(adm_obj.name)
+        for adm_obj in g_admins:
+            if not adm_obj.name:
+                continue
+            cat = latest_vals.get(adm_obj.id, DroughtCategory.none)
+            names_by_cat[cat].append(adm_obj.name)
 
+        no_data_count = total_count - sum(cat_counts.values())
         breakdown_counts = [
             {
                 "key": c,
-                "value": cat_counts.get(c, 0),
+                "value": cat_counts.get(c, None),
                 "names": names_by_cat.get(c, []),
             }
             for c in range(6)
         ]
+        # Its own slice, so an unpublished group reads as "No Data" instead of
+        # disappearing from the doughnut.
+        breakdown_counts.append(
+            {
+                "key": DroughtCategory.none,
+                "value": no_data_count or None,
+                "names": names_by_cat.get(DroughtCategory.none, []),
+            }
+        )
         breakdowns_list.append(
             {
                 "administration_id": g_id,
@@ -217,15 +237,21 @@ def get_zones_data(group="regions"):
             }
         )
 
-        # Trends
+        # Trends. Months with no published category for this group are left
+        # out of the series entirely — scoring them 0 would both invent a
+        # "Normal" reading and drag the slope toward "improving".
+        admin_id_set = set(admin_ids)
         series = []
         for p in recent_pubs:
-            p_vals = {
-                v["administration_id"]: v.get("category", 0)
+            p_cats = [
+                v["category"]
                 for v in (p.validated_values or [])
-            }
-            p_cats = [p_vals.get(aid, 0) for aid in admin_ids]
-            mean_val = round(sum(p_cats) / len(p_cats), 1) if p_cats else 0.0
+                if v.get("administration_id") in admin_id_set
+                and is_validated(v.get("category"))
+            ]
+            if not p_cats:
+                continue
+            mean_val = round(sum(p_cats) / len(p_cats), 1)
             series.append((p.year_month.strftime("%Y-%m"), mean_val))
 
         slope_trend = compute_linear_slope(series)

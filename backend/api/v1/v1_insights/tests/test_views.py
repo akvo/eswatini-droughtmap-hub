@@ -8,6 +8,7 @@ from api.v1.v1_publication.models import Publication, Administration
 from api.v1.v1_publication.constants import (
     PublicationStatus,
     AdministrationZones,
+    DroughtCategory,
 )
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import (
@@ -160,8 +161,8 @@ class InsightsAPITests(TestCase):
         self.assertIn("date", data)
 
     def test_compute_linear_slope_unit(self):
-        self.assertEqual(compute_linear_slope([]), "stable")
-        self.assertEqual(compute_linear_slope([("2026-01", 1.0)]), "stable")
+        self.assertEqual(compute_linear_slope([]), "unknown")
+        self.assertEqual(compute_linear_slope([("2026-01", 1.0)]), "unknown")
         self.assertEqual(
             compute_linear_slope([("2026-01", 1.0), ("2026-02", 2.0)]),
             "worsening",
@@ -183,6 +184,63 @@ class InsightsAPITests(TestCase):
         data = response.json()
         self.assertIn("rainfall", data)
         self.assertIn(self.admin.name, data["rainfall"]["note"])
+
+    def test_zones_endpoint_no_publication_is_no_data_not_normal(self):
+        Publication.objects.all().delete()
+        response = self.client.get("/api/v1/insights/zones?group=regions")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        self.assertIsNone(data["zones"]["period"])
+        for zone in data["zones"]["data"]:
+            self.assertEqual(zone["value"], DroughtCategory.none)
+            self.assertEqual(zone["confidence"], 0)
+
+        for breakdown in data["breakdowns"]["data"]:
+            by_key = {p["key"]: p for p in breakdown["data"]}
+            self.assertIsNone(by_key[DroughtCategory.normal]["value"])
+            no_data = by_key[DroughtCategory.none]
+            self.assertEqual(no_data["value"], 1)
+            self.assertEqual(no_data["names"], [self.admin.name])
+
+        for trend in data["trends"]["data"]:
+            self.assertEqual(trend["data"], [])
+            self.assertEqual(trend["value"], "unknown")
+
+    def test_zones_endpoint_unpublished_publication_is_ignored(self):
+        # status=published but never actually published — must not surface.
+        Publication.objects.all().update(published_at=None)
+        response = self.client.get("/api/v1/insights/zones?group=regions")
+        data = response.json()
+        self.assertIsNone(data["zones"]["period"])
+        self.assertEqual(
+            data["zones"]["data"][0]["value"], DroughtCategory.none
+        )
+
+    def test_zones_endpoint_published_keeps_real_category(self):
+        response = self.client.get("/api/v1/insights/zones?group=regions")
+        data = response.json()
+        zone = data["zones"]["data"][0]
+        self.assertEqual(zone["value"], 3)
+        self.assertEqual(zone["confidence"], 100)
+        by_key = {
+            p["key"]: p for p in data["breakdowns"]["data"][0]["data"]
+        }
+        self.assertEqual(by_key[3]["value"], 1)
+        self.assertIsNone(by_key[DroughtCategory.none]["value"])
+
+    def test_zones_endpoint_no_data_category_is_not_averaged(self):
+        # -9999 in the payload must not be treated as a score.
+        self.pub.validated_values = [
+            {"administration_id": self.admin.id, "category": -9999}
+        ]
+        self.pub.save()
+        response = self.client.get("/api/v1/insights/zones?group=regions")
+        data = response.json()
+        self.assertEqual(
+            data["zones"]["data"][0]["value"], DroughtCategory.none
+        )
+        self.assertEqual(data["trends"]["data"][0]["data"], [])
 
     def test_zones_endpoint_breakdowns_include_names(self):
         response = self.client.get("/api/v1/insights/zones?group=regions")
