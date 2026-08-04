@@ -1,0 +1,10 @@
+{
+  "administration": { "id": 1, "name": "Matsanjeni South" },
+  "period": "2026-05",
+  "meta": {
+    "generated": true,
+    "editable": true,
+    "note": "C-1: the empty-state checkbox says the user writes this; the populated design shows finished prose. Served as an editable draft until a backend endpoint owns the derivation."
+  },
+  "value": "Matsanjeni South is validated at D2 for May 2026. The satellite CDI-E composite shows moisture deficits consistent with a 2-month rainfall gap of −75 mm. MET and UNESWA station readings confirm the picture. The IKS observer this cycle reports severe crop stress and drying vegetation."
+}

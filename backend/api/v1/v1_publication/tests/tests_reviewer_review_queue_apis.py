@@ -180,6 +180,7 @@ class ReviewQueueAPIsTestCase(APITestCase):
         )
 
         # A later publication with no reviews at all -> everything not started.
+        # Nothing is seeded beyond `previous`, so any positive offset is safe.
         later = Publication.objects.create(
             year_month=date(2026, 2, 1),
             cdi_geonode_id=987654,

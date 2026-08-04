@@ -446,3 +446,75 @@ h5 {
   padding: 12px 16px !important;
   border-bottom: 1px solid var(--table-border) !important;
 }
+
+/* Brief Builder group accordions (Figma 4155:179809).
+   antd's Collapse defaults disagree with the design on three counts: the panel
+   body is brand-primary-50 (#ECEFF8) rather than white, the header is a flat
+   48px band with hairlines above and below rather than a padded row, and the
+   chevron sits in its own 48px square rather than inline. Overridden here
+   rather than with arbitrary variants so the selectors stay readable, matching
+   .risk-buildup-collapse above. */
+.brief-groups .ant-collapse-item {
+  border: 0;
+}
+
+.brief-groups .ant-collapse-header {
+  align-items: center !important;
+  background: var(--white-color);
+  border-top: 1px solid #d2d2d2; /* colors/neutral/300 = tokens.border.card */
+  border-bottom: 1px solid #d2d2d2;
+  min-height: 48px;
+  padding: 0 0 0 16px !important;
+}
+
+/* Figma collapses adjacent hairlines with mb-[-1px]; dropping the second
+   border does the same without the negative margin. */
+.brief-groups .ant-collapse-item + .ant-collapse-item .ant-collapse-header {
+  border-top: 0;
+}
+
+.brief-groups .ant-collapse-expand-icon {
+  align-items: center;
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  padding-inline-start: 0 !important;
+  width: 48px;
+}
+
+.brief-groups .ant-collapse-content {
+  border-top: 0;
+}
+
+.brief-groups .ant-collapse-content > .ant-collapse-content-box {
+  background: #eceff8; /* brand-primary-50 = tokens.brand.tint */
+  border-bottom: 1px solid #d2d2d2;
+  padding: 16px !important;
+}
+
+/* Component checkboxes carry a two-line label (name + description), and antd
+   aligns its wrapper on `baseline` with a small `top` nudge on the box — which
+   renders as the box floating mid-way down the block. Pin both to the top so
+   the box lines up with the first line of its label.
+
+   Done here rather than with `items-start` on the component: antd injects its
+   styles at runtime, after Tailwind, and at equal specificity the later rule
+   wins — so the utility class silently did nothing.
+
+   Scoped to the panel body: the group headers are single-line, where baseline
+   is already correct. */
+.brief-groups .ant-collapse-content-box .ant-checkbox-wrapper {
+  align-items: flex-start;
+}
+
+.brief-groups .ant-collapse-content-box .ant-checkbox {
+  align-self: flex-start;
+  top: 6px;
+}
+
+/* antd pads the `extra` slot that holds the group's "Clear" link. The design
+   puts it flush against the 48px chevron square, so the padding goes. */
+.brief-groups .ant-collapse-extra {
+  margin: 0;
+  padding: 0;
+}
