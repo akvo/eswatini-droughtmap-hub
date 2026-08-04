@@ -51,6 +51,18 @@ class Command(BaseCommand):
                     {"action": ActionEnum.READ.value, "subject": "Activity"},
                     {"action": ActionEnum.UPDATE.value, "subject": "Activity"},
                     {"action": ActionEnum.DELETE.value, "subject": "Activity"},
+                    {
+                        "action": ActionEnum.READ.value,
+                        "subject": "CitizenScience",
+                    },
+                    {
+                        "action": ActionEnum.CREATE.value,
+                        "subject": "CitizenScience",
+                    },
+                    {
+                        "action": ActionEnum.UPDATE.value,
+                        "subject": "CitizenScience",
+                    },
                 ],
             },
             {

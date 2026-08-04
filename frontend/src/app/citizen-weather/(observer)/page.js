@@ -1,27 +1,71 @@
 "use client";
 
-import { useState } from "react";
-import { Alert, Form, Input, message } from "antd";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Alert, Form, Input } from "antd";
 import { SubmitButton } from "@/components";
+import { auth } from "@/lib";
 
 const { useForm } = Form;
 
 const SignInPage = () => {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const [loading, setLoading] = useState(!!token);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState(null);
   const [form] = useForm();
 
-  const onFinish = ({ email }) => {
+  useEffect(() => {
+    if (!token) return;
+    auth.signInWithToken(token).then((result) => {
+      if (result.status === 200) {
+        router.replace("/citizen-weather/observe");
+      } else {
+        setError("expired");
+        setLoading(false);
+        router.replace("/citizen-weather", { scroll: false });
+      }
+    });
+  }, [token, router]);
+
+  const onFinish = async ({ email }) => {
     setLoading(true);
-    setTimeout(() => {
-      message.success("Sign-in link sent! Check your email.");
+    setError(null);
+    setSent(false);
+    try {
+      const res = await fetch(
+        `/api/v1/auth/observer/request-link?format=json`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+      );
+      if (res.status === 429) {
+        setError("throttled");
+      } else {
+        setSent(true);
+      }
+    } catch {
+      setError("network");
+    } finally {
       setLoading(false);
-      setSent(true);
-    }, 1500);
+    }
   };
 
+  if (token && loading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center">
+        <p className="text-sm text-[#606060]">Signing you in…</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full min-h-screen flex items-center justify-center py-16 relative">
+    <div className="w-full flex items-center justify-center py-16 relative">
       <div className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none" />
       <div className="w-[360px] max-w-full mx-auto flex flex-col gap-8 relative z-10">
         <div className="flex flex-col gap-3 text-center">
@@ -35,10 +79,37 @@ const SignInPage = () => {
           </p>
         </div>
 
+        {error === "expired" && (
+          <Alert
+            message="Link expired"
+            description="That link has expired. Enter your email below for a fresh one."
+            type="warning"
+            showIcon
+          />
+        )}
+
+        {error === "throttled" && (
+          <Alert
+            message="Too many requests"
+            description="Please try again later."
+            type="error"
+            showIcon
+          />
+        )}
+
+        {error === "network" && (
+          <Alert
+            message="Network error"
+            description="Could not reach the server. Please check your connection."
+            type="error"
+            showIcon
+          />
+        )}
+
         {sent && (
           <Alert
             message="Sign-in link sent"
-            description="Check your inbox for the sign-in link. It expires in 24 hours."
+            description="Check your inbox for the sign-in link. It expires in 7 days."
             type="success"
             showIcon
           />

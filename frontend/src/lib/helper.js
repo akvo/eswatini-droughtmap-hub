@@ -167,6 +167,11 @@ export const getProfileDropdownItems = (user) => {
       label: "CDI publications",
       url: "/publications",
     },
+    isAdmin && {
+      key: "nav-citizen-weather",
+      label: "Citizen Weather",
+      url: "/citizen-weather/admin",
+    },
     {
       key: "nav-reviews",
       label: isAdmin ? "Drought validation" : "Drought reviews",

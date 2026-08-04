@@ -5,11 +5,13 @@ export const DEFAULT_CENTER = [-26.573789513879785, 31.626892089843754];
 export const USER_ROLES = {
   admin: 1,
   reviewer: 2,
+  observer: 3,
 };
 
 export const HOME_PAGE = {
   [USER_ROLES.admin]: "/publications",
   [USER_ROLES.reviewer]: "/reviews",
+  [USER_ROLES.observer]: "/citizen-weather/observe",
 };
 
 export const PAGE_SIZE = 10;
