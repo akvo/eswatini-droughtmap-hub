@@ -27,8 +27,18 @@ const STATUS_MAP = {
 /** Convert "May 2026" to "2026-05" */
 const monthToPeriod = (monthStr) => {
   const monthNames = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   const parts = monthStr.split(" ");
   const monthAbbr = parts[0].substring(0, 3);
@@ -44,11 +54,11 @@ const ObserverListPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const completedMonths = reportingHistory.filter(
-    (r) => r.status === "complete" || r.status === "partial"
+    (r) => r.status === "complete" || r.status === "partial",
   ).length;
 
   const latestUnsubmitted = reportingHistory.find(
-    (r) => r.status === "draft" || r.status === "missed"
+    (r) => r.status === "draft" || r.status === "missed",
   );
 
   const filteredData =
@@ -173,7 +183,9 @@ const ObserverListPage = () => {
               Reporting history
             </h2>
             {latestUnsubmitted && (
-              <Link href={`/citizen-weather/observe/${monthToPeriod(latestUnsubmitted.month)}`}>
+              <Link
+                href={`/citizen-weather/observe/${monthToPeriod(latestUnsubmitted.month)}`}
+              >
                 <Button type="primary">
                   Log {latestUnsubmitted.month} reading
                 </Button>

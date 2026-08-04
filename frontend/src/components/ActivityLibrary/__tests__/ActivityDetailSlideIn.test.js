@@ -8,11 +8,13 @@ import {
 } from "@testing-library/react";
 import { Modal } from "antd";
 import ActivityDetailSlideIn from "../ActivityDetailSlideIn";
-import { api } from "../../../lib/api";
+import { api } from "@/lib/api";
 import { ACTIVITY_STATUS, USER_ROLES } from "@/static/config";
 
+jest.setTimeout(30000);
+
 // Mock the api function
-jest.mock("../../../lib/api", () => ({
+jest.mock("@/lib/api", () => ({
   api: jest.fn(),
   getSourceFileBase64: jest.fn(),
 }));

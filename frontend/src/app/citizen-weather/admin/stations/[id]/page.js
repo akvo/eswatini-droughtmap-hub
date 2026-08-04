@@ -133,7 +133,10 @@ const StationDetailPage = () => {
                     </span>
                   }
                 />
-                <KVRow label="Preferred language" value={`EN ${obs.language}`} />
+                <KVRow
+                  label="Preferred language"
+                  value={`EN ${obs.language}`}
+                />
                 <KVRow label="Assigned admin" value={obs.assignedAdmin} />
                 <KVRow
                   label="Admin notes"
@@ -166,7 +169,8 @@ const StationDetailPage = () => {
             <div className="p-4 sm:p-6">
               <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5 mb-4">
                 {s.timeline.map((t, i) => {
-                  const color = TIMELINE_COLORS[t.status] || TIMELINE_COLORS.miss;
+                  const color =
+                    TIMELINE_COLORS[t.status] || TIMELINE_COLORS.miss;
                   const isCurrent = i === s.timeline.length - 1;
                   return (
                     <div
@@ -175,9 +179,7 @@ const StationDetailPage = () => {
                       style={{
                         background: color.bg,
                         color: color.text,
-                        outline: isCurrent
-                          ? "2px solid #333333"
-                          : undefined,
+                        outline: isCurrent ? "2px solid #333333" : undefined,
                         outlineOffset: isCurrent ? 2 : undefined,
                       }}
                     >
@@ -221,7 +223,9 @@ const StationDetailPage = () => {
             <Space wrap>
               <Button icon={<BarChartOutlined />}>Export CSV</Button>
               <Button icon={<UserOutlined />}>Reassign observer</Button>
-              <Button danger icon={<InboxOutlined />}>Archive station</Button>
+              <Button danger icon={<InboxOutlined />}>
+                Archive station
+              </Button>
               <Button
                 type="primary"
                 icon={<MailOutlined />}

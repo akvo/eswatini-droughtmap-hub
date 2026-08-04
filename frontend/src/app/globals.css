@@ -311,7 +311,44 @@ h5 {
   justify-content: flex-start;
 }
 .ant-dropdown.dropdown-profile {
-  top: 48px !important;
+  z-index: 1050;
+}
+.ant-dropdown.dropdown-profile .ant-dropdown-menu {
+  min-width: 220px;
+  padding: 4px 0;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  background: #fff;
+  box-shadow:
+    0 12px 16px -4px rgba(16, 24, 40, 0.08),
+    0 4px 6px -2px rgba(16, 24, 40, 0.03);
+}
+.ant-dropdown.dropdown-profile .ant-dropdown-menu-item {
+  padding: 8px 16px;
+}
+.ant-dropdown.dropdown-profile .profile-dropdown-header {
+  cursor: default;
+  opacity: 1 !important;
+}
+.ant-dropdown.dropdown-profile .dropdown-item-label,
+.ant-dropdown.dropdown-profile .ant-dropdown-menu-item .ant-btn.dropdown-item {
+  color: #333333;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.ant-dropdown.dropdown-profile .profile-dropdown-logout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.ant-dropdown.dropdown-profile .profile-dropdown-logout .ant-btn {
+  height: auto;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
 }
 .ant-descriptions.reviewed-descriptions .ant-descriptions-item-content {
   padding: 0 !important;

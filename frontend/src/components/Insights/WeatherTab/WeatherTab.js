@@ -138,11 +138,12 @@ const WeatherTab = ({
         <MetricItemCard
           label={total12m?.label ?? "12-month total precipitation"}
           value={amount(total12m)}
-          footnote={
+          footnote="station observed"
+          footnoteHint={
             total12m?.meta?.months_covered != null &&
             total12m.meta.months_covered < 12
-              ? `station observed · since first record (${total12m.meta.months_covered} months)`
-              : "station observed"
+              ? `Since first record (${total12m.meta.months_covered} months) — fewer than 12 months of data.`
+              : ""
           }
         />
         <MetricItemCard

@@ -13,7 +13,7 @@ const PredictorAccordion = ({
   section,
 }) => (
   <div>
-    <div className="px-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white py-1">
+    <div className="px-4 mb-4 flex flex-col sm:flex-row sm:items-start justify-between gap-2 bg-white py-1">
       <div>
         <h4 className="text-[16px] font-bold text-neutral-800 leading-[24px] mb-0">
           {title}
@@ -22,7 +22,7 @@ const PredictorAccordion = ({
           {subtitle}
         </p>
       </div>
-      <div className="flex items-center gap-4 text-xs font-medium self-start sm:self-center">
+      <div className="flex items-center gap-4 text-xs font-medium self-start sm:self-start sm:mt-1">
         <div className="flex items-center gap-1.5">
           <span
             className={`w-3.5 h-3.5 rounded-[1px] ${

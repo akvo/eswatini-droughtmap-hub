@@ -96,11 +96,21 @@ Goal:
 
 ## 4. API Contract
 
+> [!IMPORTANT]
+> **Superseded 2026-08-04.** This section describes the mock-first stage. The
+> backend landed as `api/v1/v1_insights` ([#159], see
+> [`national-overview-backend-v1-insights.md`](national-overview-backend-v1-insights.md))
+> and the frontend was wired to it under [#173] (see
+> [`national-overview-backend-integration.md`](national-overview-backend-integration.md)).
+> `frontend/src/static/mocks/national-overview/` has been **deleted**. The table
+> below is kept as the record of which mock became which endpoint.
+
 No new Django endpoints. Until the backend API is ready, the frontend consumes **static mock modules** under `frontend/src/static/mocks/`. These modules are shaped like backend responses: simple, serializer-friendly objects with generic keys (`id`, `administration_id`, `label`, `value`, `data`, `group`, `period`). Components adapt those response shapes into UI-specific props.
 
 ### Static mock modules and backend mapping
 
-Current implemented mock source: `frontend/src/static/mocks/national-overview/zones.js`.
+Mock source (deleted): `frontend/src/static/mocks/national-overview/zones.js`
+→ now `GET /api/v1/insights/zones?group=regions|climatic`.
 
 | Static export / future endpoint | Feeds section | Real backend that will replace it |
 |---------------------------------|---------------|-----------------------------------|
@@ -129,7 +139,9 @@ Static sections (CTA, About EDM, Footer) need no mock data source.
 ```
 
 ```js
-// frontend/src/static/mocks/national-overview/zones.js — IMPLEMENTED
+// was frontend/src/static/mocks/national-overview/zones.js (deleted 2026-08-04)
+// now served by GET /api/v1/insights/zones — note the live payload adds a
+// `names` list and a -9999 "No Data" key per breakdown entry
 export const zonesData = {
   group: "regions",
   period: "2026-05",

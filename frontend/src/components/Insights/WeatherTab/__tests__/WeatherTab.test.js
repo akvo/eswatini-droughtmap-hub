@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import WeatherTab from "../WeatherTab";
-import { api } from "../../../../lib/api";
+import { api } from "@/lib/api";
 
-// Alias paths do not resolve inside jest.mock — same relative form as IksTab.
-jest.mock("../../../../lib/api", () => ({
+jest.mock("@/lib/api", () => ({
   api: jest.fn(),
 }));
 
@@ -255,6 +254,9 @@ describe("WeatherTab", () => {
     // the station reported no May temperature (tmax above is [23.7, null]).
     expect(average.data).toEqual([24.1, 22.0]);
     expect(average.lineStyle.type).toBe("dashed");
+    // Legend under the axis keys the observed lines only, not the averages.
+    expect(line.legend.show).toBe(true);
+    expect(line.legend.data).toEqual(["T max", "T min", "T Mean"]);
     // Nothing is missing, so the "unavailable" note stays off the toolbar.
     expect(screen.queryByText(/average unavailable/)).not.toBeInTheDocument();
   });

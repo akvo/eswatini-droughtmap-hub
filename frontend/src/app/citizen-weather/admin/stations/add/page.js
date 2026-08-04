@@ -34,24 +34,21 @@ const AddStationPage = () => {
   const [stationType, setStationType] = useState("Davis Vantage Pro2");
   const [observerName, setObserverName] = useState("Nomsa Simelane");
   const [observerEmail, setObserverEmail] = useState(
-    "nomsa.simelane@example.sz"
+    "nomsa.simelane@example.sz",
   );
   const [phone, setPhone] = useState("+268 76 12 3456");
   const [language, setLanguage] = useState("en");
   const [adminNotes, setAdminNotes] = useState(
-    "Chairs the Inkhundla DRMC. Best contacted in the mornings."
+    "Chairs the Inkhundla DRMC. Best contacted in the mornings.",
   );
   const [assignedAdmin, setAssignedAdmin] = useState(ADMIN_USERS[0]);
   const [sendWelcome, setSendWelcome] = useState(true);
 
   const region = useMemo(
     () => REGION_BY_INKHUNDLA[inkhundla] || "",
-    [inkhundla]
+    [inkhundla],
   );
-  const aez = useMemo(
-    () => AEZ_BY_INKHUNDLA[inkhundla] || "",
-    [inkhundla]
-  );
+  const aez = useMemo(() => AEZ_BY_INKHUNDLA[inkhundla] || "", [inkhundla]);
 
   const inkhundlaSelectOptions = INKHUNDLA_OPTIONS.map((group) => ({
     label: group.label,
@@ -60,7 +57,7 @@ const AddStationPage = () => {
 
   const toggleSensor = (key) => {
     setSensors((prev) =>
-      prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]
+      prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key],
     );
   };
 
@@ -72,7 +69,7 @@ const AddStationPage = () => {
     message.success(
       sendWelcome
         ? "Station created and welcome email sent!"
-        : "Station created (no email sent)."
+        : "Station created (no email sent).",
     );
   };
 
@@ -119,7 +116,11 @@ const AddStationPage = () => {
                   />
                 </FieldGroup>
 
-                <FieldGroup label="Inkhundla" required hint="search or scroll to find">
+                <FieldGroup
+                  label="Inkhundla"
+                  required
+                  hint="search or scroll to find"
+                >
                   <Select
                     showSearch
                     style={{ width: "100%" }}
@@ -139,15 +140,18 @@ const AddStationPage = () => {
                   />
                 </FieldGroup>
 
-                <FieldGroup label="Agro-ecological zone" hint="auto-filled from Inkhundla">
-                  <Input
-                    value={aez}
-                    disabled
-                    className="bg-[#f9fafb] italic"
-                  />
+                <FieldGroup
+                  label="Agro-ecological zone"
+                  hint="auto-filled from Inkhundla"
+                >
+                  <Input value={aez} disabled className="bg-[#f9fafb] italic" />
                 </FieldGroup>
 
-                <FieldGroup label="Coordinates" required hint="decimal degrees, WGS84">
+                <FieldGroup
+                  label="Coordinates"
+                  required
+                  hint="decimal degrees, WGS84"
+                >
                   <div className="grid grid-cols-2 gap-2.5">
                     <Input
                       placeholder="Latitude · e.g. -26.6812"
@@ -161,7 +165,13 @@ const AddStationPage = () => {
                     />
                   </div>
                   <div className="mt-3 rounded-lg bg-gradient-to-br from-[#dbeafe] to-[#fef3c7] h-[120px] flex items-center justify-center relative">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF4D4F" xmlns="http://www.w3.org/2000/svg">
+                    <svg
+                      width="26"
+                      height="26"
+                      viewBox="0 0 24 24"
+                      fill="#FF4D4F"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
                     </svg>
                     <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-1.5 flex items-center justify-between text-xs text-[#606060]">
@@ -177,7 +187,10 @@ const AddStationPage = () => {
                   </div>
                 </FieldGroup>
 
-                <FieldGroup label="Sensors this station has" hint="determines which fields the observer sees">
+                <FieldGroup
+                  label="Sensors this station has"
+                  hint="determines which fields the observer sees"
+                >
                   <div className="flex flex-col gap-2">
                     {SENSOR_OPTIONS.map((s) => {
                       const active = sensors.includes(s.key);
@@ -186,9 +199,7 @@ const AddStationPage = () => {
                           key={s.key}
                           type="button"
                           className={`flex items-center justify-between py-3 px-4 border rounded-lg cursor-pointer transition-all text-left ${
-                            active
-                              ? "border-[#3E5EB9]"
-                              : "border-cardBorder"
+                            active ? "border-[#3E5EB9]" : "border-cardBorder"
                           }`}
                           onClick={() => toggleSensor(s.key)}
                         >
@@ -197,9 +208,7 @@ const AddStationPage = () => {
                           </span>
                           <span
                             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                              active
-                                ? "border-[#3E5EB9]"
-                                : "border-[#d2d2d2]"
+                              active ? "border-[#3E5EB9]" : "border-[#d2d2d2]"
                             }`}
                           >
                             {active && (
@@ -235,7 +244,8 @@ const AddStationPage = () => {
                   </h2>
                 </div>
                 <p className="text-xs text-[#606060] mt-1 ml-8">
-                  The person who will submit monthly readings. One observer per station.
+                  The person who will submit monthly readings. One observer per
+                  station.
                 </p>
               </div>
               <div className="p-4 sm:p-6 flex flex-col gap-5">
@@ -247,7 +257,11 @@ const AddStationPage = () => {
                   />
                 </FieldGroup>
 
-                <FieldGroup label="Email address" required hint="this is where reminders + sign-in links go">
+                <FieldGroup
+                  label="Email address"
+                  required
+                  hint="this is where reminders + sign-in links go"
+                >
                   <Input
                     type="email"
                     placeholder="e.g. name@example.sz"
@@ -256,7 +270,10 @@ const AddStationPage = () => {
                   />
                 </FieldGroup>
 
-                <FieldGroup label="Phone number" hint="optional · used only as fallback">
+                <FieldGroup
+                  label="Phone number"
+                  hint="optional · used only as fallback"
+                >
                   <Input
                     placeholder="e.g. +268 76 XX XXXX"
                     value={phone}
@@ -286,7 +303,10 @@ const AddStationPage = () => {
                   </div>
                 </FieldGroup>
 
-                <FieldGroup label="Notes about this observer" hint="optional · admin-only">
+                <FieldGroup
+                  label="Notes about this observer"
+                  hint="optional · admin-only"
+                >
                   <TextArea
                     rows={3}
                     placeholder="e.g. teaches at the local school, best contacted after 15:00"
@@ -295,7 +315,10 @@ const AddStationPage = () => {
                   />
                 </FieldGroup>
 
-                <FieldGroup label="Assigned admin" hint="who follows up if this observer stops reporting">
+                <FieldGroup
+                  label="Assigned admin"
+                  hint="who follows up if this observer stops reporting"
+                >
                   <Select
                     style={{ width: "100%" }}
                     value={assignedAdmin}
@@ -317,26 +340,28 @@ const AddStationPage = () => {
             </div>
             <div className="p-4 sm:p-6">
               <p className="text-xs text-[#606060] mb-4">
-                This is what <b>{observerName || "the observer"}</b> will receive as
-                soon as you click &ldquo;Save + send welcome email&rdquo;.
+                This is what <b>{observerName || "the observer"}</b> will
+                receive as soon as you click &ldquo;Save + send welcome
+                email&rdquo;.
               </p>
               <div className="border border-cardBorder rounded-lg p-4 text-xs text-[#333333] leading-relaxed">
                 <div className="font-bold text-[#333333] mb-1.5">
-                  Welcome to Citizen Science Weather &mdash; your first sign-in link
+                  Welcome to Citizen Science Weather &mdash; your first sign-in
+                  link
                 </div>
                 <div>Sanibonani {observerName?.split(" ")[0] || "\u2014"},</div>
                 <br />
                 <div>
                   You&apos;ve been registered as the observer for the{" "}
-                  <b>{stationName || "\u2014"}</b> in {region || "\u2014"}. On the 1st of every
-                  month, we&apos;ll email you a link to submit that month&apos;s
-                  weather reading &mdash; no password to remember, just click and fill in
-                  what your station measured.
+                  <b>{stationName || "\u2014"}</b> in {region || "\u2014"}. On
+                  the 1st of every month, we&apos;ll email you a link to submit
+                  that month&apos;s weather reading &mdash; no password to
+                  remember, just click and fill in what your station measured.
                 </div>
                 <br />
                 <div>
-                  To confirm your account and set up your first monthly submission,
-                  click below:
+                  To confirm your account and set up your first monthly
+                  submission, click below:
                 </div>
                 <div className="mt-2">
                   <span className="inline-block px-3.5 py-1.5 bg-[#3E5EB9] text-white text-xs font-semibold">
@@ -350,16 +375,14 @@ const AddStationPage = () => {
           {/* Bottom actions */}
           <div className="flex flex-wrap items-center gap-3 py-4">
             <span className="text-xs text-[#606060] mr-auto max-w-[400px]">
-              <b>Save + send welcome email</b> creates the observer + station and
-              sends the confirmation link above. You can also save the station
-              without an observer if the observer will be assigned later.
+              <b>Save + send welcome email</b> creates the observer + station
+              and sends the confirmation link above. You can also save the
+              station without an observer if the observer will be assigned
+              later.
             </span>
             <div className="flex items-center gap-2.5 text-xs text-[#606060]">
               <span>Send welcome email now</span>
-              <Switch
-                checked={sendWelcome}
-                onChange={setSendWelcome}
-              />
+              <Switch checked={sendWelcome} onChange={setSendWelcome} />
             </div>
             <Link href="/citizen-weather/admin">
               <Button>Cancel</Button>

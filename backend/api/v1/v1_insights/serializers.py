@@ -48,6 +48,9 @@ class InsightsTrendGroupSerializer(serializers.Serializer):
 class InsightsBreakdownPointSerializer(serializers.Serializer):
     key = serializers.IntegerField()
     value = serializers.IntegerField()
+    names = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
 
 
 class InsightsBreakdownItemSerializer(serializers.Serializer):

@@ -74,8 +74,18 @@ const PeriodFormPage = () => {
     if (!period) return "";
     const [year, month] = period.split("-");
     const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
     const monthIndex = parseInt(month, 10) - 1;
     return `${monthNames[monthIndex] || month} ${year}`;
@@ -92,7 +102,7 @@ const PeriodFormPage = () => {
 
   const filledCount = useMemo(
     () => FIELDS.filter((f) => values[f.key] != null).length,
-    [values]
+    [values],
   );
 
   const totalFields = FIELDS.length;
@@ -124,8 +134,8 @@ const PeriodFormPage = () => {
             </span>
           </div>
           <h1 className="text-[28px] font-bold leading-10 text-[#333333] mb-2">
-            Sanibonani {observerProfile.name.split(" ")[0]} &mdash; let&apos;s log{" "}
-            {periodLabel.split(" ")[0]}&apos;s weather.
+            Sanibonani {observerProfile.name.split(" ")[0]} &mdash; let&apos;s
+            log {periodLabel.split(" ")[0]}&apos;s weather.
           </h1>
           <p className="text-sm leading-6 text-[#606060] mb-4">
             Fill in whatever your station recorded. You can skip any field you
@@ -173,7 +183,9 @@ const PeriodFormPage = () => {
                       <span className="text-sm font-semibold text-[#333333] flex-1">
                         {field.label}
                       </span>
-                      <span className="text-xs text-[#606060]">{field.unit}</span>
+                      <span className="text-xs text-[#606060]">
+                        {field.unit}
+                      </span>
                     </div>
                     <InputNumber
                       style={{ width: "100%" }}
@@ -182,22 +194,26 @@ const PeriodFormPage = () => {
                       onChange={(v) => setValues({ ...values, [field.key]: v })}
                       controls={false}
                     />
-                    <div className="text-xs text-[#606060] mt-2">{field.hint}</div>
+                    <div className="text-xs text-[#606060] mt-2">
+                      {field.hint}
+                    </div>
                   </div>
                 ))}
 
                 {/* Reassurance card */}
                 <div className="border border-[#eaecf0] rounded-lg p-4 flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-2">
-                    <CheckCircleOutlined style={{ color: "#12b76a", fontSize: 18 }} />
+                    <CheckCircleOutlined
+                      style={{ color: "#12b76a", fontSize: 18 }}
+                    />
                     <span className="text-sm font-semibold text-[#606060]">
                       All fields are optional
                     </span>
                   </div>
                   <div className="text-xs text-[#606060] leading-relaxed">
-                    You don&apos;t have to fill every field. Share what you recorded,
-                    leave the rest blank, and add a note if something was unusual or if a
-                    gauge stopped working.
+                    You don&apos;t have to fill every field. Share what you
+                    recorded, leave the rest blank, and add a note if something
+                    was unusual or if a gauge stopped working.
                   </div>
                 </div>
               </div>
