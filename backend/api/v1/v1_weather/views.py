@@ -11,6 +11,8 @@ from rest_framework.views import APIView
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_users.constants import UserRoleTypes
 from api.v1.v1_users.models import SystemUser
+from rest_framework.exceptions import ValidationError
+
 from api.v1.v1_weather.citizen_science import (
     CS_FIELD_KEYS,
     admin_network,
@@ -21,6 +23,7 @@ from api.v1.v1_weather.citizen_science import (
     parse_period,
     period_label,
     serving_payload,
+    trailing_window,
     write_export_csv,
 )
 from api.v1.v1_weather.constants import (
@@ -288,6 +291,10 @@ class CitizenScienceReadingDetailAPI(APIView):
     )
     def put(self, request, version, period):
         period_date = parse_period(period)
+        if period_date not in trailing_window():
+            raise ValidationError(
+                "Reading period is outside the reportable window"
+            )
         serializer = CitizenScienceReadingUpsertSerializer(
             data=request.data
         )

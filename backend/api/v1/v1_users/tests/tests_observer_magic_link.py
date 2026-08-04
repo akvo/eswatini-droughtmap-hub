@@ -12,6 +12,8 @@ from api.v1.v1_publication.models import Administration
 from api.v1.v1_users.admin import SystemUserCreationForm
 from api.v1.v1_users.constants import CS_LINK_SALT, UserRoleTypes
 from api.v1.v1_users.models import SystemUser
+from eswatini.settings import WEBDOMAIN
+from utils.email_helper import EmailTypes, email_context
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
@@ -138,6 +140,25 @@ class ObserverMagicLinkTests(APITestCase):
         user = form.save(commit=False)
         self.assertTrue(user.has_usable_password())
         self.assertTrue(user.check_password("Sup3rSecret!"))
+
+    def test_magic_link_cta_points_at_the_frontend_route(self):
+        # WEBDOMAIN is the frontend origin and the observer app lives at
+        # /citizen-weather. /citizen-science is the backend API prefix and
+        # 404s in Next.js, which silently breaks every sign-in email.
+        for email_type in (EmailTypes.cs_magic_link, EmailTypes.cs_reminder):
+            context = email_context(
+                {
+                    "name": "Sipho",
+                    "station_name": "Hhukwini Community",
+                    "month_label": "May 2026",
+                    "token": "tok3n",
+                },
+                type=email_type,
+            )
+            self.assertEqual(
+                context["cta_url"],
+                "{0}/citizen-weather?token=tok3n".format(WEBDOMAIN),
+            )
 
     def test_constraint_ignores_non_observers_and_deleted(self):
         # Reviewers with NULL administration are unlimited

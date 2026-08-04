@@ -52,9 +52,11 @@ API_APPS = [
     "api.v1.v1_rundeck",
     "api.v1.v1_iks",
     "api.v1.v1_weather",
+    "api.v1.v1_insights",
     "api.v1.v1_indicators",
     "api.v1.v1_risk_level",
 ]
+
 
 # Add third party apps below
 EXTERNAL_APPS = [

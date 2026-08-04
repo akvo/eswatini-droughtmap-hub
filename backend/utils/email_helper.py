@@ -7,6 +7,12 @@ from utils.custom_serializer_fields import CustomChoiceField
 from eswatini.settings import EMAIL_FROM, WEBDOMAIN
 
 
+# WEBDOMAIN is the frontend origin, so this is a Next.js page route — the app
+# lives at /citizen-weather. Do not confuse it with the backend's
+# /api/v1/weather/citizen-science/* API prefix.
+CS_SIGN_IN_PATH = "/citizen-weather"
+
+
 class EmailTypes:
     verification_email = "verification_email"
     forgot_password = "forgot_password"
@@ -168,8 +174,8 @@ def email_context(context: dict, type: str):
                     context["station_name"],
                 ),
                 "cta_text": "Open my weather form",
-                "cta_url": "{0}/citizen-science?token={1}".format(
-                    WEBDOMAIN, context["token"]
+                "cta_url": "{0}{1}?token={2}".format(
+                    WEBDOMAIN, CS_SIGN_IN_PATH, context["token"]
                 ),
             }
         )
@@ -190,8 +196,8 @@ def email_context(context: dict, type: str):
                     context["station_name"],
                 ),
                 "cta_text": "Submit my weather reading",
-                "cta_url": "{0}/citizen-science?token={1}".format(
-                    WEBDOMAIN, context["token"]
+                "cta_url": "{0}{1}?token={2}".format(
+                    WEBDOMAIN, CS_SIGN_IN_PATH, context["token"]
                 ),
             }
         )

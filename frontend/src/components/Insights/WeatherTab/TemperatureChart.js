@@ -81,12 +81,27 @@ const TemperatureChart = ({ administrationId, normals }) => {
   ];
 
   const rawConfig = {
-    grid: { top: 16, right: 16, bottom: 24, left: 8, containLabel: true },
+    // bottom leaves room for the legend ECharts draws under the month axis.
+    grid: { top: 16, right: 16, bottom: 48, left: 8, containLabel: true },
     tooltip: {
       trigger: "axis",
       valueFormatter: (v) => (v == null ? "No data" : `${v} ${units}`),
     },
-    legend: { show: false },
+    // Figma 4878:159358: dot + label, centred under the axis. Only the observed
+    // lines are keyed — the 30-yr dashes are the "Show averages" toggle's job.
+    // selectedMode off: the checkbox row owns visibility, a clickable legend
+    // would hide a series ECharts still thinks is checked.
+    legend: {
+      show: true,
+      bottom: 0,
+      icon: "circle",
+      itemWidth: 8,
+      itemHeight: 8,
+      itemGap: 16,
+      selectedMode: false,
+      textStyle: { color: "#606060", fontSize: 12 },
+      data: TEMP_SERIES.filter((t) => visible[t.key]).map((t) => t.label),
+    },
     xAxis: {
       type: "category",
       data: periodLabels(periods),

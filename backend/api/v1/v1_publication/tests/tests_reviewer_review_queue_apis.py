@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date
 
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -7,7 +7,11 @@ from django.core.management import call_command
 from django.test.utils import override_settings
 from django.utils import timezone
 from api.v1.v1_users.models import SystemUser
-from api.v1.v1_publication.models import Publication, Administration
+from api.v1.v1_publication.models import (
+    Publication,
+    Administration,
+    Review,
+)
 from api.v1.v1_publication.constants import DroughtCategory
 
 
@@ -148,26 +152,40 @@ class ReviewQueueAPIsTestCase(APITestCase):
         )
 
     def test_stats_delta_against_previous_publication(self):
-        earliest = Publication.objects.order_by("year_month").first()
+        # Two publications on fixed months, replacing the seeded ones. The
+        # seeder anchors its months on "now", so deriving `later` from a
+        # seeded month with `+31 days` skipped past the next seeded month
+        # whenever that month was shorter than 31 days — `_previous_rows` then
+        # compared against a publication this test never touched.
+        initial_values = self.publication.initial_values
+        Publication.objects.all().delete()
+
+        previous = Publication.objects.create(
+            year_month=date(2026, 1, 1),
+            cdi_geonode_id=987653,
+            initial_values=initial_values,
+            due_date=date(2026, 1, 15),
+        )
         # One Inkhundla reviewed last month -> one fewer "not started" there.
-        review = earliest.reviews.first()
-        review.suggestion_values = [{
-            "administration_id": (
-                earliest.initial_values[0]["administration_id"]
-            ),
-            "category": DroughtCategory.d2,
-            "reviewed": True,
-        }]
-        review.is_completed = True
-        review.completed_at = timezone.now()
-        review.save()
+        Review.objects.create(
+            publication=previous,
+            user=self.user,
+            is_completed=True,
+            completed_at=timezone.now(),
+            suggestion_values=[{
+                "administration_id": initial_values[0]["administration_id"],
+                "category": DroughtCategory.d2,
+                "reviewed": True,
+            }],
+        )
 
         # A later publication with no reviews at all -> everything not started.
+        # Nothing is seeded beyond `previous`, so any positive offset is safe.
         later = Publication.objects.create(
-            year_month=earliest.year_month + timedelta(days=31),
+            year_month=date(2026, 2, 1),
             cdi_geonode_id=987654,
-            initial_values=earliest.initial_values,
-            due_date=earliest.due_date + timedelta(days=31),
+            initial_values=initial_values,
+            due_date=date(2026, 2, 15),
         )
         res = self.client.get(
             reverse(

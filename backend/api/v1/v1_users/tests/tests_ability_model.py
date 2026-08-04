@@ -75,4 +75,5 @@ class AbilityModelTestCase(TestCase):
         call_command(
             "generate_roles_n_abilities_seeder"
         )
-        self.assertEqual(Ability.objects.count(), 19)
+        # 19 + the 3 admin CitizenScience abilities (read/create/update)
+        self.assertEqual(Ability.objects.count(), 22)

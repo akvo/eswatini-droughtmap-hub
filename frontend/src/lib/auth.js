@@ -55,6 +55,8 @@ export const signIn = async (formData) => {
       // Create the session
       const currentUser = await encrypt({
         id: user?.id,
+        name: user?.name,
+        email: user?.email,
         role: user?.role,
         abilities: user?.abilities,
         token,
@@ -70,6 +72,37 @@ export const signIn = async (formData) => {
   } catch {
     throw new Error("500");
   }
+};
+
+export const signInWithToken = async (token) => {
+  const req = await fetch(
+    `${process.env.WEBDOMAIN}/api/v1/auth/observer/verify-link?format=json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    },
+  );
+  const data = await req.json();
+  if (!req.ok) {
+    return { message: "invalidLink", status: 400 };
+  }
+  const { user, token: authToken, expiration_time: expirationTime } = data;
+  const expires = new Date(expirationTime);
+  cookies().set(
+    "currentUser",
+    await encrypt({
+      id: user?.id,
+      role: user?.role,
+      abilities: user?.abilities,
+      token: authToken,
+      expirationTime,
+    }),
+    { expires, httpOnly: true },
+  );
+  return { message: "success", status: 200, role: user?.role };
 };
 
 export const signOut = async () => {

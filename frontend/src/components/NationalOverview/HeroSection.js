@@ -1,11 +1,10 @@
 "use client";
 
-import { Button } from "antd";
+import { Button, Skeleton } from "antd";
 import { CalendarOutlined, DownloadOutlined } from "@ant-design/icons";
 import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
-import { heroData } from "@/static/mocks/national-overview/hero";
 
-const textOn = (hex) => {
+const textOn = (hex = "#ffffff") => {
   const h = hex.replace("#", "");
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
@@ -15,9 +14,28 @@ const textOn = (hex) => {
     : "#ffffff";
 };
 
-const HeroSection = () => {
-  const { status, published, nextUpdate, headline, summary } = heroData;
-  const badgeBg = DROUGHT_CATEGORY_COLOR[status.category];
+const HeroSection = ({ hero }) => {
+  if (!hero) {
+    return (
+      <section className="relative w-full flex flex-col items-center text-center py-12 gap-6 min-h-[300px]">
+        <Skeleton.Button active size="small" style={{ width: 160 }} />
+        <Skeleton.Input active size="large" style={{ width: 340 }} />
+        <Skeleton.Node active style={{ width: 480, height: 70 }} />
+      </section>
+    );
+  }
+
+  const {
+    status = { category: 0, label: "Normal / No Drought" },
+    published = "-",
+    nextUpdate = "-",
+    headline = "Drought Situation Overview",
+    summary = "",
+  } = hero;
+
+  const catVal = status?.category ?? 0;
+  const badgeBg = DROUGHT_CATEGORY_COLOR[catVal] || "#b9f8cf";
+  const catLabel = catVal > 0 ? `D${catVal - 1}` : "Normal";
 
   return (
     <section className="relative w-full flex flex-col items-center text-center py-12 gap-6">
@@ -31,7 +49,7 @@ const HeroSection = () => {
             className="inline-block rounded px-2.5 py-1 text-xs font-semibold"
             style={{ backgroundColor: badgeBg, color: textOn(badgeBg) }}
           >
-            National Status: D{status.category - 1}
+            National Status: {catLabel}
           </span>
         </div>
 
@@ -50,15 +68,21 @@ const HeroSection = () => {
           {headline}
         </h1>
 
-        <p className="text-base text-neutral-600 max-w-2xl leading-7">
-          {summary}
-        </p>
+        <div
+          className="text-base text-neutral-600 max-w-2xl leading-7 prose prose-neutral"
+          dangerouslySetInnerHTML={{ __html: summary }}
+        />
 
         <Button
           type="primary"
           icon={<DownloadOutlined />}
           size="large"
-          className="mt-2 mb-32"
+          className="mt-2 mb-32 print:hidden"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.print();
+            }
+          }}
         >
           Download National Overview (PDF)
         </Button>

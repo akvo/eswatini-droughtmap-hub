@@ -1,0 +1,37 @@
+{
+  "administration": {
+    "id": 1,
+    "name": "Matsanjeni South",
+    "region": "Shiselweni",
+    "zone": "Middleveld"
+  },
+  "period": "2026-05",
+  "meta": {
+    "published_at": "2026-05-15",
+    "note": "C-4: Administration has no geometry and no area column, so area/total land have no source. The Figma values also disagree with each other (128 km2 = 12,800 ha, not 6,889) — placeholders, not targets. people_exposed and rainfed_ha are mocked for a second reason: their real source /indicators/{id} is IsAdmin-only, and Brief Builder is open to reviewers too. Susceptibility is NOT here — it comes live from /risk-level/{id}.vulnerability."
+  },
+  "data": [
+    { "key": "area", "label": "Area", "value": 128, "unit": "km2" },
+    {
+      "key": "people_exposed",
+      "label": "People exposed",
+      "value": 6420,
+      "unit": "people",
+      "description": "people exposed this cycle"
+    },
+    {
+      "key": "rainfed_ha",
+      "label": "Rain-fed land use",
+      "value": 1037,
+      "unit": "ha",
+      "description": "hectares"
+    },
+    {
+      "key": "total_land",
+      "label": "Total land",
+      "value": 6889,
+      "unit": "ha",
+      "description": "hectares"
+    }
+  ]
+}

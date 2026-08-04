@@ -2,8 +2,8 @@
 
 **Task ID**: WX-9 (Track 3 — closes [WX-8](citizen-science-weather-ui-and-emails.md) D-8 and [WX-6](citizen-science-weather.md) work plan §10.8)
 **Author**: Iwan Firmawan (with Claude)
-**Date**: 2026-07-29 (rev. 3 — WX-8 Part A landed; §B.3 middleware implemented ahead of this plan, see D-13. rev. 2 resolved the open questions)
-**Status**: Approved for implementation — **work-plan item 5 (middleware) is done**; everything else outstanding
+**Date**: 2026-08-04 (rev. 4 — integration bug-fix pass: WX-8 G-3 magic-link path fixed, `api()` now surfaces 4xx, taken Tinkhundla filtered out of the add-station dropdown, `soil_temp`→`soil_temperature` key mismatch corrected, and signed-in visitors now bounce off both sign-in screens by role. See **D-14**, **D-15**. rev. 3 — WX-8 Part A landed; §B.3 middleware implemented ahead of this plan, see D-13)
+**Status**: Approved for implementation — **work-plan item 5 (middleware) is done**; see D-14 for what rev. 4 corrected
 
 ---
 
@@ -89,7 +89,7 @@ Three related gaps followed from it. One is now closed:
 
 ### B.1 Magic-link exchange
 
-The email CTA lands on `/citizen-weather?token=…` (WX-8 G-3a fixes the path). The sign-in page reads the param, exchanges it, redirects.
+The email CTA lands on `/citizen-weather?token=…` — **WX-8 G-3a fixed 2026-08-04**: `email_helper.py` built `/citizen-science?token=…`, which is the backend's API prefix, not a Next.js route, so every sign-in email 404'd. The sign-in page reads the param, exchanges it, redirects.
 
 New server action in `lib/auth.js`, deliberately shaped as a sibling of `signIn`:
 
@@ -169,12 +169,23 @@ Verified against the dev server, logged out:
 - `/citizen-weather/admin` is in the existing admin-role block, so a signed-in reviewer is sent to `/unauthorized`. ✅
 - `/citizen-weather/observe` has **no role check** — any authenticated user reaches it. **Deliberate, D-13**: `USER_ROLES.observer` does not exist yet, so there is no role to compare against.
 
-**Still to do here** (unchanged from rev. 2): add `observer: 3` to `USER_ROLES`, `[USER_ROLES.observer]: "/citizen-weather/observe"` to `HOME_PAGE`, and then the observer-area role check — one clause, once the constant exists:
+**Done since rev. 3**: `USER_ROLES.observer = 3` and its `HOME_PAGE` entry exist, and the observer-area role check landed as the one clause this section predicted:
 
 ```js
 (role !== USER_ROLES.observer && pathName.startsWith("/citizen-weather/observe"))
   → /unauthorized
 ```
+
+**Added 2026-08-04 — sign-in screens bounce signed-in visitors (D-15).** `authRoutes` was `["/login"]` with a hardcoded `→ /profile`. `/citizen-weather` is the observer's sign-in screen and was not in it, so a signed-in observer landing there saw the "enter your email for a link" form instead of their station. Both screens now redirect by role via `HOME_PAGE` — the same table `login/page.js` already used, which the hardcoded `/profile` had been quietly contradicting.
+
+| Session | `/citizen-weather` | `/login` |
+|---|---|---|
+| observer | → `/citizen-weather/observe` | → `/citizen-weather/observe` |
+| admin | → `/publications` | → `/publications` |
+| reviewer | → `/reviews` | → `/reviews` |
+| anonymous | 200 (sign-in form) | 200 (sign-in form) |
+
+Exact match, not prefix — `/citizen-weather/observe` sits under a sign-in route and must not bounce. And `?token=` is exempt: a magic link has to reach the page even when a session already exists, because the cookie may belong to a different account and only the page can exchange the token (D-15).
 
 ---
 
@@ -340,7 +351,7 @@ The form currently collects more than the backend stores. Wiring means **deletin
 | **Preferred language** | **delete** — WX-6 §A.6, English v1 |
 | **Phone** | **delete** — not on `SystemUser` |
 
-Error mapping (all 400): email already taken (checked including soft-deleted), Inkhundla already has an active observer, unknown sensor key. The second is the one users will hit — surface it on the Inkhundla field, with the existing observer's name if the dashboard row is to hand.
+Error mapping (all 400): email already taken (checked including soft-deleted), Inkhundla already has an active observer, unknown sensor key. **Amended by D-14**: the second is now *prevented* rather than reported — the dropdown only lists Tinkhundla without an observer. The other two surface verbatim from the API.
 
 ### D.6 Nudge modal — `components/CitizenWeather/NudgeModal.js`
 
@@ -567,6 +578,41 @@ A correction leaves `submitted_at` untouched and moves `updated_at` (`auto_now`)
 **Follow-up**: this becomes a one-clause change when item 2 lands (§B.3). Until then the interim state is: an admin can open the observer screens.
 `// ponytail: one clause deferred, not a permission model deferred — the server was always the boundary.`
 
+### D-14: Four integration bugs found by exercising the wired screens (added rev. 4, 2026-08-04)
+
+None of these were design gaps — every one was code disagreeing with a contract this plan already states correctly. Recorded because three of them **failed silently**, which is the property worth remembering.
+
+**(a) `api()` resolved on 4xx.** `lib/api.js` never checked `res.ok`, so a 400 resolved with the error body as if it were data. Every caller's `catch` was dead code for HTTP errors — ~40 files — and the add-station form reported *"Station created and welcome email sent!"* on a rejected POST. Now rejects with the DRF body flattened to one message (`{field: [msg]}`, `{"detail": msg}`, and bare `[msg]` all handled). The page's keyword-sniffing (`errMsg.includes("email")`) is deleted; the backend's own wording is shown.
+
+`// ponytail: one check at the shared fetch, not a guard in forty callers.`
+
+**Known ceiling**: Next.js masks Server Action error messages in production builds, so the backend's text shows in dev and the caller's fallback shows in prod. Upgrade path if that matters: return `{ok, status, data}` and migrate the callers. Not done — today's behaviour is unambiguously worse than the fallback.
+
+**(b) Taken Tinkhundla were selectable.** §D.5 specified surfacing the "already has an active observer" 400 on the field. Prevention is cheaper and needs no new endpoint: `admin_network()` rows are keyed by `administration_id` (`citizen_science.py:141`), so the dashboard payload *is* the taken set. The add form fetches it alongside `/iks/administrations` and subtracts. The two agree on "taken" by construction — `active_observers()` and the serializer's `validate_administration_id` both filter `role=observer` through the soft-delete-excluding manager, so a deleted observer frees its Inkhundla in the dropdown exactly when it frees it server-side.
+**Accepted cost**: the list is a page-load snapshot, so two admins adding at once can still collide — that 400 now surfaces properly via (a). Fails closed: if the stations call fails, the select stays empty rather than offering a taken Inkhundla.
+
+**(c) `SENSOR_OPTIONS` used `soil_temp`; `CS_SENSORS` uses `soil_temperature`.** The backend abbreviates most sensor keys but not this one, so the POST 400'd on an unknown choice. §6 below had it right — the mock was the outlier, and the only `soil_temp` left in the frontend. **This was a double bug**: `SENSOR_TO_FIELD` in the observer form has no `soil_temp` entry either, so a station created with it would never have shown its observer the soil-temperature input. Fixed in the mock; pinned by a test asserting the key list against `CS_SENSORS`.
+
+**(d) The `CitizenScience` ability rows were never seeded.** §7 already requires re-running `generate_roles_n_abilities_seeder` after deploy — this is what it looks like when that is skipped: `<Can>` denies an admin, and §C.1's *"denial renders a blank page, not a redirect"* plays out exactly as predicted, on the whole `/citizen-weather/admin` subtree. §9 guessed the missing **provider** would be the likely ship-blocker; the provider was there and the **data** was missing, which is indistinguishable on screen. Abilities are also frozen into the `currentUser` cookie at sign-in, so re-seeding is not enough — **existing sessions must sign out and back in.** That second half is the part not written down anywhere before now.
+
+`// ponytail: <Can> failing closed is silent by design. If a whole route renders blank, check the ability rows before the component.`
+
+### D-15: Signed-in visitors are redirected off both sign-in screens, by role (added rev. 4, 2026-08-04)
+
+**Decision (Iwan)**: a session on `/login` or `/citizen-weather` redirects to that role's home rather than rendering a sign-in form to someone already signed in.
+
+**Destination comes from `HOME_PAGE`**, not a constant. The middleware previously hardcoded `/profile` for everyone, which was already wrong twice over: `login/page.js` has always redirected through `HOME_PAGE` after a successful sign-in, so the two disagreed; and `/profile` is a staff screen inside `AppShell`, so an observer bounced there would get the wrong shell and no data. Reusing the existing table removes the disagreement instead of adding a second one.
+**Consequence worth naming**: admins and reviewers hitting `/login` with a live session now land on `/publications` / `/reviews` instead of `/profile`. That is a behaviour change beyond the observer fix, and it is the direction `login/page.js` already pointed.
+
+**Two boundaries this rule must not cross:**
+
+- **Exact match, not prefix.** `/citizen-weather` is a sign-in screen and `/citizen-weather/observe` is the app underneath it. `protectedRoutes` is deliberately prefix-matched (§B.3); `authRoutes` is deliberately not. Sharing the matcher would bounce observers out of the app they just signed into.
+- **`?token=` is exempt.** A magic link must reach the page even when a session exists — the browser may hold a different account's cookie (an admin testing an observer's link), and only the page can exchange the token. Redirecting would sign them in as the wrong user and drop the link with no error.
+
+`// ponytail: two lines and an existing lookup table, not a redirect policy module.`
+
+Covered by `src/__tests__/middleware.test.js` — 12 cases across all three roles, anonymous, the prefix boundary and the token exemption. Verified against the dev server with minted session cookies before the test was written.
+
 ## 6. Type/Constant Mappings
 
 | Frontend | Backend constant | Value |
@@ -594,7 +640,7 @@ A correction leaves `submitted_at` untouched and moves `updated_at` (`auto_now`)
 - [ ] Deleting mock exports is safe once their importers are wired — a `grep` for each removed export is part of A11 below.
 
 ### Seeder/CLI Compatibility
-- [ ] `generate_roles_n_abilities_seeder` must be re-run on every environment after deploy; it is `update_or_create`, so re-running is idempotent.
+- [ ] `generate_roles_n_abilities_seeder` must be re-run on every environment after deploy; it is `update_or_create`, so re-running is idempotent. **Not optional, and not sufficient on its own** — skipping it blanks the whole admin subtree (D-14d), and because abilities are baked into the `currentUser` cookie at sign-in, anyone already signed in must sign out and back in afterwards.
 - [ ] `fake_citizen_weather_seeder` already creates observers with stations and readings — the fastest way to exercise every screen locally.
 - [ ] No new management commands.
 

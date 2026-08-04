@@ -1,86 +1,101 @@
-"use client";
-
 import Link from "next/link";
+import { Button, Skeleton } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
-import {
-  WaterEnergyIcon,
-  AgricultureIcon,
-  EnvironmentIcon,
-  HeartPulseIcon,
-} from "@/components/Icons";
-import { responseActivitiesData } from "@/static/mocks/national-overview/response-activities";
+import { SECTOR_CARD_ICONS } from "@/static/config";
 
-const SECTOR_ICONS = {
-  water: <WaterEnergyIcon size={20} />,
-  agriculture: <AgricultureIcon size={20} />,
-  environment: <EnvironmentIcon size={20} />,
-  health: <HeartPulseIcon size={20} />,
-};
+// response-activities mock key -> SECTORS id in static/config (owns the icons)
+const SECTOR_ID = { water: 3, agriculture: 1, environment: 5, health: 2 };
 
-const SectorCard = ({ sector }) => {
-  const icon = SECTOR_ICONS[sector.key];
-  return (
-    <div className="p-4 flex flex-col gap-4">
+const Stat = ({ value, label }) => (
+  <div className="flex-1 flex flex-col gap-0.5">
+    <span className="text-sm leading-[21px] text-primary">{value}</span>
+    <span className="text-xs leading-[18px] text-[#5b616d]">{label}</span>
+  </div>
+);
+
+const SectorCard = ({ sector }) => (
+  <div className="p-4 flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        {icon}
-        <h4 className="text-sm font-semibold text-neutral-800">
+        <span className="shrink-0 flex items-center size-6 [&>img]:!size-6">
+          {SECTOR_CARD_ICONS[SECTOR_ID[sector.key]]}
+        </span>
+        <h4 className="flex-1 text-base leading-6 text-[#11142d]">
           {sector.label}
         </h4>
       </div>
-      <div className="flex w-full pb-3 border-b border-neutral-200">
-        <div className="w-1/2">
-          <span className="text-xl font-bold text-primary">
-            {sector.activities}
-          </span>
-          <p className="text-xs text-neutral-400">Activities</p>
-        </div>
-        <div className="w-1/2">
-          <span className="text-xl font-bold text-primary">
-            {sector.tinkhundla}
-          </span>
-          <p className="text-xs text-neutral-400">Tinkhundla</p>
-        </div>
+      <div className="flex gap-3">
+        <Stat value={sector.activities} label="Activities" />
+        <Stat value={sector.tinkhundla} label="Tinkhundla" />
       </div>
-      <p className="text-xs text-neutral-500 leading-5">{sector.description}</p>
     </div>
-  );
-};
+    <div className="flex flex-col gap-4">
+      <hr className="border-t border-cardBorder" />
+      <p className="text-xs leading-[18px] text-textSecondary">
+        {sector.description}
+      </p>
+    </div>
+  </div>
+);
 
-const ResponseActivities = () => {
-  const { lastUpdated, summary, sectors, priorityAreasHref } =
-    responseActivitiesData;
+const ResponseActivities = ({ responseActivities }) => {
+  if (!responseActivities) {
+    return (
+      <section className="w-full">
+        <div className="border border-neutral-200 bg-white p-4 min-h-[240px] flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+            <Skeleton.Input active size="small" style={{ width: 200 }} />
+            <Skeleton.Input active size="small" style={{ width: 140 }} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <Skeleton.Node active style={{ width: "100%", height: 90 }} />
+            <Skeleton.Node active style={{ width: "100%", height: 90 }} />
+          </div>
+        </div>
+      </section>
+    );
+  }
+  const {
+    lastUpdated = "-",
+    summary = "No active response activities recorded.",
+    sectors = [],
+  } = responseActivities || {};
 
   return (
     <section className="w-full">
-      <div className="border border-neutral-200 bg-white">
+      <div className="border border-cardBorder bg-white">
         {/* Header + Summary */}
-        <div className="p-4 border-b border-neutral-200">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-neutral-800">
+        <div className="flex flex-col gap-1 p-4">
+          <div className="flex items-center gap-4">
+            <h2 className="flex-1 text-xl leading-[30px] font-medium text-textBody">
               Response Activities
             </h2>
-            <span className="flex items-center gap-1.5 text-xs text-neutral-400 shrink-0">
-              <CalendarOutlined /> last updated:{" "}
-              <strong className="text-neutral-600">{lastUpdated}</strong>
+            <span className="shrink-0 flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-sm leading-[21px] text-textSecondary">
+                <CalendarOutlined /> last updated:
+              </span>
+              <span className="rounded border border-cardBorder px-2 py-0.5 text-sm leading-[21px] text-textBody">
+                {lastUpdated}
+              </span>
             </span>
           </div>
-          <p className="text-sm text-neutral-500 leading-6">{summary}</p>
+          <p className="text-sm leading-[21px] text-textSecondary">{summary}</p>
         </div>
 
-        {/* Sector cards - table-like 2x2 grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 [&>div]:border-b [&>div]:border-neutral-200 [&>div:nth-child(odd)]:md:border-r">
+        {/* Sector cards — 2x2 grid. ponytail: gap-px over a cardBorder backdrop
+          draws the design's 1px card borders without per-cell border rules */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-cardBorder border-y border-cardBorder [&>div]:bg-white">
           {sectors.map((sector) => (
             <SectorCard key={sector.key} sector={sector} />
           ))}
         </div>
 
-        {/* Footer link */}
-        <div className="text-center p-4 border-t border-neutral-200">
-          <Link
-            href={priorityAreasHref}
-            className="text-sm font-medium text-primary underline underline-offset-2"
-          >
-            Open Response Activities page per Inkhundla
+        {/* Footer action */}
+        <div className="p-4">
+          <Link href="/brief-builder" className="block">
+            <Button block size="large">
+              Open Response Activities page per Inkhundla
+            </Button>
           </Link>
         </div>
       </div>
