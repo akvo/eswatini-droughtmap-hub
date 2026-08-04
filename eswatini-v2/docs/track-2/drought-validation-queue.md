@@ -89,7 +89,11 @@ Goal:
 
 > **The AC asked for six authored fields; only one is authored.** The title is a template over `year_month`, and the four sector narratives come from the activity library — see D-4 and D-5. The modal therefore writes exactly one value, `narrative`, which already exists on `Publication`.
 >
-> The AC's phrasing *"will be placed at the national overview after publication"* is **not** satisfied by this doc alone. Track 1's National Overview still renders `mocks/national-overview/hero.js` and `response-activities.js`; re-pointing it is a separate Track 1 change (§10). Do not tick that box off this work.
+> The AC's phrasing *"will be placed at the national overview after publication"* is **not** satisfied by this doc alone; re-pointing Track 1 was a separate change (§10).
+> **Resolved 2026-08-04** by TRACK1-NAT-001 (#173): the National Overview now
+> reads `/api/v1/insights/hero` and `/api/v1/insights/response-activities`, so
+> `narrative` written by this modal surfaces there directly. The
+> `mocks/national-overview/` fixtures have been deleted.
 
 ### Technical Acceptance Criteria
 

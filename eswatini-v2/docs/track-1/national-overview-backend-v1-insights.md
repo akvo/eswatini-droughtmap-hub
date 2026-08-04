@@ -5,7 +5,13 @@
 **Task ID**: [#159] T1-INS-001
 **Author**: Galih Pratama
 **Date**: 2026-07-27
+**Last reviewed against code**: 2026-08-04
 **Status**: Implemented
+
+> This document has been reconciled with the shipped code in
+> `backend/api/v1/v1_insights/`. Where the original design and the
+> implementation diverged, the implementation is described and the divergence
+> is called out inline.
 
 ---
 
@@ -39,7 +45,9 @@ Goal:
 - [x] Visitor (not signed in) lands on the National Overview and sees the national status pill (worst widespread D-class from the latest published Publication) and a one-line summary sentence.
 - [x] A "Download National Overview (PDF)" button is present (frontend — already rendered).
 - [x] 4 Regions / 6 Agro-ecological zones stacked-bar chart is populated from real validated_values data.
-- [x] KPI cards (rainfall deviation, temperature deviation, active stations, IKS field reports) show real aggregated values.
+- [ ] KPI cards (rainfall deviation, temperature deviation, active stations, IKS field reports) show real aggregated values.
+  **Partial**: active stations and field reports are real; `rainfall.value` and
+  `temperature.value` are hardcoded `0` placeholders — see §4.2 `metrics`.
 - [x] Response Activities section shows real sector data derived from active ResponseActivity records.
 - [x] Map defaults to the D-class layer using the latest published Publication's validated_values.
 
@@ -60,11 +68,15 @@ Goal:
 
 | Endpoint | Primary source tables |
 |----------|-----------------------|
-| `hero` | `publications` (latest published, status=3) |
+| `hero` | `publications` (latest published, status=3 **and** `published_at IS NOT NULL`) |
 | `zones` | `publications.validated_values` + `administrations` |
-| `metrics` | `weather_station_daily_aggregates`, `weather_administration_normals`, `kobo_data` |
-| `response-activities` | `response_activities` |
+| `metrics` | `weather_stations` (via `station_health()`), `kobo_data`. **Not yet**: `weather_station_daily_aggregates`, `weather_administration_normals` — the rainfall/temperature deviation query was never written |
+| `response-activities` | `response_activities` + `v1_activity.trigger_evaluation` |
 | `map-data` | Static config + latest `publications.year_month` |
+
+> **"Published" means `status=published` AND `published_at IS NOT NULL`.**
+> `hero` and `zones` both apply this. A row flagged published but never actually
+> published must not surface on the public page.
 
 ---
 
@@ -76,7 +88,7 @@ Goal:
 |--------|-----|---------|------|
 | GET | `/api/v1/insights/hero` | National status pill + summary | None |
 | GET | `/api/v1/insights/zones?group=regions` | Breakdown by region / agro-eco zone | None |
-| GET | `/api/v1/insights/metrics` | KPI cards (rainfall, temp, stations, IKS) | None |
+| GET | `/api/v1/insights/metrics[?inkhundla_id=]` | KPI cards (rainfall, temp, stations, IKS) | None |
 | GET | `/api/v1/insights/response-activities` | Sector activity summary | None |
 | GET | `/api/v1/insights/map-data` | Layer config + latest date | None |
 
@@ -100,20 +112,36 @@ Goal:
 }
 ```
 
-**Logic**:
-- Query: `Publication.objects.filter(status=PublicationStatus.published).order_by('-year_month').first()`
-- `status.category`: max category in `validated_values` (excluding -9999)
+**Logic** (as implemented in `get_hero_data()`):
+- Query: `Publication.objects.filter(status=published, published_at__isnull=False).order_by('-year_month', '-id').first()`
+- `status.category`: max category in `validated_values` (excluding `-9999` and `None`)
 - `status.label`: mapped via `DroughtCategory.FieldStr`
-- `published`: `published_at` formatted `"DD MMM YYYY"`
-- `nextUpdate`: `published_at + relativedelta(months=1)`
-- `headline` / `summary`: from `Publication.narrative`, split on first `\n`
+- `published`: `published_at` formatted `"DD MMM YYYY"`, falling back to `year_month` as `"MMM YYYY"`
+- `nextUpdate`: `(published_at or created_at) + relativedelta(months=1)`
+- `headline`: generated — `"Drought situation overview — {MMMM YYYY}"` (OQ-1c)
+- `summary`: `Publication.narrative` verbatim. It is **HTML**, and the frontend
+  renders it with `dangerouslySetInnerHTML` in `HeroSection.js`.
 
-> **Open Question 1**: The mock separates `headline` (one sentence) from `summary` (paragraph),
-> but the DB has a single `narrative` TextField. Options:
-> (a) split on first `\n`,
-> (b) add a `headline` VARCHAR column to `Publication`,
-> (c) derive a generic headline like `"Latest drought conditions — {year_month}"` and use
-> the full narrative as `summary`.
+**No-publication fallback** (actual response):
+
+```json
+{
+  "status": { "category": 0, "label": "Normal / No Drought" },
+  "published": "-",
+  "nextUpdate": "-",
+  "headline": "Drought situation overview — No active publication",
+  "summary": "No published drought map is currently available."
+}
+```
+
+> **Known gap — false-positive national status.** With no publication the hero
+> still returns `category: 0`, which the page renders as a green
+> "National Status: Normal" pill. Category `0` is a real verdict
+> ("Wet/normal conditions"), so this asserts the country is drought-free when
+> nothing has been published. `get_zones_data()` was fixed to use
+> `DroughtCategory.none` (-9999) for exactly this reason; `get_hero_data()`
+> has **not** been given the same treatment yet. Fixing it needs a
+> `DROUGHT_CATEGORY_CODE[-9999]` pill in `HeroSection.js` as well.
 
 ---
 
@@ -123,7 +151,7 @@ Goal:
 {
   "zones": {
     "group": "regions",
-    "period": "2026-05",
+    "period": "2026-05",             // null when nothing is published
     "data": [
       { "id": 1, "label": "Hhohho", "value": 2, "confidence": 61 }
     ]
@@ -146,7 +174,10 @@ Goal:
       {
         "administration_id": 1,
         "group": "tinkhundla",
-        "data": [{ "key": 1, "value": 6 }]
+        "data": [
+          { "key": 1, "value": 6, "names": ["Mbabane East", "..."] },
+          { "key": -9999, "value": null, "names": [] }
+        ]
       }
     ]
   }
@@ -157,14 +188,41 @@ Goal:
 - `Administration.region` holds 4 values: Hhohho, Lubombo, Manzini, Shiselweni.
 - For each region, aggregate `validated_values` category counts from latest published Publication.
 - `zones.data[].value`: modal (most common) category in that region.
-- `zones.data[].confidence`: percentage of Tinkhundla in the modal category.
-- `breakdowns.data[].data`: count of Tinkhundla per D-class key (0-5).
-- `trends`: rolling 6-month Publications -> mean CDI category per region per month.
-- `trends[].value`: `"worsening"|"stable"|"improving"` via linear slope of the 6-month series.
+- `zones.data[].confidence`: percentage of **all** Tinkhundla in the group that
+  sit in the modal category — the denominator is the whole group, so missing
+  data lowers confidence rather than being silently excluded.
+- `breakdowns.data[].data`: **7 entries** — one per D-class key `0..5` plus one
+  for `-9999` (No Data). `value` is `null`, not `0`, when a class is unused.
+  `names` carries the Inkhundla names in that class (used by the doughnut tooltip).
+- `trends`: rolling 6-month published Publications -> mean CDI category per group per month.
+- `trends[].value`: `"worsening" | "stable" | "improving" | "unknown"`, from the
+  linear slope of the series.
 
 **Logic** (group=`climatic`):
 - `Administration.zone` stores 6 agro-ecological zones (`AdministrationZones` enum).
 - Same aggregation grouped by zone; id values 101-106 (sequential per zone label order).
+
+#### No-data semantics (implemented 2026-08-04)
+
+The service originally defaulted every missing category to `0`. Category `0` is
+`"Wet/normal conditions"` — a real verdict — so an unpublished month rendered as
+a confident nationwide "no drought". Current behaviour:
+
+| Situation | Response |
+|---|---|
+| No published publication | `zones.period` is `null` |
+| Inkhundla has no category, or `null`, or `-9999` | Excluded from `latest_vals`; counted in the `-9999` breakdown slice |
+| Group has no categorised Inkhundla at all | `zones.data[].value = -9999`, `confidence = 0` |
+| Month has no categorised Inkhundla for a group | That month is **omitted** from `trends[].data` — it is not scored `0` |
+| Fewer than 2 months in the series | `trends[].value = "unknown"` (not `"stable"`) |
+
+`is_validated()` in `api/v1/v1_publication/constants.py` is the single
+definition of "a real, admin-assigned D-class"; `get_zones_data()` calls it
+rather than re-testing for `None`/`-9999`.
+
+Frontend counterparts: `DROUGHT_CATEGORY_CODE[-9999] === "No data"` renders the
+zone chip, and `TREND.unknown` renders `– NO TREND DATA`
+(`frontend/src/components/ZoneBreakdown.js`).
 
 > **Open Question 2**: Are `Administration.region` and `Administration.zone` reliably populated
 > for all 59 Tinkhundla? A data-quality check and possible backfill may be required before go-live.
@@ -176,46 +234,63 @@ Goal:
 ```json
 {
   "rainfall": {
-    "value": -58,
+    "value": 0,
     "unit": "mm",
-    "note": "Apr-May cumulative",
+    "note": "May 2026 deviation",
     "label": "Precipitation vs 30-yr normal",
-    "history": [{ "key": "2025-06", "value": 15 }]
+    "history": [{ "key": "2025-06", "value": 0 }]
   },
   "temperature": {
-    "value": 20.0,
-    "unit": "degC",
-    "note": "May mean Tmax - all stations",
+    "value": 0.0,
+    "unit": "°C",
+    "note": "May 2026 mean Tmax deviation",
     "label": "Temperature vs 30 yr Normal",
-    "history": [{ "key": "2025-06", "value": 18 }]
+    "history": [{ "key": "2025-06", "value": 0 }]
   },
   "activeStations": {
     "online": 54,
     "total": 59,
     "onlinePct": 87,
     "label": "Active stations",
-    "note": "5 Offline  2 Awaiting QC"
+    "note": "5 Offline  2 Degraded"
   },
   "fieldReports": {
     "count": 142,
-    "verifiedPct": 87,
+    "verifiedPct": 100,
     "label": "Field reports",
-    "note": "in last 30 days  87% verified"
+    "note": "in last 30 days  100% verified"
   }
 }
 ```
 
-**Logic**:
-- `rainfall.value`: national precipitation deviation = `sum(actual) - sum(normal)` for latest month.
-  - Actual: `StationDailyAggregate` summed per month, parameter=`precipitation`.
-  - Normal: `AdministrationNormal` average, parameter=`precipitation`, month=latest_month.
-  - `history`: last 12 months rolling deviation.
-- `temperature.value`: national mean Tmax deviation vs 30-yr normal.
-  - Same pattern using parameter=`tmax`.
-  - `history`: last 12 months rolling.
-- `activeStations`: derived via existing `station_health()` service in `v1_weather/services.py`.
-- `fieldReports`: `KoboData.objects.filter(submission_time__gte=30_days_ago).count()`.
-  `verifiedPct`: placeholder `100` until `KoboData` gets a verified flag (see OQ-3).
+> `rainfall.value` and `temperature.value` are **placeholders fixed at 0** — see
+> the logic notes below. Everything else on this endpoint is real.
+
+**Query param**: `?inkhundla_id={id}` (optional, added by TRACK1-NAT-001). When
+set, station health filters to the Inkhundla's region and KoboData filters on the
+Inkhundla name, each falling back to the national figure when that narrower
+query returns nothing. The labels/notes are suffixed with the Inkhundla name.
+
+**Logic** (as implemented in `get_metrics_data()`):
+- `activeStations`: real — `WeatherStation.objects.filter(is_active=True)` scored
+  through `station_health()` in `v1_weather/services.py`. `note` is
+  `"{offline} Offline  {degraded} Degraded"`.
+- `fieldReports.count`: real — `KoboData.objects.filter(submission_time__gte=30_days_ago).count()`.
+  `verifiedPct` is a constant `100` (OQ-3).
+- `rainfall.value` / `temperature.value`: **NOT IMPLEMENTED**. Both are
+  hardcoded `0`, and `history` is a list of `{key: "<YYYY-MM>", value: 0}` — one
+  entry per published publication in the last 12, so the mini bar charts render a
+  flat zero series. The `StationDailyAggregate` / `AdministrationNormal`
+  deviation query described below was never written.
+
+> **Deferred design** (the intended implementation, for whoever picks this up):
+> - `rainfall.value`: `sum(actual) - sum(normal)` for the latest month —
+>   actual from `StationDailyAggregate` (parameter=`precipitation`), normal from
+>   `AdministrationNormal` for that month; `history` = 12-month rolling deviation.
+> - `temperature.value`: same pattern with parameter=`tmax`.
+> - Tracked as a separate weather-aggregate task; see
+>   `thirty-year-normals` notes — CHIRPS precipitation and AgERA5 tmean normals
+>   exist, but tmax/tmin normals still have no source.
 
 > **Open Question 3**: `KoboData` has no `verified` field. Options:
 > (a) return `verifiedPct: 100` as placeholder,
@@ -239,7 +314,7 @@ Goal:
       "description": "..."
     }
   ],
-  "priorityAreasHref": "/insights/priority"
+  "priorityAreasHref": "/detailed-insights/risk-level"
 }
 ```
 
@@ -254,17 +329,19 @@ Goal:
   | 5 (env) | `"environment"` | Environment and energy |
   | 2 (health) | `"health"` | Health and nutrition |
 
-- `tinkhundla`: placeholder `0` unless a `PublicationActivity` linking table exists (OQ-5).
-- `description`: joined description text of active activities in that sector.
-- `summary`: auto-generated string summarizing total triggered activities.
-- `lastUpdated`: latest `published_at` from the most recent published Publication.
-
-> **Open Question 5**: `tinkhundla` count per sector requires knowing which Tinkhundla had a
-> given activity triggered per publication cycle. Is there a `PublicationActivity` linking table?
-> If not, return `0` as placeholder.
->
-> **Affects**: `sectors[].tinkhundla` in the `GET /api/v1/insights/response-activities` response
-> and the logic in `InsightsResponseActivitiesView` / `services.py`.
+- `tinkhundla`: computed live (OQ-5 resolved — no linking table). For each active
+  activity in the sector, `activity_passes(act.triggers, row)` is evaluated
+  against every row of `build_dataset()`; the count is the number of **distinct**
+  Tinkhundla matched by at least one activity in that sector.
+- `description`: joined description text of active activities in that sector,
+  falling back to `"Active response interventions for {sector_label}."`.
+- `summary`: `"{N} public response activities currently active across Eswatini."`
+  where `N` is the total active activity count across the 4 sectors.
+- `lastUpdated`: `published_at` of the most recent published Publication, falling
+  back to today's date when none exists.
+- `priorityAreasHref`: constant `"/detailed-insights/risk-level"`.
+- All 4 sectors are always present in `sectors[]`, with zeroes when a sector has
+  no active activities — the frontend renders a fixed 2×2 grid.
 
 ---
 
@@ -350,16 +427,27 @@ sequenceDiagram
 
 ---
 
-## 6. Frontend Wiring (Subsequent Task)
+## 6. Frontend Wiring (Subsequent Task — DONE)
 
-| Component | Mock import to remove | New API call |
-|-----------|----------------------|--------------|
-| `HeroSection.js` | `heroData` from `hero.js` | `api("GET", "/insights/hero")` |
-| `BreakdownByZones.js` | all 6 exports from `zones.js` | `api("GET", "/insights/zones?group=regions")` + `?group=climatic` |
-| `DroughtMapSection.js` | `metricsData`, `mapData` | `api("GET", "/insights/metrics")`, `api("GET", "/insights/map-data")` |
-| `ResponseActivities.js` | `responseActivitiesData` | `api("GET", "/insights/response-activities")` |
+Delivered under TRACK1-NAT-001 (#173); see
+[`national-overview-backend-integration.md`](national-overview-backend-integration.md).
+All 8 fetches (5 insights + `/maps` + `/dates`) happen in one server-side
+`Promise.all` in `frontend/src/app/page.js` and are passed down as props; no
+NationalOverview component imports a mock any more.
 
-> Frontend wiring is a separate task. This spec covers backend only.
+| Component | Prop it now receives | Source endpoint |
+|-----------|----------------------|-----------------|
+| `HeroSection.js` | `hero` | `/insights/hero` |
+| `BreakdownByZones.js` | `regionsData`, `climaticData` | `/insights/zones?group=regions` + `?group=climatic` |
+| `DroughtMapSection.js` | `metrics`, `mapData` | `/insights/metrics`, `/insights/map-data` |
+| `ResponseActivities.js` | `responseActivities` | `/insights/response-activities` |
+
+`frontend/src/static/mocks/national-overview/` was **deleted** (2026-08-04) once
+every section was reading a live endpoint. Per CLAUDE.md those files existed to
+stand in for a missing API; with all 5 endpoints shipped they were a second,
+drifting copy of the contract. The contract now lives in §4.2 of this document
+and in `backend/api/v1/v1_insights/serializers.py`. The one Jest fixture that
+needed a payload (`ResponseActivities.test.js`) declares it inline.
 
 ---
 
@@ -387,6 +475,17 @@ sequenceDiagram
 | Unit | Each `services.py` function (aggregation logic, slope calculation) |
 | Integration | All 5 views with seeded test DB, response shape vs mock contract |
 | Edge cases | Empty `validated_values`, no published Publications, no weather data |
+
+16 tests in `api/v1/v1_insights/tests/test_views.py`. The no-data guarantees are
+each pinned by a test, so a regression to "everything is Normal" fails the suite:
+
+| Test | Guarantee |
+|---|---|
+| `test_zones_endpoint_no_publication_is_no_data_not_normal` | `period` null, `value = -9999`, `confidence = 0`, `-9999` breakdown slice populated with names, `trends[].value = "unknown"` |
+| `test_zones_endpoint_unpublished_publication_is_ignored` | `status=published` with `published_at=None` does not surface |
+| `test_zones_endpoint_published_keeps_real_category` | A real category still reports normally (guards over-correction) |
+| `test_zones_endpoint_no_data_category_is_not_averaged` | `-9999` in `validated_values` never enters the trend mean |
+| `test_compute_linear_slope_unit` | `[]` and single-point series return `"unknown"` |
 
 ```bash
 python manage.py test api.v1.v1_insights
@@ -426,8 +525,22 @@ python manage.py test api.v1.v1_insights
 
 - [x] **OQ-6** — `zones` endpoint, `trends` computation (`services.py`) — **RESOLVED** (by design):
   Analysis of time-series services across the codebase (`v1_weather.services.monthly_series`) and `frontend/src/components/ZoneBreakdown.js` shows that returning available months (Option a) is the standard pattern.
-  `trends[].data` will return available monthly mean CDI values (1–6 entries). If fewer than 2 months exist, slope calculation defaults `trend.value` to `"stable"`.
-  **Affects**: `trends[].data` in `GET /api/v1/insights/zones`.
+  `trends[].data` returns available monthly mean CDI values (0–6 entries) — months with no categorised Inkhundla for the group are omitted, not scored 0.
+  **Amended 2026-08-04**: with fewer than 2 entries `compute_linear_slope()` returns
+  `"unknown"`, **not** `"stable"`. "Stable" claims the drought level held steady,
+  which is a measurement that was never taken. The frontend renders `unknown` as
+  `– NO TREND DATA`.
+  **Affects**: `trends[].data` and `trends[].value` in `GET /api/v1/insights/zones`.
+
+- [x] **OQ-7** — no-data vs "Normal" (`services.py`) — **RESOLVED 2026-08-04** (in code):
+  `get_zones_data()` defaulted absent categories to `0`, which is the real verdict
+  "Wet/normal conditions" — so an empty database rendered as a confident,
+  nationwide "no drought". Resolved by routing every missing / `null` / `-9999`
+  category to `DroughtCategory.none` and surfacing it as its own breakdown slice.
+  See "No-data semantics" under §4.2 `zones`.
+  **Still open for `hero`**: `get_hero_data()` continues to return `category: 0`
+  when there is no publication.
+  **Affects**: `GET /api/v1/insights/zones`, and `GET /api/v1/insights/hero` (unfixed).
 
 ---
 
@@ -449,7 +562,9 @@ python manage.py test api.v1.v1_insights
 
 ## 12. References
 
-- Mock contracts: `frontend/src/static/mocks/national-overview/`
+- Response contracts: §4.2 above + `backend/api/v1/v1_insights/serializers.py`
+  (the former `frontend/src/static/mocks/national-overview/` fixtures were
+  deleted 2026-08-04 — recoverable from git history if a payload sample is needed)
 - Frontend components: `frontend/src/components/NationalOverview/`
 - Page entry point: `frontend/src/app/page.js`
 - `DroughtCategory`, `PublicationStatus`: `backend/api/v1/v1_publication/constants.py`
