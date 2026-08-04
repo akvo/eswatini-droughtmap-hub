@@ -163,19 +163,14 @@ export const getProfileDropdownItems = (user) => {
 
   const navItems = [
     isAdmin && {
-      key: "nav-validation",
-      label: "Drought validation",
+      key: "nav-publications",
+      label: "CDI publications",
       url: "/publications",
     },
     {
       key: "nav-reviews",
-      label: "Drought reviews",
-      url: isAdmin ? "/publications" : "/reviews",
-    },
-    isAdmin && {
-      key: "nav-publications",
-      label: "CDI publications",
-      url: "/publications",
+      label: isAdmin ? "Drought validation" : "Drought reviews",
+      url: isAdmin ? "/validations" : "/reviews",
     },
     isAdmin && {
       key: "nav-activity",
