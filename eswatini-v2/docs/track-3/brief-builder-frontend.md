@@ -192,7 +192,7 @@ page cannot actually use and one wrong path.
 | GET | `/api/v1/iks/administrations` | Inkhundla dropdown | AllowAny | `BriefContextProvider` |
 | GET | `/api/v1/users/me` | `technical_working_group`, for the Forward-to gate | IsAuthenticated | `BriefContextProvider` |
 | GET | `/api/v1/cdi/administrations/{id}/stats` | D-class chip, cycle, zone, **24-month strip** (`breakdown` + `meta`) and the derived comparison note | AllowAny | `useBriefData` |
-| GET | `/api/v1/risk-level/{id}` | Susceptibility tile (`vulnerability`) | AllowAny | `useBriefData` |
+| GET | `/api/v1/risk-levels/{id}` | Susceptibility tile (`vulnerability.value`) | AllowAny | `useBriefData` |
 | GET | `/api/v1/activities?status=2` | Response activities | IsAuthenticated + `CanManageActivity` | `useBriefData` |
 | GET | `/api/v1/weather/administrations/{id}/series` | Both charts | AllowAny | `useWeatherSeries` (inside the reused charts) |
 | GET | `/api/v1/weather/administrations/{id}/normals` | 30-year average lines | AllowAny | `useWeatherNormals` |
@@ -233,7 +233,7 @@ per C-1.* The seeded narrative draft (D-8).
 marker disappears on its own once BB-2 serves user-authored text.
 
 **`frontend/src/static/mocks/brief-builder/exposure.json`** — *new in rev. 3,
-per C-5.* The five percentage bars. `/risk-level/{id}` returns exposure as raw
+per C-5.* The five percentage bars. `/risk-levels/{id}` returns exposure as raw
 absolutes with no denominator, so the percentages cannot be computed from it —
 the mock supplies them pre-normalised and BB-2 decides the denominator.
 
@@ -252,7 +252,7 @@ the mock supplies them pre-normalised and BB-2 decides the denominator.
 }
 ```
 
-Values are 0–1 with `meta.format: "percent"`, matching how `/risk-level/{id}`
+Values are 0–1 with `meta.format: "percent"`, matching how `/risk-levels/{id}`
 already expresses its `vulnerability` entries — so the one section that does have
 a real normalised source and the four that do not share a single shape.
 
@@ -285,7 +285,7 @@ to retire.
 ```
 
 Susceptibility is deliberately **not** here — it is the one tile with a
-reviewer-reachable source, `/risk-level/{id}.vulnerability`, already normalised
+reviewer-reachable source, `/risk-levels/{id}.vulnerability.value`, already normalised
 0–1 and rendered as the design's `0.30`.
 
 Every mocked tile renders with a visible **Placeholder** tag whose tooltip names
@@ -821,7 +821,7 @@ preview, independent of the order the user ticks them.
 | # | Group | Component key | Label | Helper text (Figma) | Data source |
 |---|-------|---------------|-------|---------------------|-------------|
 | 1 | Header & summary | `cover_header` | Cover header | NDRMA header + Inkhundla name + validated D-class + cycle month (no priority chip) | `/cdi/.../stats` + **mock** `cover.json` (area) |
-| 2 | Header & summary | `kpi_tiles` | KPI tiles | **4 tiles: people exposed · hectares rain-fed · susceptibility · total land** *(copy corrected, C-3)* | `/risk-level/{id}` (susceptibility only) + **mock** `cover.json` (other 3) |
+| 2 | Header & summary | `kpi_tiles` | KPI tiles | **4 tiles: people exposed · hectares rain-fed · susceptibility · total land** *(copy corrected, C-3)* | `/risk-levels/{id}` (susceptibility only) + **mock** `cover.json` (other 3) |
 | 3 | Header & summary | `situation_paragraph` | Situation paragraph | **A draft is suggested for you — rewrite it to reflect what came out of the joint TWG meeting.** *(copy corrected, C-1)* | **mock** `situation.json`, then user input |
 | 4 | Historical context | `dclass_strip_24m` | 24-month D-class strip | One cell per month, NDMC colour scale | `/cdi/administrations/{id}/**stats**` (`breakdown` + `meta`) |
 | 5 | Historical context | `historic_comparison_note` | Historic comparison note | How this month compares to the 24-month baseline | derived client-side from the row-4 series |
@@ -885,8 +885,8 @@ line. One bar series is not that, and a `3k` axis is not °C (C-2).
 **8. Exposure & vulnerability** — five labelled **percentage bars in two
 columns**: Population 25%, Water demand 25%, Land use - crops share 40%, Cattle
 count 25%, Susceptibility to drought 30%. Percentages of a normalised scale, not
-the absolute counts the checkbox lists. `/risk-level/{id}` returns `vulnerability`
-already normalised (`format: "percent"`) but `exposure` as raw absolutes
+the absolute counts the checkbox lists. `/risk-levels/{id}` returns `vulnerability.value`
+already normalised 0-1 but `exposure` as raw absolutes
 (`8956 people`, `1069 ha`, `1364 head`) with no denominator, so the exposure bars
 have no defined percentage today (C-5).
 
@@ -1057,7 +1057,7 @@ round.
 | **C-2** | Preview's temperature chart is one bar series on a `0–3k` axis; the checkbox promises three lines + normals. | **Closed — false conflict.** `TemperatureChart.js` already renders T max / T min / T Mean with dashed 30-year averages and a range picker. The checkbox described working code; the Figma frame was placeholder art. Both charts reuse verbatim. (D-9) |
 | **C-3** | Checkbox promises 5 KPI tiles (4 render) and sector-grouped activities (a flat list renders). | **Correct the copy**, not the design — the screen is coherent as drawn, only its description was stale. Now "4 tiles: people exposed · hectares rain-fed · susceptibility · total land" and "All activities triggered for this Inkhundla". |
 | **C-4** | `128 km²` and `Total land 6,889 ha` have no source; `Administration` has no geometry. | **Mock it.** `cover.json`. Needs an `Administration` model change in BB-2, not an endpoint. |
-| **C-5** | Exposure renders as percentages; `/risk-level/{id}` returns raw absolutes with no denominator. | **Mock it.** `exposure.json` supplies 0–1 values with `meta.format: "percent"`, matching how the endpoint already expresses `vulnerability`. BB-2 decides the denominator. |
+| **C-5** | Exposure renders as percentages; `/risk-levels/{id}` returns raw absolutes with no denominator. | **Mock it.** `exposure.json` supplies 0–1 values with `meta.format: "percent"`, matching how the endpoint already expresses `vulnerability`. BB-2 decides the denominator. |
 | **C-6** | "People exposed · 6,420" captioned "reports validated by TWG". | **Fixed.** Caption reads "people exposed this cycle". |
 
 ### 10b. Product questions — all answered
@@ -1090,7 +1090,7 @@ its shape or the frontend breaks. Ordered by how much is unresolved.
 
 | Mock | Replaced by | Still undecided — resolve before building |
 |------|-------------|-------------------------------------------|
-| `exposure.json` | `GET /api/v1/brief/{id}/exposure`, or extra fields on `/risk-level/{id}` | **The denominator (C-5).** Population 25% — of the Inkhundla, the region, the nation, or a fixed scale? Four of the five bars are meaningless until this is fixed, and the choice changes what every reader concludes from the section. |
+| `exposure.json` | `GET /api/v1/brief/{id}/exposure`, or extra fields on `/risk-levels/{id}` | **The denominator (C-5).** Population 25% — of the Inkhundla, the region, the nation, or a fixed scale? Four of the five bars are meaningless until this is fixed, and the choice changes what every reader concludes from the section. |
 | `cover.json` | **Two different fixes.** `people_exposed` / `rainfed_ha`: relax `/indicators/{id}` off `IsAdmin` — the columns (`population`, `rainfed_cropland`) already exist. `area` / `total_land`: an `Administration` model change | **The permission half is nearly free; do it first.** For the model half: where does area come from — GeoNode geometry, or a static gazetteer? The Figma figures contradict each other (128 km² = 12,800 ha, not 6,889), so treat neither as a target value (C-4). |
 | `situation.json` | `GET /api/v1/brief/{id}/situation` | **Who generates the prose, and from what?** The sample cites a "2-month rainfall gap of −75 mm" and an IKS crop-stress report — each needs its own derivation, an agreement rule between sources, and a fallback when a source is silent. Deliberately pushed to the backend rather than inferred in the frontend (D-8). |
 | `notify-list.json` | `GET /api/v1/brief/{id}/notify-list` | **Is the roster global or per-Inkhundla?** If every Inkhundla gets the same eight offices, this is frontend config and needs no endpoint at all. Settle that before writing a serializer. |
@@ -1210,7 +1210,7 @@ Frontend only; no backend file touched. 15 new files, 4 modified.
 |------|------|
 | `app/brief-builder/page.js` | Route. `Suspense` (the provider reads `useSearchParams`) + `BriefContextProvider`. Imports `BriefBuilderPage` **by path, not a barrel** (D-12) |
 | `context/BriefContextProvider.js` | Draft vs applied selection, URL codec + validation, administrations, TWG, narrative |
-| `hooks/useBriefData.js` | One `Promise.allSettled` over `/cdi/.../stats`, `/risk-level/{id}`, `/activities` |
+| `hooks/useBriefData.js` | One `Promise.allSettled` over `/cdi/.../stats`, `/risk-levels/{id}`, `/activities` |
 | `hooks/useBriefRecipients.js` | Forward-to roster from `/admin/publications`, mock fallback (D-11) |
 | `components/BriefBuilder/BriefBuilderPage.js` | Two-column shell, breadcrumb, header actions, gate logic |
 | `components/BriefBuilder/BriefComponentPanel.js` | Left panel — select, 6 groups, Apply / Clear all |

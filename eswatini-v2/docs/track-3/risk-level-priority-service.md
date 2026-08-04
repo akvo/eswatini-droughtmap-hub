@@ -5,7 +5,7 @@
 **Task ID**: RL-1 (#171)
 **Author**: Galih Pratama
 **Date**: 2026-07-29
-**Status**: Approved
+**Status**: Approved · **Extended 2026-08-05** by [`risk-level-detail-buildup-api.md`](./risk-level-detail-buildup-api.md) (RL-2), which adds `GET /api/v1/risk-levels/{administration_id}` in this same app and refactors `compute_risk_level_list` to share its publication lookup and ranking with the detail endpoint.
 
 ---
 
