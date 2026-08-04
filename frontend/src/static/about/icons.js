@@ -5,5 +5,4 @@ export {
   AppstoreOutlined as CDIMapGenIcon,
   AuditOutlined as ValidationIcon,
   FileDoneOutlined as FinalPublicationIcon,
-  RiseOutlined as ReviewIcon,
 } from "@ant-design/icons";

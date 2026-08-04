@@ -100,9 +100,11 @@ class IKSStatsView(APIView):
             )
 
         # Base query for KoboData mapped to this administration
-        kobo_ids = active_values().filter(
-            administration_id=administration_id
-        ).values_list("kobo_id", flat=True)
+        kobo_ids = (
+            active_values()
+            .filter(administration_id=administration_id)
+            .values_list("kobo_id", flat=True)
+        )
         queryset = active_kobo_data().filter(kobo_id__in=kobo_ids)
 
         if start_date_str:
@@ -164,7 +166,9 @@ class IKSStatsView(APIView):
             else 0.0
         )
 
-        form_completion = MOCK_FORM_COMPLETION_PCT if total_reports > 0 else 0.0
+        form_completion = (
+            MOCK_FORM_COMPLETION_PCT if total_reports > 0 else 0.0
+        )
 
         is_authenticated = request.user and request.user.is_authenticated
         if not is_authenticated:
@@ -191,9 +195,11 @@ class IKSStatsView(APIView):
         extreme_weather = [0] * 12
 
         # Fetch all IKSValues for this administration to build monthly counts
-        values = active_values().filter(
-            administration_id=administration_id
-        ).select_related("iks_indicator")
+        values = (
+            active_values()
+            .filter(administration_id=administration_id)
+            .select_related("iks_indicator")
+        )
         kobo_val_ids = list(
             values.values_list("kobo_id", flat=True).distinct()
         )
@@ -287,9 +293,11 @@ class IKSSeriesView(APIView):
                 months_list.append(f"{y}-{m:02d}")
 
             indicators = active_indicators().all()
-            values = active_values().filter(
-                administration_id=administration_id
-            ).select_related("iks_indicator")
+            values = (
+                active_values()
+                .filter(administration_id=administration_id)
+                .select_related("iks_indicator")
+            )
             kobo_ids = list(
                 values.values_list("kobo_id", flat=True).distinct()
             )
@@ -415,9 +423,11 @@ class IKSNetSignalAggregationView(APIView):
 
         if active_values().exists():
             actual_trend = {r: [0.0] * len(weeks) for r in regions}
-            values = active_values().select_related(
-                "administration", "iks_indicator"
-            ).all()
+            values = (
+                active_values()
+                .select_related("administration", "iks_indicator")
+                .all()
+            )
             for val in values:
                 region = val.administration.region
                 if region not in actual_trend:
@@ -463,9 +473,11 @@ class IKSIndicatorCountsAggregationView(APIView):
 
         if active_values().exists():
             actual_radar = {r: [0.0] * len(indicators) for r in regions}
-            values = active_values().select_related(
-                "administration", "iks_indicator"
-            ).all()
+            values = (
+                active_values()
+                .select_related("administration", "iks_indicator")
+                .all()
+            )
             for val in values:
                 r = val.administration.region
                 name = val.iks_indicator.name
@@ -482,9 +494,8 @@ class IKSIndicatorCountsAggregationView(APIView):
         from django.db.models import Count as DjCount
 
         indicator_counts_qs = (
-            active_values().exclude(
-                iks_indicator__name__in=SECTION_D_INDICATOR_NAMES
-            )
+            active_values()
+            .exclude(iks_indicator__name__in=SECTION_D_INDICATOR_NAMES)
             .values("iks_indicator__name")
             .annotate(cnt=DjCount("id"))
         )
@@ -592,9 +603,11 @@ class IKSHeatmapAggregationView(APIView):
         if active_values().exists():
             for c_idx, c_name in enumerate(constituencies):
                 for w_idx in range(len(weeks)):
-                    count = active_values().filter(
-                        administration__name=c_name, value="observed"
-                    ).count()
+                    count = (
+                        active_values()
+                        .filter(administration__name=c_name, value="observed")
+                        .count()
+                    )
                     heatmap_matrix[c_idx][w_idx] = count
 
         response_data = {
@@ -633,7 +646,13 @@ class IKSDownloadMonthlyView(APIView):
 class IKSSoilTrendAggregationView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=["IKS"],
+        summary="Get IKS soil and vegetation trend aggregation",
+        responses={200: IKSSoilTrendAggregationSerializer},
+    )
     def get(self, request, version):
+
         now = timezone.now()
         months_list = [
             now - relativedelta(months=i) for i in range(11, -1, -1)
@@ -796,6 +815,11 @@ class IKSSoilTrendAggregationView(APIView):
 class IKSAdministrationListView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=["IKS"],
+        summary="List all administrations for IKS filter selection",
+        responses={200: IKSAdministrationSerializer(many=True)},
+    )
     def get(self, request, version):
         admins = Administration.objects.all()
         serializer = IKSAdministrationSerializer(admins, many=True)
@@ -805,9 +829,15 @@ class IKSAdministrationListView(APIView):
 class IKSPhotosView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=["IKS"],
+        summary="List submitted photo attachments for an administration",
+        responses={200: IKSPhotosSerializer},
+    )
     def get(self, request, version, administration_id):
         kobo_ids = (
-            active_values().filter(administration_id=administration_id)
+            active_values()
+            .filter(administration_id=administration_id)
             .values_list("kobo_id", flat=True)
             .distinct()
         )
@@ -847,6 +877,10 @@ class IKSPhotosView(APIView):
 class IKSPhotoFileView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=["IKS"],
+        summary="Serve stored IKS photo media file",
+    )
     def get(self, request, version, filename):
         import os
         from django.http import FileResponse, Http404
@@ -897,25 +931,36 @@ class IKSReviewSummaryView(APIView):
 
     def _card(self, administration_id, kobo_id, indicator, labeller):
         raw = (
-            active_values().filter(
+            active_values()
+            .filter(
                 administration_id=administration_id,
                 kobo_id=kobo_id,
                 iks_indicator__name=indicator,
-            ).values_list("value", flat=True).first()
+            )
+            .values_list("value", flat=True)
+            .first()
         )
         if not raw:
             return None
         return {"key": indicator, "value_label": labeller(raw), "raw": raw}
 
+    @extend_schema(
+        tags=["IKS"],
+        summary="Get IKS review summary panel for an administration",
+    )
     def get(self, request, version, administration_id):
         period = request.query_params.get("period")  # YYYY-MM, optional
         kobo_ids = (
-            active_values().filter(administration_id=administration_id)
-            .values_list("kobo_id", flat=True).distinct()
+            active_values()
+            .filter(administration_id=administration_id)
+            .values_list("kobo_id", flat=True)
+            .distinct()
         )
-        submissions = active_kobo_data().filter(
-            kobo_id__in=list(kobo_ids)
-        ).order_by("-submission_time")
+        submissions = (
+            active_kobo_data()
+            .filter(kobo_id__in=list(kobo_ids))
+            .order_by("-submission_time")
+        )
         if period:
             try:
                 year, month = (int(p) for p in period.split("-"))
@@ -933,30 +978,37 @@ class IKSReviewSummaryView(APIView):
         sub_kobo_ids = [s.kobo_id for s in submissions]
 
         indicators_present = list(
-            active_values().filter(
+            active_values()
+            .filter(
                 administration_id=administration_id,
                 kobo_id__in=sub_kobo_ids,
-            ).exclude(
-                iks_indicator__name__in=SECTION_D_INDICATOR_NAMES
-            ).values_list("iks_indicator__name", flat=True).distinct()
+            )
+            .exclude(iks_indicator__name__in=SECTION_D_INDICATOR_NAMES)
+            .values_list("iks_indicator__name", flat=True)
+            .distinct()
         )
 
         soil = veg = chiefdom = None
         if latest:
             soil = self._card(
-                administration_id, latest.kobo_id,
-                SOIL_MOISTURE_INDICATOR, label_soil_moisture,
+                administration_id,
+                latest.kobo_id,
+                SOIL_MOISTURE_INDICATOR,
+                label_soil_moisture,
             )
             veg = self._card(
-                administration_id, latest.kobo_id,
-                VEGETATION_GREENNESS_INDICATOR, label_vegetation,
+                administration_id,
+                latest.kobo_id,
+                VEGETATION_GREENNESS_INDICATOR,
+                label_vegetation,
             )
             chiefdom = (latest.raw_data or {}).get(CHIEFDOM_FIELD) or None
 
         locations = [
             {"lat": s.geo["latitude"], "lon": s.geo["longitude"]}
             for s in submissions
-            if s.geo and s.geo.get("latitude") is not None
+            if s.geo
+            and s.geo.get("latitude") is not None
             and s.geo.get("longitude") is not None
         ]
 

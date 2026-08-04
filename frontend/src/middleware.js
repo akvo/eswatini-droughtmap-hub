@@ -5,6 +5,7 @@ import { USER_ROLES } from "./static/config";
 // route prefix -> where anonymous visitors are sent.
 // observers sign in with an emailed magic link, not the password form.
 const protectedRoutes = {
+  "/brief-builder": "/login",
   "/citizen-weather/admin": "/login",
   "/citizen-weather/observe": "/citizen-weather",
   "/profile": "/login",
@@ -58,6 +59,11 @@ export default async function middleware(request) {
     // not submit (the PUT is admin-only server-side).
     const isDecisionPage = /^\/validations\/\d+\/\d+/.test(pathName);
 
+    // Brief Builder is for both staff roles, so it is gated on "not an
+    // observer" rather than on one role. USER_ROLES has no observer entry —
+    // observers are role 3 backend-side — so the test is by exclusion.
+    const isStaff = [USER_ROLES.admin, USER_ROLES.reviewer].includes(role);
+
     if (
       role !== USER_ROLES.observer &&
       pathName.startsWith("/citizen-weather/observe")
@@ -66,6 +72,7 @@ export default async function middleware(request) {
     }
 
     if (
+      (!isStaff && pathName.startsWith("/brief-builder")) ||
       (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||

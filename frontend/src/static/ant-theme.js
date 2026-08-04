@@ -90,6 +90,7 @@ const antTheme = {
       rowHoverBg: tokens.table.hoverBg,
       colorText: tokens.table.bodyColor,
       cellPaddingInline: tokens.table.cellInline,
+      cellPaddingBlock: tokens.table.cellBlock,
       cellFontSize: 14,
     },
     Descriptions: {

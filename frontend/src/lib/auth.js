@@ -55,6 +55,8 @@ export const signIn = async (formData) => {
       // Create the session
       const currentUser = await encrypt({
         id: user?.id,
+        name: user?.name,
+        email: user?.email,
         role: user?.role,
         abilities: user?.abilities,
         token,
