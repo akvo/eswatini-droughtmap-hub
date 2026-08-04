@@ -59,7 +59,6 @@ const ResponseActivities = ({ responseActivities }) => {
     lastUpdated = "-",
     summary = "No active response activities recorded.",
     sectors = [],
-    priorityAreasHref = "/detailed-insights/risk-level",
   } = responseActivities || {};
 
   return (
@@ -93,7 +92,7 @@ const ResponseActivities = ({ responseActivities }) => {
 
         {/* Footer action */}
         <div className="p-4">
-          <Link href={priorityAreasHref} className="block">
+          <Link href="/brief-builder" className="block">
             <Button block size="large">
               Open Response Activities page per Inkhundla
             </Button>

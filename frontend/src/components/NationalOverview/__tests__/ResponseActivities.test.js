@@ -51,13 +51,13 @@ describe("ResponseActivities", () => {
     );
   });
 
-  it("links to the priority areas page", () => {
+  it("links to the brief builder page", () => {
     render(<ResponseActivities responseActivities={responseActivitiesData} />);
     expect(
       screen.getByRole("link", {
         name: /Open Response Activities page per Inkhundla/i,
       }),
-    ).toHaveAttribute("href", responseActivitiesData.priorityAreasHref);
+    ).toHaveAttribute("href", "/brief-builder");
   });
 
   it("shows the skeleton until data arrives", () => {
