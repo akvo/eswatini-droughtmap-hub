@@ -122,7 +122,7 @@ describe("RiskLevelPage Integration", () => {
 
     // Mock API responses
     api.mockImplementation((method, url) => {
-      if (url.includes("/risk-score")) {
+      if (url.includes("/risk-levels/")) {
         return Promise.resolve({
           administration: { id: 1, name: "Nkwene" },
           risk_score: { value: 3.5 },
@@ -177,7 +177,7 @@ describe("RiskLevelPage Integration", () => {
     });
 
     api.mockImplementation((method, url) => {
-      if (url.includes("/risk-score")) {
+      if (url.includes("/risk-levels/")) {
         return Promise.resolve({
           administration: { id: 1, name: "Nkwene" },
           risk_score: { value: 3.5 },
@@ -228,7 +228,7 @@ describe("RiskLevelPage Integration", () => {
 
     // Mock API error response for activities
     api.mockImplementation((method, url) => {
-      if (url.includes("/risk-score")) {
+      if (url.includes("/risk-levels/")) {
         return Promise.resolve({
           administration: { id: 1, name: "Nkwene" },
           risk_score: { value: 3.5 },

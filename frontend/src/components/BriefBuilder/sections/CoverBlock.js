@@ -9,16 +9,7 @@ import {
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 import coverMock from "@/static/mocks/brief-builder/cover.json";
-
-const readableInk = (hex = "#ffffff") => {
-  const value = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) =>
-    parseInt(value.slice(i, i + 2) || "0", 16),
-  );
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
-    ? "#000000"
-    : "#ffffff";
-};
+import { textOn } from "@/lib/helper";
 
 const zoneLabel = (zone) =>
   (zone || "")
@@ -64,9 +55,9 @@ const CoverBlock = ({
   const rainfed = findMock("rainfed_ha");
   const totalLand = findMock("total_land");
 
-  // The one tile with a live source: /risk-level is AllowAny, and its
-  // `vulnerability` is the IPC-rescaled 0-1 the design shows as "0.30".
-  const susceptibility = risk?.vulnerability;
+  // The one tile with a live source: /risk-levels/{id} is AllowAny, and its
+  // `vulnerability.value` is the IPC-rescaled 0-1 the design shows as "0.30".
+  const susceptibility = risk?.vulnerability?.value;
 
   return (
     <div>
@@ -74,7 +65,7 @@ const CoverBlock = ({
         <div className="flex flex-col gap-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span
-              style={{ backgroundColor: chipBg, color: readableInk(chipBg) }}
+              style={{ backgroundColor: chipBg, color: textOn(chipBg) }}
               className="inline-flex items-center gap-2 rounded px-2 py-0.5 text-sm font-semibold"
             >
               {DROUGHT_CATEGORY_CODE[category]}
