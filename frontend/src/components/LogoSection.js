@@ -3,7 +3,10 @@ import Image from "next/image";
 
 const LogoSection = () => {
   return (
-    <div className="relative w-full min-h-36 bg-white" id="edm-about">
+    <div
+      className="relative w-full min-h-36 bg-white print:hidden"
+      id="edm-about"
+    >
       <div
         aria-hidden
         className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"

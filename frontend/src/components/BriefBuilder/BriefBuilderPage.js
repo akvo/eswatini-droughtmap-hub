@@ -149,12 +149,12 @@ const BriefBuilderPage = () => {
             <BriefPreview data={briefData} />
           </div>
 
-          <div className="order-2 lg:order-1">
+          <div className="order-2 lg:order-1 print:hidden">
             <BriefComponentPanel />
           </div>
         </div>
 
-        <div className="mt-6 [&>div]:mt-0">
+        <div className="mt-6 [&>div]:mt-0 print:hidden">
           <FeedbackSection />
         </div>
       </div>

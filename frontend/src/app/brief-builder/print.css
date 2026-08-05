@@ -6,45 +6,103 @@
   size: A4 portrait;
 }
 
+@page :first {
+  margin-top: 4mm;
+}
+
 @media print {
-  /* Force background colors, badges, and graphics */
-  * {
+  /* Force exact background colors, badges, and graphics globally */
+  *,
+  *::before,
+  *::after,
+  html,
+  body,
+  div,
+  span,
+  section {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
 
-  /* Reset document root */
+  /* Reset document root & remove outer page padding/margins */
   html,
   body {
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     height: auto !important;
-  }
-
-  /* Hide all elements on the page */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* Restore visibility ONLY for #brief-print-area and its contents */
-  #brief-print-area,
-  #brief-print-area * {
-    visibility: visible !important;
-  }
-
-  /* Position #brief-print-area at top-left of paper page */
-  #brief-print-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
     width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Hide app chrome, breadcrumbs, selection panel, feedback, navbar, action buttons */
+  nav,
+  header,
+  footer,
+  aside,
+  .ant-tooltip,
+  .order-2, /* BriefComponentPanel selection sidebar */
+  .FeedbackSection,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Strip top padding & margins from layout containers */
+  #__next,
+  main,
+  div[class*="bg-brandTint"],
+  div[class*="py-8"],
+  div[class*="px-4"],
+  div[class*="mx-auto"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Position #brief-print-area in wide natural static block flow */
+  #brief-print-area {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     border: none !important;
     box-shadow: none !important;
+  }
+
+  /* Prevent any section from splitting across page breaks */
+  section,
+  .brief-section,
+  #brief-print-area section {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* D-class history grid formatting in print */
+  div[style*="gridTemplateColumns"],
+  div[style*="grid-template-columns"] {
+    display: grid !important;
+    width: 100% !important;
+    grid-auto-flow: column !important;
+    gap: 4px !important;
+  }
+
+  /* Force background colors on monthly grid cells and legend dots */
+  div[style*="background"],
+  span[style*="background"],
+  .bg-brandTint,
+  .bg-\[\#12b76a\],
+  .bg-\[\#f39c12\],
+  .bg-\[\#b10d0b\] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Hide TinyMCE rich text editor chrome in print */
@@ -57,13 +115,6 @@
 
   .tox-tinymce {
     border: none !important;
-  }
-
-  /* Prevent awkward page breaks inside brief sections */
-  section,
-  .brief-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
   }
 
   /* Ensure canvas charts fit paper width */
