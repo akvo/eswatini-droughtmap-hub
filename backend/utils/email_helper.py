@@ -23,6 +23,7 @@ class EmailTypes:
     send_feedback = "send_feedback"
     cs_magic_link = "cs_magic_link"
     cs_reminder = "cs_reminder"
+    brief_forward = "brief_forward"
 
     FieldStr = {
         verification_email: "verification_email",
@@ -34,6 +35,7 @@ class EmailTypes:
         send_feedback: "send_feedback",
         cs_magic_link: "cs_magic_link",
         cs_reminder: "cs_reminder",
+        brief_forward: "brief_forward",
     }
 
 
@@ -216,6 +218,25 @@ def email_context(context: dict, type: str):
                         context["feedback"],
                     )
                 ),
+            }
+        )
+    if type == EmailTypes.brief_forward:
+        note = context.get("note", "").strip()
+        note_block = (
+            f'<blockquote style="border-left: 3px solid #7747ff; padding-left: 12px; margin: 16px 0; color: #555;">{note}</blockquote>'  # noqa
+            if note
+            else ""
+        )
+        context.update(
+            {
+                "subject": f"EDM — Inkhundla Brief: {context.get('inkhundla_name', '')}",  # noqa
+                "body": (
+                    f"Forwarded by {context.get('sender_name', 'A TWG member')}<br>"  # noqa
+                    f"{note_block}"
+                    "<br>View and print the brief below:"
+                ),
+                "cta_text": "View the brief",
+                "cta_url": context.get("brief_url", WEBDOMAIN),
             }
         )
     return context
