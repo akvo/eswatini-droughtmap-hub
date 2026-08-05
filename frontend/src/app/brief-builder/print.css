@@ -1,0 +1,74 @@
+/* Scoped print stylesheet for Brief Builder (BB-2 AC-7.1)
+   Prints ONLY the BriefPreview content (#brief-print-area).
+*/
+@page {
+  margin: 10mm 12mm;
+  size: A4 portrait;
+}
+
+@media print {
+  /* Force background colors, badges, and graphics */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Reset document root */
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    height: auto !important;
+  }
+
+  /* Hide all elements on the page */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Restore visibility ONLY for #brief-print-area and its contents */
+  #brief-print-area,
+  #brief-print-area * {
+    visibility: visible !important;
+  }
+
+  /* Position #brief-print-area at top-left of paper page */
+  #brief-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide TinyMCE rich text editor chrome in print */
+  .tox-editor-header,
+  .tox-statusbar,
+  .tox-toolbar,
+  .tox-menubar {
+    display: none !important;
+  }
+
+  .tox-tinymce {
+    border: none !important;
+  }
+
+  /* Prevent awkward page breaks inside brief sections */
+  section,
+  .brief-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure canvas charts fit paper width */
+  canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
