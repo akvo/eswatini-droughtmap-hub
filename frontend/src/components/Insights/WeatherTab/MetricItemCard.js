@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  LockOutlined,
-} from "@ant-design/icons";
+import { ArrowDownOutlined, ArrowUpOutlined } from "@ant-design/icons";
 import { Tag, Tooltip } from "antd";
 
 /**
@@ -17,9 +13,9 @@ import { Tag, Tooltip } from "antd";
  * background, which also survives the responsive column count — a negative
  * margin would leave the wrapped rows unseparated.
  *
- * `locked` renders the TWG gate: /stats returns completeness with value null +
- * meta.reason "twg_only" to anonymous callers, and the card says so rather
- * than showing an empty number.
+ * No locked variant: a TWG-gated card (completeness, `meta.reason
+ * "twg_only"`) is dropped from the grid entirely for anonymous callers
+ * rather than rendered as a sign-in prompt.
  */
 const MetricItemCard = ({
   label,
@@ -30,7 +26,6 @@ const MetricItemCard = ({
   changeUnits = "",
   isPlaceholder = false,
   placeholderHint = "",
-  locked = false,
 }) => {
   const rising = change > 0;
 
@@ -50,48 +45,34 @@ const MetricItemCard = ({
         )}
       </div>
 
-      {locked ? (
-        <div className="flex flex-col gap-1">
-          <span className="text-[28px] leading-[42px] font-bold text-neutral-300">
-            <LockOutlined />
-          </span>
-          <p className="text-sm leading-[21px] text-[#606060] mb-0">
-            Sign in as TWG member to see how often this station has reported in
-            the last 12 months.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1 w-full">
-          <p className="text-[28px] leading-[42px] font-bold text-[#333] mb-0">
-            {value}
-          </p>
-          <div className="flex gap-2 items-center w-full">
-            {change != null && (
-              <span
-                className={`flex gap-1 items-center justify-center text-sm leading-[21px] whitespace-nowrap ${
-                  rising ? "text-[#027a48]" : "text-[#b42318]"
+      <div className="flex flex-col gap-1 w-full">
+        <p className="text-[28px] leading-[42px] font-bold text-[#333] mb-0">
+          {value}
+        </p>
+        <div className="flex gap-2 items-center w-full">
+          {change != null && (
+            <span
+              className={`flex gap-1 items-center justify-center text-sm leading-[21px] whitespace-nowrap ${
+                rising ? "text-[#027a48]" : "text-[#b42318]"
+              }`}
+            >
+              {rising ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+              {`${Math.abs(change)} ${changeUnits}`.trim()}
+            </span>
+          )}
+          {footnote && (
+            <Tooltip title={footnoteHint}>
+              <p
+                className={`flex-1 text-sm leading-[21px] text-[#606060] mb-0 ${
+                  footnoteHint ? "cursor-help underline decoration-dotted" : ""
                 }`}
               >
-                {rising ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-                {`${Math.abs(change)} ${changeUnits}`.trim()}
-              </span>
-            )}
-            {footnote && (
-              <Tooltip title={footnoteHint}>
-                <p
-                  className={`flex-1 text-sm leading-[21px] text-[#606060] mb-0 ${
-                    footnoteHint
-                      ? "cursor-help underline decoration-dotted"
-                      : ""
-                  }`}
-                >
-                  {footnote}
-                </p>
-              </Tooltip>
-            )}
-          </div>
+                {footnote}
+              </p>
+            </Tooltip>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

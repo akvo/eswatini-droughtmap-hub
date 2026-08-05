@@ -11,6 +11,7 @@ import MetricItemCard from "./MetricItemCard";
 import PrecipitationChart from "./PrecipitationChart";
 import TemperatureChart from "./TemperatureChart";
 import { satelliteDifference } from "@/static/mocks/weather/satellite-difference";
+import classNames from "classnames";
 
 const findCard = (stats, key) =>
   stats?.data?.find((d) => d.key === key) ?? null;
@@ -120,7 +121,15 @@ const WeatherTab = ({
       {/* Figma 3509:110399: one bordered container, cards flush against each
           other sharing a single hairline. The 1px gaps let the container's
           background through, so seams stay 1px instead of doubling up. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-px border-b border-cardBorder bg-cardBorder">
+      <div
+        className={classNames(
+          "grid grid-cols-1 md:grid-cols-2 gap-px border-b border-cardBorder bg-cardBorder",
+          {
+            "xl:grid-cols-4": !isTwgLocked,
+            "xl:grid-cols-3": isTwgLocked,
+          },
+        )}
+      >
         <MetricItemCard
           label={satelliteDifference.label}
           value={`+${satelliteDifference.value} ${satelliteDifference.units}`}
@@ -146,16 +155,22 @@ const WeatherTab = ({
               : ""
           }
         />
-        <MetricItemCard
-          label={completeness?.label ?? "Data completeness"}
-          value={
-            completeness?.value == null
-              ? "—"
-              : `${Math.round(completeness.value * 100)}%`
-          }
-          footnote="Share of the last 12 months the station reported data."
-          locked={isTwgLocked}
-        />
+        {!isTwgLocked && (
+          <MetricItemCard
+            label={completeness?.label ?? "Data completeness"}
+            value={
+              completeness?.value == null
+                ? "—"
+                : `${Math.round(completeness.value * 100)}%`
+            }
+            footnote="Share of the last 12 months the station reported data."
+            footnoteHint={
+              completeness?.meta?.months_with_data != null
+                ? `Reported in ${completeness.meta.months_with_data} of the last ${completeness.meta.window_months} months.`
+                : ""
+            }
+          />
+        )}
       </div>
 
       <PrecipitationChart
