@@ -581,15 +581,12 @@ const IndividualReview = ({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 border-t border-cardBorder">
-            <div className="border-r border-cardBorder">
-              <ReviewDecisionHistory
-                history={administration?.decision_history}
-              />
-            </div>
-            <div className="flex items-center gap-3 px-6 py-4">
+          <div className="flex items-center gap-3 border-t border-cardBorder px-6 py-6">
+            <ReviewDecisionHistory
+              history={administration?.decision_history}
+            />
+            <div className="flex items-center gap-3 ml-auto">
               <Button
-                className="flex-1"
                 onClick={() => persist(false)}
                 loading={saving}
                 disabled={isCompleted}
@@ -598,7 +595,6 @@ const IndividualReview = ({
               </Button>
               <Button
                 type="primary"
-                className="flex-1"
                 onClick={() => persist(true)}
                 loading={saving}
                 disabled={!reasoning.trim() || isCompleted}

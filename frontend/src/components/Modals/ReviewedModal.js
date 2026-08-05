@@ -26,9 +26,7 @@ const ReviewedModal = ({ initial_values = [] }) => {
         label: "Approved Computed Value",
         children: (
           <div
-            className={classNames("px-4 py-3", {
-              "text-white": activeAdm?.category >= 4,
-            })}
+            className="px-4 py-3 text-white"
             style={{
               backgroundColor: DROUGHT_CATEGORY_COLOR?.[activeAdm?.category],
             }}
@@ -42,9 +40,7 @@ const ReviewedModal = ({ initial_values = [] }) => {
         label: "Computed Value",
         children: (
           <div
-            className={classNames("px-4 py-3", {
-              "text-white": findAdm?.category >= 4,
-            })}
+            className="px-4 py-3 text-white"
             style={{
               backgroundColor: DROUGHT_CATEGORY_COLOR?.[findAdm?.category],
             }}

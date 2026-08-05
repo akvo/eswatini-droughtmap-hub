@@ -357,6 +357,10 @@ h5 {
   border-spacing: 8px 2px !important;
 }
 
+.decision-history-drawer-header .ant-drawer-header-title {
+  flex-direction: row-reverse;
+}
+
 #edh-narrative narrative {
   display: block;
   margin: 0;

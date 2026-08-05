@@ -147,10 +147,7 @@ const ReviewList = ({
               <Space size="middle">
                 <Text strong>{item?.name}</Text>
                 <span
-                  className={classNames("py-1 px-2 rounded text-white", {
-                    "border border-neutral-200 text-black":
-                      item?.category?.raw === DROUGHT_CATEGORY_VALUE.none,
-                  })}
+                  className="py-1 px-2 rounded text-white"
                   style={{
                     backgroundColor: `${
                       DROUGHT_CATEGORY_COLOR?.[item.category?.raw]

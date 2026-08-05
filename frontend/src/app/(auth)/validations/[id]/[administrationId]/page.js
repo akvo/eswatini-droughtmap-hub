@@ -22,10 +22,10 @@ import { DecisionHistory } from "@/components/Validation";
 const { TextArea } = Input;
 
 const STATUS_PILL = {
-  awaiting: { label: "Awaiting", color: "#f39c12" },
-  ready: { label: "Ready for validation", color: "#3b82f6" },
+  awaiting: { label: "Awaiting", color: "#3b82f6" },
+  ready: { label: "Ready", color: "#f39c12" },
   validated: { label: "Validated", color: "#12b76a" },
-  overridden: { label: "Overridden", color: "#e60000" },
+  overridden: { label: "Overridden", color: "#F04438" },
 };
 
 // Labels only. The thresholds live server-side and arrive as
@@ -44,11 +44,12 @@ const CONSENSUS_BAND = {
 // validator, which is exactly the confusion -9999 exists to avoid.
 const DCLASS_OPTIONS = [0, 1, 2, 3, 4, 5].map((value) => ({
   value,
-  label: DROUGHT_CATEGORY_CODE[value],
+  label: value === 0 ? "None" : DROUGHT_CATEGORY_CODE[value],
 }));
 
 const DClassChip = ({ value, selected, onClick }) => {
-  const bg = DROUGHT_CATEGORY_COLOR?.[value] ?? "#f3f4f6";
+  const bg =
+    value === 0 ? "#3E5EB9" : (DROUGHT_CATEGORY_COLOR?.[value] ?? "#f3f4f6");
   const label = DCLASS_OPTIONS.find((o) => o.value === value)?.label ?? "—";
   return (
     <button
@@ -61,7 +62,7 @@ const DClassChip = ({ value, selected, onClick }) => {
         selected
           ? {
               backgroundColor: bg,
-              color: value >= 4 ? "#ffffff" : "#20232D",
+              color: "#ffffff",
             }
           : {}
       }
@@ -246,7 +247,43 @@ const ValidationDecisionPage = () => {
         api("GET", `${base}/history`),
       ]);
       setDecision(payload);
-      setHistory(historyPayload?.data || []);
+      // TODO: remove dummy fallback once history endpoint returns data
+      setHistory(
+        historyPayload?.data?.length
+          ? historyPayload.data
+          : [
+              {
+                id: 1,
+                category: 5,
+                name: "Olivia Rhye",
+                initials: "OR",
+                validated_at: "2026-07-13T14:13:00Z",
+                is_override: false,
+                reasoning:
+                  "2 of 3 sources support D2. Station signal weighted down — Kubuta gauge has QC issues.",
+              },
+              {
+                id: 2,
+                category: 5,
+                name: "Olivia Rhye",
+                initials: "OR",
+                validated_at: "2026-07-13T14:13:00Z",
+                is_override: true,
+                reasoning:
+                  "2 of 3 sources support D2. Station signal weighted down — Kubuta gauge has QC issues.",
+              },
+              {
+                id: 3,
+                category: 5,
+                name: "Olivia Rhye",
+                initials: "OR",
+                validated_at: "2026-07-13T14:13:00Z",
+                is_override: false,
+                reasoning:
+                  "2 of 3 sources support D2. Station signal weighted down — Kubuta gauge has QC issues.",
+              },
+            ],
+      );
       // Initialise from the saved draft, NOT from the majority: a draft that
       // re-opened showing the majority chip and an empty textarea would look
       // like it had never been saved.
@@ -548,45 +585,46 @@ const ValidationDecisionPage = () => {
                     flight, so rendering early flashes the lock notice at an
                     admin who is perfectly entitled to submit. */}
                 {loading ? (
-                  <div className="border-t border-cardBorder px-6 py-4 text-sm text-[#a4a4a4]">
+                  <div className="border-t border-cardBorder px-6 py-6 text-sm text-[#a4a4a4]">
                     Loading decision&hellip;
                   </div>
                 ) : canSubmit ? (
-                  <div className="flex gap-3 border-t border-cardBorder px-6 py-4">
-                    <Button
-                      className="flex-1"
-                      onClick={handleSaveDraft}
-                      loading={saving}
-                    >
-                      Save changes as draft
-                    </Button>
-                    <Button
-                      type="primary"
-                      className="flex-1"
-                      onClick={handleSubmit}
-                      loading={saving}
-                      disabled={needsReasoning && !reasoning.trim()}
-                    >
-                      Submit decision
-                    </Button>
+                  <div className="flex items-center gap-3 border-t border-cardBorder px-6 py-6">
+                    <DecisionHistory history={history} />
+                    <div className="flex items-center gap-3 ml-auto">
+                      <Button
+                        onClick={handleSaveDraft}
+                        loading={saving}
+                      >
+                        Save changes as draft
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={handleSubmit}
+                        loading={saving}
+                        disabled={needsReasoning && !reasoning.trim()}
+                      >
+                        Submit decision
+                      </Button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="border-t border-cardBorder px-6 py-4 text-sm text-[#606060] bg-[#f9fafb]">
-                    You are signed in as{" "}
-                    <strong>
-                      {TWG_OPTIONS.find(
-                        (o) => o.value === meta?.viewer?.organisation,
-                      )?.label || "a TWG member"}
-                    </strong>{" "}
-                    &middot; {meta?.viewer?.name}. Only NDRMA can publish the
-                    final validation. You can view the reviewer decisions, the
-                    calculated suggestion and the agreement analysis, but cannot
-                    accept or submit.
+                  <div className="border-t border-cardBorder px-6 py-6 text-sm text-[#606060] bg-[#f9fafb]">
+                    <div className="mb-3">
+                      You are signed in as{" "}
+                      <strong>
+                        {TWG_OPTIONS.find(
+                          (o) => o.value === meta?.viewer?.organisation,
+                        )?.label || "a TWG member"}
+                      </strong>{" "}
+                      &middot; {meta?.viewer?.name}. Only NDRMA can publish the
+                      final validation. You can view the reviewer decisions, the
+                      calculated suggestion and the agreement analysis, but cannot
+                      accept or submit.
+                    </div>
+                    <DecisionHistory history={history} />
                   </div>
                 )}
-
-                {/* Decision history */}
-                <DecisionHistory history={history} />
               </div>
             </div>
           </div>
