@@ -1,13 +1,20 @@
 import re
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 from django.conf import settings
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from django.test.utils import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
+from api.v1.v1_publication.models import Publication
 from .models import Jobs, JobTypes, JobStatus
-from .job import job_done_hook
+from .job import (
+    download_geonode_dataset_results,
+    generate_initial_cdi_values_results,
+    job_done_hook,
+)
 
 
 class JobAPITestCase(APITestCase):
@@ -111,6 +118,102 @@ class JobAPITestCase(APITestCase):
         self.assertEqual(
             response.data["message"], "Feedback received successfully"
         )
+
+
+@override_settings(USE_TZ=False, TEST_ENV=True)
+class SeededPublicationChainTestCase(TestCase):
+    """The download -> extraction -> publish chain for seeded publications.
+
+    `is_seeder` is set on the DOWNLOAD job but read on the EXTRACTION job, so
+    it has to survive the hop between them. It did not, which is why
+    publications_seeder had to be run twice (DEMO-1 D-10).
+    """
+
+    def setUp(self):
+        self.publication = Publication.objects.create(
+            cdi_geonode_id=9001,
+            year_month="2026-01-01",
+            initial_values=[
+                {"administration_id": 1, "value": 0.12, "category": 2}
+            ],
+            due_date="2026-02-01",
+        )
+
+    def _download_job(self, task_id, **extra_info):
+        info = {
+            "publication_id": self.publication.id,
+            "filename": "raster_9001_1.tif",
+            "subject": None,
+            "message": None,
+        }
+        info.update(extra_info)
+        return Jobs.objects.create(
+            task_id=task_id,
+            type=JobTypes.download_geonode_dataset,
+            status=JobStatus.on_progress,
+            info=info,
+        )
+
+    def _run_download_hook(self, task_id):
+        task = SimpleNamespace(id=task_id, success=True, result="ok")
+        with patch("api.v1.v1_jobs.job.os.path.exists", return_value=True), \
+                patch(
+                    "api.v1.v1_jobs.job.async_task",
+                    return_value="next-task",
+                ):
+            download_geonode_dataset_results(task)
+        return Jobs.objects.get(type=JobTypes.initial_cdi_values)
+
+    def test_is_seeder_propagates_to_the_extraction_job(self):
+        self._download_job("dl-seeded", is_seeder=True)
+        extraction = self._run_download_hook("dl-seeded")
+        self.assertTrue(extraction.info["is_seeder"])
+        self.assertEqual(extraction.info["id"], self.publication.id)
+
+    def test_is_seeder_is_not_invented_when_absent(self):
+        """A publication created through the API must not auto-publish."""
+        self._download_job("dl-plain")
+        extraction = self._run_download_hook("dl-plain")
+        self.assertFalse(extraction.info["is_seeder"])
+
+    def _run_extraction_hook(self, task_id, **extra_info):
+        info = {"id": self.publication.id, "subject": None, "message": None}
+        info.update(extra_info)
+        Jobs.objects.create(
+            task_id=task_id,
+            type=JobTypes.initial_cdi_values,
+            status=JobStatus.on_progress,
+            info=info,
+        )
+        task = SimpleNamespace(id=task_id, success=True, result="ok")
+        generate_initial_cdi_values_results(task)
+        self.publication.refresh_from_db()
+
+    def test_extraction_hook_publishes_a_seeded_publication(self):
+        self._run_extraction_hook("ex-seeded", is_seeder=True)
+        self.assertEqual(
+            self.publication.validated_values,
+            self.publication.initial_values,
+        )
+        self.assertIsNotNone(self.publication.published_at)
+
+    def test_extraction_hook_leaves_non_seeded_publications_alone(self):
+        self._run_extraction_hook("ex-plain")
+        self.assertIsNone(self.publication.validated_values)
+        self.assertIsNone(self.publication.published_at)
+
+    def test_seeded_publication_with_no_values_is_never_published(self):
+        """Empty initial_values means extraction produced nothing.
+
+        Publishing it would put a categoryless map on the National overview,
+        which reads as "every Inkhundla has No Data" rather than as a failed
+        download (DEMO-1 D-11).
+        """
+        self.publication.initial_values = []
+        self.publication.save()
+        self._run_extraction_hook("ex-empty", is_seeder=True)
+        self.assertIsNone(self.publication.validated_values)
+        self.assertIsNone(self.publication.published_at)
 
 
 class CronJobScriptTestCase(SimpleTestCase):

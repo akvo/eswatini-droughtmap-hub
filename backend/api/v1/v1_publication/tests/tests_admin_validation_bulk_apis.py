@@ -56,7 +56,10 @@ class BulkValidationAPITestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
 
         self.publication = Publication.objects.first()
         self.admin = SystemUser.objects.filter(
@@ -291,7 +294,10 @@ class AgreementFilterAPITestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
 
         self.publication = Publication.objects.first()
         self.admin = SystemUser.objects.filter(
@@ -416,7 +422,10 @@ class ReviewerPanelAPITestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
 
         self.publication = Publication.objects.first()
         self.admin = SystemUser.objects.filter(

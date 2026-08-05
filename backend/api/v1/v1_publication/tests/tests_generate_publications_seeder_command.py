@@ -124,7 +124,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         )
         mock_async_task.side_effect = self.generate_task_id
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         # Test that all publications are created with published status
         total_publications = Publication.objects.count()
@@ -150,7 +150,8 @@ class PublicationsSeederCommandTestCase(TestCase):
             publication.year_month.strftime("%Y-%m-%d"), expected_date
         )
         self.assertEqual(publication.status, PublicationStatus.published)
-        self.assertEqual(publication.initial_values, {})
+        # A list, not {} — validate_json_values requires a list (DEMO-1 D-11).
+        self.assertEqual(publication.initial_values, [])
 
     @patch("django_q.tasks.async_task")
     @patch("requests.get")
@@ -163,7 +164,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         mock_async_task.side_effect = self.generate_task_id
 
         call_command(
-            "publications_seeder", "--category", CDIGeonodeCategory.spi
+            "generate_publications_seeder", "--category", CDIGeonodeCategory.spi
         )
 
         # Verify the correct URL was called with the category parameter
@@ -197,7 +198,7 @@ class PublicationsSeederCommandTestCase(TestCase):
 
         out = StringIO()
         with patch('sys.stdout', new=out):
-            call_command("publications_seeder")
+            call_command("generate_publications_seeder")
             output = out.getvalue()
 
         # Check that warning about existing publication is shown
@@ -224,6 +225,127 @@ class PublicationsSeederCommandTestCase(TestCase):
         # creation (covered separately in tests_publication_seeder_rasters).
         self.assertEqual(PublicationRaster.objects.count(), 0)
 
+    @patch("django_q.tasks.async_task")
+    @patch("requests.get")
+    def test_pending_publication_with_no_values_is_requeued(
+        self, mock_get, mock_async_task
+    ):
+        """No extracted values and no live job -> retry the download.
+
+        Previously this needed another run of the command; now the chain is
+        re-queued in place and publishes itself on completion (DEMO-1 D-11).
+        """
+        pending = Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-12-01",
+            initial_values=[],
+            due_date="2025-01-01",
+            status=PublicationStatus.in_review,
+        )
+        mock_get.side_effect = self._route_by_category(
+            self.mock_response_data
+        )
+        mock_async_task.side_effect = self.generate_task_id
+
+        out = StringIO()
+        with patch("sys.stdout", new=out):
+            call_command("generate_publications_seeder")
+            output = out.getvalue()
+
+        self.assertIn("re-queued its download", output)
+
+        # Never published on empty values — a categoryless map must not reach
+        # the National overview.
+        pending.refresh_from_db()
+        self.assertIsNone(pending.validated_values)
+        self.assertIsNone(pending.published_at)
+
+        # The retry carries is_seeder, so the chain can publish it later.
+        job = Jobs.objects.filter(
+            type=JobTypes.download_geonode_dataset,
+            info__publication_id=pending.id,
+        ).first()
+        self.assertIsNotNone(job)
+        self.assertTrue(job.info["is_seeder"])
+
+    @patch("django_q.tasks.async_task")
+    @patch("requests.get")
+    def test_pending_publication_with_live_job_is_left_alone(
+        self, mock_get, mock_async_task
+    ):
+        """An in-flight chain publishes itself; re-queueing would duplicate."""
+        pending = Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-12-01",
+            initial_values=[],
+            due_date="2025-01-01",
+            status=PublicationStatus.in_review,
+        )
+        Jobs.objects.create(
+            task_id="in-flight",
+            type=JobTypes.download_geonode_dataset,
+            status=JobStatus.on_progress,
+            info={"publication_id": pending.id, "is_seeder": True},
+        )
+        mock_get.side_effect = self._route_by_category(
+            self.mock_response_data
+        )
+        mock_async_task.side_effect = self.generate_task_id
+
+        out = StringIO()
+        with patch("sys.stdout", new=out):
+            call_command("generate_publications_seeder")
+            output = out.getvalue()
+
+        self.assertIn("extraction in flight", output)
+        self.assertEqual(
+            Jobs.objects.filter(
+                type=JobTypes.download_geonode_dataset,
+                info__publication_id=pending.id,
+            ).count(),
+            1,
+        )
+
+    @patch("django_q.tasks.async_task")
+    @patch("requests.get")
+    def test_failed_job_does_not_block_the_retry(
+        self, mock_get, mock_async_task
+    ):
+        """A FAILED job is not 'active' — otherwise a failed download would
+        leave the publication stuck forever. Mirrors the rule
+        attach_component_rasters already uses."""
+        pending = Publication.objects.create(
+            cdi_geonode_id=1,
+            year_month="2024-12-01",
+            initial_values=[],
+            due_date="2025-01-01",
+            status=PublicationStatus.in_review,
+        )
+        Jobs.objects.create(
+            task_id="dead",
+            type=JobTypes.download_geonode_dataset,
+            status=JobStatus.failed,
+            info={"publication_id": pending.id, "is_seeder": True},
+        )
+        mock_get.side_effect = self._route_by_category(
+            self.mock_response_data
+        )
+        mock_async_task.side_effect = self.generate_task_id
+
+        out = StringIO()
+        with patch("sys.stdout", new=out):
+            call_command("generate_publications_seeder")
+            output = out.getvalue()
+
+        self.assertIn("re-queued its download", output)
+        self.assertEqual(
+            Jobs.objects.filter(
+                type=JobTypes.download_geonode_dataset,
+                info__publication_id=pending.id,
+            ).count(),
+            2,
+        )
+
     @patch("requests.get")
     def test_geonode_server_error_response(self, mock_get):
         mock_get.return_value.status_code = 500
@@ -235,7 +357,7 @@ class PublicationsSeederCommandTestCase(TestCase):
 
         out = StringIO()
         with patch('sys.stdout', new=out):
-            call_command("publications_seeder")
+            call_command("generate_publications_seeder")
             output = out.getvalue()
 
         self.assertIn("Failed to fetch page 1: 500", output)
@@ -282,7 +404,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         )
         mock_async_task.side_effect = self.generate_task_id
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         # Verify pagination calls were made for the CDI query itself.
         # (Each of the 25 publications created also triggers component
@@ -336,7 +458,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         mock_get.side_effect = self._route_by_category(mock_response_data)
         mock_async_task.side_effect = self.generate_task_id
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         # Test publication with valid date
         pub_valid_date = Publication.objects.filter(cdi_geonode_id=1).first()
@@ -367,7 +489,10 @@ class PublicationsSeederCommandTestCase(TestCase):
         # creation (covered separately in tests_publication_seeder_rasters).
         self.assertEqual(PublicationRaster.objects.count(), 0)
 
-    @patch("api.v1.v1_publication.management.commands.publications_seeder.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands"
+        ".generate_publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_job_creation_details(self, mock_get, mock_async_task):
         mock_get.side_effect = self._route_by_category({
@@ -385,7 +510,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         mock_async_task.side_effect = self.generate_task_id
 
         with patch('time.time', return_value=1234567890):
-            call_command("publications_seeder")
+            call_command("generate_publications_seeder")
 
         # Check job was created with correct details
         job = Jobs.objects.filter(
@@ -408,7 +533,7 @@ class PublicationsSeederCommandTestCase(TestCase):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = self.mock_empty_response
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         # No publications should be created
         total_publications = Publication.objects.count()

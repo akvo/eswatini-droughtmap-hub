@@ -22,7 +22,10 @@ class ReviewViewSetTestCase(APITestCase):
     def setUp(self):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 2)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
 
         self.publication = Publication.objects.first()
         self.review = self.publication.reviews.first()
