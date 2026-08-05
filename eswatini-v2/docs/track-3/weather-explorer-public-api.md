@@ -25,8 +25,8 @@ Currently (WX-1, implemented):
 The explorer page is PUBLIC and keyed by INKHUNDLA (product ACs, 2026-07-15):
 - header: Inkhundla name, region · zone, current drought-class chip
 - 3 cards: total rain LAST MONTH · total rain 12-month · data completeness
-  (completeness visible ONLY to signed-in TWG users; anonymous users see a
-  locked "🔒 Sign in as TWG …" placeholder)
+  (completeness visible ONLY to signed-in TWG users; anonymous users do not
+  see the card at all — see D-1 revision 2026-08-05)
 - 2 charts with date-range filters and legend toggles: monthly precipitation
   bars (station + 30-yr average) and monthly Tmin/Tmax/Tmean lines (+ 30-yr
   averages; Tmax red, Tmin blue; last month at the right end of the x-axis)
@@ -39,8 +39,8 @@ Goal:
 **Design→scope notes (explicit):**
 - **Backend scope only** (product decision 2026-07-15): the dropdown list
   (already in `config.js`), default selection, chart colors, legend toggles,
-  x-axis ordering (series arrive ascending → last month rightmost) and the
-  locked-placeholder copy are frontend work.
+  x-axis ordering (series arrive ascending → last month rightmost) and
+  dropping the gated card from the grid are frontend work.
 - **30-yr averages**: labelled frontend placeholder (resolved Q2 in the
   requirements doc); the backend serves none.
 - **Satellite-difference card** (visible in the Figma frame): NOT in the
@@ -61,8 +61,7 @@ Goal:
       (station name; fallback + distance when applicable).
 - [x] Data completeness value is returned ONLY to authenticated (TWG) users;
       anonymous callers get the card with `value: null` +
-      `meta.reason: "twg_only"` so the UI renders the locked sign-in
-      placeholder.
+      `meta.reason: "twg_only"`, which the UI reads as "omit this card".
 - [x] Charts filter by date range (`from`/`to`, YYYY-MM inclusive).
 - [x] Manzini Tinkhundla (no own-region station) get fallback-labelled data;
       "No data available" only when no station has data at all.
@@ -122,7 +121,8 @@ None. Served from `WeatherStation` + `StationDailyAggregate` (WX-1),
            "resolution": "region_station"}
 }
 // Authenticated: the completeness card instead carries
-//   value: 0.84, meta: {window_days: 365, definition: "days_with_data / window_days"}
+//   value: 0.833, meta: {window_months: 12, months_with_data: 10,
+//                        definition: "months_with_data / window_months"}
 ```
 
 ### `/series` response
@@ -178,14 +178,32 @@ endpoints are live, so the frontend consumes them directly.
 2. Keep it gated: authenticated callers get the days-based value; anonymous
    callers get the same card with `value: null` + `meta.reason: "twg_only"`
 
-**Decision**: Option 2 (product AC, 2026-07-15 — the page shows a
-"🔒 Sign in as TWG…" placeholder to anonymous visitors).
+**Decision**: Option 2 (product AC, 2026-07-15).
 
-**Impact**: gating is by authentication on `/stats` only; the definition is
-**days-based** (resolved OQ): `days_with_data / window_days`, window = last
-365 days clipped to the station's first record, with `window_days` +
-`definition` in the meta so UI copy stays accurate. The ops health view
+**Impact**: gating is by authentication on `/stats` only. The ops health view
 stays exclusively on the (gated) stations-list meta.
+
+#### D-1 revision, 2026-08-05 — months-based, and hidden (not locked) for guests
+
+Two changes, both to match what the card actually claims —
+*"Share of the last 12 months the station reported data."*
+
+1. **Definition is now months-based**: `months_with_data / window_months`,
+   `window_months` = 12. A month counts if the station reported **any**
+   parameter on **any** day of it. The window is the last 12 calendar
+   months including the current one, and — unlike `precipitation_12m`'s —
+   it is **not clipped to the station's first record**: the denominator is
+   always 12, so a station three months old reads 3/12 rather than 100 % of
+   a three-month window. Meta carries `window_months`, `months_with_data`
+   and `definition`.
+   *Why*: the old `days_with_data / window_days` measured days and clipped
+   the denominator, so a 24-day-old station reported "83 %" where the card
+   said "of the last 12 months". Two mismatches with the same label.
+2. **Anonymous callers no longer see a locked placeholder**; the frontend
+   drops the card from the grid (4 columns → 3). The wire contract is
+   unchanged — `value: null` + `meta.reason: "twg_only"` — so the signal is
+   still explicit, the UI just renders nothing instead of a sign-in prompt.
+   `MetricItemCard`'s `locked` variant was removed with its last caller.
 
 ### D-2: Two endpoints — /stats and /series — instead of one composite
 
@@ -220,7 +238,7 @@ shipped meanwhile.
 
 | Test Type | Coverage |
 |---|---|
-| Unit — stats | card set/order, last-month + 12-month values, completeness locked (anon) vs days-based value (authed) incl. clipped window, dclass from latest published publication + null case, Manzini labelled fallback, no-data payload keeps header context, 404, no TWG ops-field leak |
+| Unit — stats | card set/order, last-month + 12-month values, completeness gated (anon) vs months-based value (authed) — fixed /12 denominator, one twelfth per reported month, months outside the window excluded — dclass from latest published publication + null case, Manzini labelled fallback, no-data payload keeps header context, 404, no TWG ops-field leak |
 | Unit — series | combined tmax/tmean/tmin values, ascending periods (last month rightmost), range filtering, invalid range 400, Manzini fallback, no-data payload, 404, station-monthly range params |
 
 ---
@@ -238,10 +256,12 @@ shipped meanwhile.
 
 ## 8. Open Questions
 
-- [x] ~~Completeness definition~~ **RESOLVED 2026-07-15: days-based** (D-1).
-- [x] ~~Completeness gating~~ **RESOLVED 2026-07-15: TWG-gated** with a
-      locked-card contract for anonymous (D-1; supersedes this doc's earlier
-      public-completeness draft).
+- [x] ~~Completeness definition~~ ~~RESOLVED 2026-07-15: days-based~~
+      **REVISED 2026-08-05: months-based** (D-1).
+- [x] ~~Completeness gating~~ **RESOLVED 2026-07-15: TWG-gated** (D-1;
+      supersedes this doc's earlier public-completeness draft). The card is
+      hidden outright for anonymous callers — revised 2026-08-05, the
+      locked-placeholder variant was dropped.
 
 ---
 

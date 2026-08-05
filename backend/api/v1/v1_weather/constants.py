@@ -68,6 +68,10 @@ OFFLINE_AFTER_DAYS = 2
 DEGRADED_COMPLETENESS = 0.8
 COMPLETENESS_WINDOW_DAYS = 30
 
+# Explorer completeness card (WX-4 D-1): months, not days, and a fixed
+# denominator — "share of the last 12 months the station reported data".
+COMPLETENESS_WINDOW_MONTHS = 12
+
 # Ingestion-lag alert threshold (design D-6)
 INGESTION_LAG_ALERT_DAYS = 30
 

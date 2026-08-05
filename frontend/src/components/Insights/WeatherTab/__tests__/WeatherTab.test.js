@@ -156,16 +156,15 @@ describe("WeatherTab", () => {
     expect(screen.getByTestId("line-chart")).toBeInTheDocument();
   });
 
-  it("locks the completeness card for anonymous callers", async () => {
+  it("hides the completeness card entirely for anonymous callers", async () => {
     mockApi();
     renderTab();
 
     await waitFor(() => {
-      // Substring, so copy tweaks to the locked-card wording don't break this
-      // — the assertion is about the TWG gate, not the exact sentence.
-      expect(screen.getByText(/Sign in as TWG member/)).toBeInTheDocument();
+      expect(screen.getByText("242 mm")).toBeInTheDocument();
     });
-    expect(screen.queryByText("84%")).not.toBeInTheDocument();
+    expect(screen.queryByText("Data completeness")).not.toBeInTheDocument();
+    expect(screen.queryByText("83%")).not.toBeInTheDocument();
   });
 
   it("shows the completeness value once authenticated", async () => {
@@ -176,8 +175,12 @@ describe("WeatherTab", () => {
           d.key === "completeness_12m"
             ? {
                 ...d,
-                value: 0.84,
-                meta: { window_days: 365, definition: "days_with_data" },
+                value: 0.833,
+                meta: {
+                  window_months: 12,
+                  months_with_data: 10,
+                  definition: "months_with_data / window_months",
+                },
               }
             : d,
         ),
@@ -186,8 +189,13 @@ describe("WeatherTab", () => {
     renderTab();
 
     await waitFor(() => {
-      expect(screen.getByText("84%")).toBeInTheDocument();
+      expect(screen.getByText("83%")).toBeInTheDocument();
     });
+    expect(
+      screen.getByText(
+        "Share of the last 12 months the station reported data.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("labels the satellite card as placeholder data", async () => {

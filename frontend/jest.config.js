@@ -163,6 +163,10 @@ const config = {
   // The test environment that will be used for testing
   testEnvironment: "jsdom",
 
+  // Jest's own default is 5s — the same as jest.setup's asyncUtilTimeout, so a
+  // slow waitFor would blow the test budget before RTL could report on it.
+  testTimeout: 15000,
+
   // Options that will be passed to the testEnvironment
   // testEnvironmentOptions: {},
 
