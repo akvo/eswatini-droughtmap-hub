@@ -162,6 +162,7 @@ const BriefBuilderPage = () => {
       <ForwardBriefSlideIn
         visible={forwardOpen}
         onClose={() => setForwardOpen(false)}
+        administrationId={administrationId}
         inkhundla={selectedInkhundla}
         period={period}
         components={applied.components}

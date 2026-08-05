@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Checkbox, Input, Tooltip, message } from "antd";
+import { Button, Checkbox, Input, Select, Tooltip, message } from "antd";
 import dayjs from "dayjs";
 import useBriefRecipients from "@/hooks/useBriefRecipients";
+import { api } from "@/lib/api";
 import { BRIEF_COMPONENTS } from "@/static/config";
 
 const { TextArea } = Input;
@@ -28,7 +29,14 @@ const SHORT_BY_KEY = Object.fromEntries(
 const RecipientRow = ({ recipient, checked, onToggle }) => (
   <label className="flex w-full cursor-pointer items-start gap-4 rounded-lg border border-[#d2d2d2] bg-white p-3">
     <span className="flex flex-1 flex-col">
-      <span className="text-base leading-6 text-[#333]">{recipient.name}</span>
+      <span className="text-base leading-6 text-[#333]">
+        {recipient.name}
+        {recipient.group && (
+          <span className="ml-2 text-xs font-semibold text-neutral-500">
+            ({recipient.group})
+          </span>
+        )}
+      </span>
       <span className="text-sm leading-[21px] text-[#606060]">
         {recipient.email}
       </span>
@@ -66,21 +74,18 @@ const RecipientRow = ({ recipient, checked, onToggle }) => (
  * the viewport, leaving the panel starting below the header and stopping short
  * of the bottom. The portal escapes the transform entirely, so this stays
  * correct wherever it is mounted.
- *
- * The form is complete; the send is not. There is no brief-forwarding endpoint
- * yet (design doc D-6), so Send validates and reports honestly instead of
- * claiming a delivery. That copy must not be softened to a success toast: a
- * user told the brief went out, when nothing was sent, will not follow up.
  */
 const ForwardBriefSlideIn = ({
   visible,
   onClose,
+  administrationId,
   inkhundla,
   period,
   components = [],
 }) => {
   const { data: recipients, loading, isFallback } = useBriefRecipients(visible);
 
+  const [twgFilter, setTwgFilter] = useState([]);
   const [selected, setSelected] = useState([]);
   const [other, setOther] = useState("");
   const [note, setNote] = useState("");
@@ -88,10 +93,23 @@ const ForwardBriefSlideIn = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Extract unique non-empty TWG groups for the filter select
+  const twgOptions = useMemo(() => {
+    const groups = recipients.map((r) => r.group || r.twg).filter(Boolean);
+    return Array.from(new Set(groups));
+  }, [recipients]);
+
+  // Filter recipients by TWG multiselect
+  const visibleRecipients = useMemo(() => {
+    if (!twgFilter.length) return recipients;
+    return recipients.filter((r) => twgFilter.includes(r.group || r.twg));
+  }, [recipients, twgFilter]);
+
   // Reset on every open, so a previous recipient list never carries into a
   // brief for a different Inkhundla.
   useEffect(() => {
     if (visible) {
+      setTwgFilter([]);
       setSelected([]);
       setOther("");
       setNote("");
@@ -126,13 +144,50 @@ const ForwardBriefSlideIn = ({
     setError("");
     setSubmitting(true);
     try {
-      // TODO(BB-2): POST /api/v1/brief/forward once it exists. Blocked on the
-      // PDF decision — with no PDF a forwarded brief can only be a link, which
-      // is useless to a recipient who is not a platform user.
-      message.info(
-        "Recipients selected. Sending is not available yet — the brief forwarding endpoint ships with the backend round.",
+      // 1. Build chosen recipients list
+      const chosenRecipients = recipients
+        .filter((r) => selected.includes(r.id))
+        .map((r) => ({ email: r.email, name: r.name }));
+
+      if (other.trim()) {
+        chosenRecipients.push({ email: other.trim(), name: "Other" });
+      }
+
+      if (ccMe) {
+        try {
+          const user = await api("GET", "/users/me");
+          if (
+            user?.email &&
+            !chosenRecipients.some((r) => r.email === user.email)
+          ) {
+            chosenRecipients.push({
+              email: user.email,
+              name: user.name || "Me (CC)",
+            });
+          }
+        } catch {
+          // If /users/me fails, proceed without CCing
+        }
+      }
+
+      const payload = {
+        inkhundla_id: administrationId,
+        inkhundla_name: inkhundla,
+        components,
+        recipients: chosenRecipients,
+        note: note.trim(),
+        brief_url: typeof window !== "undefined" ? window.location.href : "",
+      };
+
+      await api("POST", "/brief/forward", payload);
+
+      message.success(
+        `Brief forwarded to ${chosenRecipients.length} recipient(s).`,
       );
       onClose();
+    } catch (err) {
+      console.error("Failed to forward brief:", err);
+      setError(err?.message || "Failed to forward brief. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -180,12 +235,34 @@ const ForwardBriefSlideIn = ({
                 </span>
               </Tooltip>
             )}
+
+            {twgOptions.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm text-[#606060]">
+                  Filter by Technical Working Group
+                </label>
+                <Select
+                  mode="multiple"
+                  allowClear
+                  placeholder="All working groups"
+                  value={twgFilter}
+                  onChange={setTwgFilter}
+                  options={twgOptions.map((g) => ({ label: g, value: g }))}
+                  className="w-full"
+                />
+              </div>
+            )}
+
             {loading ? (
               <p className="mb-0 text-sm text-neutral-400">
                 Loading recipients...
               </p>
+            ) : visibleRecipients.length === 0 ? (
+              <p className="mb-0 text-sm text-neutral-400">
+                No recipients match the selected group filter.
+              </p>
             ) : (
-              recipients.map((r) => (
+              visibleRecipients.map((r) => (
                 <RecipientRow
                   key={r.id}
                   recipient={r}
