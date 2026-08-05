@@ -118,7 +118,7 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
 
     @patch("api.v1.v1_publication.utils.async_task")
     @patch(
-        "api.v1.v1_publication.management.commands.publications_seeder"
+        "api.v1.v1_publication.management.commands.generate_publications_seeder"
         ".async_task"
     )
     @patch("requests.get")
@@ -129,7 +129,7 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
         mock_async_task.side_effect = self.generate_task_id
         mock_component_async_task.side_effect = self.generate_task_id
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         publication = Publication.objects.get(cdi_geonode_id=1)
         rasters = PublicationRaster.objects.filter(publication=publication)
@@ -171,7 +171,7 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
 
     @patch("api.v1.v1_publication.utils.async_task")
     @patch(
-        "api.v1.v1_publication.management.commands.publications_seeder"
+        "api.v1.v1_publication.management.commands.generate_publications_seeder"
         ".async_task"
     )
     @patch("requests.get")
@@ -182,7 +182,7 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
         mock_async_task.side_effect = self.generate_task_id
         mock_component_async_task.side_effect = self.generate_task_id
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         # The first run has to walk GeoNode per component category to
         # discover each matching resource.
@@ -196,7 +196,7 @@ class PublicationsSeederComponentRastersTestCase(TestCase):
         )
         self.assertGreater(component_calls_after_first_run, 0)
 
-        call_command("publications_seeder")
+        call_command("generate_publications_seeder")
 
         publication = Publication.objects.get(cdi_geonode_id=1)
         rasters = PublicationRaster.objects.filter(publication=publication)

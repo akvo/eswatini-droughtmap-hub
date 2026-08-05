@@ -85,6 +85,162 @@ Eswatini Droughtmap Hub
 
 Use these Django management commands from the backend service when maintaining review workflows and operational response data.
 
+---
+
+## **Seeding a Demo / Dev Database**
+
+A fresh checkout has no drought data, so the National overview and every
+Detailed Insights tab render empty states. `seed_demo` fills every model those
+pages read, in dependency order.
+
+### **Quick start**
+
+```bash
+docker compose up -d
+
+# interactive — prompts for each stage
+docker compose exec backend ./seeder.sh
+
+# or non-interactive, everything at once
+docker compose exec backend python manage.py seed_demo
+```
+
+After it finishes, the National overview, CDI-E explorer, Weather explorer,
+IKS explorer and Priority insights all have data.
+
+### **Real data vs synthetic — the `--source` ladder**
+
+Every seeder prefers real data and falls back only when it has to:
+
+| `--source` | Where values come from | Needs |
+|------------|------------------------|-------|
+| `path` | A local pct-rank GeoTIFF archive, extracted synchronously | the archive |
+| `geonode` | The production path — GeoNode resources + the extraction worker | credentials + worker |
+| `synthetic` | Anchored on committed real data (`priority_areas.csv`, the 30-yr normal rasters) | nothing |
+| `auto` *(default)* | `path` → `geonode` → `synthetic` | — |
+
+To use the CDI pipeline's real output, copy it under `storage/` — already a
+persistent volume in both the dev compose file and self-hosted, so **no docker
+configuration is needed**:
+
+```bash
+cp -r /path/to/cdi-pipeline/output_data/GeoTiffs ./storage/geotiffs
+docker compose exec backend python manage.py seed_demo --path ./storage/geotiffs
+```
+
+The archive is expected to hold one directory per index
+(`CDI/`, `ESI/`, `EVI2/`, `SM/`, `SPI/`) with a trailing `YYYYMM` in each
+filename, e.g. `STEP_0303_EVI2_pct_rank_Eswatini_202604.tif`.
+
+### **`seed_demo` options**
+
+```bash
+python manage.py seed_demo \
+    --path ./storage/geotiffs \   # real values; omit for GeoNode/synthetic
+    --months 24 \                 # publication months (default 24)
+    --weather-months 24 \         # daily observations (default 24)
+    --publish-through 2026-02 \   # later months stay in_review — see below
+    --seed 42 \                   # same seed, same database
+    --skip-users                  # leave accounts alone
+```
+
+**`--publish-through` gives you a workflow to drive by hand.** Months up to the
+boundary are published history; later months stay `in_review` with their values
+already populated, so a reviewer can walk review → validate → publish through
+the real UI with no GeoNode and no worker.
+
+> ⚠️ `--weather-months` always ends **today**, regardless of `--months`.
+> Station health (online / degraded / offline) is computed against the wall
+> clock, so weather ending in the past would report every station offline.
+
+> ⚠️ Setting `--publish-through` far in the past leaves the CDI-E strip's
+> right-hand cells empty. That is by design — the strip is anchored on the
+> current month, not the latest published one — and the command warns you.
+
+### **Individual seeders**
+
+`seed_demo` is an orchestrator; each stage is runnable on its own. One command
+owns each table:
+
+```bash
+# Publication (+ Review) rows
+docker compose exec backend python manage.py generate_publications_seeder \
+    --source path --path ./storage/geotiffs --with-reviews
+
+# PublicationRaster values — the four CDI component indices
+docker compose exec backend python manage.py generate_rasters_seeder \
+    --source path --path ./storage/geotiffs
+
+# WeatherStation + StationDailyAggregate (8 stations, 2 per region)
+docker compose exec backend python manage.py generate_weather_seeder --months 24
+
+# Kobo IKS submissions, indicators, values and photo attachments
+docker compose exec backend python manage.py generate_iks_seeder --months 24
+```
+
+Notes:
+
+- `generate_weather_seeder` draws its values from the **real 30-year normals**,
+  so run `extract_weather_normals` first (`seed_demo` does). Without them it
+  falls back to a built-in climatology table and says so.
+- It deliberately produces a **mixed health picture** — 6 online, 1 degraded,
+  1 offline — so the offline/degraded branches of the UI are exercised rather
+  than hidden behind an all-green seed.
+- `generate_iks_seeder` reuses `download_iks_data`'s value extractor, so seeded
+  and live-synced submissions go through one code path. Photos reuse the images
+  committed in `backend/source/images/`.
+
+> ⚠️ `generate_iks_seeder` **deactivates any other active `KoboForm`**. There is
+> no single-active constraint, and the public IKS API merges every active form's
+> data, so two active forms would silently blend seeded and real submissions
+> into one set of aggregations. It names the form it deactivated.
+
+### **Tearing seeded data down: `--clean`**
+
+`--clean` deletes **only seeded rows**, by data family, and never touches
+`Administration`, users, roles or Kobo adapter credentials:
+
+```bash
+# everything seeded
+docker compose exec backend python manage.py seed_demo --clean
+
+# just the observations/answers, keeping publications and reference data
+docker compose exec backend python manage.py seed_demo --clean=weather,iks,citizen-science
+
+# clean then re-seed
+docker compose exec backend python manage.py seed_demo --clean
+docker compose exec backend python manage.py seed_demo --path ./storage/geotiffs
+```
+
+Families: `publications`, `rasters`, `weather`, `iks`, `citizen-science`,
+`activities`, `indicators`, `normals`.
+
+Seeded publications are identified by a synthetic GeoNode id at or above
+`900000` (`950000` for component rasters) — far above any real GeoNode pk — so
+a database holding both real and seeded data cleans safely.
+
+> `seed_demo` refuses to run when `DEBUG=False` unless you pass `--force`. It
+> writes fabricated drought classifications, which must never reach production
+> by accident.
+
+### **What `backend/seeder.sh` does**
+
+`seeder.sh` is the interactive wrapper. Each prompt is independent and every
+stage is idempotent, so it is safe to re-run:
+
+| Prompt | Runs |
+|--------|------|
+| Seed Administration? | `generate_administrations_seeder` |
+| Seed Role and Abilities? | `generate_roles_n_abilities_seeder` |
+| Add New Super Admin? | `createsuperuser` with the email you type |
+| Seed Fake User? | `generate_admin_seeder`, `fake_users_seeder` |
+| **Seed Demo Data?** | **`seed_demo`**, optionally with a GeoTIFF archive path |
+
+It always finishes with `generate_config` so the browser picks up the current
+zone vocabulary and topojson.
+
+---
+
 ### **Seed Response Activities: `generate_activity_seeder`**
 
 The `generate_activity_seeder` command seeds the Response Activity library from:
@@ -138,7 +294,39 @@ Field notes:
 - `response_type` accepts `public` or `institutional`.
 - Trigger operators use `gte` or `lte`.
 - `trigger_exp` can contain multiple conditions separated by semicolons, for example `population gte 2000;cattle gte 1500`.
-- Seeded activities are stored as `Active`.
+- `status` accepts `draft`, `active` or `archived` and is honoured as written.
+
+#### **Demo activities: `--demo`**
+
+The same CSV also holds an `ACT-DEMO-*` catalogue covering all eight sectors.
+Those rows ship as `draft`, so they are inert until you ask for them:
+
+```bash
+# activate the demo catalogue
+docker compose exec backend python manage.py generate_activity_seeder --demo
+
+# put them back to draft (the flag is a toggle, not an append)
+docker compose exec backend python manage.py generate_activity_seeder
+```
+
+`seed_demo` passes `--demo` automatically.
+
+Why they exist: the real library's WASH and FOOD rows trigger on `cattle` and
+`water_demand`, which have **no data source** — they are null for all 59
+Tinkhundla, and a missing value fails its condition. Those activities can
+therefore never fire, so three of the four National overview sector cards read
+`0 Activities / 0 Tinkhundla`. The demo rows gate only on fields that are
+actually populated (`dclass`, `ipc_phase`, `population`, `cropland`,
+`land_use_dvi_agri`).
+
+Two properties are deliberate and worth preserving if you edit them:
+
+- **`ACT-DEMO-COORD-1` is drought class `0`**, so at least one activity fires
+  for *every* Inkhundla — including wet/normal ones. Without it those render
+  "no activities triggered".
+- **The other thresholds are graded**, so per-sector Tinkhundla counts differ.
+  A catalogue that fires everywhere for everything would hide the trigger
+  logic just as effectively as one that fires nowhere.
 
 ### **Check Overdue Reviews: `check_overdue_reviews`**
 
@@ -250,13 +438,16 @@ docker compose exec backend python manage.py download_iks_data
 
 ### **Seed Risk Level Indicators: `generate_indicators_seeder`**
 
-The `generate_indicators_seeder` command seeds Tinkhundla risk level indicator details (exposure and vulnerability metrics) from:
+The `generate_indicators_seeder` command seeds the **scored risk inputs**
+(population, land-use DVI-agri, IPC phase) from the DIH handover workbook:
 
 ```bash
-backend/source/priority_areas.csv
+backend/source/csv/risk_dataset__Exposure_Population.csv
+backend/source/csv/risk_dataset__Exposure_LandUse.csv
+backend/source/csv/risk_dataset__Vulnerability_IPC.csv
 ```
 
-It creates or updates `Indicator` records by matching the administration `name`, which makes it safe to run multiple times when the prototype CSV data changes.
+It creates or updates `Indicator` records by matching the administration `name`, which makes it safe to run multiple times when the CSV data changes.
 
 #### **Run Indicators Seeder with Docker**
 
@@ -267,8 +458,27 @@ docker compose exec backend python manage.py generate_indicators_seeder
 Expected output:
 
 ```bash
-Successfully seeded 59 indicators.
+Seeded 59/59 indicators from DIH Risk Dataset.
 ```
+
+### **Seed Eligibility Counts: `generate_eligibility_seeder`**
+
+The handover workbook carries no eligibility counts, so every Inkhundla would
+ship with `0` and the Risk Level water-access row would read "no water points
+recorded" everywhere. This command fills them — under-5s, rain-fed cropland,
+rangeland, boreholes, taps — from the prototype dataset:
+
+```bash
+backend/source/priority_areas.csv
+```
+
+```bash
+docker compose exec backend python manage.py generate_eligibility_seeder
+```
+
+These are illustrative rather than NDMA-curated, so rows keep
+`is_placeholder=True`. Scored risk inputs are deliberately **not** written here
+— that would move real risk scores using prototype numbers.
 ### **Sync GeoNode Publication Cache: `sync_publication_geonodes`**
 
 The `sync_publication_geonodes` command is a manual backfill command to fetch metadata for all CDI, SPI, ESI, EVI2, and SM raster map resources from the configured GeoNode instance, saving them into the local database cache (`PublicationGeonode`). This cache ensures that:
