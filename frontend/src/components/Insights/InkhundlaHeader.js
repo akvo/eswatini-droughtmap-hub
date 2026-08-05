@@ -6,6 +6,7 @@ import {
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
+import { textOn } from "@/lib/helper";
 
 // Tint behind the D-code chip (Figma 4116:96303). Per-band derivations of
 // DROUGHT_CATEGORY_COLOR, which stays the owner of the palette.
@@ -38,15 +39,6 @@ const zoneLabel = (zone) =>
  * `dclass` is the raw category from the latest published publication, or null
  * when no published month covers this inkhundla — which renders as No data.
  */
-const readableInk = (hex = "#ffffff") => {
-  const value = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) =>
-    parseInt(value.slice(i, i + 2) || "0", 16),
-  );
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#ffffff";
-};
-
 const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
   const category = dclass ?? DROUGHT_CATEGORY_VALUE.none;
   const isNoData = category === DROUGHT_CATEGORY_VALUE.none;
@@ -76,7 +68,7 @@ const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
           className="flex items-center justify-center px-[6px] py-[2px] rounded-[4px] shrink-0"
         >
           <p
-            style={{ color: readableInk(chipBg) }}
+            style={{ color: textOn(chipBg) }}
             className="font-['Inter'] font-semibold leading-[18px] text-[14px] text-center whitespace-nowrap mb-0"
           >
             {code}

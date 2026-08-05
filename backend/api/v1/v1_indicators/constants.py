@@ -43,3 +43,13 @@ EXPOSURE_SUBINDICATORS = [
     "cattle",
     "water_demand",
 ]
+
+# Raw sub-indicator -> the normalised key score_all() emits for it. Only
+# land_use_dvi_agri is shortened; spelled out so consumers read the mapping
+# instead of re-deriving the exception.
+EXPOSURE_NORM_KEYS = {
+    "land_use_dvi_agri": "land_use_norm",
+    "population": "population_norm",
+    "cattle": "cattle_norm",
+    "water_demand": "water_demand_norm",
+}

@@ -238,9 +238,11 @@ export const getProfileDropdownItems = (user) => {
  */
 export const textOn = (hex = "#ffffff") => {
   const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
+  // `|| "0"` so a short or malformed hex degrades to a dark channel rather
+  // than NaN, which would make the comparison false and pick white ink.
+  const [r, g, b] = [0, 2, 4].map((i) =>
+    parseInt(h.slice(i, i + 2) || "0", 16),
+  );
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
     ? "#333333"
     : "#ffffff";

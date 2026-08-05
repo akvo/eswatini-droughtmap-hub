@@ -6,6 +6,7 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
+import { textOn } from "@/lib/helper";
 
 const { Panel } = Collapse;
 
@@ -16,11 +17,18 @@ const ScoreBadge = ({ value }) => (
   </div>
 );
 
-const BuildUpDetailRow = ({ title, subtitle, value }) => (
+const BuildUpDetailRow = ({ title, subtitle, value, context = false }) => (
   <div className="bg-[#f5f8ff] border-b border-cardBorder last:border-b-0 flex gap-4 items-center justify-between px-4 py-3 w-full">
     <div className="flex flex-col gap-0.5 items-start">
       <span className="text-[14px] font-semibold text-neutral-800 leading-5">
         {title}
+        {/* `scored: false` rows inform the reader but never move the score
+            (RL-2 D-5) — the chip is what keeps them from reading as inputs. */}
+        {context && (
+          <span className="ml-2 align-middle text-[10px] font-bold tracking-wide text-neutral-400 border border-neutral-200 rounded px-1 py-px select-none">
+            CONTEXT
+          </span>
+        )}
       </span>
       <span className="text-[12px] text-neutral-500 leading-4">{subtitle}</span>
     </div>
@@ -41,27 +49,83 @@ const renderBuildUpPanel = (title, extra, panelKey, children) => (
   </Panel>
 );
 
-// Susceptibility Phase mapping from v_ipc
-const getIpcPhase = (vIpc) => {
-  if (vIpc === null || vIpc === undefined) return "N/A";
-  if (vIpc <= 0.25) return "Phase 1: Minimal";
-  if (vIpc <= 0.5) return "Phase 2: Stressed";
-  if (vIpc <= 0.75) return "Phase 3: Crisis";
-  return "Phase 4: Emergency";
+// Row wording. The API sends `key` + `unit` only (CLAUDE.md "Frontend Mock
+// Data"), so the design's copy lives here rather than in the payload.
+const ROW_COPY = {
+  land_use_dvi_agri: {
+    label: "Land use",
+    subtitle: "Agricultural land-cover index (DVI-agri)",
+  },
+  population: {
+    label: "Population exposed",
+    subtitle: "Number of people exposed",
+  },
+  cattle: { label: "Cattle count", subtitle: "Number of cattle exposed" },
+  water_demand: { label: "Water demand", subtitle: "Estimated water demand" },
+  under_five: {
+    label: "Under-5 children",
+    subtitle: "Children under 5 exposed",
+  },
+  rainfed_cropland: {
+    label: "Rain-fed cropland",
+    subtitle: "Rain-fed agricultural land",
+  },
+  ipc_phase: { label: "Susceptibility", subtitle: "IPC food security phase" },
+  people_per_water_point: {
+    label: "Water access pressure",
+    subtitle: "People per water point",
+  },
+};
+
+// The API sends the IPC phase itself (1-5), not a rescaled float.
+const IPC_PHASE_LABEL = {
+  1: "Phase 1: Minimal",
+  2: "Phase 2: Stressed",
+  3: "Phase 3: Crisis",
+  4: "Phase 4: Emergency",
+  5: "Phase 5: Famine",
+};
+
+const formatRowValue = ({ value, unit, format }) => {
+  if (format === "ipc") {
+    return IPC_PHASE_LABEL[value] || "N/A";
+  }
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  const formatted = value.toLocaleString();
+  // The unit is whatever the API declares — never converted here, because a
+  // pending unit (water demand, RL-2 D-8) would silently become wrong.
+  return unit ? `${formatted} ${unit}` : formatted;
+};
+
+// One accordion row, exposure or vulnerability — both arrive in the same
+// {key, value, unit, scored} shape, so they render the same way.
+const renderRow = (item) => {
+  const copy = ROW_COPY[item.key] || {};
+  return (
+    <BuildUpDetailRow
+      key={item.key}
+      title={copy.label || item.key}
+      subtitle={copy.subtitle || ""}
+      context={item.scored === false}
+      value={<ScoreBadge value={formatRowValue(item)} />}
+    />
+  );
 };
 
 const getTrendElement = (trend) => {
   switch (trend) {
-    case "worse":
+    case "worsening":
       return (
         <span className="text-[#B10D0B] font-bold text-xs whitespace-nowrap">
           ▼ WORSENING
         </span>
       );
-    case "better":
+    case "recovering":
       return (
         <span className="text-[#027A48] font-bold text-xs whitespace-nowrap">
-          ▲ BETTER
+          ▲ RECOVERING
         </span>
       );
     case "stable":
@@ -83,14 +147,12 @@ const RiskScoreBuildUp = ({ riskData }) => {
     );
   }
 
-  const { drought, exposure, vulnerability, risk_score } = riskData;
+  const { period, drought, exposure, vulnerability, risk_score } = riskData;
 
-  // Format absolute numbers with commas
-  const formatNum = (val) =>
-    val !== null && val !== undefined ? val.toLocaleString() : "N/A";
-
-  const confidenceConf =
-    CONFIDENCE_STYLE[drought.confidence] || CONFIDENCE_STYLE.medium;
+  // Confidence has no station baseline yet (RL-2 D-7): the API sends a null
+  // band with a reason, and the row renders empty rather than inventing one.
+  const confidenceBand = drought.confidence?.band;
+  const confidenceConf = CONFIDENCE_STYLE[confidenceBand];
 
   const droughtKeyLower = (drought.key || "none").toLowerCase();
   const dclass =
@@ -101,26 +163,33 @@ const RiskScoreBuildUp = ({ riskData }) => {
   // Format badges for the accordion headers
   const droughtBadge = (
     <div
-      style={{ backgroundColor: chipBg }}
-      className="text-white px-2 py-0.5 rounded text-xs font-semibold select-none"
+      style={{ backgroundColor: chipBg, color: textOn(chipBg) }}
+      className="px-2 py-0.5 rounded text-xs font-semibold select-none"
     >
-      {drought.key || "None"}
+      {drought.key || "No Data"}
     </div>
   );
 
+  // Null, not 0, when an input is missing — an unscored Inkhundla must not
+  // render as a confident zero.
   const exposureValue =
-    exposure.value !== undefined ? (exposure.value * 100).toFixed(0) : "0";
+    exposure.value === null || exposure.value === undefined
+      ? "N/A"
+      : (exposure.value * 100).toFixed(0);
 
   const vulnerabilityValue =
-    vulnerability.value !== undefined
-      ? vulnerability.value.toFixed(2).replace(".", ",")
-      : "0,00";
+    vulnerability.value === null || vulnerability.value === undefined
+      ? "N/A"
+      : vulnerability.value.toFixed(2).replace(".", ",");
 
-  // Position of pin in scale bar (0 to 10)
-  const pinPercentage = Math.min(
-    Math.max((risk_score.value / 10) * 100, 0),
-    100,
-  );
+  // The API is the canonical 0-1 scale (RL-2 D-2); the 0-10 headline is this
+  // component's display choice, so the x10 lives here and nowhere else.
+  const hasScore =
+    risk_score?.value !== null && risk_score?.value !== undefined;
+  const scoreOutOfTen = hasScore ? risk_score.value * 10 : null;
+  const pinPercentage = hasScore
+    ? Math.min(Math.max(risk_score.value * 100, 0), 100)
+    : 0;
 
   return (
     <div
@@ -155,17 +224,13 @@ const RiskScoreBuildUp = ({ riskData }) => {
           <>
             <BuildUpDetailRow
               title="Validated drought score"
-              subtitle={
-                drought.period_label
-                  ? `Signed off in ${drought.period_label}`
-                  : `Signed off in ${drought.period || "current"} review cycle`
-              }
+              subtitle={`Signed off in ${period || "current"} review cycle`}
               value={
                 <div
-                  style={{ backgroundColor: chipBg }}
-                  className="text-white px-2 py-0.5 rounded text-xs font-semibold select-none"
+                  style={{ backgroundColor: chipBg, color: textOn(chipBg) }}
+                  className="px-2 py-0.5 rounded text-xs font-semibold select-none"
                 >
-                  {drought.key || "None"}
+                  {drought.key || "No Data"}
                 </div>
               }
             />
@@ -177,19 +242,27 @@ const RiskScoreBuildUp = ({ riskData }) => {
             <BuildUpDetailRow
               title="Confidence"
               subtitle={
-                drought.confidence_desc || "CDI-E · station · IKS agreement"
+                confidenceConf
+                  ? "CDI-E · station · IKS agreement"
+                  : "Awaiting weather-station baseline"
               }
               value={
-                <span
-                  style={{
-                    color: confidenceConf.color,
-                    backgroundColor: confidenceConf.bg,
-                    borderColor: confidenceConf.color + "22",
-                  }}
-                  className="font-semibold rounded border px-2 py-0.5 text-xs m-0"
-                >
-                  {confidenceConf.label}
-                </span>
+                confidenceConf ? (
+                  <span
+                    style={{
+                      color: confidenceConf.color,
+                      backgroundColor: confidenceConf.bg,
+                      borderColor: confidenceConf.color + "22",
+                    }}
+                    className="font-semibold rounded border px-2 py-0.5 text-xs m-0"
+                  >
+                    {confidenceConf.label}
+                  </span>
+                ) : (
+                  <span className="text-xs text-neutral-400 select-none">
+                    — —
+                  </span>
+                )
               }
             />
           </>,
@@ -200,52 +273,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
           "Exposure",
           <ScoreBadge value={exposureValue} />,
           "exposure",
-          exposure.data.map((item) => {
-            let label = item.label || item.key;
-            let subtitle = item.subtitle || "";
-            let formattedVal = formatNum(item.value);
-
-            if (!item.label) {
-              if (item.key === "population") {
-                label = "Population exposed";
-                subtitle = "Number of people exposed";
-                formattedVal = `${formattedVal} people`;
-              } else if (item.key === "u5") {
-                label = "Under-5 children";
-                subtitle = "Children under 5 exposed";
-                formattedVal = `${formattedVal} children`;
-              } else if (item.key === "rainfed_ha") {
-                label = "Land use";
-                subtitle = "Rain-fed agricultural land";
-                formattedVal =
-                  item.value !== null ? `${formattedVal} ha` : "N/A";
-              } else if (item.key === "livestock") {
-                label = "Cattle count";
-                subtitle = "Number of cattle exposed";
-                formattedVal =
-                  item.value !== null ? `${formattedVal} head` : "N/A";
-              } else if (item.key === "water_demand_liters") {
-                label = "Water demand";
-                subtitle = "Estimated water demand";
-                formattedVal =
-                  item.value !== null ? `${formattedVal} L` : "N/A";
-              }
-            } else {
-              formattedVal =
-                item.value !== null
-                  ? `${formattedVal} ${item.unit || ""}`.trim()
-                  : "N/A";
-            }
-
-            return (
-              <BuildUpDetailRow
-                key={item.key}
-                title={label}
-                subtitle={subtitle}
-                value={<ScoreBadge value={formattedVal} />}
-              />
-            );
-          }),
+          (exposure.data || []).map(renderRow),
         )}
 
         {/* VULNERABILITY ACCORDION */}
@@ -253,39 +281,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
           "Vulnerability",
           <ScoreBadge value={vulnerabilityValue} />,
           "vulnerability",
-          vulnerability.data.map((item) => {
-            let label = item.label || item.key;
-            let subtitle = item.subtitle || "";
-            let formattedVal =
-              item.value !== null ? `${(item.value * 100).toFixed(0)}%` : "N/A";
-
-            if (!item.label) {
-              if (item.key === "v_water") {
-                label = "Water access pressure";
-                subtitle = "Water access vulnerability";
-              } else if (item.key === "v_ipc") {
-                label = "Susceptibility";
-                subtitle = "IPC food security phase";
-                formattedVal = getIpcPhase(item.value);
-              } else if (item.key === "v_prep") {
-                label = "Preparedness index";
-                subtitle = "Disaster preparedness level";
-              }
-            } else {
-              if (item.format === "ipc") {
-                formattedVal = getIpcPhase(item.value);
-              }
-            }
-
-            return (
-              <BuildUpDetailRow
-                key={item.key}
-                title={label}
-                subtitle={subtitle}
-                value={<ScoreBadge value={formattedVal} />}
-              />
-            );
-          }),
+          (vulnerability.data || []).map(renderRow),
         )}
       </Collapse>
 
@@ -299,7 +295,7 @@ const RiskScoreBuildUp = ({ riskData }) => {
           </div>
           <div className="flex items-center gap-3">
             <span className="font-['Inter'] font-bold text-xl text-primary">
-              {risk_score.value.toFixed(1)}
+              {hasScore ? scoreOutOfTen.toFixed(1) : "N/A"}
             </span>
             <div className="border border-cardBorder rounded p-1.5 flex items-center justify-center text-neutral-600 bg-white">
               <SlidersOutlined className="text-sm" />
@@ -323,12 +319,15 @@ const RiskScoreBuildUp = ({ riskData }) => {
                 className="absolute inset-0 w-full h-full"
               />
             </div>
-            {/* Risk Level Pin Indicator */}
-            <div
-              style={{ left: `${pinPercentage}%` }}
-              className="absolute top-1/2 -translate-y-1/2 -ml-[5px] w-2.5 h-2.5 bg-neutral-800 rounded-full border border-white shadow-sm transition-all duration-300"
-              title={`Risk Score: ${risk_score.value.toFixed(1)}`}
-            />
+            {/* Risk Level Pin Indicator — hidden when there is no score to
+                point at, rather than parked at zero. */}
+            {hasScore && (
+              <div
+                style={{ left: `${pinPercentage}%` }}
+                className="absolute top-1/2 -translate-y-1/2 -ml-[5px] w-2.5 h-2.5 bg-neutral-800 rounded-full border border-white shadow-sm transition-all duration-300"
+                title={`Risk Score: ${scoreOutOfTen.toFixed(1)}`}
+              />
+            )}
           </div>
         </div>
       </div>

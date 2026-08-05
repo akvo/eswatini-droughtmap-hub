@@ -4,6 +4,7 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
 } from "@/static/config";
+import { textOn } from "@/lib/helper";
 
 /**
  * D-score chip (EDM design system form: 48x25, radius 4, 600 weight).
@@ -13,15 +14,6 @@ import {
  */
 
 /** Perceived luminance -> dark ink on the light steps (d0 #ffff00 must stay legible). */
-const readableInk = (hex = "#ffffff") => {
-  const value = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) =>
-    parseInt(value.slice(i, i + 2) || "0", 16),
-  );
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#ffffff";
-};
-
 const DroughtScore = ({ level, size = "md", className = "" }) => {
   const color = DROUGHT_CATEGORY_COLOR?.[level];
   if (!color) {
@@ -37,7 +29,7 @@ const DroughtScore = ({ level, size = "md", className = "" }) => {
           : "h-[25px] min-w-[48px] px-1.5 text-sm",
         className,
       )}
-      style={{ backgroundColor: color, color: readableInk(color) }}
+      style={{ backgroundColor: color, color: textOn(color) }}
     >
       {DROUGHT_CATEGORY_CODE?.[level]}
     </span>

@@ -45,10 +45,19 @@ class IndicatorSeederTestCase(TestCase):
         self.assertIsNone(lobamba.cattle)
         self.assertIsNone(lobamba.water_demand)
 
-    def test_seeder_reports_unmatched_names(self):
-        with self.assertLogs("api.v1.v1_indicators", level="WARNING") as logs:
-            call_command("generate_indicators_seeder", "--test", True)
-        self.assertTrue(any("name drift" in m for m in logs.output))
+    def test_every_administration_matches_a_csv_row(self):
+        # CSV Inkhundla names are kept identical to the topojson names, so a
+        # rename on either side must fail here rather than silently leave an
+        # Inkhundla unscored (risk_score is None without these three inputs).
+        call_command("generate_indicators_seeder", "--test", True)
+        self.assertEqual(
+            Indicator.objects.filter(
+                population__isnull=False,
+                land_use_dvi_agri__isnull=False,
+                ipc_phase__isnull=False,
+            ).count(),
+            59,
+        )
 
     def test_seeder_preserves_bridged_cattle(self):
         adm = Administration.objects.first()

@@ -8,19 +8,10 @@ import {
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 import MonthlyStatusGrid from "../IksTab/MonthlyStatusGrid";
+import { textOn } from "@/lib/helper";
 
 // Same derivation InkhundlaHeader uses for its chip: the palette is fixed in
 // config, so the ink has to be picked from the fill rather than hardcoded.
-const readableInk = (hex = "#ffffff") => {
-  const value = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) =>
-    parseInt(value.slice(i, i + 2) || "0", 16),
-  );
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
-    ? "#000000"
-    : "#ffffff";
-};
-
 const EMPTY = "-";
 
 // The real D-classes, in scale order. `none` (-9999) is excluded: it is
@@ -41,7 +32,7 @@ const cellStyle = (state) => {
     return { className: "bg-brandTint text-neutral-400" };
   }
   const fill = DROUGHT_CATEGORY_COLOR[value];
-  return { style: { backgroundColor: fill, color: readableInk(fill) } };
+  return { style: { backgroundColor: fill, color: textOn(fill) } };
 };
 
 const cellLabel = (period) => dayjs(period, "YYYY-MM").format("MMM YYYY");

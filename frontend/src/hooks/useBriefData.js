@@ -38,7 +38,7 @@ const useBriefData = (administrationId) => {
       setLoading(true);
       const [cdi, risk, activities] = await Promise.allSettled([
         api("GET", `/cdi/administrations/${administrationId}/stats`),
-        api("GET", `/risk-level/${administrationId}`),
+        api("GET", `/risk-levels/${administrationId}`),
         api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
       ]);
       if (cancelled) {

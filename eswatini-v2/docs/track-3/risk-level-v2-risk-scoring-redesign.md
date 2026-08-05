@@ -290,8 +290,10 @@ Key invariants (from Methodology sheet, verified against `Risk_expected`):
 
 | Method | URL | Purpose | Auth |
 |--------|-----|---------|------|
-| GET | `/api/v1/risk-level` | Scored risk for all 59 (current cycle) | **Public** _(was Auth)_ |
-| GET | `/api/v1/risk-level/{administration_id}` | Scored risk for one Inkhundla | **Public** _(was Auth)_ |
+| GET | `/api/v1/risk-level` | Scored risk for all 59 (current cycle) | **DEPRECATED 2026-08-05** — use `/api/v1/risk-levels` |
+| GET | `/api/v1/risk-level/{administration_id}` | Scored risk for one Inkhundla | **DEPRECATED 2026-08-05** — use `/api/v1/risk-levels/{administration_id}` |
+
+> Both are flagged `deprecated=True` in Swagger and stay public for one release so any unknown caller appears in the logs, then return to `IsAuthenticated & IsAdmin` as the raw-scoring QA view ([RL-2](./risk-level-detail-buildup-api.md) D-1 / OQ-6).
 
 > **Note on Nullability**: `exposure`, `vulnerability`, `risk_score`, and `risk_class` are `null` if their required inputs (IPC phase or exposure sub-indicators) are missing (e.g. unscored Tinkhundla).
 
