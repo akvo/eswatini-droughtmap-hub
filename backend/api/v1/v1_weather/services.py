@@ -5,6 +5,7 @@ from django.utils import timezone
 from api.v1.v1_weather.aggregation import aggregate_daily
 from api.v1.v1_weather.constants import (
     COMPLETENESS_WINDOW_DAYS,
+    COMPLETENESS_WINDOW_MONTHS,
     DEGRADED_COMPLETENESS,
     EXPECTED_READINGS_PER_DAY,
     NETWORK,
@@ -32,7 +33,7 @@ from api.v1.v1_weather.topo import (
 # Insights tab renders the same chip, so the rule has one definition, beside
 # the model it reads. No cycle — v1_publication never imports v1_weather.
 from api.v1.v1_publication.insights.utils import current_dclass
-from utils.periods import month_range
+from utils.periods import month_range, month_start, shift_period
 
 logger = logging.getLogger(__name__)
 
@@ -381,14 +382,24 @@ def administration_stats(administration, include_completeness=False) -> dict:
         .first()
     )
     window_start = max(first_record, today - timezone.timedelta(days=365))
-    window_days = (today - window_start).days + 1
-    dates_with_data = set(
-        station.daily_values.filter(
-            value__isnull=False, date__gte=window_start
-        ).values_list("date", flat=True)
+
+    # Completeness = share of the last 12 calendar months in which the
+    # station reported anything. Unlike the precipitation window above this
+    # one is NOT clipped to the station's first record: the denominator is
+    # always 12, so a station three months old reads 3/12 rather than 100 %
+    # of a three-month window (D-1, revised 2026-08-05).
+    completeness_start = month_start(
+        shift_period(
+            today.strftime("%Y-%m"), -(COMPLETENESS_WINDOW_MONTHS - 1)
+        )
     )
-    completeness = (
-        round(len(dates_with_data) / window_days, 3) if window_days else None
+    months_with_data = station.daily_values.filter(
+        value__isnull=False,
+        date__gte=completeness_start,
+        date__lte=today,
+    ).dates("date", "month")
+    completeness = round(
+        len(months_with_data) / COMPLETENESS_WINDOW_MONTHS, 3
     )
 
     precip_window = list(
@@ -427,8 +438,9 @@ def administration_stats(administration, include_completeness=False) -> dict:
             "label": "Data completeness",
             "value": completeness,
             "meta": {
-                "window_days": window_days,
-                "definition": "days_with_data / window_days",
+                "window_months": COMPLETENESS_WINDOW_MONTHS,
+                "months_with_data": len(months_with_data),
+                "definition": "months_with_data / window_months",
             },
         }
     else:  # anonymous -> the UI renders its locked sign-in placeholder
