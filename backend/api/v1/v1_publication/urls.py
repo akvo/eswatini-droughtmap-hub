@@ -29,8 +29,14 @@ from .validation.view import (
 )
 from .twg.view import ReviewerAssignmentAPI
 from .insights.view import CDIExplorerStatsAPI, CDIExplorerSeriesAPI
+from .brief.view import BriefForwardView
 
 urlpatterns = [
+    re_path(
+        r"^(?P<version>(v1))/brief/forward$",
+        BriefForwardView.as_view(),
+        name="brief-forward",
+    ),
     re_path(r"^(?P<version>(v1))/config.js", get_config_file),
     # CDI Explorer (INS-3). Under /cdi/ rather than nested below
     # /publications/ — the publication-details pattern further down has no
