@@ -11,10 +11,16 @@ from api.v1.v1_publication.constants import (
     AdministrationZones,
     is_validated,
 )
+from api.v1.v1_weather.constants import WeatherParameter
 from api.v1.v1_weather.models import (
     WeatherStation,
 )
-from api.v1.v1_weather.services import station_health
+from api.v1.v1_weather.services import (
+    administration_deviation,
+    national_deviation,
+    station_health,
+)
+from utils.periods import shift_period
 from api.v1.v1_iks.models import KoboData
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import (
@@ -28,6 +34,23 @@ from api.v1.v1_activity.trigger_evaluation import (
 )
 
 logger = logging.getLogger(__name__)
+
+# The metric cards' history window, in calendar months.
+METRICS_HISTORY_MONTHS = 12
+
+
+def _latest_value(series):
+    """Most recent non-null point, or None.
+
+    Walked backwards rather than taking series[-1]: the current month often
+    has no complete observation yet, and reporting its null as the headline
+    figure would blank a card that has eleven good months behind it.
+    """
+    for item in reversed(series):
+        if item["value"] is not None:
+            return item["value"]
+    return None
+
 
 SECTOR_MAP = {
     ActivitySector.wash: ("water", "Water and Sanitation"),
@@ -317,38 +340,41 @@ def get_metrics_data(inkhundla_id=None):
 
     kobo_count = kobo_qs.count()
 
-    # Rainfall & Temperature History (last 12 months)
-    recent_pubs = list(
-        Publication.objects.filter(
-            status=PublicationStatus.published
-        ).order_by("-year_month")[:12]
-    )
-    recent_pubs.reverse()
+    # Rainfall & Temperature deviation, last 12 CALENDAR months.
+    #
+    # The axis is calendar months, not published-publication months (D-12/Q1a).
+    # These are weather series: a month with no publication would punch a hole
+    # that has nothing to do with weather, and with a review backlog seeded by
+    # --publish-through the chart would silently halve.
+    to_period = now.strftime("%Y-%m")
+    from_period = shift_period(to_period, -(METRICS_HISTORY_MONTHS - 1))
 
-    rainfall_history = []
-    temp_history = []
-    latest_rain_dev = 0
-    latest_temp_dev = 0.0
+    if admin:
+        rain_series = administration_deviation(
+            admin, WeatherParameter.precipitation, from_period, to_period
+        )
+        temp_series = administration_deviation(
+            admin, WeatherParameter.tmean, from_period, to_period
+        )
+    else:
+        rain_series = national_deviation(
+            WeatherParameter.precipitation, from_period, to_period
+        )
+        temp_series = national_deviation(
+            WeatherParameter.tmean, from_period, to_period
+        )
 
-    for pub in recent_pubs:
-        period_str = pub.year_month.strftime("%Y-%m")
-        rain_dev = 0
-        temp_dev = 0.0
-        rainfall_history.append({"key": period_str, "value": rain_dev})
-        temp_history.append({"key": period_str, "value": temp_dev})
-        latest_rain_dev = rain_dev
-        latest_temp_dev = temp_dev
+    rainfall_history = [
+        {"key": item["period"], "value": item["value"]}
+        for item in rain_series
+    ]
+    temp_history = [
+        {"key": item["period"], "value": item["value"]} for item in temp_series
+    ]
+    latest_rain_dev = _latest_value(rain_series)
+    latest_temp_dev = _latest_value(temp_series)
 
-    latest_pub = (
-        Publication.objects.filter(status=PublicationStatus.published)
-        .order_by("-year_month")
-        .first()
-    )
-    month_note = (
-        latest_pub.year_month.strftime("%b %Y")
-        if latest_pub
-        else "Current month"
-    )
+    month_note = now.strftime("%b %Y")
     if admin:
         month_note = f"{month_note} ({admin.name})"
 
@@ -375,7 +401,10 @@ def get_metrics_data(inkhundla_id=None):
         "temperature": {
             "value": latest_temp_dev,
             "unit": "°C",
-            "note": f"{month_note} mean Tmax deviation",
+            # tmean, not Tmax: NORMALS_RASTERS only carries precipitation and
+            # tmean, so a Tmax deviation is not computable — the old label
+            # named a number that could never exist (DEMO-1 D-12).
+            "note": f"{month_note} mean temperature deviation",
             "label": temp_label,
             "history": temp_history,
         },

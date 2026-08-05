@@ -610,3 +610,95 @@ def administration_series(
     meta["to"] = to_period
     base["meta"] = meta
     return base
+
+
+def administration_deviation(
+    administration, parameter, from_period, to_period, station=None
+) -> list:
+    """[{period, value}] of observed MINUS the 30-year normal (DEMO-1 D-12).
+
+    Composes what already exists — `_resolve_station_with_data` for the
+    in-region -> nearest-station ladder, `monthly_series` for the observation,
+    `AdministrationNormal` for the baseline. No new formula.
+
+    None, never 0, when either side is missing: 0 is a real deviation ("bang
+    on the normal") and must stay distinguishable from "no station covers this
+    Inkhundla" or "no normal was extracted for this parameter".
+
+    `station` is an optional pre-resolved station, so a national roll-up can
+    resolve once per station rather than once per Inkhundla.
+    """
+    periods = month_range(from_period, to_period)
+    if station is None:
+        station, _, _ = _resolve_station_with_data(administration)
+    if not station:
+        return [{"period": period, "value": None} for period in periods]
+
+    normals = {
+        row["month"]: row["value"]
+        for row in AdministrationNormal.objects.filter(
+            administration=administration, parameter=parameter
+        ).values("month", "value")
+    }
+    observed = {
+        item["period"]: item["value"]
+        for item in monthly_series(
+            station, parameter, from_period, to_period
+        )
+    }
+    return [
+        {
+            "period": period,
+            "value": _deviation(
+                observed.get(period), normals.get(int(period[5:7]))
+            ),
+        }
+        for period in periods
+    ]
+
+
+def _deviation(observed, normal):
+    if observed is None or normal is None:
+        return None
+    return round(observed - normal, 1)
+
+
+def national_deviation(parameter, from_period, to_period) -> list:
+    """Mean deviation over the Tinkhundla that resolve to a station.
+
+    Averaged per ADMINISTRATION, not per station (D-12/Q1b): administration_id
+    is the join key everywhere else in the schema, normals are stored per
+    administration, and averaging over stations would weight a two-station
+    region double.
+    """
+    from api.v1.v1_publication.models import Administration
+
+    # Resolve each Inkhundla's station once; many share one, and
+    # _resolve_station_with_data walks every station each call.
+    by_station = {}
+    for administration in Administration.objects.all():
+        station, _, _ = _resolve_station_with_data(administration)
+        if station:
+            by_station.setdefault(station.id, (station, []))[1].append(
+                administration
+            )
+
+    totals = {period: [] for period in month_range(from_period, to_period)}
+    for station, administrations in by_station.values():
+        for administration in administrations:
+            for item in administration_deviation(
+                administration, parameter, from_period, to_period,
+                station=station,
+            ):
+                if item["value"] is not None:
+                    totals[item["period"]].append(item["value"])
+
+    return [
+        {
+            "period": period,
+            "value": (
+                round(sum(values) / len(values), 1) if values else None
+            ),
+        }
+        for period, values in totals.items()
+    ]
