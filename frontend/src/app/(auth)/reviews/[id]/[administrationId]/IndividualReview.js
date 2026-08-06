@@ -582,9 +582,7 @@ const IndividualReview = ({
             </div>
           </div>
           <div className="flex items-center gap-3 border-t border-cardBorder px-6 py-6">
-            <ReviewDecisionHistory
-              history={administration?.decision_history}
-            />
+            <ReviewDecisionHistory history={administration?.decision_history} />
             <div className="flex items-center gap-3 ml-auto">
               <Button
                 onClick={() => persist(false)}

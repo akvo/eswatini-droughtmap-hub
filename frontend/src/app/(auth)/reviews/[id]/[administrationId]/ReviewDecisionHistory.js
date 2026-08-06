@@ -32,19 +32,21 @@ const ReviewDecisionHistory = ({ history = [] }) => {
       >
         <div className="flex flex-col">
           {history.map((entry, index) => {
-            const decidedAt = entry.decided_at
-              ? dayjs(entry.decided_at)
-              : null;
+            const decidedAt = entry.decided_at ? dayjs(entry.decided_at) : null;
             return (
-              <div key={entry.period ?? index} className="relative pl-10 pr-6 py-5">
+              <div
+                key={entry.period ?? index}
+                className="relative pl-10 pr-6 py-5"
+              >
                 {/* Timeline dot + line */}
                 <div className="absolute left-5 top-0 bottom-0 flex flex-col items-center">
                   {index > 0 && (
-                    <div className="w-px flex-none bg-[#E8E8E8]" style={{ height: 20 }} />
+                    <div
+                      className="w-px flex-none bg-[#E8E8E8]"
+                      style={{ height: 20 }}
+                    />
                   )}
-                  <div
-                    className="shrink-0 mt-1 h-3 w-3 rounded-full border-2 border-[#3E5EB9] bg-[#3E5EB9]"
-                  />
+                  <div className="shrink-0 mt-1 h-3 w-3 rounded-full border-2 border-[#3E5EB9] bg-[#3E5EB9]" />
                   {index < history.length - 1 && (
                     <div className="w-px flex-1 bg-[#E8E8E8]" />
                   )}

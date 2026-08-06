@@ -592,10 +592,7 @@ const ValidationDecisionPage = () => {
                   <div className="flex items-center gap-3 border-t border-cardBorder px-6 py-6">
                     <DecisionHistory history={history} />
                     <div className="flex items-center gap-3 ml-auto">
-                      <Button
-                        onClick={handleSaveDraft}
-                        loading={saving}
-                      >
+                      <Button onClick={handleSaveDraft} loading={saving}>
                         Save changes as draft
                       </Button>
                       <Button
@@ -619,8 +616,8 @@ const ValidationDecisionPage = () => {
                       </strong>{" "}
                       &middot; {meta?.viewer?.name}. Only NDRMA can publish the
                       final validation. You can view the reviewer decisions, the
-                      calculated suggestion and the agreement analysis, but cannot
-                      accept or submit.
+                      calculated suggestion and the agreement analysis, but
+                      cannot accept or submit.
                     </div>
                     <DecisionHistory history={history} />
                   </div>

@@ -287,6 +287,24 @@ describe("Validation queue page", () => {
     expect(screen.queryByText("null%")).not.toBeInTheDocument();
   });
 
+  it("collapses a wide D-class spread to one chip per class", async () => {
+    // 22 reviewers used to draw 22 chips, straight out of the column.
+    respond([
+      {
+        ...ROW,
+        dclass_spread: [...Array(18).fill(0), 2, 2, 2, 3],
+      },
+    ]);
+    await renderPage();
+
+    expect(screen.getAllByText("Normal")).toHaveLength(1);
+    expect(screen.getByText("×18")).toBeInTheDocument();
+    expect(screen.getByText("×3")).toBeInTheDocument();
+    // A class with a single reviewer carries no count suffix.
+    expect(screen.getAllByText("D2")).toHaveLength(1);
+    expect(screen.queryByText("×1")).not.toBeInTheDocument();
+  });
+
   it("sends ?agreement= straight through to the server", async () => {
     currentParams = new URLSearchParams("agreement=undisputed&status=ready");
     await renderPage();
