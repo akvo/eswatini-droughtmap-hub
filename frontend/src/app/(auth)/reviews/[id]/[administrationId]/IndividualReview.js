@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button, Input, message } from "antd";
 import {
   CalendarOutlined,
@@ -28,7 +29,9 @@ const { TextArea } = Input;
 
 /* ── Drought-class chips read from the shared DroughtCategory scale (OQ-5) ── */
 const DClassChip = ({ level, selected, onClick }) => {
-  const bg = DROUGHT_CATEGORY_COLOR?.[level] ?? "#f3f4f6";
+  const bg =
+    level === 0 ? "#3E5EB9" : (DROUGHT_CATEGORY_COLOR?.[level] ?? "#f3f4f6");
+  const label = level === 0 ? "None" : DROUGHT_CATEGORY_LEVELS[level];
   return (
     <button
       type="button"
@@ -37,12 +40,10 @@ const DClassChip = ({ level, selected, onClick }) => {
         selected ? "rounded-lg" : "text-[#a4a4a4] hover:text-[#606060]"
       }`}
       style={
-        selected
-          ? { backgroundColor: bg, color: level >= 4 ? "#ffffff" : "#20232D" }
-          : {}
+        selected ? { backgroundColor: bg, color: "#ffffff" } : {}
       }
     >
-      {DROUGHT_CATEGORY_LEVELS[level]}
+      {label}
     </button>
   );
 };
@@ -94,11 +95,14 @@ const CDIColumn = ({ cdi }) => {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between pb-4 border-b border-cardBorder">
-        <h3 className="text-lg font-semibold text-[#333333]">CDI-E</h3>
+        <div className="flex items-center gap-2">
+          <Image src="/assets/icons/review/satellite.svg" alt="" width={20} height={20} />
+          <h3 className="text-lg font-semibold text-[#333333]">Satellite · CDI-E</h3>
+        </div>
         <DroughtScore level={cdi.category} size="sm" />
       </div>
       <div>
-        <div className="text-4xl font-bold text-[#333333]">
+        <div className="text-3xl font-bold text-[#333333]">
           {cdi.score != null ? Number(cdi.score).toFixed(2) : "—"}
         </div>
         <div className="text-sm text-[#606060] mt-1">
@@ -106,46 +110,57 @@ const CDIColumn = ({ cdi }) => {
         </div>
       </div>
 
-      <div className="border border-cardBorder rounded overflow-hidden">
-        <div className="bg-[#e8edf8] px-4 py-3">
-          <span className="text-sm font-semibold text-[#333333]">
-            Sub-indicators
-          </span>
+      <div className="border border-cardBorder overflow-hidden">
+        <div className="p-3 text-[#333333]" style={{ backgroundColor: "#ECEFF8", borderBottom: "1px solid #D2D2D2", fontSize: 16, fontWeight: 700, lineHeight: "24px" }}>
+          Sub-indicators
         </div>
-        {(cdi.indicators || []).map((ind) => (
-          <div
-            key={ind.key}
-            className="flex items-center justify-between px-4 py-3 border-t border-cardBorder"
-          >
-            <span className="text-sm text-[#333333]">
-              {CDI_SUBINDICATOR_LABELS[ind.key] || ind.key}
-            </span>
-            <span className="text-sm font-semibold text-[#333333]">
-              {ind.value != null ? Number(ind.value).toFixed(2) : "—"}
-            </span>
+        {(cdi.indicators || []).length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 p-3">
+            {(cdi.indicators || []).map((ind) => (
+              <div
+                key={ind.key}
+                className="rounded"
+                style={{ backgroundColor: "#ECEFF8", padding: "6px 8px" }}
+              >
+                <div className="text-[#333333]" style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}>
+                  {ind.value != null ? Number(ind.value).toFixed(2) : "—"}
+                  {ind.units && (
+                    <span className="text-[#a4a4a4] ml-1" style={{ fontSize: 12 }}>
+                      {ind.units}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[#606060]" style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}>
+                  {CDI_SUBINDICATOR_LABELS[ind.key] || ind.key}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-        {!(cdi.indicators || []).length && (
-          <div className="px-4 py-3 border-t border-cardBorder text-sm text-[#a4a4a4]">
+        ) : (
+          <div className="p-3 text-sm text-[#a4a4a4]">
             Sub-indicators not yet extracted
           </div>
         )}
-      </div>
 
-      {history.length > 1 && (
-        <div className="border border-cardBorder rounded p-4">
-          <div className="flex items-center justify-between mb-1">
-            <h4 className="text-sm font-bold text-[#333333]">
-              CDI-E in the last 12 months
-            </h4>
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#606060] border border-[#d2d2d2] rounded px-2.5 py-1.5">
-              <CalendarOutlined style={{ fontSize: 12 }} />
-              {dayjs(first?.period).format("MMM YYYY")} –{" "}
-              {dayjs(last?.period).format("MMM YYYY")}
-            </span>
-          </div>
-          <div className="border-t border-cardBorder mt-3 pt-3">
+        {history.length > 1 && (
+          <div className="p-3 border-t border-cardBorder">
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-bold text-[#333333]">
+                CDI-E in the last 12 months
+              </h4>
+            </div>
+            <div className="text-xs text-[#606060] mb-2">mm / month</div>
             <svg viewBox="0 0 500 180" className="w-full h-auto">
+              {/* Reference line (average) */}
+              <line
+                x1={40}
+                y1={85}
+                x2={490}
+                y2={85}
+                stroke="#e60000"
+                strokeWidth={1}
+                strokeDasharray="6 4"
+              />
               <path d={path} fill="none" stroke="#3E5EB9" strokeWidth={2} />
               {history.map((h, i) => {
                 const x = 40 + (i / Math.max(history.length - 1, 1)) * 450;
@@ -164,45 +179,51 @@ const CDIColumn = ({ cdi }) => {
               })}
             </svg>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-/* ── One titled block of reading rows (shared by MET + citizen science) ── */
-const ReadingBlock = ({ title, rows, footnote }) => (
-  <div className="border border-cardBorder rounded overflow-hidden">
-    <div className="bg-[#e8edf8] px-4 py-3 flex items-center justify-between">
-      <span className="text-sm font-semibold text-[#333333]">{title}</span>
-    </div>
-    {rows.map((row) => (
-      <div
-        key={row.key}
-        className="flex items-center justify-between px-4 py-3 border-t border-cardBorder"
-      >
-        <span className="text-sm text-[#333333]">{row.label}</span>
-        <span className="text-sm font-semibold text-[#333333]">
-          {row.value != null ? (
-            <>
-              {row.value}
-              {row.units && (
-                <span className="text-[#a4a4a4] ml-0.5">{row.units}</span>
-              )}
-            </>
-          ) : (
-            <span className="text-[#a4a4a4]">
-              {row.meta?.reason === "pending_sensor" ? "pending sensor" : "—"}
-            </span>
-          )}
+/* ── One station block with grid cards (MET or citizen science) ── */
+const StationBlock = ({ title, stationCode, rows }) => (
+  <div className="border border-cardBorder overflow-hidden">
+    <div
+      className="flex items-center justify-between p-3"
+      style={{ backgroundColor: "#ECEFF8", borderBottom: "1px solid #D2D2D2" }}
+    >
+      <span className="text-[#333333]" style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}>{title}</span>
+      {stationCode && (
+        <span className="text-[#333333] text-right" style={{ fontSize: 16, fontWeight: 700, lineHeight: "24px" }}>
+          {stationCode}
         </span>
-      </div>
-    ))}
-    {footnote && (
-      <div className="px-4 py-3 border-t border-cardBorder text-xs text-[#606060] italic">
-        {footnote}
-      </div>
-    )}
+      )}
+    </div>
+    <div className="grid grid-cols-3 gap-2 p-3">
+      {rows.map((row) => (
+        <div
+          key={row.key}
+          className="rounded"
+          style={{ backgroundColor: "#ECEFF8", padding: "6px 8px" }}
+        >
+          <div className="text-[#333333]" style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}>
+            {row.value != null ? (
+              <>
+                {row.value}
+                {row.units && (
+                  <span className="text-[#a4a4a4] ml-0.5" style={{ fontSize: 12 }}>
+                    {row.units}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-[#a4a4a4]">—</span>
+            )}
+          </div>
+          <div className="text-[#606060]" style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}>{row.label}</div>
+        </div>
+      ))}
+    </div>
   </div>
 );
 
@@ -210,41 +231,58 @@ const ReadingBlock = ({ title, rows, footnote }) => (
       science per-Inkhundla exact match, no fallback (WX-6) ── */
 const WeatherColumn = ({ weather, citizenScience }) => {
   const region = weather?.meta?.resolution === "region_station";
+  const spiRow = weather?.data?.find((r) => r.key === "spi");
   return (
     <div className="flex flex-col gap-5">
-      <div className="pb-4 border-b border-cardBorder">
+      <div className="flex items-center gap-2 pb-4 border-b border-cardBorder">
+        <Image src="/assets/icons/review/weather-stations.svg" alt="" width={20} height={20} />
         <h3 className="text-lg font-semibold text-[#333333]">
           Weather Stations
         </h3>
       </div>
+
+      {/* SPI headline */}
+      <div>
+        <div className="text-3xl font-bold text-[#333333]">
+          SPI · {spiRow?.value ?? "—"}
+        </div>
+        <div className="text-sm text-[#606060] mt-1">
+          Derived from the weather station (1 per inkhundla)
+        </div>
+      </div>
+
       {!region || !weather?.data ? (
-        <div className="flex items-start gap-2 bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
+        <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
           No data available — no weather station in this Inkhundla&apos;s
           region.
         </div>
       ) : (
-        <ReadingBlock
-          title={`Met Office: ${weather.meta.station}`}
-          rows={weather.data}
+        <StationBlock
+          title="MET weather information"
+          stationCode={weather.meta.station}
+          rows={weather.data.filter((r) => r.key !== "spi")}
         />
       )}
       {citizenScience?.data ? (
-        <ReadingBlock
-          title={`Citizen science: ${
-            citizenScience.meta?.station || "Community station"
-          }`}
+        <StationBlock
+          title="Citizen science weather station"
+          stationCode={citizenScience.meta?.station_code || citizenScience.meta?.station}
           rows={citizenScience.data}
-          footnote={
-            citizenScience.meta?.notes
-              ? `Observer notes: ${citizenScience.meta.notes}`
-              : null
-          }
         />
       ) : (
         <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
           No citizen-science submission for this Inkhundla this month.
         </div>
       )}
+
+      {/* Note */}
+      <div className="flex items-start gap-2 text-xs text-[#606060] bg-[#fff8f0] rounded p-3">
+        <WarningFilled style={{ color: "#F39C12", fontSize: 14 }} className="shrink-0 mt-0.5" />
+        <span>
+          Note: some sensor fields are intentionally shown empty to reflect
+          that not all station hardware is fully wired in this prototype.
+        </span>
+      </div>
     </div>
   );
 };
@@ -259,7 +297,8 @@ const IKSColumn = ({ iks }) => {
   const count = iks?.reports_count || 0;
   return (
     <div className="flex flex-col gap-5">
-      <div className="pb-4 border-b border-cardBorder">
+      <div className="flex items-center gap-2 pb-4 border-b border-cardBorder">
+        <Image src="/assets/icons/review/indigenous-knowledge.svg" alt="" width={20} height={20} />
         <h3 className="text-lg font-semibold text-[#333333]">
           Indigenous Knowledge
         </h3>
@@ -360,7 +399,7 @@ const IndividualReview = ({
   const router = useRouter();
   const { geoData } = useAppContext();
 
-  const cdi = administration?.cdi;
+  const cdi = administration?.cdi || {};
   const confidence = administration?.confidence || {};
   const prior = myReview?.suggestion;
 
@@ -504,12 +543,15 @@ const IndividualReview = ({
         </div>
 
         {/* Three-column sources */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border border-cardBorder border-t-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border border-cardBorder my-6">
           <div className="bg-white p-6 border-r border-cardBorder">
             <CDIColumn cdi={cdi} />
           </div>
           <div className="bg-white p-6 border-r border-cardBorder">
-            <WeatherColumn weather={weather} citizenScience={citizenScience} />
+            <WeatherColumn
+              weather={weather}
+              citizenScience={citizenScience}
+            />
           </div>
           <div className="bg-white p-6">
             <IKSColumn iks={iks} />
@@ -517,7 +559,7 @@ const IndividualReview = ({
         </div>
 
         {/* Review Decision */}
-        <div className="border border-cardBorder border-t-0 bg-white">
+        <div className="border border-cardBorder bg-white">
           <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-cardBorder">
             <h2 className="text-lg font-semibold text-[#333333]">
               Review Decision
@@ -582,7 +624,9 @@ const IndividualReview = ({
             </div>
           </div>
           <div className="flex items-center gap-3 border-t border-cardBorder px-6 py-6">
-            <ReviewDecisionHistory history={administration?.decision_history} />
+            <ReviewDecisionHistory
+              history={administration?.decision_history}
+            />
             <div className="flex items-center gap-3 ml-auto">
               <Button
                 onClick={() => persist(false)}

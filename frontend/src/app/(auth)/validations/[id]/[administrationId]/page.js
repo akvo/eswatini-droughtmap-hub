@@ -60,10 +60,7 @@ const DClassChip = ({ value, selected, onClick }) => {
       }`}
       style={
         selected
-          ? {
-              backgroundColor: bg,
-              color: "#ffffff",
-            }
+          ? { backgroundColor: bg, color: "#ffffff" }
           : {}
       }
     >
