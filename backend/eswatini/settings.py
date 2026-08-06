@@ -165,7 +165,12 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
-    "DATE_FORMAT": "%d-%m-%Y",
+    # ISO, matching DATETIME_FORMAT below. It used to be "%d-%m-%Y", which no
+    # serializer asked for and every consumer had to guess at: some declared
+    # format="%Y-%m-%d" to opt out, the rest emitted "30-12-2024" and the
+    # frontend parsed it as "DD-MM-YYYY" on one page and "YYYY-MM-DD" on the
+    # next — the second of which rendered "Invalid Date".
+    "DATE_FORMAT": "%Y-%m-%d",
     "DEFAULT_VERSION": "v1",
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
