@@ -67,7 +67,7 @@ const ValidationModal = ({
                   text={DROUGHT_CATEGORY_LABEL?.[item?.category]}
                   color={DROUGHT_CATEGORY_COLOR?.[item?.category]}
                   style={{
-                    color: item?.category < 4 ? "#212121" : "#ffffff",
+                    color: "#ffffff",
                   }}
                 >
                   <List.Item>

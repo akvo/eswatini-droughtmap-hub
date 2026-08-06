@@ -44,11 +44,11 @@ jest.mock("@/components", () => {
 // oldest deadline sits in the middle — a client-side sort on DEADLINE would
 // move that row to the bottom and interleave the months.
 const PUBLICATIONS = [
-  { id: 320, year_month: "2026-05", due_date: "31-07-2026", status: 2 },
-  { id: 316, year_month: "2026-04", due_date: "31-07-2026", status: 1 },
-  { id: 319, year_month: "2000-04", due_date: "25-07-2026", status: 1 },
-  { id: 318, year_month: "2000-03", due_date: "31-07-2026", status: 1 },
-  { id: 317, year_month: "2000-02", due_date: "31-07-2026", status: 3 },
+  { id: 320, year_month: "2026-05", due_date: "2026-07-31", status: 2 },
+  { id: 316, year_month: "2026-04", due_date: "2026-07-31", status: 1 },
+  { id: 319, year_month: "2000-04", due_date: "2026-07-25", status: 1 },
+  { id: 318, year_month: "2000-03", due_date: "2026-07-31", status: 1 },
+  { id: 317, year_month: "2000-02", due_date: "2026-07-31", status: 3 },
 ];
 
 describe("ValidationsPage", () => {

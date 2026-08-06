@@ -1,88 +1,168 @@
 "use client";
 
 import { useState } from "react";
-import { Avatar } from "antd";
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
+import { Avatar, Button, Drawer } from "antd";
 import { DroughtScore } from "@/components/DS";
 import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 
-const DecisionHistory = ({ history = [] }) => {
+dayjs.extend(relativeTime);
+
+const TimelineDot = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z"
+      stroke="#D2D2D2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8 3C8.86881 3 9.72262 3.22638 10.4773 3.65684C11.232 4.0873 11.8615 4.70697 12.3037 5.45479C12.746 6.20261 12.9857 7.05276 12.9994 7.92146C13.013 8.79016 12.8001 9.64743 12.3815 10.4088C11.963 11.1701 11.3533 11.8092 10.6125 12.2632C9.87171 12.7172 9.02543 12.9702 8.15705 12.9975C7.28868 13.0248 6.42817 12.8254 5.66035 12.4188C4.89253 12.0123 4.24389 11.4127 3.77836 10.6791L8 8V3Z"
+      fill="#D2D2D2"
+    />
+  </svg>
+);
+
+const DecisionHistory = ({ history = [], trigger }) => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div>
-      <button
-        type="button"
-        className="flex w-full items-center justify-between border-t border-cardBorder px-6 py-4 text-left"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="text-lg font-semibold text-[#333333]">
+    <>
+      {trigger ? (
+        <span onClick={() => setOpen(true)}>{trigger}</span>
+      ) : (
+        <button
+          type="button"
+          className="text-sm font-normal text-[#485D92] hover:text-[#3E5EB9]"
+          onClick={() => setOpen(true)}
+        >
           Decision history
-        </span>
-        {open ? (
-          <UpOutlined className="text-[#606060]" />
-        ) : (
-          <DownOutlined className="text-[#606060]" />
-        )}
-      </button>
+        </button>
+      )}
 
-      {open && (
-        <div className="flex flex-col gap-3 px-6 pb-6">
-          {history.map((entry) => (
-            <div
-              key={entry.id}
-              className="rounded-lg border border-cardBorder bg-[#f9fafb] overflow-hidden"
-            >
-              <div className="flex items-center gap-3 px-4 py-3 bg-[#eef1f8]">
-                <Avatar
-                  size={32}
+      <Drawer
+        title="Decision history"
+        placement="right"
+        width={520}
+        onClose={() => setOpen(false)}
+        open={open}
+        classNames={{ header: "decision-history-drawer-header" }}
+        styles={{
+          body: { padding: 0, display: "flex", flexDirection: "column" },
+        }}
+      >
+        <div className="flex flex-col flex-1 overflow-y-auto">
+          {history.map((entry, index) => {
+            const submittedAt = entry.validated_at
+              ? dayjs(entry.validated_at)
+              : null;
+            return (
+              <div key={entry.id ?? index} className="relative pl-12 pr-6 py-5">
+                {/* Timeline line */}
+                {index < history.length - 1 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 23,
+                      top: 38,
+                      bottom: 0,
+                      width: 1,
+                      backgroundColor: "#D2D2D2",
+                    }}
+                  />
+                )}
+                {/* Timeline dot */}
+                <div
                   style={{
-                    backgroundColor: "#E8EAF0",
-                    color: "#485D92",
-                    fontSize: 12,
-                    border: "1px solid #D0D5E4",
+                    position: "absolute",
+                    left: 16,
+                    top: 20,
                   }}
                 >
-                  {entry.initials}
-                </Avatar>
-                <span className="font-medium text-sm text-[#333333] flex-1">
-                  {entry.name}
-                </span>
-                <span className="text-sm text-[#606060] mr-2">
-                  {entry.validated_at
-                    ? dayjs(entry.validated_at).format("MMM D, YYYY")
-                    : "—"}
-                </span>
-                <DroughtScore level={entry.category} size="sm" />
-                {/* A past decision has no confidence — what matters is
-                    whether the validator accepted the panel or overrode it. */}
-                <span
-                  title={
-                    entry.is_override
-                      ? "Overrode the reviewer majority"
-                      : "Accepted the reviewer majority"
-                  }
-                  className="text-sm"
-                  style={{ color: entry.is_override ? "#e60000" : "#12b76a" }}
-                >
-                  {entry.is_override ? "\u2934" : "\u2713"}
-                </span>
-              </div>
-              {entry.reasoning && (
-                <div className="px-4 py-3 text-sm text-[#606060] leading-relaxed">
-                  &ldquo;{entry.reasoning}&rdquo;
+                  <TimelineDot />
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Header */}
+                <div className="mb-1">
+                  <div className="text-sm font-medium text-[#333333]">
+                    Validation decision submitted
+                  </div>
+                  <div className="text-xs text-[#606060]">
+                    {submittedAt
+                      ? `${submittedAt.format("MMM D, h:mma")} | ${submittedAt.fromNow()}`
+                      : "—"}
+                  </div>
+                </div>
+
+                {/* Card */}
+                <div className="mt-2 rounded-lg border border-cardBorder bg-white overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <DroughtScore level={entry.category} size="sm" />
+                    <span className="text-xs text-[#3E5EB9] font-medium">
+                      Review details
+                    </span>
+                  </div>
+
+                  <div className="px-4 pb-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#606060] w-20 shrink-0">
+                        Submitted by
+                      </span>
+                      <Avatar
+                        size={24}
+                        style={{
+                          backgroundColor: "#E8EAF0",
+                          color: "#485D92",
+                          fontSize: 10,
+                          border: "1px solid #D0D5E4",
+                        }}
+                      >
+                        {entry.initials}
+                      </Avatar>
+                      <span className="text-sm text-[#333333]">
+                        {entry.name}
+                      </span>
+                    </div>
+
+                    {entry.reasoning && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-[#606060] w-20 shrink-0">
+                          Summary
+                        </span>
+                        <span className="text-sm text-[#333333] leading-relaxed">
+                          &ldquo;{entry.reasoning}&rdquo;
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
           {history.length === 0 && (
-            <p className="text-sm text-[#a4a4a4] py-4 text-center">
+            <p className="text-sm text-[#a4a4a4] py-8 text-center">
               No previous decisions recorded.
             </p>
           )}
         </div>
-      )}
-    </div>
+
+        {history.length > 0 && (
+          <div className="flex items-center justify-between border-t border-cardBorder px-6 py-4 mt-auto">
+            <span className="text-sm text-[#606060] truncate mr-4">
+              {history.length} of {history.length} sources
+            </span>
+            <Button type="primary">Download CSV</Button>
+          </div>
+        )}
+      </Drawer>
+    </>
   );
 };
 

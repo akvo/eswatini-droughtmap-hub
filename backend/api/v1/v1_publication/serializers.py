@@ -54,9 +54,14 @@ class PublicationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_reviews(self, obj):
-        total_reviews = obj.reviews.count()
-        total_completed = obj.reviews.filter(is_completed=True).count()
-        return f"{total_completed}/{total_reviews}"
+        total_completed = (
+            obj.reviews.filter(is_completed=True)
+            .exclude(user__technical_working_group=None)
+            .values_list("user__technical_working_group", flat=True)
+            .distinct()
+            .count()
+        )
+        return f"{total_completed}/5"
 
     @extend_schema_field(OpenApiTypes.ANY)
     def get_reviewers(self, obj):
@@ -148,9 +153,14 @@ class PublicationInfoSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_reviews(self, obj):
-        total_reviews = obj.reviews.count()
-        total_completed = obj.reviews.filter(is_completed=True).count()
-        return f"{total_completed}/{total_reviews}"
+        total_completed = (
+            obj.reviews.filter(is_completed=True)
+            .exclude(user__technical_working_group=None)
+            .values_list("user__technical_working_group", flat=True)
+            .distinct()
+            .count()
+        )
+        return f"{total_completed}/5"
 
     class Meta:
         model = Publication

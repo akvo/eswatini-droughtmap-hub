@@ -37,7 +37,7 @@ const BrowsePage = async ({ searchParams }) => {
         <div className="w-full flex flex-row align-center justify-between">
           <h2 className="text-xl xl:text-2xl font-bold">
             Composite Drought Map -{" "}
-            {dayjs(activeMap.year_month, "DD-MM-YYYY").format("MMMM YYYY")}
+            {dayjs(activeMap.year_month, "YYYY-MM-DD").format("MMMM YYYY")}
           </h2>
           <div className="w-fit py-1">
             <p className="text-neutral-600">

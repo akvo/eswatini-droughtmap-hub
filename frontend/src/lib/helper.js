@@ -232,18 +232,6 @@ export const getProfileDropdownItems = (user) => {
 };
 
 /**
- * Readable ink for a swatch: dark on light fills, white on dark ones.
- * The drought palette runs from near-white (No Data) to near-black (D4), so a
- * fixed colour is illegible at one end or the other.
+ * Text color for drought-category swatches — always white per Figma spec.
  */
-export const textOn = (hex = "#ffffff") => {
-  const h = hex.replace("#", "");
-  // `|| "0"` so a short or malformed hex degrades to a dark channel rather
-  // than NaN, which would make the comparison false and pick white ink.
-  const [r, g, b] = [0, 2, 4].map((i) =>
-    parseInt(h.slice(i, i + 2) || "0", 16),
-  );
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
-    ? "#333333"
-    : "#ffffff";
-};
+export const textOn = () => "#ffffff";

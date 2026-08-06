@@ -118,14 +118,38 @@ const ReviewerAvatars = ({ reviewers = [] }) => (
  * The D-classes the reviewers submitted. Hue and copy come from
  * DROUGHT_CATEGORY_* in config.js via DroughtScore, so these chips can never
  * disagree with the map, the legend or the decision page.
+ *
+ * One chip per reviewer overflowed the column as soon as a publication had
+ * more than ~4 of them (22 reviewers drew 22 chips straight across CONSENSUS
+ * and STATUS). The spread is a distribution, not a submission order, so
+ * duplicates collapse to a count — bounded by the 7 D-classes, and wrapping
+ * covers the rest.
  */
-const DClassSpread = ({ levels = [] }) => (
-  <div className="flex items-center gap-1">
-    {levels.map((level, i) => (
-      <DroughtScore key={i} level={level} size="sm" />
-    ))}
-  </div>
-);
+const DClassSpread = ({ levels = [] }) => {
+  const counts = levels.reduce(
+    (acc, level) => acc.set(level, (acc.get(level) || 0) + 1),
+    new Map(),
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {[...counts.entries()]
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([level, count]) => (
+          <Tooltip
+            key={level}
+            title={`${count} reviewer${count > 1 ? "s" : ""}`}
+          >
+            <span className="inline-flex items-center gap-0.5">
+              <DroughtScore level={level} size="sm" />
+              {count > 1 && (
+                <span className="text-xs text-[#606060]">&times;{count}</span>
+              )}
+            </span>
+          </Tooltip>
+        ))}
+    </div>
+  );
+};
 
 const SEARCH_DEBOUNCE_MS = 400;
 

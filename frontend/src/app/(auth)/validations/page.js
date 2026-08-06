@@ -48,10 +48,10 @@ const ValidationsPage = () => {
       // interleaved. Clicking the header still sorts, but only within the
       // current page, which is the nature of a client-side sorter.
       sorter: (a, b) =>
-        dayjs(a.due_date, "DD-MM-YYYY").unix() -
-        dayjs(b.due_date, "DD-MM-YYYY").unix(),
+        dayjs(a.due_date, "YYYY-MM-DD").unix() -
+        dayjs(b.due_date, "YYYY-MM-DD").unix(),
       render: (value) =>
-        value ? dayjs(value, "DD-MM-YYYY").format("DD/MM/YYYY") : "-",
+        value ? dayjs(value, "YYYY-MM-DD").format("DD/MM/YYYY") : "-",
     },
     {
       title: "MONTH",
