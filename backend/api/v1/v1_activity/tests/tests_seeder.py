@@ -11,9 +11,13 @@ class SeederTestCase(TestCase):
         call_command("generate_activity_seeder", "--test", True)
         first = ResponseActivity.objects.count()
         self.assertGreater(first, 0)
+        # Scoped to the real NDMA library: the ACT-DEMO-* rows share this CSV
+        # but ship as draft until --demo activates them (DEMO-1). See
+        # tests_demo_activity_catalogue for that behaviour.
         self.assertTrue(
             all(a.status == ActivityStatus.active
-                for a in ResponseActivity.objects.all()))
+                for a in ResponseActivity.objects.exclude(
+                    code__startswith="ACT-DEMO-")))
         # Re-run: no duplicates.
         call_command("generate_activity_seeder", "--test", True)
         self.assertEqual(ResponseActivity.objects.count(), first)
