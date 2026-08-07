@@ -61,7 +61,7 @@ class IKSPhotosEndpointTests(BaseIKSTestCase):
         self.assertEqual(photos[0]["citizen_scientist"], "CS-200")
         self.assertEqual(photos[0]["soil_moisture"], "Dry")
         self.assertEqual(photos[0]["vegetation"], "Green")
-        self.assertEqual(photos[0]["gps"], "-26.82030°N, 31.31170°E")
+        self.assertEqual(photos[0]["gps"], "26.82030°S, 31.31170°E")
 
     def test_iks_photo_file_serve(self):
         """

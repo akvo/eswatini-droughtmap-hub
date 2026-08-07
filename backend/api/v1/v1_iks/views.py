@@ -843,6 +843,11 @@ class IKSPhotosView(APIView):
         )
         queryset = active_kobo_data().filter(kobo_id__in=kobo_ids)
 
+        admin_area = Administration.objects.filter(
+            pk=administration_id
+        ).first()
+        admin_default_name = admin_area.name if admin_area else "-"
+
         photo_list = []
         for data in queryset:
             attachments = data.raw_data.get("_attachments", [])
@@ -854,45 +859,134 @@ class IKSPhotosView(APIView):
                 base_name = filename.split("/")[-1]
                 is_image = base_name.lower().endswith(IMAGE_EXTENSIONS)
                 if is_image or "image" in attach.get("mimetype", ""):
-                    # Provide local URL proxied by the Django backend
-                    # so that the browser doesn't hit Kobo directly
-                    # (which requires auth)
                     photo_url = f"/api/v1/iks/photos/media/{base_name}"
                     title = data.instance_name or f"Submission {data.kobo_id}"
                     sub_with = (
                         data.instance_name
                         or f"Kobo submission #{data.kobo_id}"
                     )
+                    raw = data.raw_data or {}
                     inkh = (
-                        data.raw_data.get("inkhundla")
-                        or data.raw_data.get("administration_name")
-                        or "-"
+                        raw.get("inkhundla")
+                        or raw.get("administration_name")
+                        or raw.get("chiefdom")
+                        or admin_default_name
                     )
                     c_sci = (
                         data.submitted_by
-                        or data.raw_data.get("username")
+                        or raw.get("username")
+                        or raw.get("_submitted_by")
                         or "-"
                     )
-                    s_moist = (
-                        data.raw_data.get("soil_moisture")
-                        or data.raw_data.get("d1_soil_moisture")
-                        or "-"
+
+                    # Extract Soil Moisture (Section D1)
+                    k_d1 = (
+                        "group_bx6rt12/D1_How_is_the_soil_atsi_endzaweni_yakho"
                     )
-                    veg = (
-                        data.raw_data.get("vegetation")
-                        or data.raw_data.get("d2_vegetation")
-                        or "-"
+                    s_raw = (
+                        raw.get(k_d1)
+                        or raw.get("soil_moisture")
+                        or raw.get("d1_soil_moisture")
+                        or next(
+                            (
+                                v
+                                for k, v in raw.items()
+                                if "D1_" in k or "soil" in k.lower()
+                            ),
+                            None,
+                        )
                     )
-                    has_geo = (
-                        data.geo
-                        and isinstance(data.geo, (list, tuple))
-                        and len(data.geo) >= 2
+                    s_lbl = label_soil_moisture(s_raw)
+                    s_moist = s_lbl or (str(s_raw) if s_raw else "-")
+
+                    # Extract Vegetation (Section D2)
+                    k_d2 = (
+                        "group_bx6rt12/D2_How_is_the_veget_ato_endzaweni_yakho"
                     )
-                    gps_str = (
-                        f"{data.geo[0]:.5f}°N, {data.geo[1]:.5f}°E"
-                        if has_geo
-                        else (data.raw_data.get("gps") or "-")
+                    v_raw = (
+                        raw.get(k_d2)
+                        or raw.get("vegetation")
+                        or raw.get("d2_vegetation")
+                        or next(
+                            (
+                                v
+                                for k, v in raw.items()
+                                if "D2_" in k or "veget" in k.lower()
+                            ),
+                            None,
+                        )
                     )
+                    v_lbl = label_vegetation(v_raw)
+                    veg = v_lbl or (str(v_raw) if v_raw else "-")
+
+                    # Extract & format GPS coordinates (°S / °E)
+                    lat, lon = None, None
+
+                    # Priority 1: KoboData.geo field (dict or list)
+                    if data.geo:
+                        if isinstance(data.geo, dict):
+                            lat = data.geo.get("latitude") or data.geo.get(
+                                "lat"
+                            )
+                            lon = data.geo.get("longitude") or data.geo.get(
+                                "lon"
+                            )
+                        elif (
+                            isinstance(data.geo, (list, tuple))
+                            and len(data.geo) >= 2
+                        ):
+                            lat, lon = data.geo[0], data.geo[1]
+
+                    # Priority 2: _geolocation array in raw_data
+                    if lat is None or lon is None:
+                        geoloc = raw.get("_geolocation")
+                        if (
+                            isinstance(geoloc, (list, tuple))
+                            and len(geoloc) >= 2
+                        ):
+                            lat, lon = geoloc[0], geoloc[1]
+
+                    # Priority 3: start-geopoint, survey_start_gps, or string keys
+                    if lat is None or lon is None:
+                        gp_str = (
+                            raw.get("start-geopoint")
+                            or raw.get("survey_start_gps")
+                            or next(
+                                (
+                                    str(v)
+                                    for k, v in raw.items()
+                                    if (
+                                        "geopoint" in k.lower()
+                                        or "gps" in k.lower()
+                                    )
+                                    and isinstance(v, str)
+                                    and len(v.split()) >= 2
+                                ),
+                                "",
+                            )
+                        )
+                        if gp_str:
+                            parts = gp_str.strip().split()
+                            if len(parts) >= 2:
+                                try:
+                                    lat = float(parts[0])
+                                    lon = float(parts[1])
+                                except (ValueError, TypeError):
+                                    pass
+
+                    # Format extracted coordinates
+                    gps_str = "-"
+                    if lat is not None and lon is not None:
+                        try:
+                            f_lat, f_lon = float(lat), float(lon)
+                            ns = "S" if f_lat < 0 else "N"
+                            ew = "W" if f_lon < 0 else "E"
+                            gps_str = (
+                                f"{abs(f_lat):.5f}°{ns}, "
+                                f"{abs(f_lon):.5f}°{ew}"
+                            )
+                        except (ValueError, TypeError):
+                            gps_str = f"{lat}, {lon}"
 
                     photo_list.append(
                         {
