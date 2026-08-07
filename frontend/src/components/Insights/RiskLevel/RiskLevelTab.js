@@ -16,9 +16,6 @@ import ActivitySlideIn from "./ActivitySlideIn";
 import InkhundlaHeader from "../InkhundlaHeader";
 import TabLoader from "../TabLoader";
 
-// Mock data fallback
-import mockRiskData from "@/static/mocks/risk-level/risk_score.json";
-
 // Sector sequence matching the Figma design order: WASH, Food, Env, Coord, Health, Trans, Edu, Social
 const SECTOR_ORDER = [3, 1, 5, 6, 2, 8, 4, 7];
 
@@ -43,7 +40,10 @@ const RiskLevelTab = ({
   const [selectedActivityId, setSelectedActivityId] = useState(null);
 
   const fetchRiskData = useCallback(async () => {
-    if (!selectedInkhundla) {
+    // Without an administration id there is nothing to ask the API for — the
+    // detail route is keyed on it.
+    if (!selectedInkhundla || !administrationId) {
+      setRiskData(null);
       setLoading(false);
       return;
     }
@@ -54,27 +54,17 @@ const RiskLevelTab = ({
     try {
       // Parallel fetch for risk score and activities list
       const [riskRes, activitiesRes] = await Promise.allSettled([
-        api("GET", `/risk-score?administration_id=${administrationId || ""}`),
+        api("GET", `/risk-levels/${administrationId}`),
         api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
       ]);
 
-      // 1. Process Risk Score Response (with fallback to mock data)
-      let resolvedRiskData = null;
-      if (riskRes.status === "fulfilled" && riskRes.value) {
-        resolvedRiskData = riskRes.value;
-      } else {
-        // Resilient mock fallback: Override the name/region/zone from context to look dynamic
-        resolvedRiskData = {
-          ...mockRiskData,
-          administration: {
-            id: administrationId || mockRiskData.administration.id,
-            name: selectedInkhundla || mockRiskData.administration.name,
-            region: region || mockRiskData.administration.region,
-            zone: zone || mockRiskData.administration.zone,
-          },
-        };
-      }
-      setRiskData(resolvedRiskData);
+      // 1. Risk build-up. No mock fallback: an Inkhundla the backend cannot
+      // score renders its own empty state rather than someone else's numbers.
+      setRiskData(
+        riskRes.status === "fulfilled" && riskRes.value?.administration
+          ? riskRes.value
+          : null,
+      );
 
       // 2. Process Activities Response
       if (activitiesRes.status === "fulfilled" && activitiesRes.value) {
@@ -90,7 +80,7 @@ const RiskLevelTab = ({
     } finally {
       setLoading(false);
     }
-  }, [selectedInkhundla, administrationId, region, zone]);
+  }, [selectedInkhundla, administrationId]);
 
   useEffect(() => {
     fetchRiskData();

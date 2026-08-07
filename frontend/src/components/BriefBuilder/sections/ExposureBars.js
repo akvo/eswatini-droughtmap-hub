@@ -8,7 +8,7 @@ import exposureMock from "@/static/mocks/brief-builder/exposure.json";
  * "Exposure & vulnerability" — five labelled percentage bars in two columns
  * (Figma 4155:180002).
  *
- * Mocked, and flagged as such in the UI. /risk-level/{id} returns exposure as
+ * Mocked, and flagged as such in the UI. /risk-levels/{id} returns exposure as
  * raw absolutes with no denominator, so four of these five percentages cannot
  * be computed from any endpoint today (design doc C-5) — rendering them
  * unlabelled would present invented numbers as measured ones.
@@ -20,7 +20,7 @@ const ExposureBars = () => (
   <BriefSection
     title="Exposure & vulnerability"
     actions={
-      <Tooltip title="Illustrative only. /risk-level returns exposure as raw absolutes with no denominator, so these shares have no computable basis yet — see C-5.">
+      <Tooltip title="Illustrative only. /risk-levels returns exposure as raw absolutes with no denominator, so these shares have no computable basis yet — see C-5.">
         <Tag color="default" className="m-0 cursor-help text-[10px]">
           Placeholder
         </Tag>

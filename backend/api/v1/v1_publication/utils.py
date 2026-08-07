@@ -1,9 +1,11 @@
+import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 from django.conf import settings
+from django.utils import timezone
 from django_q.tasks import async_task
 
 from api.v1.v1_jobs.models import Jobs, JobStatus, JobTypes
@@ -12,10 +14,79 @@ from .constants import (
     CDIGeonodeCategory,
     GEONODE_SSL_VERIFY,
     GEONODE_REQUEST_TIMEOUT,
+    PublicationStatus,
 )
 from .models import PublicationRaster
 
 logger = logging.getLogger(__name__)
+
+TOPOJSON_PATH = "./source/eswatini.topojson"
+
+# CDI percentile ranks only reach ~0.3 before get_category calls a month
+# "Wet/normal". Seeded values are drawn from the drought end so a seeded map
+# is not uniformly green — which is exactly what the removed
+# fake_published_maps_seeder produced by drawing uniform(0, 100) and feeding
+# it to a classifier whose whole scale is 0..1.
+SEED_VALUE_RANGE = (0.02, 0.4)
+
+BULLETIN_URL = (
+    "https://www.ipcinfo.org/fileadmin/user_upload/ipcinfo/docs/"
+    "IPC_Eswatini_AFI_2019June2020March.pdf"
+)
+
+
+def publish_seeded_publication(publication) -> bool:
+    """Promote a seeded publication to published: validated_values mirror the
+    extracted initial_values, due_date becomes published_at.
+
+    One definition, two callers — the extraction hook
+    (v1_jobs.job.generate_initial_cdi_values_results, the steady-state path)
+    and publications_seeder's repair pass. They drifted apart before, which is
+    how the "run it twice" behaviour hid (DEMO-1 D-10/D-11).
+
+    Returns False without touching the row when there is nothing to publish.
+    Empty initial_values means extraction produced nothing: publishing it
+    would put a map with no categories on the National overview, which reads
+    as "every Inkhundla has No Data" rather than as a failed download.
+    """
+    if publication.validated_values:
+        return False
+    if not publication.initial_values:
+        logger.warning(
+            f"Publication {publication.id} "
+            f"(cdi_geonode_id {publication.cdi_geonode_id}) has no "
+            f"initial_values; not publishing."
+        )
+        return False
+
+    publication.validated_values = publication.initial_values
+    publication.narrative = ""
+    due_date = publication.due_date
+    publication.published_at = timezone.make_aware(
+        due_date
+        if isinstance(due_date, datetime)
+        else datetime.combine(due_date, datetime.min.time())
+    )
+    publication.save()
+    return True
+
+
+def has_active_cdi_download(publication) -> bool:
+    """True when a CDI download/extraction chain is already in flight for this
+    publication, so a retry would only duplicate work.
+
+    A FAILED job does not count as active — same rule as
+    attach_component_rasters — so a failed download is retried on the next
+    pass instead of being stuck forever.
+    """
+    return (
+        Jobs.objects.filter(
+            type=JobTypes.download_geonode_dataset,
+            info__publication_id=publication.id,
+        )
+        .exclude(status=JobStatus.failed)
+        .exists()
+    )
 
 
 def get_category(value: float):
@@ -189,3 +260,137 @@ def attach_component_rasters(publication) -> list:
         attached.append(indicator)
 
     return attached
+
+
+# --- Seeding helpers --------------------------------------------------------
+# Used by publications_seeder to build demo/dev publication cycles. Kept here
+# beside get_category, which every generated value has to pass through.
+
+
+def topojson_administration_ids(path: str = TOPOJSON_PATH) -> list:
+    """Administration ids straight from the topojson.
+
+    Deliberately not a database query: the seeder must work before (or
+    without) generate_administrations_seeder, and the topojson is the same
+    source that command reads.
+    """
+    with open(path, "r") as f:
+        topo_data = json.load(f)
+    return [
+        feature["properties"]["administration_id"]
+        for group in topo_data.get("objects", {}).values()
+        for feature in group.get("geometries", [])
+    ]
+
+
+def generate_narrative(fake) -> str:
+    title = fake.sentence(nb_words=6)
+    author = fake.name()
+    date = fake.date()
+    content = "\n".join(
+        f"<p>{fake.paragraph(nb_sentences=5)}</p>" for _ in range(15)
+    )
+    return f"""
+    <narrative>
+        <h1>{title}</h1>
+        <p><strong>Author:</strong> {author}</p>
+        <p><strong>Date:</strong> {date}</p>
+        {content}
+    </narrative>
+    """
+
+
+def seed_values(administration_ids, rng) -> list:
+    """Synthetic initial_values for one publication."""
+    values = []
+    for administration_id in administration_ids:
+        value = rng.uniform(*SEED_VALUE_RANGE)
+        values.append(
+            {
+                "administration_id": administration_id,
+                "value": value,
+                "category": get_category(value),
+            }
+        )
+    return values
+
+
+def _as_datetime(value):
+    if isinstance(value, datetime):
+        return value
+    return datetime.combine(value, datetime.min.time())
+
+
+def publish_seeded(publication, fake, rng):
+    """Promote a seeded publication to published, with a narrative.
+
+    Distinct from publish_seeded_publication above, which mirrors extracted
+    values for the GeoNode chain and never invents prose.
+    """
+    publication.status = PublicationStatus.published
+    publication.published_at = timezone.make_aware(
+        _as_datetime(publication.due_date) + timedelta(days=rng.randint(1, 7))
+    )
+    publication.narrative = generate_narrative(fake)
+    publication.bulletin_url = BULLETIN_URL
+    publication.validated_values = [
+        {
+            "administration_id": v["administration_id"],
+            "value": v["value"],
+            "category": get_category(v["value"]),
+        }
+        for v in publication.initial_values
+    ]
+    publication.save()
+    return publication
+
+
+def seed_reviews(publication, start_date, fake, rng):
+    """One Review per reviewer, completed unless the cycle is still in_review.
+
+    suggestion_values stays None on an incomplete review: a reviewer who has
+    not submitted has made no suggestions, and inventing some would show the
+    validation queue an agreement it never received.
+    """
+    # Imported here to keep this module importable from the models layer.
+    from api.v1.v1_users.constants import UserRoleTypes
+    from api.v1.v1_users.models import SystemUser
+    from .models import Review
+
+    is_completed = publication.status != PublicationStatus.in_review
+    due_date = _as_datetime(publication.due_date)
+
+    reviews = []
+    for reviewer in SystemUser.objects.filter(role=UserRoleTypes.reviewer):
+        review, _ = Review.objects.get_or_create(
+            publication=publication, user=reviewer
+        )
+        review.is_completed = is_completed
+        review.suggestion_values = None
+        if is_completed:
+            review.suggestion_values = [
+                _seed_suggestion(value, fake, rng)
+                for value in publication.initial_values
+            ]
+            span = max((due_date - start_date).days, 0)
+            review.completed_at = timezone.make_aware(
+                start_date + timedelta(days=rng.randint(0, span))
+            )
+        review.save()
+        reviews.append(review)
+    return reviews
+
+
+def _seed_suggestion(value, fake, rng) -> dict:
+    suggested = value["value"]
+    comment = None
+    if fake.boolean():
+        comment = fake.sentence(nb_words=8)
+        suggested = rng.uniform(*SEED_VALUE_RANGE)
+    return {
+        "administration_id": value["administration_id"],
+        "value": suggested,
+        "comment": comment,
+        "reviewed": True,
+        "category": get_category(suggested),
+    }

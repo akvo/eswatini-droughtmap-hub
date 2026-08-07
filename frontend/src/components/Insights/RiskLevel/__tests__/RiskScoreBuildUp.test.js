@@ -19,45 +19,90 @@ beforeAll(() => {
 });
 
 describe("RiskScoreBuildUp", () => {
+  // Shaped exactly like GET /api/v1/risk-levels/{administration_id} (RL-2).
   const mockRiskData = {
     period: "2026-05",
     administration: {
       id: 1,
       name: "Nkwene",
       region: "Shiselweni",
-      zone: "Middleveld",
+      zone: "lower_middleveld",
     },
+    rank: 7,
     drought: {
       key: "D3",
-      label: "D3 — Extreme Drought",
       value: 0.8,
       trend: "stable",
-      trend_delta: 0,
-      confidence: "high",
+      trend_desc: "1 month unchanged",
+      confidence: {
+        band: null,
+        value: null,
+        meta: { reason: "no_station_baseline" },
+      },
     },
     exposure: {
       value: 0.4474,
       data: [
-        { key: "population", value: 8956 },
-        { key: "u5", value: 184 },
-        { key: "rainfed_ha", value: 1069 },
-        { key: "livestock", value: 1364 },
-        { key: "water_demand_liters", value: null },
+        {
+          key: "land_use_dvi_agri",
+          value: 0.61,
+          unit: null,
+          norm: 0.09,
+          scored: true,
+        },
+        {
+          key: "population",
+          value: 8956,
+          unit: "people",
+          norm: 0.82,
+          scored: true,
+        },
+        { key: "cattle", value: 1364, unit: "head", norm: 0.4, scored: true },
+        {
+          key: "water_demand",
+          value: null,
+          unit: "m3",
+          norm: null,
+          scored: true,
+          meta: { unit_status: "assumed_pending_dwa" },
+        },
+        {
+          key: "under_five",
+          value: 184,
+          unit: "children",
+          norm: null,
+          scored: false,
+        },
+        {
+          key: "rainfed_cropland",
+          value: 1069,
+          unit: "ha",
+          norm: null,
+          scored: false,
+        },
       ],
+      unavailable: ["water_demand"],
     },
     vulnerability: {
-      value: 0.667,
+      value: 0.6,
       data: [
-        { key: "v_water", value: 1.0 },
-        { key: "v_ipc", value: 0.534 },
-        { key: "v_prep", value: 0.467 },
+        { key: "ipc_phase", value: 3, format: "ipc", scored: true },
+        {
+          key: "people_per_water_point",
+          value: 2239,
+          unit: "people/point",
+          scored: false,
+          meta: { basis: "population / (boreholes + taps)" },
+        },
       ],
     },
     risk_score: {
-      value: 2.39,
+      value: 0.2387,
+      class: "Moderate",
       meta: {
-        band: "monitor",
-        band_thresholds: { urgent: 4.5, watch: 2.5 },
+        band: "watch",
+        scale: [0, 1],
+        band_thresholds: { urgent: 0.5, watch: 0.15, monitor: 0.0 },
       },
     },
   };
@@ -71,75 +116,100 @@ describe("RiskScoreBuildUp", () => {
     expect(screen.getByText("Vulnerability")).toBeInTheDocument();
   });
 
-  it("renders drought category, stable trend status, and confidence label", () => {
+  it("renders the drought cycle and trend from the payload", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
     expect(screen.getByText("Validated drought score")).toBeInTheDocument();
+    expect(
+      screen.getByText("Signed off in 2026-05 review cycle"),
+    ).toBeInTheDocument();
     expect(screen.getByText("■ STABLE")).toBeInTheDocument();
+    expect(screen.getByText("1 month unchanged")).toBeInTheDocument();
+  });
+
+  it("renders confidence as an empty state, never a fabricated band", () => {
+    render(<RiskScoreBuildUp riskData={mockRiskData} />);
+
+    expect(screen.getByText("— —")).toBeInTheDocument();
+    expect(
+      screen.getByText("Awaiting weather-station baseline"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("High")).not.toBeInTheDocument();
+  });
+
+  it("renders a confidence band when the API ever sends one", () => {
+    const withConfidence = {
+      ...mockRiskData,
+      drought: { ...mockRiskData.drought, confidence: { band: "high" } },
+    };
+    render(<RiskScoreBuildUp riskData={withConfidence} />);
+
     expect(screen.getByText("High")).toBeInTheDocument();
   });
 
-  it("renders exposure metrics correctly with formatting", () => {
+  it("renders exposure absolutes with the unit the API declares", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
     expect(screen.getByText("8,956 people")).toBeInTheDocument();
+    expect(screen.getByText("1,364 head")).toBeInTheDocument();
     expect(screen.getByText("184 children")).toBeInTheDocument();
     expect(screen.getByText("1,069 ha")).toBeInTheDocument();
-    expect(screen.getByText("1,364 head")).toBeInTheDocument();
-    // water_demand is null, so it should display "N/A"
+    // water_demand is null -> N/A, and its m3 unit is never converted here.
     expect(screen.getByText("Water demand")).toBeInTheDocument();
+    expect(screen.queryByText(/ L$/)).not.toBeInTheDocument();
   });
 
-  it("renders vulnerability index values and mapped IPC Phase", () => {
+  it("marks unscored rows as context so they cannot read as inputs", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
-    expect(screen.getByText("Water access pressure")).toBeInTheDocument();
-    expect(screen.getByText("100%")).toBeInTheDocument();
-
-    expect(screen.getByText("Susceptibility")).toBeInTheDocument();
-    // v_ipc = 0.534 maps to Phase 3: Crisis
-    expect(screen.getByText("Phase 3: Crisis")).toBeInTheDocument();
-
-    expect(screen.getByText("Preparedness index")).toBeInTheDocument();
-    expect(screen.getByText("47%")).toBeInTheDocument();
+    // under_five, rainfed_cropland, people_per_water_point
+    expect(screen.getAllByText("CONTEXT")).toHaveLength(3);
   });
 
-  it("displays the correct formatted final score", () => {
+  it("renders the IPC phase and the water-access context row", () => {
+    render(<RiskScoreBuildUp riskData={mockRiskData} />);
+
+    expect(screen.getByText("Susceptibility")).toBeInTheDocument();
+    expect(screen.getByText("Phase 3: Crisis")).toBeInTheDocument();
+
+    expect(screen.getByText("Water access pressure")).toBeInTheDocument();
+    expect(screen.getByText("2,239 people/point")).toBeInTheDocument();
+
+    // Dropped by the methodology (redesign D-7) — must not reappear.
+    expect(screen.queryByText("Preparedness index")).not.toBeInTheDocument();
+  });
+
+  it("displays the 0-1 API score as the 0-10 headline", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
     expect(screen.getByText("2.4")).toBeInTheDocument();
   });
 
-  it("renders watch list score correctly", () => {
-    const watchData = {
-      ...mockRiskData,
-      risk_score: {
-        value: 3.1,
-        meta: {
-          band: "watch",
-          band_thresholds: { urgent: 4.5, watch: 2.5 },
-        },
-      },
-    };
-    render(<RiskScoreBuildUp riskData={watchData} />);
-
-    expect(screen.getByText("3.1")).toBeInTheDocument();
-  });
-
-  it("renders urgent response required score correctly", () => {
+  it("scales an urgent score the same way", () => {
     const urgentData = {
       ...mockRiskData,
-      risk_score: {
-        value: 5.2,
-        meta: {
-          band: "urgent",
-          band_thresholds: { urgent: 4.5, watch: 2.5 },
-        },
-      },
+      risk_score: { ...mockRiskData.risk_score, value: 0.52, band: "urgent" },
     };
     render(<RiskScoreBuildUp riskData={urgentData} />);
 
     expect(screen.getByText("5.2")).toBeInTheDocument();
+  });
+
+  it("renders N/A instead of a confident zero when unscored", () => {
+    const unscored = {
+      ...mockRiskData,
+      exposure: { ...mockRiskData.exposure, value: null },
+      vulnerability: { value: null, data: [] },
+      risk_score: {
+        value: null,
+        class: null,
+        meta: { ...mockRiskData.risk_score.meta, band: null },
+      },
+    };
+    render(<RiskScoreBuildUp riskData={unscored} />);
+
+    expect(screen.getAllByText("N/A").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0.0")).not.toBeInTheDocument();
   });
 
   it("renders placeholder text when riskData is not provided", () => {

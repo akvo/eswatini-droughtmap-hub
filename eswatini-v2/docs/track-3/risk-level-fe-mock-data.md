@@ -10,7 +10,7 @@
 **Track**: Track 3 — Operational Response
 **Author**: Galih Pratama
 **Date**: 2026-07-20
-**Status**: Implemented — Design polished
+**Status**: Implemented — Design polished · **SUPERSEDED 2026-08-05** by [`risk-level-detail-buildup-api.md`](./risk-level-detail-buildup-api.md) (RL-2): the `/risk-score` mock path never existed in the backend and the tab now reads `GET /api/v1/risk-levels/{administration_id}`. `static/mocks/risk-level/risk_score.json` is deleted; the field-by-field mapping from this mock to the live payload is RL-2 §1.1.
 **Figma**: [node 3542-145795](https://www.figma.com/design/gtNfp5n7NawbYW5u8cPrpT/Eswatini-Drought-platform?node-id=3542-145795&m=dev)
 
 > [!NOTE]
@@ -170,7 +170,7 @@ sequenceDiagram
     Ctx-->>Page: administrationId, region, zone
 
     par Parallel fetch
-        Page->>BE: GET /api/v1/risk-score?administration_id=<id> (Mocked JSON)
+        Page->>BE: GET /api/v1/risk-levels/<id> (live since RL-2; was a mock)
         BE-->>Page: risk_score JSON
     and
         Page->>BE: GET /api/v1/activities
@@ -198,7 +198,7 @@ sequenceDiagram
 
 ```
 RiskLevelPage
-│  (parallel useEffect: risk-score mock + activities list)
+│  (parallel useEffect: /risk-levels/{id} + activities list)
 │
 ├── InkhundlaMetaBar
 │     inkhundla name · region · agro-ecological zone · D-class badge

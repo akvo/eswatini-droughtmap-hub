@@ -81,7 +81,10 @@ class SyncValidatedValuesTestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
         self.publication = Publication.objects.first()
 
     def test_writes_into_a_null_array(self):
@@ -128,7 +131,10 @@ class ValidationDecisionAPITestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
 
         self.publication = Publication.objects.first()
         self.admin = SystemUser.objects.filter(
@@ -627,7 +633,10 @@ class ValidationHistoryAPITestCase(APITestCase):
         call_command("generate_administrations_seeder", "--test", True)
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 5)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
 
         publications = list(Publication.objects.order_by("year_month"))
         if len(publications) < 2:

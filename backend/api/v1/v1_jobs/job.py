@@ -7,7 +7,6 @@ import numpy as np
 # from rasterstats import zonal_stats
 from rasterio.mask import mask
 from time import sleep
-from datetime import datetime
 from django.core import signing
 from django.utils import timezone
 from django.conf import settings
@@ -25,6 +24,7 @@ from api.v1.v1_publication.serializers import (
 from api.v1.v1_publication.utils import (
     get_category,
     attach_component_rasters,
+    publish_seeded_publication,
 )
 from utils.email_helper import send_email, EmailTypes
 
@@ -296,6 +296,13 @@ def download_geonode_dataset_results(task):
                 "id": publication_id,
                 "subject": subject,
                 "message": message,
+                # Carried across the hop: the seeder sets is_seeder on the
+                # DOWNLOAD job, but it is read on the EXTRACTION job by
+                # generate_initial_cdi_values_results. Dropping it here left
+                # that branch permanently unreachable, which is why
+                # publications_seeder had to be run twice before
+                # validated_values appeared (design DEMO-1 D-10).
+                "is_seeder": job_info.get("is_seeder", False),
             },
         )
         hook = "api.v1.v1_jobs.job.generate_initial_cdi_values_results"
@@ -461,23 +468,11 @@ def generate_initial_cdi_values_results(task):
             job.result = task.result
             job.save()
 
-            if (
-                job_info.get("is_seeder", False) and
-                not publication.validated_values
-            ):
-                # If this is from the seeder and no validated values, set them
-                publication.validated_values = publication.initial_values
-                publication.narrative = ""
-                publication.published_at = timezone.make_aware(
-                    publication.due_date
-                ) if isinstance(publication.due_date, datetime) \
-                    else timezone.make_aware(
-                        datetime.combine(
-                            publication.due_date,
-                            datetime.min.time()
-                        )
-                    )
-                publication.save()
+            if job_info.get("is_seeder", False):
+                # Seeded publications publish themselves at the end of the
+                # extraction chain, so one seeder run is enough. Shared with
+                # publications_seeder's repair pass so the two cannot drift.
+                publish_seeded_publication(publication)
 
             # No subject or message provided, so no email to send
             return

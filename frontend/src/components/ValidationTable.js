@@ -201,6 +201,7 @@ const ValidationTable = ({
                   "ant-table-cell hover:ant-table-cell-row-hover edh-cell",
                   {
                     [`bg-[${color}]`]: color,
+                    "text-white": color,
                   },
                 )}
                 style={style}

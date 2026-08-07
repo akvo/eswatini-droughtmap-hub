@@ -13,7 +13,10 @@ from api.v1.v1_publication.models import (
 class OverdueReviewsCommandTestCase(TestCase):
     def setUp(self):
         call_command("fake_users_seeder", "--test", True, "--repeat", 2)
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
         publication = (
             Publication.objects.filter(status=PublicationStatus.in_review)
             .order_by("?")

@@ -5,6 +5,7 @@ from django.utils import timezone
 from api.v1.v1_weather.aggregation import aggregate_daily
 from api.v1.v1_weather.constants import (
     COMPLETENESS_WINDOW_DAYS,
+    COMPLETENESS_WINDOW_MONTHS,
     DEGRADED_COMPLETENESS,
     EXPECTED_READINGS_PER_DAY,
     NETWORK,
@@ -32,7 +33,7 @@ from api.v1.v1_weather.topo import (
 # Insights tab renders the same chip, so the rule has one definition, beside
 # the model it reads. No cycle — v1_publication never imports v1_weather.
 from api.v1.v1_publication.insights.utils import current_dclass
-from utils.periods import month_range
+from utils.periods import month_range, month_start, shift_period
 
 logger = logging.getLogger(__name__)
 
@@ -381,14 +382,24 @@ def administration_stats(administration, include_completeness=False) -> dict:
         .first()
     )
     window_start = max(first_record, today - timezone.timedelta(days=365))
-    window_days = (today - window_start).days + 1
-    dates_with_data = set(
-        station.daily_values.filter(
-            value__isnull=False, date__gte=window_start
-        ).values_list("date", flat=True)
+
+    # Completeness = share of the last 12 calendar months in which the
+    # station reported anything. Unlike the precipitation window above this
+    # one is NOT clipped to the station's first record: the denominator is
+    # always 12, so a station three months old reads 3/12 rather than 100 %
+    # of a three-month window (D-1, revised 2026-08-05).
+    completeness_start = month_start(
+        shift_period(
+            today.strftime("%Y-%m"), -(COMPLETENESS_WINDOW_MONTHS - 1)
+        )
     )
-    completeness = (
-        round(len(dates_with_data) / window_days, 3) if window_days else None
+    months_with_data = station.daily_values.filter(
+        value__isnull=False,
+        date__gte=completeness_start,
+        date__lte=today,
+    ).dates("date", "month")
+    completeness = round(
+        len(months_with_data) / COMPLETENESS_WINDOW_MONTHS, 3
     )
 
     precip_window = list(
@@ -427,8 +438,9 @@ def administration_stats(administration, include_completeness=False) -> dict:
             "label": "Data completeness",
             "value": completeness,
             "meta": {
-                "window_days": window_days,
-                "definition": "days_with_data / window_days",
+                "window_months": COMPLETENESS_WINDOW_MONTHS,
+                "months_with_data": len(months_with_data),
+                "definition": "months_with_data / window_months",
             },
         }
     else:  # anonymous -> the UI renders its locked sign-in placeholder
@@ -598,3 +610,95 @@ def administration_series(
     meta["to"] = to_period
     base["meta"] = meta
     return base
+
+
+def administration_deviation(
+    administration, parameter, from_period, to_period, station=None
+) -> list:
+    """[{period, value}] of observed MINUS the 30-year normal (DEMO-1 D-12).
+
+    Composes what already exists — `_resolve_station_with_data` for the
+    in-region -> nearest-station ladder, `monthly_series` for the observation,
+    `AdministrationNormal` for the baseline. No new formula.
+
+    None, never 0, when either side is missing: 0 is a real deviation ("bang
+    on the normal") and must stay distinguishable from "no station covers this
+    Inkhundla" or "no normal was extracted for this parameter".
+
+    `station` is an optional pre-resolved station, so a national roll-up can
+    resolve once per station rather than once per Inkhundla.
+    """
+    periods = month_range(from_period, to_period)
+    if station is None:
+        station, _, _ = _resolve_station_with_data(administration)
+    if not station:
+        return [{"period": period, "value": None} for period in periods]
+
+    normals = {
+        row["month"]: row["value"]
+        for row in AdministrationNormal.objects.filter(
+            administration=administration, parameter=parameter
+        ).values("month", "value")
+    }
+    observed = {
+        item["period"]: item["value"]
+        for item in monthly_series(
+            station, parameter, from_period, to_period
+        )
+    }
+    return [
+        {
+            "period": period,
+            "value": _deviation(
+                observed.get(period), normals.get(int(period[5:7]))
+            ),
+        }
+        for period in periods
+    ]
+
+
+def _deviation(observed, normal):
+    if observed is None or normal is None:
+        return None
+    return round(observed - normal, 1)
+
+
+def national_deviation(parameter, from_period, to_period) -> list:
+    """Mean deviation over the Tinkhundla that resolve to a station.
+
+    Averaged per ADMINISTRATION, not per station (D-12/Q1b): administration_id
+    is the join key everywhere else in the schema, normals are stored per
+    administration, and averaging over stations would weight a two-station
+    region double.
+    """
+    from api.v1.v1_publication.models import Administration
+
+    # Resolve each Inkhundla's station once; many share one, and
+    # _resolve_station_with_data walks every station each call.
+    by_station = {}
+    for administration in Administration.objects.all():
+        station, _, _ = _resolve_station_with_data(administration)
+        if station:
+            by_station.setdefault(station.id, (station, []))[1].append(
+                administration
+            )
+
+    totals = {period: [] for period in month_range(from_period, to_period)}
+    for station, administrations in by_station.values():
+        for administration in administrations:
+            for item in administration_deviation(
+                administration, parameter, from_period, to_period,
+                station=station,
+            ):
+                if item["value"] is not None:
+                    totals[item["period"]].append(item["value"])
+
+    return [
+        {
+            "period": period,
+            "value": (
+                round(sum(values) / len(values), 1) if values else None
+            ),
+        }
+        for period, values in totals.items()
+    ]

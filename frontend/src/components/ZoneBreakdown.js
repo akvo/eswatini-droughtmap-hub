@@ -7,18 +7,9 @@ import {
 } from "@/static/config";
 import ZoneDoughnut from "./Charts/ZoneDoughnut";
 import classNames from "classnames";
+import { textOn } from "@/lib/helper";
 
 // readable badge text colour for a given background (luminance)
-const textOn = (hex) => {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
-    ? "#333333"
-    : "#ffffff";
-};
-
 const TREND = {
   worsening: { arrow: "\u25BC", label: "WORSENING", color: "#dc2626" },
   improving: { arrow: "\u25B2", label: "IMPROVING", color: "#069206" },

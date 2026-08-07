@@ -96,7 +96,10 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(publication.reviews.count(), 2)
 
     def test_publication_list(self):
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
         url = reverse("publication-list", kwargs={"version": "v1"})
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)

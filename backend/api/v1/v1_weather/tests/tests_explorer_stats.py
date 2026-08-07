@@ -7,6 +7,8 @@ from rest_framework.test import APITestCase
 
 from api.v1.v1_publication.constants import PublicationStatus
 from api.v1.v1_publication.models import Publication
+from api.v1.v1_weather.citizen_science import shift_month
+from api.v1.v1_weather.constants import WeatherParameter
 from api.v1.v1_weather.models import StationDailyAggregate
 from api.v1.v1_weather.tests.mixins import (
     HHUKWINI_ADM,
@@ -66,7 +68,7 @@ class ExplorerStatsTests(ExplorerDataMixin, APITestCase):
         self.assertIsNone(completeness["value"])
         self.assertEqual(completeness["meta"]["reason"], "twg_only")
 
-    def test_completeness_days_based_for_authenticated(self):
+    def _completeness(self):
         self.client.force_authenticate(user=self.reviewer)
         cards = {
             card["key"]: card
@@ -74,10 +76,58 @@ class ExplorerStatsTests(ExplorerDataMixin, APITestCase):
                 "stats", HHUKWINI_ADM
             ).json()["data"]
         }
-        completeness = cards["completeness_12m"]
-        # first record 9 days ago -> window 10 days, 8 days with data
-        self.assertEqual(completeness["meta"]["window_days"], 10)
-        self.assertEqual(completeness["value"], 0.8)
+        return cards["completeness_12m"]
+
+    def _seed_month(self, months_back):
+        """One precipitation reading in the month N months before now."""
+        day = shift_month(self.today.replace(day=1), -months_back)
+        StationDailyAggregate.objects.create(
+            station=self.mbabane,
+            date=day,
+            parameter=WeatherParameter.precipitation,
+            value=1.0,
+            readings_count=24,
+        )
+
+    def test_completeness_denominator_is_always_12_months(self):
+        completeness = self._completeness()
+        self.assertEqual(completeness["meta"]["window_months"], 12)
+        self.assertEqual(
+            completeness["meta"]["definition"],
+            "months_with_data / window_months",
+        )
+        # The fixture spans 10 days, so 1 or 2 calendar months depending on
+        # the run date — never a full year. The point is that a young
+        # station reads as a small share of 12, not as ~100 %.
+        months = completeness["meta"]["months_with_data"]
+        self.assertIn(months, (1, 2))
+        self.assertEqual(completeness["value"], round(months / 12, 3))
+
+    def test_each_reported_month_adds_one_twelfth(self):
+        before = self._completeness()
+        # 3, 4, 5 months back: far enough that the fixture's 10-day block
+        # (at most 2 calendar months) can never overlap them.
+        for months_back in (3, 4, 5):
+            self._seed_month(months_back)
+        after = self._completeness()
+        self.assertEqual(
+            after["meta"]["months_with_data"],
+            before["meta"]["months_with_data"] + 3,
+        )
+        self.assertEqual(
+            after["value"], round(before["value"] + 3 / 12, 3)
+        )
+
+    def test_months_outside_the_window_do_not_count(self):
+        before = self._completeness()
+        self._seed_month(12)  # exactly 12 months back = just outside
+        self._seed_month(14)
+        after = self._completeness()
+        self.assertEqual(after["value"], before["value"])
+        self.assertEqual(
+            after["meta"]["months_with_data"],
+            before["meta"]["months_with_data"],
+        )
 
     def test_dclass_from_latest_published_publication(self):
         body = self.get_administration("stats", HHUKWINI_ADM).json()
