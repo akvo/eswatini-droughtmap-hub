@@ -858,15 +858,58 @@ class IKSPhotosView(APIView):
                     # so that the browser doesn't hit Kobo directly
                     # (which requires auth)
                     photo_url = f"/api/v1/iks/photos/media/{base_name}"
+                    title = data.instance_name or f"Submission {data.kobo_id}"
+                    sub_with = (
+                        data.instance_name
+                        or f"Kobo submission #{data.kobo_id}"
+                    )
+                    inkh = (
+                        data.raw_data.get("inkhundla")
+                        or data.raw_data.get("administration_name")
+                        or "-"
+                    )
+                    c_sci = (
+                        data.submitted_by
+                        or data.raw_data.get("username")
+                        or "-"
+                    )
+                    s_moist = (
+                        data.raw_data.get("soil_moisture")
+                        or data.raw_data.get("d1_soil_moisture")
+                        or "-"
+                    )
+                    veg = (
+                        data.raw_data.get("vegetation")
+                        or data.raw_data.get("d2_vegetation")
+                        or "-"
+                    )
+                    has_geo = (
+                        data.geo
+                        and isinstance(data.geo, (list, tuple))
+                        and len(data.geo) >= 2
+                    )
+                    gps_str = (
+                        f"{data.geo[0]:.5f}°N, {data.geo[1]:.5f}°E"
+                        if has_geo
+                        else (data.raw_data.get("gps") or "-")
+                    )
+
                     photo_list.append(
                         {
-                            "title": f"Submission {data.kobo_id}",
+                            "title": title,
                             "date": (
-                                data.submission_time.strftime("%Y-%m-%d")
+                                data.submission_time.strftime("%b %d, %Y")
                                 if data.submission_time
-                                else ""
+                                else "-"
                             ),
                             "url": photo_url,
+                            "submitted_with": sub_with,
+                            "validated_by": "TWG",
+                            "inkhundla": inkh,
+                            "citizen_scientist": c_sci,
+                            "soil_moisture": s_moist,
+                            "vegetation": veg,
+                            "gps": gps_str,
                         }
                     )
 

@@ -17,7 +17,7 @@ class IKSPhotosEndpointTests(BaseIKSTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["photos"], [])
 
-        # 2. Test with attachments seeded
+        # 2. Test with attachments and metadata seeded
         indicator = IKSIndicator.objects.create(
             kobo_form=self.form, name="photo_indicator"
         )
@@ -25,13 +25,19 @@ class IKSPhotosEndpointTests(BaseIKSTestCase):
             form=self.form,
             kobo_id=123,
             submission_time=self.admin_area.created_at,
+            submitted_by="CS-200",
+            instance_name="June 2026 Report",
+            geo=[-26.8203, 31.3117],
             raw_data={
+                "inkhundla": "Nkwene",
+                "soil_moisture": "Dry",
+                "vegetation": "Green",
                 "_attachments": [
                     {
                         "filename": "test_photo.jpg",
                         "download_url": "https://kobo.example/test_photo.jpg",
                     }
-                ]
+                ],
             },
         )
         IKSValue.objects.create(
@@ -48,6 +54,14 @@ class IKSPhotosEndpointTests(BaseIKSTestCase):
         self.assertEqual(
             photos[0]["url"], "/api/v1/iks/photos/media/test_photo.jpg"
         )
+        self.assertEqual(photos[0]["title"], "June 2026 Report")
+        self.assertEqual(photos[0]["submitted_with"], "June 2026 Report")
+        self.assertEqual(photos[0]["validated_by"], "TWG")
+        self.assertEqual(photos[0]["inkhundla"], "Nkwene")
+        self.assertEqual(photos[0]["citizen_scientist"], "CS-200")
+        self.assertEqual(photos[0]["soil_moisture"], "Dry")
+        self.assertEqual(photos[0]["vegetation"], "Green")
+        self.assertEqual(photos[0]["gps"], "-26.82030°N, 31.31170°E")
 
     def test_iks_photo_file_serve(self):
         """
