@@ -294,6 +294,7 @@ const ForwardBriefSlideIn = ({
                 placeholder="Email address"
                 value={other}
                 onChange={(e) => setOther(e.target.value)}
+                type="email"
               />
             </div>
           </div>

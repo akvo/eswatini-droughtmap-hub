@@ -122,11 +122,19 @@ class EmailHelperBriefForwardTests(APITestCase):
             "inkhundla_name": "Big Bend",
             "sender_name": "TWG Member",
             "note": "Please check this out",
+            "contact_person": "Jane Doe (jane@ndma.gov.sz)",
             "brief_url": "http://localhost:3000/brief-builder?inkhundla=4588078",  # noqa
         }
         result = email_context(context, EmailTypes.brief_forward)
-        self.assertEqual(result["subject"], "EDM — Inkhundla Brief: Big Bend")
-        self.assertIn("Forwarded by TWG Member", result["body"])
+        self.assertIn(
+            "monthly drought information for <strong>Big Bend</strong>",
+            result["body"],
+        )
+        self.assertIn(
+            "NDRMA contact person (Jane Doe (jane@ndma.gov.sz))",
+            result["body"],
+        )  # noqa
+        self.assertIn("<strong>TWG Member</strong>", result["body"])
         self.assertIn("Please check this out", result["body"])
         self.assertEqual(result["cta_text"], "View the brief")
         self.assertEqual(

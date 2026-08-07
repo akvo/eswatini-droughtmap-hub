@@ -221,19 +221,31 @@ def email_context(context: dict, type: str):
             }
         )
     if type == EmailTypes.brief_forward:
+        inkhundla = context.get("inkhundla_name", "")
+        sender = context.get("sender_name", "A TWG member")
         note = context.get("note", "").strip()
+        contact_person = context.get("contact_person", "").strip()
+        contact_suffix = f" ({contact_person})" if contact_person else ""
         note_block = (
-            f'<blockquote style="border-left: 3px solid #7747ff; padding-left: 12px; margin: 16px 0; color: #555;">{note}</blockquote>'  # noqa
+            f'<div style="margin: 16px 0;">'
+            f"<strong>Note from sender:</strong>"
+            f'<blockquote style="border-left: 3px solid #7747ff; padding-left: 12px; margin: 8px 0; color: #555;">{note}</blockquote>'  # noqa
+            f"</div>"
             if note
             else ""
         )
         context.update(
             {
-                "subject": f"EDM — Inkhundla Brief: {context.get('inkhundla_name', '')}",  # noqa
+                "subject": f"EDM — Inkhundla Brief: {inkhundla}",
                 "body": (
-                    f"Forwarded by {context.get('sender_name', 'A TWG member')}<br>"  # noqa
-                    f"{note_block}"
-                    "<br>View and print the brief below:"
+                    f"Dear reader,<br><br>"
+                    f"I am forwarding to you the monthly drought information for <strong>{inkhundla}</strong>. "  # noqa
+                    f"In this document you will find a description of the current drought conditions and "  # noqa
+                    f"recommended response activities, as well as an understanding of the historical drought occurence.<br><br>"  # noqa
+                    f"If you have any questions about this drought brief, feel free to reach out to me or the NDRMA contact person{contact_suffix}.<br>"  # noqa
+                    f"{note_block}<br>"
+                    f"Greetings,<br>"
+                    f"<strong>{sender}</strong>"
                 ),
                 "cta_text": "View the brief",
                 "cta_url": context.get("brief_url", WEBDOMAIN),
