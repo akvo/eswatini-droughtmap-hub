@@ -48,7 +48,8 @@ const ZoneDoughnut = ({
         if (names.length > 0) {
           // #606060 on the #ECEFF8 tint; capped so a 20+ name slice doesn't
           // grow the tooltip past the viewport.
-          row += `<div style="font-size:12px;line-height:18px;max-width:220px;max-height:120px;overflow-y:auto;white-space:normal;margin-top:6px;color:#606060">Tinkhundla: ${names.join(", ")}</div>`;
+          const nameList = names.map((n) => `<li style="margin:0;padding:0">${n}</li>`).join("");
+          row += `<div style="font-size:12px;line-height:18px;max-width:220px;max-height:120px;overflow-y:auto;white-space:normal;margin-top:6px;color:#606060"><div style="margin-bottom:2px">Tinkhundla:</div><ul style="margin:0;padding-left:16px;list-style:disc">${nameList}</ul></div>`;
         }
         const arrow =
           '<div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:12px;height:6px;overflow:hidden;">' +

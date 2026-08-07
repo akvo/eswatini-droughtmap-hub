@@ -60,8 +60,8 @@ const HeroSection = ({ hero }) => {
         </h1>
 
         <div
-          className="text-base text-neutral-600 max-w-2xl leading-7 prose prose-neutral"
-          dangerouslySetInnerHTML={{ __html: summary }}
+          className="text-base text-neutral-600 w-full leading-7 prose prose-neutral"
+          dangerouslySetInnerHTML={{ __html: summary.slice(0, 1000) }}
         />
 
         <Button
