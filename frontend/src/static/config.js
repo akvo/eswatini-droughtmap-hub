@@ -54,6 +54,21 @@ export const DROUGHT_CATEGORY_COLOR = {
   [DROUGHT_CATEGORY_VALUE.none]: "#ffffff",
 };
 
+// Chip ink per drought colour. Only the light end of the ramp needs dark
+// text: white on D0 (#ffff00) is 1.07:1 contrast and white on "No data"
+// (#ffffff) is 1.00:1 — both invisible. Keyed off DROUGHT_CATEGORY_COLOR
+// rather than repeating the hexes, so changing a step's colour cannot leave
+// a stale ink behind it.
+export const DROUGHT_CATEGORY_INK = {
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.normal]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d0]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d1]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d2]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d3]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d4]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.none]]: "#333333",
+};
+
 export const REGION_COLOR = {
   Hhohho: "#3E5EB9",
   Manzini: "#2E8B57",

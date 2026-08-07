@@ -13,7 +13,6 @@ import { textOn } from "@/lib/helper";
  * owns the ramp, so the badge can never disagree with the map (design D-2).
  */
 
-/** Perceived luminance -> dark ink on the light steps (d0 #ffff00 must stay legible). */
 const DroughtScore = ({ level, size = "md", className = "" }) => {
   const color = DROUGHT_CATEGORY_COLOR?.[level];
   if (!color) {

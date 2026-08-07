@@ -1,4 +1,4 @@
-import { USER_ROLES } from "@/static/config";
+import { USER_ROLES, DROUGHT_CATEGORY_INK } from "@/static/config";
 import { Button } from "antd";
 import Link from "next/link";
 
@@ -232,6 +232,9 @@ export const getProfileDropdownItems = (user) => {
 };
 
 /**
- * Text color for drought-category swatches — always white per Figma spec.
+ * Text color for a drought-category swatch. White everywhere except the light
+ * steps, which carry their own ink in DROUGHT_CATEGORY_INK — this used to
+ * return white unconditionally, which rendered the D0 chip white-on-yellow.
+ * Backgrounds outside the ramp (e.g. the #3E5EB9 no-data chip) keep white.
  */
-export const textOn = () => "#ffffff";
+export const textOn = (bg) => DROUGHT_CATEGORY_INK[bg] ?? "#ffffff";
