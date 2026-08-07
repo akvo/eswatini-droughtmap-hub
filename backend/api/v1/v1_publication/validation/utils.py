@@ -116,7 +116,9 @@ def build_validation_rows(publication):
                 {
                     "id": s["user_id"],
                     "label": s["label"],
+                    "name": s.get("name", ""),
                     "group": s["group"],
+                    "reviewed": True,
                 }
                 for s in submissions
             ],

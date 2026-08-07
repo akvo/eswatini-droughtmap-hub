@@ -45,28 +45,24 @@ export const DROUGHT_CATEGORY_VALUE = {
 export const DROUGHT_CATEGORY_LEVELS = ["None", "D0", "D1", "D2", "D3", "D4"];
 
 export const DROUGHT_CATEGORY_COLOR = {
-  [DROUGHT_CATEGORY_VALUE.normal]: "#12b76a",
-  [DROUGHT_CATEGORY_VALUE.d0]: "#ffff00",
-  [DROUGHT_CATEGORY_VALUE.d1]: "#fbd47f",
-  [DROUGHT_CATEGORY_VALUE.d2]: "#ffaa00",
-  [DROUGHT_CATEGORY_VALUE.d3]: "#e60000",
-  [DROUGHT_CATEGORY_VALUE.d4]: "#730000",
-  [DROUGHT_CATEGORY_VALUE.none]: "#ffffff",
+  [DROUGHT_CATEGORY_VALUE.normal]: "#12B76A",
+  [DROUGHT_CATEGORY_VALUE.d0]: "#12B76A",
+  [DROUGHT_CATEGORY_VALUE.d1]: "#FFCD37",
+  [DROUGHT_CATEGORY_VALUE.d2]: "#F39C12",
+  [DROUGHT_CATEGORY_VALUE.d3]: "#C23F01",
+  [DROUGHT_CATEGORY_VALUE.d4]: "#B10D0B",
+  [DROUGHT_CATEGORY_VALUE.none]: "#3E5EB9",
 };
 
-// Chip ink per drought colour. Only the light end of the ramp needs dark
-// text: white on D0 (#ffff00) is 1.07:1 contrast and white on "No data"
-// (#ffffff) is 1.00:1 — both invisible. Keyed off DROUGHT_CATEGORY_COLOR
-// rather than repeating the hexes, so changing a step's colour cannot leave
-// a stale ink behind it.
+// All drought chips use white text on the updated colour ramp.
 export const DROUGHT_CATEGORY_INK = {
   [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.normal]]: "#ffffff",
-  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d0]]: "#333333",
-  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d1]]: "#333333",
-  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d2]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d0]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d1]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d2]]: "#ffffff",
   [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d3]]: "#ffffff",
   [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d4]]: "#ffffff",
-  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.none]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.none]]: "#ffffff",
 };
 
 export const REGION_COLOR = {

@@ -66,22 +66,29 @@ const AGREEMENT = {
 };
 
 const STATUS_CONFIG = {
-  ready: { label: "Ready", color: "#f39c12" },
-  awaiting: { label: "Awaiting", color: "#3b82f6" },
-  validated: { label: "Validated", color: "#12b76a" },
+  ready: { label: "Ready", bg: "#FFCD37" },
+  awaiting: { label: "Awaiting", bg: "#F39C12" },
+  validated: { label: "Validated", bg: "#12B76A" },
 };
 
 const StatusBadge = ({ status, total }) => {
   const config = STATUS_CONFIG[status] || {
     label: "Unknown",
-    color: "#999",
+    bg: "#999",
   };
   const suffix =
     status === "awaiting" && total
       ? ` ${total} review${total > 1 ? "s" : ""}`
       : "";
   return (
-    <Tag className="edm-reviews-status-tag" color={config.color}>
+    <Tag
+      className="edm-reviews-status-tag"
+      style={{
+        backgroundColor: config.bg,
+        color: "#ffffff",
+        border: "none",
+      }}
+    >
       {config.label}
       {suffix}
     </Tag>
@@ -101,13 +108,28 @@ const ReviewerAvatars = ({ reviewers = [] }) => (
       size={24}
     >
       {reviewers.map((r) => (
-        <Tooltip key={r.id} title={r.label}>
-          <Avatar
-            size={24}
-            style={{ backgroundColor: "#3E5EB9", fontSize: 11 }}
-          >
-            {r.label}
-          </Avatar>
+        <Tooltip key={r.id} title={r.name || r.label}>
+          <span className="relative inline-block">
+            <Avatar
+              size={24}
+              style={{
+                backgroundColor: r.reviewed ? "#3E5EB9" : "#D0D5E4",
+                fontSize: 11,
+              }}
+            >
+              {r.label}
+            </Avatar>
+            {r.reviewed && (
+              <span
+                className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[#12B76A]"
+                style={{ width: 10, height: 10 }}
+              >
+                <svg width="6" height="6" viewBox="0 0 6 6" fill="none">
+                  <path d="M1 3L2.5 4.5L5 1.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            )}
+          </span>
         </Tooltip>
       ))}
     </Avatar.Group>
