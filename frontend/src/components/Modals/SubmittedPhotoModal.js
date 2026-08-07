@@ -19,10 +19,10 @@ const SubmittedPhotoModal = ({
       width={650}
       centered
       closeIcon={null}
-      styles={{ body: { padding: 0 } }}
+      styles={{ content: { padding: 0 }, body: { padding: 0 } }}
       destroyOnClose
     >
-      <div className="border border-neutral-300 bg-white overflow-hidden text-neutral-800 rounded-none">
+      <div className="bg-white overflow-hidden text-neutral-800 rounded-none">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-300 bg-white sticky top-0 z-10">
           <h3 className="text-lg font-medium text-neutral-800 m-0">
@@ -56,13 +56,15 @@ const SubmittedPhotoModal = ({
             alt={photo.title || "Observation Photo"}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-6 pointer-events-none">
-            <p className="text-white text-2xl font-bold m-0 leading-tight">
-              {photo.title || "Patchy recovery after recent rain"}
-            </p>
-            <p className="text-white/80 text-base m-0 mt-2 font-normal">
-              {photo.date || "May 26"}
-            </p>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-transparent to-black/40 pt-24 flex flex-col justify-end pointer-events-none">
+            <div className="backdrop-blur-[12px] bg-white/30 border-t border-white/20 px-6 pt-6 pb-8 flex flex-col gap-4">
+              <p className="text-white text-[24px] font-bold m-0 leading-[30px]">
+                {photo.title || "-"}
+              </p>
+              <p className="text-white text-[16px] font-normal m-0 leading-[24px]">
+                {photo.date || "-"}
+              </p>
+            </div>
           </div>
         </div>
 
