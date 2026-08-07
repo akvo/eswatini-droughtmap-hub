@@ -601,11 +601,12 @@ const IndividualReview = ({
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-4">
                   <span className="text-sm text-[#606060]">
-                    Confidence: {confidence.value ?? "—"}
+                    Confidence:{" "}
+                    {confidence.value > 0 ? `${confidence.value}/5` : "—"}
                   </span>
                   <ConfidenceBadge
                     band={confidence.band}
-                    isMock={confidence.is_mock}
+                    reason={confidence.meta?.reason}
                   />
                 </div>
               </div>

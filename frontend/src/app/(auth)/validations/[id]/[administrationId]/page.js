@@ -539,7 +539,10 @@ const ValidationDecisionPage = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
                       <span className="text-sm text-[#606060]">
-                        Confidence: {decision?.confidence ?? "—"}
+                        Confidence:{" "}
+                        {decision?.confidence > 0
+                          ? `${decision.confidence}/5`
+                          : "—"}
                       </span>
                       <ConfidenceBadge band={decision?.confidence_band} />
                     </div>

@@ -4,32 +4,33 @@ import Link from "next/link";
 import { Button, Input, Progress, Select, Table } from "antd";
 import { TabButtons } from "@/components";
 import { ConfidenceBadge, DroughtScore } from "@/components/DS";
-import { PAGE_SIZE, REGION_OPTIONS } from "@/static/config";
+import { PAGE_SIZE, REGION_OPTIONS, CONFIDENCE_REASON } from "@/static/config";
 import { useAppContext } from "@/context/AppContextProvider";
 import { QUEUE_FILTERS, buildQueueQuery } from "@/lib/query";
 
-/** SPI / LST readings. Mock until station data exists (backend is_mock). */
+/**
+ * Satellite − station deltas. SPI is the real difference the confidence score
+ * is built on; LST is null because the satellite side publishes no
+ * temperature in °C, and a null must read as absent, not as zero agreement.
+ */
 const StationSignals = ({ stations }) => {
-  const signed = (n) => `${n > 0 ? "+" : ""}${n}`;
+  const signed = (n) =>
+    n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2)}`;
   return (
-    <div
-      title={
-        stations?.is_mock
-          ? "Provisional — placeholder station readings"
-          : undefined
-      }
-      className="flex flex-col gap-0.5 text-sm leading-5"
-    >
+    <div className="flex flex-col gap-0.5 text-sm leading-5">
       <span className="flex gap-2">
         <span className="w-8 text-[#606060]">SPI</span>
         <span className="font-medium text-[#027A48]">
           {signed(stations?.spi)}
         </span>
       </span>
-      <span className="flex gap-2">
+      <span
+        className="flex gap-2"
+        title={CONFIDENCE_REASON[stations?.lst_reason]}
+      >
         <span className="w-8 text-[#606060]">LST</span>
         <span className="font-medium text-[#B54708]">
-          {signed(stations?.lst)} °C
+          {stations?.lst == null ? "—" : `${signed(stations.lst)} °C`}
         </span>
       </span>
     </div>
@@ -81,17 +82,13 @@ const ReviewQueueTable = ({
       width: 150,
       render: (confidence) => (
         <span className="flex items-center gap-2">
-          <ConfidenceBadge band={confidence?.band} />
-          {confidence?.value != null && (
-            <span
-              className="text-sm text-[#606060]"
-              title={
-                confidence.is_mock ? "Provisional confidence value" : undefined
-              }
-            >
-              {confidence.value}
-            </span>
+          {confidence?.value > 0 && (
+            <span className="text-sm text-[#606060]">{confidence.value}</span>
           )}
+          <ConfidenceBadge
+            band={confidence?.band}
+            reason={confidence?.meta?.reason}
+          />
         </span>
       ),
     },
