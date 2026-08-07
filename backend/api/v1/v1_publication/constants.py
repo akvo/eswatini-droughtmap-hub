@@ -5,8 +5,6 @@ GEONODE_SSL_VERIFY = True
 # or unresponsive upstream can never hang the request thread indefinitely.
 GEONODE_REQUEST_TIMEOUT = (10, 60)
 
-# ponytail: SPI/LST have no backend source yet — fixed placeholder per row.
-MOCK_STATIONS = {"spi": 0.49, "lst": 2.0, "is_mock": True}
 BANDS = ["low", "medium", "high"]
 
 
