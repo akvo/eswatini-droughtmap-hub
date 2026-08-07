@@ -55,11 +55,12 @@ const ReviewDecisionHistory = ({ history = [] }) => {
       >
         <div className="flex flex-col flex-1 overflow-y-auto">
           {history.map((entry, index) => {
-            const decidedAt = entry.decided_at
-              ? dayjs(entry.decided_at)
-              : null;
+            const decidedAt = entry.decided_at ? dayjs(entry.decided_at) : null;
             return (
-              <div key={entry.period ?? index} className="relative pl-12 pr-6 py-5">
+              <div
+                key={entry.period ?? index}
+                className="relative pl-12 pr-6 py-5"
+              >
                 {/* Timeline line */}
                 {index < history.length - 1 && (
                   <div

@@ -17,7 +17,6 @@ import {
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_LEVELS,
-  DROUGHT_CATEGORY_VALUE,
   CDI_SUBINDICATOR_LABELS,
   IKS_REVIEW_INDICATORS,
 } from "@/static/config";
@@ -39,9 +38,7 @@ const DClassChip = ({ level, selected, onClick }) => {
       className={`inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium transition-all ${
         selected ? "rounded-lg" : "text-[#a4a4a4] hover:text-[#606060]"
       }`}
-      style={
-        selected ? { backgroundColor: bg, color: "#ffffff" } : {}
-      }
+      style={selected ? { backgroundColor: bg, color: "#ffffff" } : {}}
     >
       {label}
     </button>
@@ -96,8 +93,15 @@ const CDIColumn = ({ cdi }) => {
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between pb-4 border-b border-cardBorder">
         <div className="flex items-center gap-2">
-          <Image src="/assets/icons/review/satellite.svg" alt="" width={20} height={20} />
-          <h3 className="text-lg font-semibold text-[#333333]">Satellite · CDI-E</h3>
+          <Image
+            src="/assets/icons/review/satellite.svg"
+            alt=""
+            width={20}
+            height={20}
+          />
+          <h3 className="text-lg font-semibold text-[#333333]">
+            Satellite · CDI-E
+          </h3>
         </div>
         <DroughtScore level={cdi.category} size="sm" />
       </div>
@@ -111,7 +115,16 @@ const CDIColumn = ({ cdi }) => {
       </div>
 
       <div className="border border-cardBorder overflow-hidden">
-        <div className="p-3 text-[#333333]" style={{ backgroundColor: "#ECEFF8", borderBottom: "1px solid #D2D2D2", fontSize: 16, fontWeight: 700, lineHeight: "24px" }}>
+        <div
+          className="p-3 text-[#333333]"
+          style={{
+            backgroundColor: "#ECEFF8",
+            borderBottom: "1px solid #D2D2D2",
+            fontSize: 16,
+            fontWeight: 700,
+            lineHeight: "24px",
+          }}
+        >
           Sub-indicators
         </div>
         {(cdi.indicators || []).length > 0 ? (
@@ -122,15 +135,24 @@ const CDIColumn = ({ cdi }) => {
                 className="rounded"
                 style={{ backgroundColor: "#ECEFF8", padding: "6px 8px" }}
               >
-                <div className="text-[#333333]" style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}>
+                <div
+                  className="text-[#333333]"
+                  style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}
+                >
                   {ind.value != null ? Number(ind.value).toFixed(2) : "—"}
                   {ind.units && (
-                    <span className="text-[#a4a4a4] ml-1" style={{ fontSize: 12 }}>
+                    <span
+                      className="text-[#a4a4a4] ml-1"
+                      style={{ fontSize: 12 }}
+                    >
                       {ind.units}
                     </span>
                   )}
                 </div>
-                <div className="text-[#606060]" style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}>
+                <div
+                  className="text-[#606060]"
+                  style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}
+                >
                   {CDI_SUBINDICATOR_LABELS[ind.key] || ind.key}
                 </div>
               </div>
@@ -186,15 +208,23 @@ const CDIColumn = ({ cdi }) => {
 };
 
 /* ── One station block with grid cards (MET or citizen science) ── */
-const StationBlock = ({ title, stationCode, rows }) => (
+const StationBlock = ({ title, stationCode, rows, footnote }) => (
   <div className="border border-cardBorder overflow-hidden">
     <div
       className="flex items-center justify-between p-3"
       style={{ backgroundColor: "#ECEFF8", borderBottom: "1px solid #D2D2D2" }}
     >
-      <span className="text-[#333333]" style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}>{title}</span>
+      <span
+        className="text-[#333333]"
+        style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}
+      >
+        {title}
+      </span>
       {stationCode && (
-        <span className="text-[#333333] text-right" style={{ fontSize: 16, fontWeight: 700, lineHeight: "24px" }}>
+        <span
+          className="text-[#333333] text-right"
+          style={{ fontSize: 16, fontWeight: 700, lineHeight: "24px" }}
+        >
           {stationCode}
         </span>
       )}
@@ -206,12 +236,18 @@ const StationBlock = ({ title, stationCode, rows }) => (
           className="rounded"
           style={{ backgroundColor: "#ECEFF8", padding: "6px 8px" }}
         >
-          <div className="text-[#333333]" style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}>
+          <div
+            className="text-[#333333]"
+            style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}
+          >
             {row.value != null ? (
               <>
                 {row.value}
                 {row.units && (
-                  <span className="text-[#a4a4a4] ml-0.5" style={{ fontSize: 12 }}>
+                  <span
+                    className="text-[#a4a4a4] ml-0.5"
+                    style={{ fontSize: 12 }}
+                  >
                     {row.units}
                   </span>
                 )}
@@ -220,10 +256,18 @@ const StationBlock = ({ title, stationCode, rows }) => (
               <span className="text-[#a4a4a4]">—</span>
             )}
           </div>
-          <div className="text-[#606060]" style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}>{row.label}</div>
+          <div
+            className="text-[#606060]"
+            style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}
+          >
+            {row.label}
+          </div>
         </div>
       ))}
     </div>
+    {footnote && (
+      <div className="px-3 pb-3 text-xs text-[#606060]">{footnote}</div>
+    )}
   </div>
 );
 
@@ -231,11 +275,16 @@ const StationBlock = ({ title, stationCode, rows }) => (
       science per-Inkhundla exact match, no fallback (WX-6) ── */
 const WeatherColumn = ({ weather, citizenScience }) => {
   const region = weather?.meta?.resolution === "region_station";
-  const spiRow = weather?.data?.find((r) => r.key === "spi");
+  const spiRow = weather?.data?.find((r) => r.key === "precipitation");
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2 pb-4 border-b border-cardBorder">
-        <Image src="/assets/icons/review/weather-stations.svg" alt="" width={20} height={20} />
+        <Image
+          src="/assets/icons/review/weather-stations.svg"
+          alt=""
+          width={20}
+          height={20}
+        />
         <h3 className="text-lg font-semibold text-[#333333]">
           Weather Stations
         </h3>
@@ -266,8 +315,15 @@ const WeatherColumn = ({ weather, citizenScience }) => {
       {citizenScience?.data ? (
         <StationBlock
           title="Citizen science weather station"
-          stationCode={citizenScience.meta?.station_code || citizenScience.meta?.station}
+          stationCode={
+            citizenScience.meta?.station_code || citizenScience.meta?.station
+          }
           rows={citizenScience.data}
+          footnote={
+            citizenScience.meta?.notes
+              ? `Observer notes: ${citizenScience.meta.notes}`
+              : null
+          }
         />
       ) : (
         <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
@@ -277,10 +333,13 @@ const WeatherColumn = ({ weather, citizenScience }) => {
 
       {/* Note */}
       <div className="flex items-start gap-2 text-xs text-[#606060] bg-[#fff8f0] rounded p-3">
-        <WarningFilled style={{ color: "#F39C12", fontSize: 14 }} className="shrink-0 mt-0.5" />
+        <WarningFilled
+          style={{ color: "#F39C12", fontSize: 14 }}
+          className="shrink-0 mt-0.5"
+        />
         <span>
-          Note: some sensor fields are intentionally shown empty to reflect
-          that not all station hardware is fully wired in this prototype.
+          Note: some sensor fields are intentionally shown empty to reflect that
+          not all station hardware is fully wired in this prototype.
         </span>
       </div>
     </div>
@@ -298,7 +357,12 @@ const IKSColumn = ({ iks }) => {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2 pb-4 border-b border-cardBorder">
-        <Image src="/assets/icons/review/indigenous-knowledge.svg" alt="" width={20} height={20} />
+        <Image
+          src="/assets/icons/review/indigenous-knowledge.svg"
+          alt=""
+          width={20}
+          height={20}
+        />
         <h3 className="text-lg font-semibold text-[#333333]">
           Indigenous Knowledge
         </h3>
@@ -382,7 +446,6 @@ const IKSColumn = ({ iks }) => {
 /* ── Main client component ── */
 const IndividualReview = ({
   reviewId,
-  publicationId,
   administrationId,
   review,
   administration,
@@ -548,10 +611,7 @@ const IndividualReview = ({
             <CDIColumn cdi={cdi} />
           </div>
           <div className="bg-white p-6 border-r border-cardBorder">
-            <WeatherColumn
-              weather={weather}
-              citizenScience={citizenScience}
-            />
+            <WeatherColumn weather={weather} citizenScience={citizenScience} />
           </div>
           <div className="bg-white p-6">
             <IKSColumn iks={iks} />
@@ -625,9 +685,7 @@ const IndividualReview = ({
             </div>
           </div>
           <div className="flex items-center gap-3 border-t border-cardBorder px-6 py-6">
-            <ReviewDecisionHistory
-              history={administration?.decision_history}
-            />
+            <ReviewDecisionHistory history={administration?.decision_history} />
             <div className="flex items-center gap-3 ml-auto">
               <Button
                 onClick={() => persist(false)}

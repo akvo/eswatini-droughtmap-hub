@@ -126,6 +126,7 @@ const ReviewQueueTable = ({
             href={`/reviews/${reviewId}/${record?.administration_id}${
               qs ? `?${qs}` : ""
             }`}
+            className="flex items-center justify-center w-full h-full"
           >
             <Button type="link" className="edm-reviews-action">
               {isCompleted ? "View" : "Review"}
@@ -138,7 +139,7 @@ const ReviewQueueTable = ({
       title: "D-CLASS",
       dataIndex: "my_suggestion",
       key: "my_suggestion",
-      width: 110,
+      width: 100,
       align: "right",
       onCell: () => ({ style: { backgroundColor: "#ECEFF8" } }),
       // The reviewer's own class — what they approved or suggested. NOT
@@ -165,7 +166,7 @@ const ReviewQueueTable = ({
             }
           >
             <DroughtScore level={mine.category} />
-            {suggested && <span className="text-[#B54708]">*</span>}
+            {/* {suggested && <span className="text-[#B54708]">*</span>} */}
           </span>
         );
       },
