@@ -1,10 +1,85 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input, Select, Button } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { PageHeader } from "@/components";
+import { MONTH_NAMES, formatDate } from "@/components/CitizenWeather/utils";
+
+const NextReminderPreview = ({ day, time, deadline, followUp1, followUp2 }) => {
+  const preview = useMemo(() => {
+    const now = new Date();
+    // Next reminder is the 1st (or chosen day) of next month
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const reminderDay = day === "last"
+      ? new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 0).getDate()
+      : Math.min(parseInt(day, 10) || 1, 28);
+    const reminderDate = day === "last"
+      ? new Date(nextMonth.getFullYear(), nextMonth.getMonth() - 1, reminderDay)
+      : new Date(nextMonth.getFullYear(), nextMonth.getMonth(), reminderDay);
+    const reportMonth = MONTH_NAMES[now.getMonth()];
+
+    const deadlineDays = deadline === "none" ? null : parseInt(deadline, 10);
+    const fu1Days = followUp1 === "off" ? null : parseInt(followUp1, 10);
+    const fu2Days = followUp2 === "off" ? null : parseInt(followUp2, 10);
+
+    let fu1Date = null;
+    let fu2Date = null;
+    if (deadlineDays != null) {
+      const deadlineDate = new Date(reminderDate);
+      deadlineDate.setDate(deadlineDate.getDate() + deadlineDays);
+      if (fu1Days != null) {
+        fu1Date = new Date(deadlineDate);
+        fu1Date.setDate(fu1Date.getDate() + fu1Days);
+      }
+      if (fu2Days != null) {
+        fu2Date = new Date(deadlineDate);
+        fu2Date.setDate(fu2Date.getDate() + fu2Days);
+      }
+    }
+
+    return { reminderDate, reportMonth, fu1Date, fu2Date };
+  }, [day, time, deadline, followUp1, followUp2]);
+
+  return (
+    <section className="border border-cardBorder bg-white mb-4">
+      <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
+        <h2 className="text-base font-semibold text-[#333333]">
+          Next scheduled reminder
+        </h2>
+        <p className="text-xs text-[#606060] mt-1">
+          Based on your current settings.
+        </p>
+      </div>
+      <div className="p-4 sm:p-6">
+        <div className="border border-cardBorder rounded-lg p-4 text-sm text-[#333333] leading-relaxed">
+          <b className="text-[#333333]">
+            {formatDate(preview.reminderDate)} &middot; {time} SAST
+          </b>{" "}
+          &rarr; observers across all 4 regions receive their {preview.reportMonth} reminder.
+          {(preview.fu1Date || preview.fu2Date) && (
+            <div className="text-xs text-[#606060] mt-2 leading-relaxed">
+              {preview.fu1Date && (
+                <>
+                  Follow-up 1: {formatDate(preview.fu1Date)} &middot; {time} &middot; sent only to
+                  observers who haven&apos;t submitted yet.
+                </>
+              )}
+              {preview.fu1Date && preview.fu2Date && <br />}
+              {preview.fu2Date && (
+                <>
+                  Follow-up 2 (final): {formatDate(preview.fu2Date)} &middot; {time} &middot; sent
+                  only to observers still missing.
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const DAY_OPTIONS = [
   { label: "1st of the month (default)", value: "1" },
@@ -230,32 +305,7 @@ const ReminderSchedulePage = () => {
           </div>
 
           {/* Next scheduled preview */}
-          <section className="border border-cardBorder bg-white mb-4">
-            <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
-              <h2 className="text-base font-semibold text-[#333333]">
-                Next scheduled reminder
-              </h2>
-              <p className="text-xs text-[#606060] mt-1">
-                Based on your current settings.
-              </p>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="border border-cardBorder rounded-lg p-4 text-sm text-[#333333] leading-relaxed">
-                <b className="text-[#333333]">
-                  Sunday 1 June 2026 &middot; 07:00 SAST
-                </b>{" "}
-                &rarr; <b>28 observers</b> across all 4 regions receive their
-                May 2026 reminder.
-                <div className="text-xs text-[#606060] mt-2 leading-relaxed">
-                  Follow-up 1: Wed 10 June &middot; 07:00 &middot; sent only to
-                  observers who haven&apos;t submitted yet.
-                  <br />
-                  Follow-up 2 (final): Sun 15 June &middot; 07:00 &middot; sent
-                  only to observers still missing.
-                </div>
-              </div>
-            </div>
-          </section>
+          <NextReminderPreview day={day} time={time} deadline={deadline} followUp1={followUp1} followUp2={followUp2} />
 
           {/* Bottom actions */}
           <div className="flex flex-wrap items-center gap-3 py-4">
