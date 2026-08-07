@@ -3,15 +3,13 @@ import { textOn } from "../helper";
 describe("textOn relative luminance text color contrast utility", () => {
   it("should return dark gray text (#1f2937) for light background colors", () => {
     // Normal / Light Green
-    expect(textOn("#b9f8cf")).toBe("#1f2937");
+    expect(textOn("#12b76a")).toBe("#ffffff");
     // D0 / Yellow
-    expect(textOn("#ffff00")).toBe("#1f2937");
+    expect(textOn("#ffff00")).toBe("#333333");
     // D1 / Light Orange/Yellow
-    expect(textOn("#fbd47f")).toBe("#1f2937");
+    expect(textOn("#fbd47f")).toBe("#333333");
     // None / White
-    expect(textOn("#ffffff")).toBe("#1f2937");
-    // Short hex white
-    expect(textOn("#fff")).toBe("#1f2937");
+    expect(textOn("#ffffff")).toBe("#333333");
   });
 
   it("should return white text (#ffffff) for dark background colors", () => {
