@@ -32,6 +32,7 @@ from api.v1.v1_publication.constants import (
     FilterStatus,
     is_validated,
 )
+from api.v1.v1_users.constants import TechnicalWorkingGroup
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -54,6 +55,7 @@ class PublicationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_reviews(self, obj):
+        total_twg = len(TechnicalWorkingGroup.FieldStr.keys())
         total_completed = (
             obj.reviews.filter(is_completed=True)
             .exclude(user__technical_working_group=None)
@@ -61,7 +63,7 @@ class PublicationSerializer(serializers.ModelSerializer):
             .distinct()
             .count()
         )
-        return f"{total_completed}/5"
+        return f"{total_completed}/{total_twg}"
 
     @extend_schema_field(OpenApiTypes.ANY)
     def get_reviewers(self, obj):
@@ -153,6 +155,7 @@ class PublicationInfoSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_reviews(self, obj):
+        total_twg = len(TechnicalWorkingGroup.FieldStr.keys())
         total_completed = (
             obj.reviews.filter(is_completed=True)
             .exclude(user__technical_working_group=None)
@@ -160,7 +163,7 @@ class PublicationInfoSerializer(serializers.ModelSerializer):
             .distinct()
             .count()
         )
-        return f"{total_completed}/5"
+        return f"{total_completed}/{total_twg}"
 
     class Meta:
         model = Publication

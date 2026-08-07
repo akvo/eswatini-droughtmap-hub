@@ -196,7 +196,7 @@ const ReviewAdmModal = ({ review, publicationId, onSubmitted }) => {
                 <span className="text-sm text-[#606060]">Confidence</span>
                 <ConfidenceBadge
                   band={row?.confidence?.band}
-                  isMock={row?.confidence?.is_mock}
+                  reason={row?.confidence?.meta?.reason}
                 />
               </div>
               <div className="flex flex-col gap-1">

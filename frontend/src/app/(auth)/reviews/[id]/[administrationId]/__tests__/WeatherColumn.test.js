@@ -41,12 +41,15 @@ const csReading = {
 describe("WeatherColumn (MET + citizen-science blocks)", () => {
   it("renders both blocks when both sources have data", () => {
     render(<WeatherColumn weather={metWeather} citizenScience={csReading} />);
-    expect(screen.getByText("Met Office: Mbabane")).toBeInTheDocument();
+    expect(screen.getByText("MET weather information")).toBeInTheDocument();
+    expect(screen.getByText("Mbabane")).toBeInTheDocument();
     expect(
-      screen.getByText("Citizen science: Big Bend Community"),
+      screen.getByText("Citizen science weather station"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Big Bend Community")).toBeInTheDocument();
     expect(screen.getByText("55")).toBeInTheDocument();
-    expect(screen.getByText("pending sensor")).toBeInTheDocument();
+    // null readings (soil temperature, soil moisture) render as "—"
+    expect(screen.getAllByText("—")).toHaveLength(2);
     expect(
       screen.getByText("Observer notes: gauge overflowed on the 14th"),
     ).toBeInTheDocument();
@@ -75,8 +78,9 @@ describe("WeatherColumn (MET + citizen-science blocks)", () => {
       screen.getByText(/No data available — no weather station/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Citizen science: Big Bend Community"),
+      screen.getByText("Citizen science weather station"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Big Bend Community")).toBeInTheDocument();
   });
 
   it("handles a failed CS fetch (null) as the empty state", () => {

@@ -109,7 +109,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = Review.objects.filter(user_id=user.id).order_by(
-            "-created_at"
+            "-publication__year_month", "-id"
         )
         params = self.request.query_params
         # All / Pending / Completed tabs (missing or "all" -> no filter)

@@ -45,7 +45,7 @@ const detail = {
     name: "Piggs peak",
     region: "Hhohho",
     cdi_class: 3,
-    confidence: { value: 4.2, band: "high", is_mock: true },
+    confidence: { value: 4, band: "high", meta: { reason: null } },
     reviews: { completed: 1, total: 2 },
     disputed: false,
   },

@@ -375,7 +375,6 @@ def build_decision_payload(publication, row, reviews, masked):
         "validated_category": row["validated_category"],
         "confidence": row.get("confidence"),
         "confidence_band": row.get("confidence_band"),
-        "confidence_is_mock": True,
         "is_override": bool(decision.is_override) if decision else False,
         "masked": masked,
         "agreement": agreement,

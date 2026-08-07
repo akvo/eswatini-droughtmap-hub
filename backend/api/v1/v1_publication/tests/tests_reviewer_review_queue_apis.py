@@ -10,9 +10,21 @@ from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.models import (
     Publication,
     Administration,
+    PublicationRaster,
     Review,
 )
-from api.v1.v1_publication.constants import DroughtCategory
+from api.v1.v1_publication.constants import (
+    DroughtCategory,
+    RasterIndicatorTypes,
+)
+from api.v1.v1_weather.constants import WeatherParameter
+from api.v1.v1_weather.models import (
+    AdministrationNormal,
+    StationDailyAggregate,
+    WeatherSource,
+    WeatherStation,
+)
+from api.v1.v1_weather.utils import window_keys
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
@@ -44,6 +56,68 @@ class ReviewQueueAPIsTestCase(APITestCase):
             "review-queue-administration", administration_id=adm
         )
 
+    def _seed_confidence(self, rank=0.5):
+        """Everything the 0-5 confidence score needs, agreeing perfectly.
+
+        A satellite SPI rank of 0.5 is a z of 0, and a station total equal to
+        the climatology mean is also 0 — delta 0, so every Inkhundla scores
+        5 (high). Without this the queue is all zeroes with a `meta.reason`,
+        which is correct behaviour but tests nothing about banding.
+        """
+        administration_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        PublicationRaster.objects.create(
+            publication=self.publication,
+            indicator=RasterIndicatorTypes.spi,
+            geonode_id=1,
+            values=[
+                {"administration_id": a, "value": rank}
+                for a in administration_ids
+            ],
+        )
+        source = WeatherSource.objects.create(
+            base_url="https://example.invalid", collection_id="c"
+        )
+        regions = set(
+            Administration.objects.filter(
+                pk__in=administration_ids
+            ).values_list("region", flat=True)
+        )
+        year_month = self.publication.year_month
+        for index, region in enumerate(r for r in regions if r):
+            station = WeatherStation.objects.create(
+                source=source,
+                wigos_id=f"0-999-0-{index:04d}",
+                name=f"{region} station",
+                region=region,
+                latitude=-26.3,
+                longitude=31.1,
+            )
+            for year, month in window_keys(
+                year_month.year, year_month.month
+            ):
+                for day in range(1, 29):
+                    StationDailyAggregate.objects.create(
+                        station=station,
+                        date=date(year, month, day),
+                        parameter=WeatherParameter.precipitation,
+                        # 84 days totalling the 100mm climatology mean.
+                        value=100 / 84,
+                    )
+        for administration_id in administration_ids:
+            for parameter, value in (
+                (WeatherParameter.precip_3m_mean, 100.0),
+                (WeatherParameter.precip_3m_sd, 40.0),
+            ):
+                AdministrationNormal.objects.create(
+                    administration_id=administration_id,
+                    month=year_month.month,
+                    parameter=parameter,
+                    value=value,
+                    dataset="CHIRPS 1991-2020",
+                )
+
     # ---- stats -----------------------------------------------------------
     def test_stats_shape(self):
         res = self.client.get(self.stats_url)
@@ -58,7 +132,7 @@ class ReviewQueueAPIsTestCase(APITestCase):
                 "reviews_collected", "status_breakdown",
             },
         )
-        self.assertTrue(summary["high_confidence"]["is_mock"])
+        self.assertIsInstance(summary["high_confidence"]["value"], int)
         breakdown = {b["key"]: b["value"] for b in summary["status_breakdown"]}
         self.assertEqual(sum(breakdown.values()), self.total)
 
@@ -229,8 +303,13 @@ class ReviewQueueAPIsTestCase(APITestCase):
                 "my_suggestion", "assigned_score", "review_status", "disputed",
             },
         )
-        self.assertTrue(row["confidence"]["is_mock"])
-        self.assertTrue(row["stations_vs_satellite"]["is_mock"])
+        # An integer 0-5 always, with 0 meaning "an input was missing" and
+        # meta.reason naming which one — never a null or a placeholder.
+        self.assertIn(row["confidence"]["value"], range(6))
+        self.assertIn("reason", row["confidence"]["meta"])
+        self.assertEqual(
+            set(row["stations_vs_satellite"]), {"spi", "lst", "lst_reason"}
+        )
 
     def test_table_zone_filter(self):
         zone = Administration.objects.exclude(zone=None).first().zone
@@ -242,10 +321,12 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertTrue(all(r["zone"] == zone for r in res.data["data"]))
 
     def test_table_confidence_filter(self):
+        self._seed_confidence()
         res = self.client.get(
             f"{self.table_url}?confidence=high&page_size=100"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.data["data"])
         self.assertTrue(
             all(r["confidence"]["band"] == "high" for r in res.data["data"])
         )
@@ -322,6 +403,7 @@ class ReviewQueueAPIsTestCase(APITestCase):
     def test_stats_high_confidence_drops_once_accepted(self):
         # "ready to bulk-accept" must reach zero after the reviewer accepts
         # them, so the bulk-accept banner disappears.
+        self._seed_confidence()
         res = self.client.get(self.stats_url)
         before = res.data["summary"]["high_confidence"]["value"]
         self.assertGreater(before, 0)
