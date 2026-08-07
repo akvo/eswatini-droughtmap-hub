@@ -49,12 +49,12 @@ describe("ForwardBriefSlideIn Component", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders recipient roster and Inkhundla summary when visible", () => {
+  it("renders TreeSelect placeholder and Inkhundla summary when visible", () => {
     render(<ForwardBriefSlideIn {...defaultProps} />);
     expect(screen.getByText("Forward brief")).toBeInTheDocument();
-    expect(screen.getByText(/Sibusiso Dlamini/i)).toBeInTheDocument();
-    expect(screen.getByText(/Nokuthula Simelane/i)).toBeInTheDocument();
-    expect(screen.getByText(/Thabo Maseko/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Select TWG or team member")[0],
+    ).toBeInTheDocument();
   });
 
   it("shows validation error when Send is clicked without selecting recipients", async () => {
@@ -69,19 +69,18 @@ describe("ForwardBriefSlideIn Component", () => {
     });
     expect(api).not.toHaveBeenCalledWith(
       "POST",
-      "/api/v1/brief/forward",
+      "/brief/forward",
       expect.anything(),
     );
   });
 
-  it("sends payload to POST /brief/forward when recipient is selected", async () => {
+  it("sends payload to POST /brief/forward when custom email is provided", async () => {
     api.mockResolvedValueOnce({ status: "queued" });
 
     render(<ForwardBriefSlideIn {...defaultProps} />);
 
-    // Select first recipient
-    const recipientCheckbox = screen.getByText(/Sibusiso Dlamini/i);
-    fireEvent.click(recipientCheckbox);
+    const otherInput = screen.getByPlaceholderText("Email address");
+    fireEvent.change(otherInput, { target: { value: "custom@domain.com" } });
 
     const sendBtn = screen.getByText("Send");
     fireEvent.click(sendBtn);
@@ -94,9 +93,7 @@ describe("ForwardBriefSlideIn Component", () => {
           inkhundla_id: 4588078,
           inkhundla_name: "Gege",
           components: ["cover_header", "kpi_tiles"],
-          recipients: [
-            { email: "sibusiso@ndma.gov.sz", name: "Sibusiso Dlamini" },
-          ],
+          recipients: [{ email: "custom@domain.com", name: "Other" }],
         }),
       );
     });

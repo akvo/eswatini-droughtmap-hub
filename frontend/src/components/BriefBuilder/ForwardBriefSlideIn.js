@@ -2,13 +2,25 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Checkbox, Input, Select, Tooltip, message } from "antd";
+import {
+  Button,
+  Checkbox,
+  Input,
+  Select,
+  TreeSelect,
+  Tooltip,
+  message,
+} from "antd";
 import dayjs from "dayjs";
 import useBriefRecipients from "@/hooks/useBriefRecipients";
 import { api } from "@/lib/api";
-import { BRIEF_COMPONENTS } from "@/static/config";
+import { BRIEF_COMPONENTS, TWG_OPTIONS } from "@/static/config";
 
 const { TextArea } = Input;
+
+const TWG_MAP = Object.fromEntries(
+  (TWG_OPTIONS || []).map((t) => [t.value, t.label]),
+);
 
 // Good enough to catch a typo before submit; the real check belongs to the
 // send endpoint, which does not exist yet.
@@ -93,23 +105,40 @@ const ForwardBriefSlideIn = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Extract unique non-empty TWG groups for the filter select
-  const twgOptions = useMemo(() => {
-    const groups = recipients.map((r) => r.group || r.twg).filter(Boolean);
-    return Array.from(new Set(groups));
-  }, [recipients]);
+  // Build TreeSelect data hierarchy grouped by TWG (matching StartPublicationSlideIn pattern)
+  const recipientTree = useMemo(() => {
+    const groupMap = {};
 
-  // Filter recipients by TWG multiselect
-  const visibleRecipients = useMemo(() => {
-    if (!twgFilter.length) return recipients;
-    return recipients.filter((r) => twgFilter.includes(r.group || r.twg));
-  }, [recipients, twgFilter]);
+    recipients.forEach((r) => {
+      const twgVal =
+        r.technical_working_group ?? r.group ?? r.twg ?? r.organization;
+      const groupName =
+        TWG_MAP[twgVal] ||
+        (typeof twgVal === "string" && twgVal.trim() ? twgVal : null) ||
+        "Unassigned TWG";
+
+      if (!groupMap[groupName]) {
+        groupMap[groupName] = [];
+      }
+      groupMap[groupName].push({
+        title: r.name ? `${r.name} (${r.email})` : r.email,
+        value: r.id,
+        key: r.id,
+      });
+    });
+
+    return Object.entries(groupMap).map(([groupName, children]) => ({
+      title: groupName,
+      value: `twg-group-${groupName}`,
+      key: `twg-group-${groupName}`,
+      children,
+    }));
+  }, [recipients]);
 
   // Reset on every open, so a previous recipient list never carries into a
   // brief for a different Inkhundla.
   useEffect(() => {
     if (visible) {
-      setTwgFilter([]);
       setSelected([]);
       setOther("");
       setNote("");
@@ -236,41 +265,25 @@ const ForwardBriefSlideIn = ({
               </Tooltip>
             )}
 
-            {twgOptions.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm text-[#606060]">
-                  Filter by Technical Working Group
-                </label>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  placeholder="All working groups"
-                  value={twgFilter}
-                  onChange={setTwgFilter}
-                  options={twgOptions.map((g) => ({ label: g, value: g }))}
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {loading ? (
-              <p className="mb-0 text-sm text-neutral-400">
-                Loading recipients...
-              </p>
-            ) : visibleRecipients.length === 0 ? (
-              <p className="mb-0 text-sm text-neutral-400">
-                No recipients match the selected group filter.
-              </p>
-            ) : (
-              visibleRecipients.map((r) => (
-                <RecipientRow
-                  key={r.id}
-                  recipient={r}
-                  checked={selected.includes(r.id)}
-                  onToggle={toggle}
-                />
-              ))
-            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm text-[#606060]">
+                Select TWG or team member
+              </label>
+              <TreeSelect
+                treeData={recipientTree}
+                value={selected}
+                onChange={setSelected}
+                multiple
+                treeCheckable
+                showCheckedStrategy={TreeSelect.SHOW_CHILD}
+                placeholder="Select TWG or team member"
+                treeNodeLabelProp="title"
+                treeNodeFilterProp="title"
+                showSearch
+                loading={loading}
+                style={{ width: "100%" }}
+              />
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="brief-other" className="text-sm text-[#606060]">
