@@ -5,6 +5,14 @@ class WeatherParameter:
     tmean = "tmean"
     humidity = "humidity"
     wind_speed = "wind_speed"
+    # Climatology of the 3-MONTH rainfall accumulation, per month-of-year.
+    # Only ever AdministrationNormal rows, never station readings: they are
+    # the mu/sigma that turn a station's 3-month rainfall total into an SPI-3
+    # z-value, which is the unit the satellite side speaks in (the CDI `spi`
+    # raster is a percentile rank of chirps_spi_3mn). Without sigma there is
+    # no way to express the station in SPI at all — see `confidence.py`.
+    precip_3m_mean = "precip_3m_mean"
+    precip_3m_sd = "precip_3m_sd"
 
     FieldStr = {
         precipitation: "Precipitation",
@@ -13,6 +21,8 @@ class WeatherParameter:
         tmean: "Mean temperature",
         humidity: "Relative humidity",
         wind_speed: "Wind speed",
+        precip_3m_mean: "3-month precipitation mean",
+        precip_3m_sd: "3-month precipitation SD",
     }
 
     @classmethod
@@ -59,6 +69,8 @@ UNITS = {
     WeatherParameter.tmean: "°C",
     WeatherParameter.humidity: "%",
     WeatherParameter.wind_speed: "m/s",
+    WeatherParameter.precip_3m_mean: "mm",
+    WeatherParameter.precip_3m_sd: "mm",
 }
 
 EXPECTED_READINGS_PER_DAY = 24
@@ -142,6 +154,17 @@ NORMALS_RASTERS = {
         "filename": "ESW_AgERA5_tmin_c_1990-2020.tif",
         "dataset": "AgERA5 1990-2020",
     },
+    # Both written by `build_chirps_normals` from the same 360 monthly
+    # rasters as the precipitation normal above — 12 bands each, so
+    # `extract_weather_normals` loads them with no extra code.
+    WeatherParameter.precip_3m_mean: {
+        "filename": "ESW_CHIRPS_precip3_mean_mm_1991-2020.tif",
+        "dataset": "CHIRPS 1991-2020",
+    },
+    WeatherParameter.precip_3m_sd: {
+        "filename": "ESW_CHIRPS_precip3_sd_mm_1991-2020.tif",
+        "dataset": "CHIRPS 1991-2020",
+    },
 }
 # Every normals parameter now has a raster (OQ-2 closed 2026-07-17). Kept as
 # the contract for any future parameter that lacks a source: the endpoint
@@ -156,3 +179,56 @@ TEMPERATURE_NORMALS = [
     WeatherParameter.tmean,
     WeatherParameter.tmin,
 ]
+
+# ── Confidence score (Validation Framework, working session 2026-07-03) ──
+#
+# How well the ground station agrees with the satellite, 1-5, per Inkhundla
+# per publication month. 0 is this codebase's addition: "not computable",
+# for the Tinkhundla where an input is missing. The framework's own note
+# stands — "the current proposed cut-offs are temporary, we need to agree on
+# those before the framework goes operational" — so every number below is a
+# knob, deliberately in one place.
+
+# |delta| ceiling -> score, ascending. Above the last ceiling scores 1.
+# Temperature is the framework's signed-off table (satellite LST vs station
+# max, in degrees C).
+TEMPERATURE_SCORE_BANDS = ((0.5, 5), (1.5, 4), (3.0, 3), (5.0, 2))
+# Precipitation is scored in SPI units, not mm: the satellite side is a
+# percentile rank of chirps_spi_3mn, which inverts to an SPI z-value, and
+# SPI is what the framework's worked example compares ("SPI -2.1 satellite
+# vs -2.5 station -> delta 0.4, medium confidence"). These cut-offs put that
+# example at 3 = moderate, as the slide labels it.
+PRECIPITATION_SCORE_BANDS = ((0.15, 5), (0.30, 4), (0.60, 3), (1.00, 2))
+
+# "Precipitation weights heavier since it is more sensitive to errors in
+# satellite measurements compared to temperature data."
+TEMPERATURE_WEIGHT = 0.4
+PRECIPITATION_WEIGHT = 0.6
+
+# "A single bad source can veto a high overall score." Hard veto: any
+# component at 1 forces the overall to 1. Soft veto: any component at 2 caps
+# the overall at 2, so borderline data cannot be averaged up into moderate.
+HARD_VETO_SCORE = 1
+SOFT_VETO_SCORE = 2
+
+# 4-5 the algorithm decides (bulk-acceptable), 1-3 a reviewer decides.
+CONFIDENCE_BANDS = {5: "high", 4: "high", 3: "medium", 2: "low", 1: "low"}
+NOT_COMPUTABLE = 0
+
+# Why a score is 0. Surfaced in the payload so the queue can say which input
+# is missing rather than showing an unexplained blank.
+CONFIDENCE_NO_STATION = "no_station_in_region"
+CONFIDENCE_NO_SATELLITE_SPI = "no_satellite_spi"
+CONFIDENCE_NO_CLIMATOLOGY = "no_precipitation_climatology"
+CONFIDENCE_INCOMPLETE_STATION = "incomplete_station_record"
+# The satellite side has no temperature in degrees C at all: the CDI
+# components are percentile ranks and ESI (which replaced MODIS LST) is an
+# evaporative stress index, not a reading. So the temperature half of the
+# framework cannot be computed and the score runs on precipitation alone.
+CONFIDENCE_NO_SATELLITE_TEMPERATURE = "no_satellite_temperature"
+
+# SPI-3 spans three months, so the station needs all three. Days per month
+# below which the total is understated enough to fake a dry SPI (a month with
+# 4 reported days reads as a drought). Roughly two thirds of a month.
+MIN_STATION_DAYS_PER_MONTH = 20
+SPI_WINDOW_MONTHS = 3

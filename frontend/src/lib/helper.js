@@ -1,4 +1,4 @@
-import { USER_ROLES } from "@/static/config";
+import { USER_ROLES, DROUGHT_CATEGORY_INK } from "@/static/config";
 import { Button } from "antd";
 import Link from "next/link";
 
@@ -232,24 +232,9 @@ export const getProfileDropdownItems = (user) => {
 };
 
 /**
- * Text color for drought-category swatches — dynamically checks luminance for readability.
+ * Text color for a drought-category swatch. White everywhere except the light
+ * steps, which carry their own ink in DROUGHT_CATEGORY_INK — this used to
+ * return white unconditionally, which rendered the D0 chip white-on-yellow.
+ * Backgrounds outside the ramp (e.g. the #3E5EB9 no-data chip) keep white.
  */
-export const textOn = (color) => {
-  if (!color) return "#ffffff";
-  const hex = color.replace("#", "");
-  if (hex.length !== 6 && hex.length !== 3) {
-    return "#ffffff";
-  }
-  let r, g, b;
-  if (hex.length === 6) {
-    r = parseInt(hex.substring(0, 2), 16);
-    g = parseInt(hex.substring(2, 4), 16);
-    b = parseInt(hex.substring(4, 6), 16);
-  } else {
-    r = parseInt(hex.substring(0, 1) + hex.substring(0, 1), 16);
-    g = parseInt(hex.substring(1, 2) + hex.substring(1, 2), 16);
-    b = parseInt(hex.substring(2, 3) + hex.substring(2, 3), 16);
-  }
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  return yiq >= 128 ? "#1f2937" : "#ffffff";
-};
+export const textOn = (bg) => DROUGHT_CATEGORY_INK[bg] ?? "#ffffff";

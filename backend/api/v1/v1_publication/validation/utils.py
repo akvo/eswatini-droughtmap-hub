@@ -106,8 +106,8 @@ def build_validation_rows(publication):
             "label": row["name"],
             "group": row["region"],
             "zone": row["zone"],
-            # Mock until a real formula exists (review queue D-6); flat so the
-            # decision page can render it without unwrapping an object.
+            # Flattened so the decision page can render it without
+            # unwrapping the object the review queue carries.
             "confidence": confidence.get("value"),
             "confidence_band": confidence.get("band"),
             "reviews_completed": covered,

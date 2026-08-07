@@ -75,7 +75,6 @@ const PAYLOAD = (over = {}) => ({
   validated_category: null,
   confidence: 2,
   confidence_band: "low",
-  confidence_is_mock: true,
   is_override: false,
   masked: false,
   agreement:

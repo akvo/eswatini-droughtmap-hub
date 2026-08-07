@@ -1,12 +1,11 @@
 """Aggregation core for the "This month review queue" screens (Figma 3117).
 
 `build_rows` computes the per-Inkhundla dataset once; the stats, table and map
-endpoints all slice it. Most fields are real aggregation over Publication +
-Review; the fields flagged ``is_mock`` (confidence, stations vs satellite, and
-the confidence-derived ``high_confidence`` count)
-are deterministic placeholders
-until the Δ-based confidence formula and station data exist. See CLAUDE.md
-"Frontend Mock Data" — these responses are the backend contract.
+endpoints all slice it. Every field is real aggregation: over Publication +
+Review for the review progress, and over the satellite × station comparison in
+``v1_weather.confidence`` for the confidence score and the stations-vs-satellite
+deltas. A score of 0 means an input was missing for that Inkhundla, with
+``meta.reason`` naming which — never a placeholder standing in for one.
 """
 from api.v1.v1_publication.models import (
     Administration,
@@ -15,8 +14,14 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_publication.constants import (
     DroughtCategory,
-    MOCK_STATIONS,
-    BANDS,
+)
+from api.v1.v1_weather.confidence import (
+    not_computable,
+    publication_confidence,
+)
+from api.v1.v1_weather.constants import (
+    CONFIDENCE_NO_SATELLITE_SPI,
+    CONFIDENCE_NO_SATELLITE_TEMPERATURE,
 )
 
 
@@ -134,14 +139,32 @@ def build_administration_cdi(publication, administration_id, cdi_class,
     }
 
 
-def _mock_confidence(administration_id, cdi_class):
-    # Deterministic (no random -> reproducible tests) mock until real formula.
+def _confidence(scores, administration_id, cdi_class):
+    """This Inkhundla's satellite-vs-station agreement score, 0-5.
+
+    An Inkhundla the CDI had no signal for is not scoreable at all — there is
+    no satellite side to compare the station against — so it short-circuits
+    before the framework runs.
+    """
     if cdi_class is None or cdi_class == DroughtCategory.none:
-        return {"value": None, "band": None, "is_mock": True}
+        return not_computable(CONFIDENCE_NO_SATELLITE_SPI).as_dict()
+    computed = scores.get(administration_id)
+    if computed is None:
+        return not_computable(CONFIDENCE_NO_SATELLITE_SPI).as_dict()
+    return computed.as_dict()
+
+
+def _stations_vs_satellite(confidence):
+    """The queue's "Stations vs Satellite" column, from the same comparison.
+
+    SPI is the real delta the confidence score was built on. LST stays null:
+    the satellite side publishes no temperature in degrees C (see
+    `v1_weather/confidence.py`), so there is nothing to difference.
+    """
     return {
-        "value": round(1 + (administration_id % 900) / 100, 2),
-        "band": BANDS[administration_id % 3],
-        "is_mock": True,
+        "spi": (confidence.get("meta") or {}).get("spi", {}).get("delta"),
+        "lst": None,
+        "lst_reason": CONFIDENCE_NO_SATELLITE_TEMPERATURE,
     }
 
 
@@ -179,6 +202,8 @@ def build_rows(publication, user=None):
     total_reviewers = publication.reviews.count()
     admins = Administration.objects.in_bulk(list(initial.keys()))
     mine = _my_suggestions(publication, user)
+    # Once for the whole publication, not once per Inkhundla.
+    scores = publication_confidence(publication)
 
     # Submissions per administration, across every review — including reviews
     # still in progress. A reviewer marks Tinkhundla one by one and only
@@ -207,14 +232,15 @@ def build_rows(publication, user=None):
         status = _review_status(reviewed_count, total_reviewers)
         admin = admins.get(administration_id)
         my_suggestion = mine.get(administration_id)
+        confidence = _confidence(scores, administration_id, cdi_class)
         rows.append({
             "administration_id": administration_id,
             "name": admin.name if admin else None,
             "region": admin.region if admin else None,
             "zone": admin.zone if admin else None,
             "cdi_class": cdi_class,
-            "stations_vs_satellite": dict(MOCK_STATIONS),
-            "confidence": _mock_confidence(administration_id, cdi_class),
+            "stations_vs_satellite": _stations_vs_satellite(confidence),
+            "confidence": confidence,
             "reviews": {
                 "completed": reviewed_count,
                 "total": total_reviewers,
@@ -371,7 +397,6 @@ def build_stats(rows, previous_rows=None):
         "high_confidence": {
             "value": now["high_confidence"],
             "label": "ready to bulk-accept",
-            "is_mock": True,
             "delta": delta("high_confidence"),
         },
         # THIS reviewer's own progress. Previously read `validated`, i.e. the

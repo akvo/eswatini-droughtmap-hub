@@ -58,14 +58,7 @@ const DClassChip = ({ value, selected, onClick }) => {
       className={`inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium transition-all ${
         selected ? "rounded-lg" : "text-[#a4a4a4] hover:text-[#606060]"
       }`}
-      style={
-        selected
-          ? {
-              backgroundColor: bg,
-              color: "#ffffff",
-            }
-          : {}
-      }
+      style={selected ? { backgroundColor: bg, color: "#ffffff" } : {}}
     >
       {label}
     </button>
@@ -542,7 +535,10 @@ const ValidationDecisionPage = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
                       <span className="text-sm text-[#606060]">
-                        Confidence: {decision?.confidence ?? "—"}
+                        Confidence:{" "}
+                        {decision?.confidence > 0
+                          ? `${decision.confidence}/5`
+                          : "—"}
                       </span>
                       <ConfidenceBadge band={decision?.confidence_band} />
                     </div>

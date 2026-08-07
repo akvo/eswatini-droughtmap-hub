@@ -10,6 +10,8 @@ All files are 12-band **climatology**: band N = the normal for month N
 | File | Variable | Period | Resolution | Eswatini px | Provenance |
 |---|---|---|---|---|---|
 | `ESW_CHIRPS_precip_mm_1991-2020.tif` | precipitation (mm) | 1991-2020 | **0.05°** (CHIRPS native) | 30 x 50 | rebuilt by `manage.py build_chirps_normals` (see below) |
+| `ESW_CHIRPS_precip3_mean_mm_1991-2020.tif` | mean 3-month rainfall total ending month N (mm) | 1991-2020 | **0.05°** | 30 x 50 | same command, same 360 source rasters |
+| `ESW_CHIRPS_precip3_sd_mm_1991-2020.tif` | SD of that 3-month total (mm) | 1991-2020 | **0.05°** | 30 x 50 | same command, same 360 source rasters |
 | `ESW_AgERA5_tmean_c_1990-2020.tif` | mean temperature (°C) | 1990-2020 | 0.1° (AgERA5 native) | 15 x 18 | **unknown** — arrived without metadata tags |
 | `ESW_AgERA5_tmax_c_1990-2020.tif` | max temperature (°C) | 1990-2020 | 0.1° (AgERA5 native) | 15 x 18 | **unknown** — added 2026-07-17, no metadata tags |
 | `ESW_AgERA5_tmin_c_1990-2020.tif` | min temperature (°C) | 1990-2020 | 0.1° (AgERA5 native) | 15 x 18 | **unknown** — added 2026-07-17, no metadata tags |
@@ -41,11 +43,49 @@ This directory holds data only — the rebuild lives with the app code, as
 `api/v1/v1_weather/management/commands/build_chirps_normals.py`, and writes back
 to the filename `constants.NORMALS_RASTERS` already owns.
 
+> **Do NOT schedule this** (no `job.sh` task, no cron). A climate normal is a
+> *fixed* reference period: WMO rolls it over every ten years, so the next
+> legitimate rebuild is **2001-2030, around 2031** — or an upstream CHIRPS
+> reprocessing announcement. Re-deriving it yearly would slide the SPI baseline
+> forward, which (a) re-centres a persistently drier decade as "normal", hiding
+> exactly the sustained drought this platform exists to flag, (b) makes this
+> month's confidence score incomparable with last year's and silently rewrites
+> the score on publications NDRMA already ratified, and (c) desynchronises us
+> from `chirps_spi_3mn`, which NDMC fits against its own fixed climatology — the
+> delta would start measuring baseline mismatch instead of station-vs-satellite
+> disagreement. The output is committed to git; run it by hand, commit the
+> `.tif`s, and every environment just runs `extract_weather_normals`.
+
 ```bash
-# ~1.6 GB transferred (360 monthly rasters), writes a 65 KB output. ~5 min.
+# Streams ~1.6 GB (360 monthly rasters) and KEEPS ~130 KB. ~5 min.
 docker compose exec backend python manage.py build_chirps_normals
-docker compose exec backend python manage.py extract_weather_normals --parameter precipitation
+docker compose exec backend python manage.py extract_weather_normals
 ```
+
+Nothing large lands on disk, so these belong in git like their siblings — not
+in `./storage`. Each source raster is streamed into a `MemoryFile`, cropped to
+the Eswatini window (30 x 50 px) and discarded; peak retained memory is ~2 MB
+and each output file is ~67 KB. Committing them is what lets CI, local and
+staging share byte-identical reference data with no provisioning step — on a
+volume an empty directory fails silently, scoring every Inkhundla 0.
+
+Drop `--parameter precipitation` from the extract: the run now also emits the
+two **SPI-3 climatology** files, and the confidence score is 0 for every
+Inkhundla until they are in the DB.
+
+> ⚠️ The command **refuses to run under the test suite** (`running_tests()`).
+> `TEST_ENV` is not set in `docker-compose.test.yml` or the CI workflow, so the
+> `if not settings.TEST_ENV` guard used elsewhere in this codebase would let a
+> 1.6 GB download through in CI; `manage.py test` is detected directly instead.
+
+### Why the 3-month files exist
+
+The confidence score compares the satellite against the station in **SPI**, and
+the satellite side (`chirps_spi_3mn`, stored as a percentile rank on
+`PublicationRaster`) is a **3-month** index. Turning a station's rainfall into
+the same unit needs the mean and standard deviation of the 3-month accumulation
+— the mean alone cannot standardise anything. Both come free from the 360
+rasters already being downloaded for the monthly normal.
 
 ## Adding a new normals parameter
 
