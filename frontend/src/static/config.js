@@ -442,6 +442,11 @@ export const ACTIVITY_INDICATORS = [
 
 export const DEFAULT_MAP_HEIGHT = 48;
 
+// Character ceiling for the National Overview description written in the
+// publish modal. Counted on the plain text, not the TinyMCE markup — a bold
+// tag is not something the reader sees.
+export const OVERVIEW_NARRATIVE_MAX_CHARS = 1000;
+
 export const DEFAULT_CDI_WEIGHTS = {
   lst: 0.3,
   ndvi: 0.3,
