@@ -8,7 +8,7 @@ import { APP_SETTINGS, FOOTER_LINK_COLUMNS } from "@/static/config";
 
 const Footer = () => {
   return (
-    <footer className="w-full bg-white border-t border-t-neutral-300 flex flex-col items-center gap-16 pt-16">
+    <footer className="w-full bg-white border-t border-t-neutral-300 flex flex-col items-center gap-16 pt-16 print:hidden">
       <div className="container mx-auto w-full flex flex-col gap-10 lg:flex-row lg:justify-between">
         <p className="w-full lg:w-80 text-base text-[#606060]">
           {APP_SETTINGS.about}

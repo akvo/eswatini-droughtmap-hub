@@ -111,7 +111,7 @@ const BriefPreview = ({ data }) => {
   }
 
   return (
-    <div className="w-full">
+    <div id="brief-print-area" className="w-full">
       {(has("cover_header") || has("kpi_tiles")) && (
         <CoverBlock
           showHeader={has("cover_header")}

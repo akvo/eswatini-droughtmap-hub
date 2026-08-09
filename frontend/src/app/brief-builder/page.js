@@ -7,6 +7,7 @@ import BriefContextProvider from "@/context/BriefContextProvider";
 // drags akvo-charts into the server bundle and breaks the prerender, defeating
 // the dynamic import inside BriefBuilderPage.
 import BriefBuilderPage from "@/components/BriefBuilder/BriefBuilderPage";
+import "./print.css";
 
 // The provider reads useSearchParams (the selection lives in the URL, D-3),
 // which App Router requires to sit under a Suspense boundary — without one the
