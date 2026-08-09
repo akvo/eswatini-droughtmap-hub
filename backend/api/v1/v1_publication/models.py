@@ -225,3 +225,36 @@ class PublicationGeonode(models.Model):
     class Meta:
         db_table = "publication_geonodes"
         indexes = [models.Index(fields=["category", "year_month"])]
+
+
+class BriefForwardLog(models.Model):
+    """Immutable audit record for every "Forward brief" send."""
+
+    sender = models.ForeignKey(
+        "v1_users.SystemUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="brief_forwards",
+    )
+    recipients_payload = models.JSONField(
+        help_text="List of {email, name} dicts actually emailed."
+    )
+    inkhundla_id = models.IntegerField(
+        help_text="administration PK at time of send."
+    )
+    inkhundla_name = models.CharField(max_length=120)
+    components = models.JSONField(
+        help_text="List of component key strings included in the brief."
+    )
+    brief_url = models.TextField(
+        help_text="The /brief-builder?... URL embedded in the email body."
+    )
+    note = models.TextField(blank=True, default="")
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "brief_forward_logs"
+        ordering = ["-sent_at"]
+
+    def __str__(self):
+        return f"BriefForward by {self.sender_id} at {self.sent_at:%Y-%m-%d %H:%M}"  # noqa

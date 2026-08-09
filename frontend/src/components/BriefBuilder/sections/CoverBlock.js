@@ -99,7 +99,7 @@ const CoverBlock = ({
       )}
 
       {showTiles && (
-        <div className="grid grid-cols-1 gap-px border-y border-cardBorder bg-cardBorder sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-px border-y border-cardBorder print:border-x bg-cardBorder sm:grid-cols-2 xl:grid-cols-4">
           <MetricItemCard
             label={peopleExposed.label}
             value={num(peopleExposed.value)}

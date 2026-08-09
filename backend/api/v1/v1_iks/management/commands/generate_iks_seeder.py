@@ -18,18 +18,29 @@ import random
 import shutil
 from datetime import timedelta
 
+import geopandas as gpd
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from shapely.geometry import Point
 
 from api.v1.v1_iks.constants import CHIEFDOM_FIELD
-from api.v1.v1_iks.models import KoboData, KoboForm
+from api.v1.v1_iks.management.commands.download_iks_data import (
+    Command as IksSyncCommand,
+)
+from api.v1.v1_iks.models import IKSValue, KoboData, KoboForm
 from api.v1.v1_publication.models import Administration
 
 logger = logging.getLogger(__name__)
 
 CATALOGUE_PATHS = ["./source/iks_kobo_catalogue.csv"]
 IMAGE_DIR = "./source/images"
+TOPOJSON_PATH = "./source/eswatini.topojson"
+
+# Rejection-sampling attempts before falling back to the polygon's
+# representative point. Tinkhundla are convex enough that a hit is usually the
+# first or second try; the fallback only matters for the narrow border shapes.
+GEO_SAMPLE_ATTEMPTS = 30
 
 DEMO_FORM_UUID = "demo-iks-form"
 DEMO_FORM_NAME = "IKS Observation (seeded)"
@@ -119,7 +130,8 @@ class Command(BaseCommand):
             [] if options["no_photos"] else self._stage_images()
         )
         created = self._submissions(
-            form, administrations, catalogue, images, options["months"], rng
+            form, administrations, catalogue, images, options["months"], rng,
+            self._geometries(),
         )
 
         self.stdout.write(
@@ -196,6 +208,57 @@ class Command(BaseCommand):
         )
         return form
 
+    def _geometries(self):
+        """{administration_id: shapely geometry} from the same topojson the
+        live sync reverse-geocodes against.
+
+        Without this every seeded submission stores geo=None, and the review
+        page's IKS map markers (which read KoboData.geo) stay empty for every
+        Inkhundla while the rest of the IKS panel populates — which reads as a
+        broken map rather than a seeding gap.
+        """
+        try:
+            gdf = gpd.read_file(TOPOJSON_PATH)
+        except Exception as exc:  # noqa: BLE001 — reported, not hidden
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Could not read {TOPOJSON_PATH} ({exc}); seeding "
+                    f"submissions without coordinates, so IKS map markers "
+                    f"will be empty."
+                )
+            )
+            return {}
+        return {
+            int(row.administration_id): row.geometry
+            for row in gdf.itertuples()
+            if row.geometry is not None and row.administration_id is not None
+        }
+
+    def _point_in(self, geometry, kobo_id):
+        """A random {'latitude','longitude'} inside the polygon, or None.
+
+        Random rather than the centroid so several submissions in one
+        Inkhundla render as distinct markers instead of stacking.
+
+        Seeded on kobo_id rather than drawing from the caller's RNG: the shared
+        stream decides which Inkhundla reports in which month, so consuming it
+        here would move every submission the first time this ran and break the
+        "same --seed reproduces the same database" contract.
+        """
+        if geometry is None:
+            return None
+        rng = random.Random(kobo_id)
+        min_lon, min_lat, max_lon, max_lat = geometry.bounds
+        for _ in range(GEO_SAMPLE_ATTEMPTS):
+            point = Point(
+                rng.uniform(min_lon, max_lon), rng.uniform(min_lat, max_lat)
+            )
+            if geometry.contains(point):
+                return {"latitude": point.y, "longitude": point.x}
+        # Narrow/concave shapes can exhaust the budget; this is always inside.
+        point = geometry.representative_point()
+        return {"latitude": point.y, "longitude": point.x}
+
     def _stage_images(self):
         """Copy the committed sample photos into STORAGE_PATH.
 
@@ -228,8 +291,18 @@ class Command(BaseCommand):
     # --- submissions ------------------------------------------------------
 
     def _submissions(
-        self, form, administrations, catalogue, images, months, rng
+        self, form, administrations, catalogue, images, months, rng,
+        geometries,
     ):
+        # Re-running with a different --seed (or a different month count)
+        # assigns a kobo_id to a different Inkhundla, and produces a different
+        # number of submissions. KoboData upserts on kobo_id, but IKSValue does
+        # not — its old rows survive and the submission ends up counted under
+        # two Tinkhundla — and a shorter run leaves the tail of a longer one
+        # behind. Drop the seeded id range first so a re-run is idempotent.
+        IKSValue.objects.filter(kobo_id__gte=DEMO_KOBO_ID_BASE).delete()
+        KoboData.objects.filter(kobo_id__gte=DEMO_KOBO_ID_BASE).delete()
+
         today = timezone.now().date()
         first_of_month = today.replace(day=1)
         periods = []
@@ -252,12 +325,14 @@ class Command(BaseCommand):
                 if self._submission(
                     form, administration, catalogue, images, period,
                     kobo_id, rng,
+                    self._point_in(geometries.get(administration.id), kobo_id),
                 ):
                     created += 1
         return created
 
     def _submission(
-        self, form, administration, catalogue, images, period, kobo_id, rng
+        self, form, administration, catalogue, images, period, kobo_id, rng,
+        geo,
     ):
         submitted = timezone.make_aware(
             timezone.datetime(
@@ -284,6 +359,11 @@ class Command(BaseCommand):
             FIELD_D1: rng.choice(SOIL_CHOICES),
             FIELD_D2: rng.choice(VEGETATION_CHOICES),
         }
+        if geo:
+            # Mirrored into raw_data as Kobo sends it, so the endpoints that
+            # fall back to _geolocation (the photos view) agree with the ones
+            # reading KoboData.geo (the review summary).
+            raw["_geolocation"] = [geo["latitude"], geo["longitude"]]
         if images:
             name = images[kobo_id % len(images)]
             raw["_attachments"] = [
@@ -297,7 +377,7 @@ class Command(BaseCommand):
             kobo_id=kobo_id,
             defaults={
                 "form": form,
-                "geo": None,
+                "geo": geo,
                 "submission_time": submitted,
                 "submitted_by": raw["_submitted_by"],
                 "instance_name": raw["meta/instanceID"],
@@ -307,10 +387,6 @@ class Command(BaseCommand):
 
         # Reuse the live extractor rather than duplicating the field mapping.
         # It takes no instance state, so a bare instance is enough.
-        from api.v1.v1_iks.management.commands.download_iks_data import (
-            Command as IksSyncCommand,
-        )
-
         IksSyncCommand()._map_iks_values(
             form, raw, kobo_id, administration.id
         )

@@ -71,9 +71,16 @@ const MonthlyStatusGrid = ({
             >
               <div
                 className={`h-[34px] w-full flex items-center justify-center rounded-[4px] font-bold text-sm ${
-                  custom?.className ?? colorClass
+                  custom ? (custom.className ?? "") : colorClass
                 }`}
-                style={custom?.style}
+                style={
+                  custom?.style
+                    ? {
+                        ...custom.style,
+                        boxShadow: `inset 0 0 0 1000px ${custom.style.backgroundColor}`,
+                      }
+                    : undefined
+                }
               >
                 <span>{state}</span>
               </div>
