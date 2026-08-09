@@ -155,12 +155,6 @@ const InsightsShell = ({ children }) => {
                     .map((a) => ({ value: a.id, label: a.name }))
                     .sort((a, b) => a.label.localeCompare(b.label))}
                 />
-                <Button
-                  type="default"
-                  className="text-neutral-600 font-semibold border-cardBorder"
-                >
-                  Export CSV
-                </Button>
               </div>
             </div>
 

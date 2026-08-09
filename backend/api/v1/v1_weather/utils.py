@@ -11,7 +11,11 @@ import os
 
 import numpy as np
 
-from api.v1.v1_weather.constants import NORMALS_DIR, NORMALS_RASTERS
+from api.v1.v1_weather.constants import (
+    NORMALS_DIR,
+    NORMALS_RASTERS,
+    SPI_WINDOW_MONTHS,
+)
 from api.v1.v1_weather.topo import TOPOJSON_PATH
 
 logger = logging.getLogger(__name__)
@@ -21,6 +25,23 @@ MONTHS = range(1, 13)
 
 def raster_path(parameter: str) -> str:
     return os.path.join(NORMALS_DIR, NORMALS_RASTERS[parameter]["filename"])
+
+
+def window_keys(year: int, month: int) -> list:
+    """The SPI_WINDOW_MONTHS (year, month) pairs ending at (year, month).
+
+    Shared by `build_chirps_normals`, which averages these windows into the
+    climatology, and `confidence.py`, which totals the station's readings
+    over the same span. If the two disagreed about what "3-month" means, the
+    station's SPI would be standardised against the wrong distribution.
+    """
+    keys = []
+    for _ in range(SPI_WINDOW_MONTHS):
+        keys.append((year, month))
+        month -= 1
+        if month == 0:
+            year, month = year - 1, 12
+    return keys
 
 
 def zonal_means(geometry, src) -> dict:

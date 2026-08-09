@@ -45,13 +45,28 @@ export const DROUGHT_CATEGORY_VALUE = {
 export const DROUGHT_CATEGORY_LEVELS = ["None", "D0", "D1", "D2", "D3", "D4"];
 
 export const DROUGHT_CATEGORY_COLOR = {
-  [DROUGHT_CATEGORY_VALUE.normal]: "#b9f8cf",
+  [DROUGHT_CATEGORY_VALUE.normal]: "#12b76a",
   [DROUGHT_CATEGORY_VALUE.d0]: "#ffff00",
   [DROUGHT_CATEGORY_VALUE.d1]: "#fbd47f",
   [DROUGHT_CATEGORY_VALUE.d2]: "#ffaa00",
   [DROUGHT_CATEGORY_VALUE.d3]: "#e60000",
   [DROUGHT_CATEGORY_VALUE.d4]: "#730000",
   [DROUGHT_CATEGORY_VALUE.none]: "#ffffff",
+};
+
+// Chip ink per drought colour. Only the light end of the ramp needs dark
+// text: white on D0 (#ffff00) is 1.07:1 contrast and white on "No data"
+// (#ffffff) is 1.00:1 — both invisible. Keyed off DROUGHT_CATEGORY_COLOR
+// rather than repeating the hexes, so changing a step's colour cannot leave
+// a stale ink behind it.
+export const DROUGHT_CATEGORY_INK = {
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.normal]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d0]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d1]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d2]]: "#333333",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d3]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.d4]]: "#ffffff",
+  [DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.none]]: "#333333",
 };
 
 export const REGION_COLOR = {
@@ -85,7 +100,8 @@ export const DROUGHT_CATEGORY_CODE = {
 
 // Confidence bands — the chip (color = ink, bg) and the map (fill = polygon,
 // dot = legend key / polygon stroke). Values read off Figma 3324-52326.
-// Mock until the confidence formula lands (backend flags them is_mock).
+// The backend scores 0-5 and bands it: 4-5 high (bulk-acceptable), 3 medium,
+// 1-2 low. A 0 has no band at all — see CONFIDENCE_REASON.
 export const CONFIDENCE_STYLE = {
   low: {
     color: "#B10D0B",
@@ -112,6 +128,20 @@ export const CONFIDENCE_STYLE = {
 
 // Legend order on the map: High -> Medium -> Low (Figma 3324-52326).
 export const CONFIDENCE_LEGEND = ["high", "medium", "low"];
+
+// Why an Inkhundla scored 0 (not computable). The API sends the key in
+// `confidence.meta.reason`; the reader-facing wording is frontend copy, per
+// the CLAUDE.md rule that derived UI config never comes from the API.
+export const CONFIDENCE_REASON = {
+  no_station_in_region: "No weather station in this Inkhundla's region",
+  incomplete_station_record:
+    "The station did not report enough of the last 3 months",
+  no_satellite_spi: "No satellite SPI for this Inkhundla",
+  no_precipitation_climatology:
+    "The 30-year rainfall climatology has not been extracted yet",
+  no_satellite_temperature:
+    "Scored on precipitation only — the satellite publishes no temperature",
+};
 
 // Review-progress map: reviews collected out of the total reviewers, ramped
 // none -> all. Five buckets whatever the reviewer count — `most` absorbs

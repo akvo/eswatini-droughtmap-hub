@@ -1,5 +1,7 @@
 import os
 import tempfile
+import geopandas as gpd
+from shapely.geometry import Point
 from collections import Counter
 from io import StringIO
 
@@ -9,6 +11,7 @@ from django.test.utils import override_settings
 
 from api.v1.v1_iks.models import IKSIndicator, IKSValue, KoboData, KoboForm
 from api.v1.v1_iks.utils import label_soil_moisture, label_vegetation
+from django.conf import settings
 
 MONTHS = 6
 
@@ -72,8 +75,6 @@ class GenerateIksSeederTestCase(TestCase):
         self.assertEqual(KoboForm.objects.filter(active=True).count(), 1)
 
     def test_attaches_photos_and_stages_the_files(self):
-        from django.conf import settings
-
         self.seed()
         with_attachments = [
             data
@@ -107,6 +108,32 @@ class GenerateIksSeederTestCase(TestCase):
         }
         self.assertGreater(len(months), 3)
 
+    def test_every_submission_is_located_inside_its_inkhundla(self):
+        """geo feeds the review page's IKS map markers, which read
+        KoboData.geo directly. Seeding it None leaves those markers empty for
+        every Inkhundla while the rest of the IKS panel populates, so the map
+        reads as broken rather than unseeded."""
+        self.seed()
+        geometries = {
+            int(row.administration_id): row.geometry
+            for row in gpd.read_file("./source/eswatini.topojson").itertuples()
+        }
+        located = KoboData.objects.exclude(geo=None)
+        self.assertEqual(located.count(), KoboData.objects.count())
+
+        outside = []
+        for data in located:
+            administration_id = (
+                IKSValue.objects.filter(kobo_id=data.kobo_id)
+                .values_list("administration_id", flat=True)
+                .first()
+            )
+            polygon = geometries.get(administration_id)
+            point = Point(data.geo["longitude"], data.geo["latitude"])
+            if polygon is not None and not polygon.contains(point):
+                outside.append(data.kobo_id)
+        self.assertEqual(outside, [])
+
     def test_is_idempotent(self):
         self.seed()
         first = (KoboData.objects.count(), IKSValue.objects.count())
@@ -114,6 +141,23 @@ class GenerateIksSeederTestCase(TestCase):
         self.assertEqual(
             (KoboData.objects.count(), IKSValue.objects.count()), first
         )
+
+    def test_reseeding_does_not_leave_stale_values_behind(self):
+        """A kobo_id lands on a different Inkhundla when the RNG stream moves.
+        KoboData upserts on kobo_id but IKSValue does not, so without a purge
+        the submission ends up counted under two Tinkhundla at once."""
+        self.seed("--seed", 1)
+        self.seed("--seed", 2)
+        multi_mapped = [
+            kobo_id
+            for kobo_id in KoboData.objects.values_list("kobo_id", flat=True)
+            if IKSValue.objects.filter(kobo_id=kobo_id)
+            .values("administration_id")
+            .distinct()
+            .count()
+            > 1
+        ]
+        self.assertEqual(multi_mapped, [])
 
     def test_same_seed_reproduces_identical_submissions(self):
         self.seed("--seed", 7)

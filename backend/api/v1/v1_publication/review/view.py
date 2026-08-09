@@ -7,9 +7,10 @@ Endpoints (all publication-scoped, IsAuthenticated + IsReviewer):
 - map                            -> rows filtered by confidence / reviewed
 
 Submission stays on the existing PUT /reviewer/review/{review_id} so the
-completion job + publication status transition are not forked. `confidence`,
-`stations_vs_satellite` and `high_confidence` are mock (is_mock=true) until the
-real formula + station data exist. Design: Figma 3117-42637 / 3317-48856.
+completion job + publication status transition are not forked. `confidence` is
+the Validation Framework's 0-5 satellite-vs-station score (see
+`v1_weather/confidence.py`); 0 means an input was missing, with the reason in
+`meta`. Design: Figma 3117-42637 / 3317-48856.
 """
 from rest_framework.views import APIView
 from rest_framework.response import Response

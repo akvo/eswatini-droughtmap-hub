@@ -19,6 +19,35 @@ const FitBounds = ({ bounds, ReactLeaflet }) => {
   return null;
 };
 
+// Figma 3317:54591 — 20px marker: r9.5 #3E5EB9 fill + 1px white ring, r4 white dot
+const MapMarker = ({ ReactLeaflet, lat, lon, label }) => (
+  <>
+    <ReactLeaflet.CircleMarker
+      center={[lat, lon]}
+      radius={9.5}
+      pathOptions={{
+        color: "#FFFFFF",
+        weight: 1,
+        opacity: 1,
+        fillColor: "#3E5EB9",
+        fillOpacity: 1,
+      }}
+    >
+      <ReactLeaflet.Tooltip>{label}</ReactLeaflet.Tooltip>
+    </ReactLeaflet.CircleMarker>
+    <ReactLeaflet.CircleMarker
+      center={[lat, lon]}
+      radius={4}
+      interactive={false}
+      pathOptions={{
+        stroke: false,
+        fillColor: "#FFFFFF",
+        fillOpacity: 1,
+      }}
+    />
+  </>
+);
+
 const InkhundlaMap = ({
   administrationId,
   stationMarker = null,
@@ -76,33 +105,21 @@ const InkhundlaMap = ({
           <>
             <ReactLeaflet.GeoJSON data={geoData} style={style} />
             {stationMarker && (
-              <ReactLeaflet.CircleMarker
-                center={[stationMarker.lat, stationMarker.lon]}
-                radius={6}
-                pathOptions={{
-                  color: "#1E40AF",
-                  fillColor: "#3E5EB9",
-                  fillOpacity: 1,
-                  weight: 2,
-                }}
-              >
-                <ReactLeaflet.Tooltip>Weather station</ReactLeaflet.Tooltip>
-              </ReactLeaflet.CircleMarker>
+              <MapMarker
+                ReactLeaflet={ReactLeaflet}
+                lat={stationMarker.lat}
+                lon={stationMarker.lon}
+                label={stationMarker.name || "Weather station"}
+              />
             )}
             {iksMarkers.map((m, i) => (
-              <ReactLeaflet.CircleMarker
+              <MapMarker
                 key={`iks-${i}`}
-                center={[m.lat, m.lon]}
-                radius={5}
-                pathOptions={{
-                  color: "#0E8F6E",
-                  fillColor: "#00B98E",
-                  fillOpacity: 1,
-                  weight: 2,
-                }}
-              >
-                <ReactLeaflet.Tooltip>IKS submission</ReactLeaflet.Tooltip>
-              </ReactLeaflet.CircleMarker>
+                ReactLeaflet={ReactLeaflet}
+                lat={m.lat}
+                lon={m.lon}
+                label="IKS submission"
+              />
             ))}
             {boundsCoords && (
               <FitBounds bounds={boundsCoords} ReactLeaflet={ReactLeaflet} />
