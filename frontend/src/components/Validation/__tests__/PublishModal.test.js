@@ -159,6 +159,52 @@ describe("PublishModal", () => {
     expect(onPublish).not.toHaveBeenCalled();
   });
 
+  it("caps the description at the configured character count and shows it", () => {
+    render(
+      <PublishModal
+        open
+        yearMonth="2026-05"
+        maxChars={10}
+        onPublish={jest.fn()}
+      />,
+    );
+
+    type("Dry east");
+    expect(
+      screen.getByPlaceholderText("Shown underneath the title"),
+    ).toHaveAttribute("maxlength", "10");
+    expect(screen.getByText("8 / 10")).toBeInTheDocument();
+  });
+
+  it("refuses an over-long description seeded from a published map", async () => {
+    // maxLength only governs typing. A narrative that arrives too long — from
+    // a map published before the ceiling existed — would otherwise sail
+    // through untouched.
+    const onPublish = jest.fn().mockResolvedValue(null);
+    const { rerender } = render(
+      <PublishModal open={false} yearMonth="2026-05" onPublish={onPublish} />,
+    );
+    rerender(
+      <PublishModal
+        open
+        yearMonth="2026-05"
+        maxChars={10}
+        currentNarrative="Dry across the east"
+        published
+        onPublish={onPublish}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("The description must be 10 characters or fewer."),
+      ).toBeInTheDocument(),
+    );
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
   it("stays open and keeps the typed description when publish is rejected", async () => {
     // The API helper RESOLVES on 4xx rather than rejecting, so a rejected
     // publish arrives as a value. If this were handled with try/catch the

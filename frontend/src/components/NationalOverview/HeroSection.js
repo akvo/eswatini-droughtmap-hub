@@ -2,7 +2,10 @@
 
 import { Button, Skeleton } from "antd";
 import { CalendarOutlined, DownloadOutlined } from "@ant-design/icons";
-import { DROUGHT_CATEGORY_COLOR } from "@/static/config";
+import {
+  DROUGHT_CATEGORY_COLOR,
+  OVERVIEW_NARRATIVE_MAX_CHARS,
+} from "@/static/config";
 import { textOn } from "@/lib/helper";
 
 const HeroSection = ({ hero }) => {
@@ -60,8 +63,10 @@ const HeroSection = ({ hero }) => {
         </h1>
 
         <div
-          className="text-base text-neutral-600 max-w-2xl leading-7 prose prose-neutral"
-          dangerouslySetInnerHTML={{ __html: summary }}
+          className="text-base text-neutral-600 w-full max-w-3xl leading-7 prose prose-neutral"
+          dangerouslySetInnerHTML={{
+            __html: summary.slice(0, OVERVIEW_NARRATIVE_MAX_CHARS),
+          }}
         />
 
         <Button

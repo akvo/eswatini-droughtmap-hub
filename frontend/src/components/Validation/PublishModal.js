@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Input, Modal } from "antd";
 import { WarningFilled } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { OVERVIEW_NARRATIVE_MAX_CHARS } from "@/static/config";
 
 /**
  * The sectors shown on the National Overview. Listed here only so the admin
@@ -28,6 +29,7 @@ const PublishModal = ({
   currentNarrative,
   currentBulletinUrl,
   published = false,
+  maxChars = OVERVIEW_NARRATIVE_MAX_CHARS,
   onCancel,
   onPublish,
 }) => {
@@ -35,6 +37,11 @@ const PublishModal = ({
   const [bulletinUrl, setBulletinUrl] = useState(currentBulletinUrl || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // `maxLength` stops the box growing past the ceiling, but a narrative seeded
+  // from an already-published map is not typed — it arrives whatever length it
+  // is, and the input silently accepts it. So the limit is checked here too.
+  const overLimit = narrative.length > maxChars;
 
   // `destroyOnClose` only unmounts the Modal's children — this state lives in
   // the wrapper and survives, so on first mount it is seeded from a `meta`
@@ -52,6 +59,10 @@ const PublishModal = ({
   const handlePublish = async () => {
     if (!narrative.trim()) {
       setError("A description is required.");
+      return;
+    }
+    if (overLimit) {
+      setError(`The description must be ${maxChars} characters or fewer.`);
       return;
     }
     setSaving(true);
@@ -130,7 +141,11 @@ const PublishModal = ({
                   placeholder="Shown underneath the title"
                   value={narrative}
                   onChange={(e) => setNarrative(e.target.value)}
-                  status={error && !narrative.trim() ? "error" : ""}
+                  maxLength={maxChars}
+                  showCount
+                  status={
+                    error && (!narrative.trim() || overLimit) ? "error" : ""
+                  }
                 />
                 <span className="text-xs text-[#606060]">
                   Two-to-three sentences summarising the situation across the
