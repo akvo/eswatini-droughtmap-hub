@@ -12,6 +12,7 @@ import {
 import { FeedbackSection } from "@/components";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import { api } from "@/lib";
+import { textOn } from "@/lib/helper";
 import { useAppContext } from "@/context/AppContextProvider";
 import {
   DROUGHT_CATEGORY_COLOR,
@@ -38,7 +39,7 @@ const DClassChip = ({ level, selected, onClick }) => {
       className={`inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium transition-all ${
         selected ? "rounded-lg" : "text-[#a4a4a4] hover:text-[#606060]"
       }`}
-      style={selected ? { backgroundColor: bg, color: "#ffffff" } : {}}
+      style={selected ? { backgroundColor: bg, color: textOn(bg) } : {}}
     >
       {label}
     </button>
@@ -208,18 +209,28 @@ const CDIColumn = ({ cdi }) => {
 };
 
 /* ── One station block with grid cards (MET or citizen science) ── */
-const StationBlock = ({ title, stationCode, rows, footnote }) => (
+const StationBlock = ({ title, subTitle, stationCode, rows, footnote }) => (
   <div className="border border-cardBorder overflow-hidden">
     <div
       className="flex items-center justify-between p-3"
       style={{ backgroundColor: "#ECEFF8", borderBottom: "1px solid #D2D2D2" }}
     >
-      <span
-        className="text-[#333333]"
-        style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}
-      >
-        {title}
-      </span>
+      <div className="flex flex-col">
+        <span
+          className="text-[#333333]"
+          style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px" }}
+        >
+          {title}
+        </span>
+        {subTitle && (
+          <span
+            className="text-[#606060]"
+            style={{ fontSize: 12, fontWeight: 400, lineHeight: "18px" }}
+          >
+            {subTitle}
+          </span>
+        )}
+      </div>
       {stationCode && (
         <span
           className="text-[#333333] text-right"
@@ -315,9 +326,7 @@ const WeatherColumn = ({ weather, citizenScience }) => {
       {citizenScience?.data ? (
         <StationBlock
           title="Citizen science weather station"
-          stationCode={
-            citizenScience.meta?.station_code || citizenScience.meta?.station
-          }
+          subTitle={citizenScience.meta?.station}
           rows={citizenScience.data}
           footnote={
             citizenScience.meta?.notes
@@ -487,7 +496,11 @@ const IndividualReview = ({
   }, [geoData, admId]);
 
   const stationMarker = weather?.meta?.station_lat
-    ? { lat: weather.meta.station_lat, lon: weather.meta.station_lon }
+    ? {
+        lat: weather.meta.station_lat,
+        lon: weather.meta.station_lon,
+        name: weather.meta.station,
+      }
     : null;
 
   const persist = async (reviewed) => {

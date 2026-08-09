@@ -115,8 +115,8 @@ def get_hero_data():
             if item.get("category") is not None
             and item.get("category") != -9999
         ]
-    max_cat = max(cats) if cats else 0
-    label = DroughtCategory.FieldStr.get(max_cat, "Normal / No Drought")
+    avg_cat = round(sum(cats) / len(cats)) if cats else 0
+    label = DroughtCategory.FieldStr.get(avg_cat, "Normal / No Drought")
 
     published_str = (
         pub.published_at.strftime("%d %b %Y")
@@ -133,7 +133,7 @@ def get_hero_data():
     summary = pub.narrative or ""
 
     return {
-        "status": {"category": max_cat, "label": label},
+        "status": {"category": avg_cat, "label": label},
         "published": published_str,
         "nextUpdate": next_update_str,
         "headline": headline,

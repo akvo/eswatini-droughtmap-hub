@@ -1,13 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Checkbox, Input, Tooltip, message } from "antd";
+import {
+  Button,
+  Checkbox,
+  Input,
+  Select,
+  TreeSelect,
+  Tooltip,
+  message,
+} from "antd";
 import dayjs from "dayjs";
 import useBriefRecipients from "@/hooks/useBriefRecipients";
-import { BRIEF_COMPONENTS } from "@/static/config";
+import { api } from "@/lib/api";
+import { BRIEF_COMPONENTS, TWG_OPTIONS } from "@/static/config";
 
 const { TextArea } = Input;
+
+const TWG_MAP = Object.fromEntries(
+  (TWG_OPTIONS || []).map((t) => [t.value, t.label]),
+);
 
 // Good enough to catch a typo before submit; the real check belongs to the
 // send endpoint, which does not exist yet.
@@ -28,7 +41,14 @@ const SHORT_BY_KEY = Object.fromEntries(
 const RecipientRow = ({ recipient, checked, onToggle }) => (
   <label className="flex w-full cursor-pointer items-start gap-4 rounded-lg border border-[#d2d2d2] bg-white p-3">
     <span className="flex flex-1 flex-col">
-      <span className="text-base leading-6 text-[#333]">{recipient.name}</span>
+      <span className="text-base leading-6 text-[#333]">
+        {recipient.name}
+        {recipient.group && (
+          <span className="ml-2 text-xs font-semibold text-neutral-500">
+            ({recipient.group})
+          </span>
+        )}
+      </span>
       <span className="text-sm leading-[21px] text-[#606060]">
         {recipient.email}
       </span>
@@ -66,27 +86,54 @@ const RecipientRow = ({ recipient, checked, onToggle }) => (
  * the viewport, leaving the panel starting below the header and stopping short
  * of the bottom. The portal escapes the transform entirely, so this stays
  * correct wherever it is mounted.
- *
- * The form is complete; the send is not. There is no brief-forwarding endpoint
- * yet (design doc D-6), so Send validates and reports honestly instead of
- * claiming a delivery. That copy must not be softened to a success toast: a
- * user told the brief went out, when nothing was sent, will not follow up.
  */
 const ForwardBriefSlideIn = ({
   visible,
   onClose,
+  administrationId,
   inkhundla,
   period,
   components = [],
 }) => {
   const { data: recipients, loading, isFallback } = useBriefRecipients(visible);
 
+  const [twgFilter, setTwgFilter] = useState([]);
   const [selected, setSelected] = useState([]);
   const [other, setOther] = useState("");
   const [note, setNote] = useState("");
   const [ccMe, setCcMe] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Build TreeSelect data hierarchy grouped by TWG (matching StartPublicationSlideIn pattern)
+  const recipientTree = useMemo(() => {
+    const groupMap = {};
+
+    recipients.forEach((r) => {
+      const twgVal =
+        r.technical_working_group ?? r.group ?? r.twg ?? r.organization;
+      const groupName =
+        TWG_MAP[twgVal] ||
+        (typeof twgVal === "string" && twgVal.trim() ? twgVal : null) ||
+        "Unassigned TWG";
+
+      if (!groupMap[groupName]) {
+        groupMap[groupName] = [];
+      }
+      groupMap[groupName].push({
+        title: r.name ? `${r.name} (${r.email})` : r.email,
+        value: r.id,
+        key: r.id,
+      });
+    });
+
+    return Object.entries(groupMap).map(([groupName, children]) => ({
+      title: groupName,
+      value: `twg-group-${groupName}`,
+      key: `twg-group-${groupName}`,
+      children,
+    }));
+  }, [recipients]);
 
   // Reset on every open, so a previous recipient list never carries into a
   // brief for a different Inkhundla.
@@ -126,13 +173,50 @@ const ForwardBriefSlideIn = ({
     setError("");
     setSubmitting(true);
     try {
-      // TODO(BB-2): POST /api/v1/brief/forward once it exists. Blocked on the
-      // PDF decision — with no PDF a forwarded brief can only be a link, which
-      // is useless to a recipient who is not a platform user.
-      message.info(
-        "Recipients selected. Sending is not available yet — the brief forwarding endpoint ships with the backend round.",
+      // 1. Build chosen recipients list
+      const chosenRecipients = recipients
+        .filter((r) => selected.includes(r.id))
+        .map((r) => ({ email: r.email, name: r.name }));
+
+      if (other.trim()) {
+        chosenRecipients.push({ email: other.trim(), name: "Other" });
+      }
+
+      if (ccMe) {
+        try {
+          const user = await api("GET", "/users/me");
+          if (
+            user?.email &&
+            !chosenRecipients.some((r) => r.email === user.email)
+          ) {
+            chosenRecipients.push({
+              email: user.email,
+              name: user.name || "Me (CC)",
+            });
+          }
+        } catch {
+          // If /users/me fails, proceed without CCing
+        }
+      }
+
+      const payload = {
+        inkhundla_id: administrationId,
+        inkhundla_name: inkhundla,
+        components,
+        recipients: chosenRecipients,
+        note: note.trim(),
+        brief_url: typeof window !== "undefined" ? window.location.href : "",
+      };
+
+      await api("POST", "/brief/forward", payload);
+
+      message.success(
+        `Brief forwarded to ${chosenRecipients.length} recipient(s).`,
       );
       onClose();
+    } catch (err) {
+      console.error("Failed to forward brief:", err);
+      setError(err?.message || "Failed to forward brief. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -180,20 +264,26 @@ const ForwardBriefSlideIn = ({
                 </span>
               </Tooltip>
             )}
-            {loading ? (
-              <p className="mb-0 text-sm text-neutral-400">
-                Loading recipients...
-              </p>
-            ) : (
-              recipients.map((r) => (
-                <RecipientRow
-                  key={r.id}
-                  recipient={r}
-                  checked={selected.includes(r.id)}
-                  onToggle={toggle}
-                />
-              ))
-            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm text-[#606060]">
+                Select TWG or team member
+              </label>
+              <TreeSelect
+                treeData={recipientTree}
+                value={selected}
+                onChange={setSelected}
+                multiple
+                treeCheckable
+                showCheckedStrategy={TreeSelect.SHOW_CHILD}
+                placeholder="Select TWG or team member"
+                treeNodeLabelProp="title"
+                treeNodeFilterProp="title"
+                showSearch
+                loading={loading}
+                style={{ width: "100%" }}
+              />
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="brief-other" className="text-sm text-[#606060]">
@@ -204,6 +294,7 @@ const ForwardBriefSlideIn = ({
                 placeholder="Email address"
                 value={other}
                 onChange={(e) => setOther(e.target.value)}
+                type="email"
               />
             </div>
           </div>

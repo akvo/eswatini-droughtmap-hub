@@ -60,7 +60,13 @@ const SituationParagraph = ({ name, period }) => {
         ) : null
       }
     >
-      <TinyEditor value={narrative} setValue={setNarrative} height={260} />
+      <div className="print:hidden">
+        <TinyEditor value={narrative} setValue={setNarrative} height={260} />
+      </div>
+      <div
+        className="hidden text-sm leading-relaxed text-textPrimary print:block"
+        dangerouslySetInnerHTML={{ __html: narrative }}
+      />
     </BriefSection>
   );
 };

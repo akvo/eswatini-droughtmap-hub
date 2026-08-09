@@ -104,6 +104,13 @@ class IKSPhotoItemSerializer(serializers.Serializer):
     title = serializers.CharField()
     date = serializers.CharField()
     url = serializers.CharField()
+    submitted_with = serializers.CharField(required=False, allow_null=True)
+    validated_by = serializers.CharField(required=False, allow_null=True)
+    inkhundla = serializers.CharField(required=False, allow_null=True)
+    citizen_scientist = serializers.CharField(required=False, allow_null=True)
+    soil_moisture = serializers.CharField(required=False, allow_null=True)
+    vegetation = serializers.CharField(required=False, allow_null=True)
+    gps = serializers.CharField(required=False, allow_null=True)
 
 
 class IKSPhotosSerializer(serializers.Serializer):
