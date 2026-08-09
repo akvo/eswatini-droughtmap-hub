@@ -1,8 +1,13 @@
 /* Scoped print stylesheet for Brief Builder (BB-2 AC-7.1)
    Prints ONLY the BriefPreview content (#brief-print-area).
 */
+/* Portrait: 186mm of usable width, so the charts print near
+   their on-screen size instead of being scaled down to fit. It also puts the
+   print viewport at ~1032px, above Tailwind's lg breakpoint, so the response
+   activities and notify list lay out side by side as designed rather than
+   stacking. */
 @page {
-  margin: 12mm 12mm;
+  margin: 6mm 0mm;
   size: A4 portrait;
 }
 
@@ -107,23 +112,59 @@
     print-color-adjust: exact !important;
   }
 
-  /* ATOMIC CARD & SECTION BREAK RULE:
-     Prevent any section, ChartCard, Exposure block, Response activities container,
-     or BriefSection wrapper from splitting/cropping mid-way across page breaks.
-     If a card does not fit in the remaining height of the page, the whole card
-     moves cleanly to the next page.
-  */
-  section,
-  .brief-section,
-  #brief-print-area section,
-  #brief-print-area > div,
-  #brief-print-area div[class*="rounded"],
-  #brief-print-area div[class*="border"],
-  #brief-print-area div[class*="shadow"],
-  #brief-print-area div[class*="bg-white"] {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    -webkit-column-break-inside: avoid !important;
+  /* UNWIND THE ANCESTOR CHAIN — required before any break below can fire.
+     Firefox will not fragment a flex container, a scroll container, or a
+     transformed box: it slices them across page edges and ignores every break
+     inside. Chrome fragments all three, which is why the per-component breaks
+     worked there and produced sliced pages in Firefox. Three such boxes wrap
+     the brief:
+       AppShell            flex flex-col + overflow-x-hidden (one clipped axis
+                           forces the other to auto, making it a scroll box)
+       brief-builder band  -translate-x-1/2, the full-bleed trick
+       two-column row      flex (its print:block already handles this)
+     :has() selects exactly the ancestors of the print area and nothing else;
+     dropping the transform also means dropping the position/left/width that
+     the full-bleed trick pairs with it, or the band lands half a page right. */
+  body :has(#brief-print-area) {
+    display: block !important;
+    overflow: visible !important;
+    transform: none !important;
+    position: static !important;
+    left: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+  }
+
+  /* KEEP EACH COMPONENT WHOLE, BUT PACK THEM.
+     A component that will not fit in what is left of the page moves down
+     entire, so a chart or the response activities list is never split — but
+     components still share a page, which a forced break after each one did not
+     allow.
+
+     Applied to every direct child rather than just the charts and the activity
+     list: the short components are well under a page, so marking them atomic
+     costs nothing and needs no selector that has to keep up with the section
+     markup.
+
+     The earlier version of this rule marked every *nested* div atomic too, and
+     that is what truncated things: a box taller than a whole page cannot be
+     moved anywhere, so the browser slices or clips it. Only the top-level
+     components carry it now, and each is comfortably under one landscape
+     page. */
+  #brief-print-area > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* A scroll box prints its scrollport and nothing else, so the response
+     activities list (max-h-[320px] overflow-y-auto) silently dropped every
+     activity below the fold — on paper there is nothing to scroll with. */
+  #brief-print-area [class*="overflow-y-auto"],
+  #brief-print-area [class*="overflow-x-auto"],
+  #brief-print-area [class*="overflow-auto"] {
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   /* D-class history grid formatting in print */
@@ -165,10 +206,29 @@
     max-height: none !important;
   }
 
-  /* Ensure canvas charts fit paper width without horizontal overflow */
+  /* ECharts measures its container once at mount and writes that pixel width
+     onto its own wrapper div and the canvas; akvo-charts registers no resize
+     listener, so nothing re-measures for print. A4 minus margins is ~703px
+     against the 852px preview column, so the plot kept its screen width and the
+     last months were cut off at the page edge.
+
+     Releasing the wrapper's inline width lets the canvas shrink to the page.
+     It is bounded on both axes and left to letterbox itself inside the plot
+     box rather than being resized: forcing width:100% + height:auto made the
+     canvas take the bitmap's own 852x640 ratio, which on a landscape page is
+     taller than the 320px box ECharts was mounted in, so the legend spilled
+     over the section below. Bounded + contain, it scales down on a narrow page
+     and simply stays put on a wide one. It prints crisp either way because
+     ECharts renders the backing store at devicePixelRatio. */
+  #brief-print-area [role="figure"],
+  #brief-print-area [role="figure"] > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   canvas {
     max-width: 100% !important;
-    width: 100% !important;
-    height: auto !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
   }
 }
