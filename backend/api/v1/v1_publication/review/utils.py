@@ -220,6 +220,7 @@ def build_rows(publication, user=None):
                 submissions.setdefault(s["administration_id"], []).append({
                     "user_id": review.user_id,
                     "label": initials(review.user.name),
+                    "name": review.user.name or "",
                     "group": review.user.technical_working_group,
                     "category": s.get("category"),
                 })

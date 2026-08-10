@@ -76,6 +76,24 @@ def reviewers_required(publication):
     )
 
 
+def progress_reviews(publication):
+    """"2/3" — TWGs that have submitted, over TWGs actually assigned.
+
+    The denominator is ``reviewers_required``, not the length of the TWG enum:
+    a publication assigned to three TWGs is complete at 3/3, and counting the
+    two that were never asked kept it at 3/5 forever.
+    """
+    completed = (
+        publication.reviews
+        .filter(is_completed=True)
+        .exclude(user__technical_working_group=None)
+        .values_list("user__technical_working_group", flat=True)
+        .distinct()
+        .count()
+    )
+    return f"{completed}/{reviewers_required(publication)}"
+
+
 def row_status(validated_category, covered, required):
     """Precedence: a decided Inkhundla is never shown as outstanding work.
 
@@ -116,7 +134,9 @@ def build_validation_rows(publication):
                 {
                     "id": s["user_id"],
                     "label": s["label"],
+                    "name": s.get("name", ""),
                     "group": s["group"],
+                    "reviewed": True,
                 }
                 for s in submissions
             ],
