@@ -7,7 +7,7 @@
 
 ---
 
-> **One-line summary.** Every citizen-weather screen renders from `@/static/mocks/citizen-weather`; every endpoint those screens need already ships and is tested. This plan replaces the mock imports with real calls, adds the one thing genuinely missing on both sides — an **observer session** (magic-link exchange → `currentUser` cookie → role gating) — and puts `<Can>` in front of the admin subtree.
+> **One-line summary.** Every citizen-weather screen renders from `@/static/mocks/citizen-weather`; every endpoint those screens need already ships and is tested. *(Update 2026-08-10: that mock directory is now **deleted**. The three genuinely-config exports moved to [`@/static/citizen-weather`](../../../frontend/src/static/citizen-weather.js); the fixtures were dropped. See the §A.2 table.)* This plan replaces the mock imports with real calls, adds the one thing genuinely missing on both sides — an **observer session** (magic-link exchange → `currentUser` cookie → role gating) — and puts `<Can>` in front of the admin subtree.
 >
 > **No new backend endpoints.** The eight WX-6 endpoints cover every screen. Net backend work is one ability seed, one validation guard on an existing endpoint (§D-8), one role constant, and one decision about the Inkhundla dropdown.
 
@@ -47,6 +47,14 @@ What did **not** move: no screen makes an API call, there is still no observer s
 
 `grep -rn "token\|api(" app/citizen-weather` returns nothing. Every screen imports from `static/mocks/citizen-weather/index.js`, which exports 14 fixtures:
 
+> **Resolved 2026-08-10.** `static/mocks/citizen-weather/` is deleted. The three
+> "stay" rows below moved verbatim to **`static/citizen-weather.js`** — out of
+> `mocks/` because they were never fixtures: they are frontend config with no
+> backend counterpart (`SENSOR_OPTIONS`/`STATION_TYPES` per WX-6 D-2, and
+> `NUDGE_TONES`, whose text is edited by the admin and POSTed as the reminder
+> `message`). The four importers were repointed; the remaining fixtures were
+> replaced by the API calls in the "Replaced by" column.
+
 | Mock export | Consumed by | Replaced by |
 |---|---|---|
 | `observerProfile`, `reportingHistory`, `CURRENT_MONTH` | `observe/page.js` (list) | GET `readings` |
@@ -55,8 +63,8 @@ What did **not** move: no screen makes an API call, there is still no observer s
 | `stationDetail` | `admin/stations/[id]/page.js` | GET `stations` (row lookup) — see §D-4 |
 | `INKHUNDLA_OPTIONS`, `REGION_BY_INKHUNDLA` | `admin/stations/add/page.js` | administrations list — see §D-3 |
 | `AEZ_BY_INKHUNDLA` | `admin/stations/add/page.js` | **delete** — AEZ is not stored (WX-6 §A.6) |
-| `SENSOR_OPTIONS`, `STATION_TYPES` | `admin/stations/add/page.js` | **stay** — frontend config (WX-6 D-2) |
-| `NUDGE_TONES` | `NudgeModal.js` | **stay** — copy templates, not server data |
+| `SENSOR_OPTIONS`, `STATION_TYPES` | `admin/stations/add/page.js` | **moved** to `static/citizen-weather.js` — frontend config (WX-6 D-2) |
+| `NUDGE_TONES` | `NudgeModal.js` | **moved** to `static/citizen-weather.js` — editable default copy, not server data |
 | `ADMIN_USERS` | `admin/stations/add/page.js` | **delete** — no assigned-admin field exists |
 | `MONTHS`, `CURRENT_MONTH_INDEX` | timeline strips | derive from API periods |
 
@@ -364,6 +372,7 @@ Error mapping (all 400): email already taken (checked including soft-deleted), I
 ```
 Currently (2026-07-29, after WX-8 Part A):
 - 7 citizen-weather screens render entirely from static/mocks/citizen-weather.
+  (Deleted 2026-08-10; the config exports live in static/citizen-weather.js.)
   No screen makes an API call; grep for "api(" under app/citizen-weather is empty.
 - All 8 WX-6 endpoints ship, are permission-guarded and covered by the 626-test run.
 - No observer can sign in: verify-link returns a JWT, but nothing on the frontend
@@ -399,7 +408,7 @@ Goal:
 - [ ] An observer opening `/citizen-weather/admin` is redirected; an admin opening `/citizen-weather/observe` is redirected. *(First half shipped. Second half is deferred by **D-13** — the observer area is any-authenticated until `USER_ROLES.observer` exists; the API still refuses a non-observer.)*
 
 ### Technical Acceptance Criteria
-- [ ] `static/mocks/citizen-weather/` retains only `SENSOR_OPTIONS`, `STATION_TYPES`, `NUDGE_TONES` — everything else deleted, not left dangling.
+- [x] `static/mocks/citizen-weather/` is **deleted outright** (2026-08-10). `SENSOR_OPTIONS`, `STATION_TYPES` and `NUDGE_TONES` moved to `static/citizen-weather.js` — they are config, not fixtures, so they do not belong under `mocks/`. Everything else deleted, not left dangling.
 - [ ] **Zero new backend endpoints.** Backend diff is: one ability seed block, one window guard on the existing PUT (D-8), and §D-3's dropdown decision.
 - [ ] Observer sessions use the existing `currentUser` cookie and `encrypt()` — no second auth mechanism, no token in `localStorage`.
 - [ ] No observer request sends an Inkhundla or user id the server could trust; scoping stays `request.user`-derived.

@@ -232,6 +232,13 @@ product AC list (2026-07-15) replaces it with **total rain last month**. The
 satellite card returns with the comparison feature — no placeholder slot is
 shipped meanwhile.
 
+> **Superseded 2026-08-10** by [WX-10 `weather-satellite-difference-card.md`](weather-satellite-difference-card.md).
+> The card returns to the grid with a real millimetre value: CHIRPS
+> `africa_monthly` publishes current months at the URL `build_chirps_normals`
+> already downloads, so the comparison needed a zonal extraction, not a new data
+> source. The "no placeholder slot" half of this decision still stands and is
+> the reason `frontend/src/static/mocks/weather/` is deleted rather than kept.
+
 ---
 
 ## 6. Testing Strategy

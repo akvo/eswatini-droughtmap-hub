@@ -414,7 +414,7 @@ under the size it already is:
 
 Each takes `{open, onClose, station, onSaved}`; the parent refetches on
 `onSaved`. Reuse `SENSOR_OPTIONS` / `STATION_TYPES` from
-`@/static/mocks/citizen-weather` (the add page already does). Surface the
+`@/static/citizen-weather` (the add page already does). Surface the
 API's validation message with `message.error(err.message)` — the backend
 sends human-readable strings ("A user with this email already exists.").
 
