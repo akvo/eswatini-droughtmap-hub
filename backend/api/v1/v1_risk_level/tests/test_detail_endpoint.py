@@ -94,6 +94,9 @@ class RiskLevelDetailEndpointTestCase(APITestCase):
                 "name": "Nkwene",
                 "region": "Shiselweni",
                 "zone": "lower_middleveld",
+                # Null here because the fixture builds the Administration
+                # directly; the seeder is what computes it from the topojson.
+                "area_km2": None,
             },
         )
         self.assertEqual(data["drought"]["key"], "D3")
