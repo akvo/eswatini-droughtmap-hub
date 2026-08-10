@@ -4,6 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import { Button, Tag, Table, Spin } from "antd";
 import Link from "next/link";
 import CWHeader from "@/components/CitizenWeather/CWHeader";
+import {
+  buildTrailingMonths,
+  periodToFullLabel,
+} from "@/components/CitizenWeather/utils";
 import { TabButtons } from "@/components";
 import { api } from "@/lib";
 
@@ -20,21 +24,6 @@ const STATUS_MAP = {
   missed: { color: "#667085", label: "Missed" },
   draft: { color: "#FAAD14", label: "Draft" },
 };
-
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 const MONTH_NAMES_SHORT = [
   "Jan",
@@ -66,13 +55,6 @@ const periodToLabel = (period) => {
   return `${MONTH_NAMES_SHORT[idx]} ${year}`;
 };
 
-/** Convert "YYYY-MM" to full label like "May 2026" */
-const periodToFullLabel = (period) => {
-  const [year, month] = period.split("-");
-  const idx = parseInt(month, 10) - 1;
-  return `${MONTH_NAMES[idx]} ${year}`;
-};
-
 /**
  * Derive status from a data row.
  * - submitted:true + all fields non-null -> "complete"
@@ -86,18 +68,11 @@ const deriveStatus = (row) => {
 };
 
 /**
- * Build the full 12-month window ending at the current month.
+ * Build the full 12-month window ending at the last fully-ended month.
  * Months not present in the API data array are marked as "missed".
  */
 const buildHistory = (apiData) => {
-  const now = new Date();
-  const months = [];
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    months.push(period);
-  }
-
+  const months = buildTrailingMonths();
   const dataByPeriod = {};
   (apiData || []).forEach((row) => {
     dataByPeriod[row.period] = row;
