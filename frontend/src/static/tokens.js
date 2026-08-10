@@ -6,7 +6,7 @@
  *   - antTheme.js          -> import tokens from "@/static/tokens" (Ant ConfigProvider)
  *
  * The drought-band palette is NOT mirrored here — it stays owned by
- * DROUGHT_CATEGORY_COLOR in static/config.js (the data layer) to avoid
+ * DROUGHT_CATEGORY_COLOR in static/config/drought.js (the data layer) to avoid
  * duplicating the same hexes in two files.
  *
  * Values are the pixel-equivalent seed (current code values) plus the Figma

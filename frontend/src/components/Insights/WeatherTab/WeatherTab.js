@@ -132,7 +132,7 @@ const WeatherTab = ({
       >
         <MetricItemCard
           label={satelliteDifference.label}
-          value={`+${satelliteDifference.value} ${satelliteDifference.units}`}
+          value={`${satelliteDifference.value} ${satelliteDifference.units}`}
           change={satelliteDifference.meta.change}
           changeUnits={satelliteDifference.units}
           footnote={`vs ${satelliteDifference.meta.comparator} last month`}

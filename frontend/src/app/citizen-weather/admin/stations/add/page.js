@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Can, PageHeader } from "@/components";
 import { api } from "@/lib";
-import { SENSOR_OPTIONS, STATION_TYPES } from "@/static/mocks/citizen-weather";
+import { SENSOR_OPTIONS, STATION_TYPES } from "@/static/citizen-weather";
 
 const AddStationPage = () => {
   const router = useRouter();

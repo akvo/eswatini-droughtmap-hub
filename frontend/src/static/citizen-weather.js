@@ -21,6 +21,10 @@ export const STATION_TYPES = [
   "School-built station",
 ];
 
+// Nudge copy presets. The admin picks a tone, edits the filled-in text, and the
+// result is POSTed as `message` to /weather/citizen-science/reminders — so this
+// is editable default copy, not a fixture. {name}/{month}/{station} are
+// substituted client-side in NudgeModal.
 export const NUDGE_TONES = {
   friendly: {
     label: "Friendly nudge",

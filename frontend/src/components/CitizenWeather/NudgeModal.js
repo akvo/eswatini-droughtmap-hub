@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { Modal, Input, Button, message } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
 import { api } from "@/lib";
-import { NUDGE_TONES } from "@/static/mocks/citizen-weather";
+import { NUDGE_TONES } from "@/static/citizen-weather";
 
 const { TextArea } = Input;
 

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import AddStationPage from "../page";
-import { SENSOR_OPTIONS } from "@/static/mocks/citizen-weather";
+import { SENSOR_OPTIONS } from "@/static/citizen-weather";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),

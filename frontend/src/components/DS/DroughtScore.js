@@ -9,7 +9,7 @@ import { textOn } from "@/lib/helper";
 /**
  * D-score chip (EDM design system form: 48x25, radius 4, 600 weight).
  *
- * Hue and copy come from DROUGHT_CATEGORY_* in static/config.js — the backend
+ * Hue and copy come from DROUGHT_CATEGORY_* in static/config/drought.js — the backend
  * owns the ramp, so the badge can never disagree with the map (design D-2).
  */
 

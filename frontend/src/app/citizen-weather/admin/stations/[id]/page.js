@@ -15,7 +15,7 @@ import { useParams } from "next/navigation";
 import { Can, PageHeader } from "@/components";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
 import { api, apiText } from "@/lib";
-import { SENSOR_OPTIONS } from "@/static/mocks/citizen-weather";
+import { SENSOR_OPTIONS } from "@/static/citizen-weather";
 
 const TIMELINE_COLORS = {
   full: { bg: "#12b76a", text: "#fff" },
