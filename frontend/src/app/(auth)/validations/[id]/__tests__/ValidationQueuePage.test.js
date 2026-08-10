@@ -68,6 +68,9 @@ jest.mock("@/components/DS", () => ({
   DroughtScore: ({ level }) => (
     <span>{["Normal", "D0", "D1", "D2", "D3", "D4"][level]}</span>
   ),
+  ReviewerAvatar: ({ label, reviewed }) => (
+    <span data-reviewed={reviewed ? "yes" : "no"}>{label}</span>
+  ),
 }));
 
 const replace = jest.fn();
@@ -303,6 +306,27 @@ describe("Validation queue page", () => {
     // A class with a single reviewer carries no count suffix.
     expect(screen.getAllByText("D2")).toHaveLength(1);
     expect(screen.queryByText("×1")).not.toBeInTheDocument();
+  });
+
+  it("collapses reviewers past the fifth slot into one +N avatar", async () => {
+    // 22 avatars ran straight out of the column and off the next one.
+    respond([
+      {
+        ...ROW,
+        reviewers: Array.from({ length: 22 }, (_, i) => ({
+          id: i,
+          label: "JW",
+          name: `Reviewer ${i}`,
+          group: 3,
+        })),
+      },
+    ]);
+    await renderPage();
+
+    expect(screen.getByText("22 users")).toBeInTheDocument();
+    expect(screen.getAllByText("JW")).toHaveLength(4);
+    // The overflow avatar stands for the other 18, and says whom.
+    expect(screen.getByText("+18")).toBeInTheDocument();
   });
 
   it("sends ?agreement= straight through to the server", async () => {

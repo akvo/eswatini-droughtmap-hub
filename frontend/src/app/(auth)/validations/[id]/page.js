@@ -26,7 +26,7 @@ import {
   LeftOutlined,
 } from "@ant-design/icons";
 import { Can, FeedbackSection, TabButtons } from "@/components";
-import { DroughtScore, MetricCard } from "@/components/DS";
+import { DroughtScore, MetricCard, ReviewerAvatar } from "@/components/DS";
 import { api } from "@/lib";
 import {
   MIN_TWGS_PER_PUBLICATION,
@@ -65,6 +65,8 @@ const AGREEMENT = {
   disagreement: "disagreement",
 };
 
+const MAX_AVATARS = 5;
+
 const STATUS_CONFIG = {
   ready: { label: "Ready", bg: "#FFCD37" },
   awaiting: { label: "Awaiting", bg: "#F39C12" },
@@ -95,46 +97,51 @@ const StatusBadge = ({ status, total }) => {
   );
 };
 
-const ReviewerAvatars = ({ reviewers = [] }) => (
-  <div className="flex items-center gap-1">
-    <span className="text-sm text-[#606060] mr-1">
-      {reviewers.length} user{reviewers.length !== 1 ? "s" : ""}
-    </span>
-    <Avatar.Group
-      max={{
-        count: 5,
-        style: { backgroundColor: "#3E5EB9", fontSize: 11 },
-      }}
-      size={24}
-    >
-      {reviewers.map((r) => (
-        <Tooltip key={r.id} title={r.name || r.label}>
-          <span className="relative inline-block">
-            <Avatar
-              size={24}
+/**
+ * "5 users" + the overlapping avatar group (Figma 3254:40080). Antd's
+ * Avatar.Group is not used: it clones its children to force its own size and
+ * ring, which strips the tick badge off every avatar it wraps. The -4px
+ * overlap the design asks for is one margin.
+ *
+ * MAX_AVATARS is the number of *slots*, not of reviewers: with 22 reviewers
+ * the last slot becomes "+17", so the group is the same width whatever the
+ * publication's headcount and cannot outgrow the column. The overflow avatar
+ * carries the names it stands for — otherwise 17 of 22 reviewers were
+ * unreachable from this screen.
+ */
+const ReviewerAvatars = ({ reviewers = [] }) => {
+  const overflow = reviewers.length > MAX_AVATARS;
+  const shown = reviewers.slice(0, overflow ? MAX_AVATARS - 1 : MAX_AVATARS);
+  const hidden = reviewers.slice(shown.length);
+  return (
+    <div className="flex items-center gap-3">
+      <span className="shrink-0 text-sm leading-[21px] text-[#606060] whitespace-nowrap">
+        {reviewers.length} user{reviewers.length !== 1 ? "s" : ""}
+      </span>
+      <div className="flex items-start shrink-0">
+        {shown.map((r, index) => (
+          <Tooltip key={r.id} title={r.name || r.label}>
+            <span
+              className="shrink-0"
               style={{
-                backgroundColor: r.reviewed ? "#3E5EB9" : "#D0D5E4",
-                fontSize: 11,
+                marginRight: !overflow && index === shown.length - 1 ? 0 : -4,
               }}
             >
-              {r.label}
-            </Avatar>
-            {r.reviewed && (
-              <span
-                className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[#12B76A]"
-                style={{ width: 10, height: 10 }}
-              >
-                <svg width="6" height="6" viewBox="0 0 6 6" fill="none">
-                  <path d="M1 3L2.5 4.5L5 1.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            )}
-          </span>
-        </Tooltip>
-      ))}
-    </Avatar.Group>
-  </div>
-);
+              <ReviewerAvatar label={r.label} reviewed={r.reviewed} />
+            </span>
+          </Tooltip>
+        ))}
+        {overflow && (
+          <Tooltip title={hidden.map((r) => r.name || r.label).join(", ")}>
+            <span className="shrink-0">
+              <ReviewerAvatar label={`+${hidden.length}`} />
+            </span>
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+};
 
 /**
  * The D-classes the reviewers submitted. Hue and copy come from
@@ -366,13 +373,13 @@ const ValidationDetailPage = () => {
     {
       title: "REVIEWER MIX",
       key: "reviewer_mix",
-      width: 160,
+      width: 180,
       render: (_, record) => <ReviewerAvatars reviewers={record.reviewers} />,
     },
     {
       title: "D-CLASS SPREAD",
       key: "dclass_spread",
-      width: 200,
+      width: 210,
       render: (_, record) => <DClassSpread levels={record.dclass_spread} />,
     },
     {
@@ -402,7 +409,7 @@ const ValidationDetailPage = () => {
       title: "STATUS",
       dataIndex: "status",
       key: "status",
-      width: 200,
+      width: 120,
       render: (value, record) => (
         <div className="flex items-center gap-2">
           <StatusBadge status={value} total={record.awaiting_count} />
@@ -424,11 +431,11 @@ const ValidationDetailPage = () => {
       title: "ACTIONS",
       key: "actions",
       width: 90,
-      align: "right",
+      align: "center",
       render: (_, record) => (
         <Button
           type="link"
-          className="edm-reviews-action"
+          className="edm-reviews-action w-full"
           onClick={() => {
             // Carry status + search so the decision page can resolve
             // Previous/Next and send the admin back to the same tab. `page`
