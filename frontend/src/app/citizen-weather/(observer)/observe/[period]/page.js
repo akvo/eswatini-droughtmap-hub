@@ -11,6 +11,11 @@ import {
 import Link from "next/link";
 import CWHeader from "@/components/CitizenWeather/CWHeader";
 import { Thermometer, Droplet } from "@/components/CitizenWeather/CWIcons";
+import {
+  buildTrailingMonths,
+  periodToFullLabel,
+  numericKeyDown,
+} from "@/components/CitizenWeather/utils";
 import { api } from "@/lib";
 
 const { TextArea } = Input;
@@ -72,49 +77,17 @@ const ALL_FIELDS = [
   },
 ];
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-/** Build the 12-month trailing window as YYYY-MM strings. */
-const buildTrailingWindow = () => {
-  const now = new Date();
-  const months = [];
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-    );
-  }
-  return months;
-};
 
 const PeriodFormPage = () => {
   const params = useParams();
   const router = useRouter();
   const period = params.period;
 
-  const periodLabel = useMemo(() => {
-    if (!period) return "";
-    const [year, month] = period.split("-");
-    const monthIndex = parseInt(month, 10) - 1;
-    return `${MONTH_NAMES[monthIndex] || month} ${year}`;
-  }, [period]);
+  const periodLabel = useMemo(() => periodToFullLabel(period), [period]);
 
   // Client-side window check (D-2 / D-8: UX guard, server enforces too)
   const isInWindow = useMemo(
-    () => buildTrailingWindow().includes(period),
+    () => buildTrailingMonths().includes(period),
     [period],
   );
 
@@ -324,6 +297,8 @@ const PeriodFormPage = () => {
                       value={values[field.key]}
                       onChange={(v) => setValues({ ...values, [field.key]: v })}
                       controls={false}
+                      keyboard
+                      onKeyDown={numericKeyDown}
                     />
                     <div className="text-xs text-[#606060] mt-2">
                       {field.hint}
