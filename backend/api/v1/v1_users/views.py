@@ -44,7 +44,7 @@ from utils.custom_serializer_fields import validate_serializers_message
 from utils.default_serializers import DefaultResponseSerializer
 from uuid import uuid4
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
-from utils.custom_permissions import IsAdmin
+from utils.custom_permissions import IsReviewer, IsAdmin
 from utils.custom_pagination import Pagination
 
 
@@ -505,12 +505,20 @@ class ReviewerListAPI(GenericAPIView):
 
 
 class ReviewerTreeAPI(GenericAPIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    # Widened, not swapped: admins keep access whether or not they belong to a
+    # TWG (StartPublicationSlideIn needs this roster, and an admin with no TWG
+    # is normal), and TWG members gain it because Brief Builder is open to
+    # reviewers who must forward to colleagues in or outside their own group
+    # (BB-3 D-4). The TWG half matches the gate BriefForwardView already
+    # enforces on the sender. Unpaginated by design — the whole roster, or the
+    # picker quietly lies about who exists.
+    permission_classes = [IsAuthenticated, IsAdmin | IsReviewer]
 
     @extend_schema(
         summary="Get reviewers tree",
         description=(
-            "Fetch all reviewers grouped by TechnicalWorkingGroup for TreeSelect"
+            "Fetch all reviewers grouped by TechnicalWorkingGroup for "
+            "TreeSelect. Requires TWG membership."
         ),
         tags=["Admin"],
         responses={200: inline_serializer("ReviewerTreeResponse", fields={})},
