@@ -77,7 +77,6 @@ const ALL_FIELDS = [
   },
 ];
 
-
 const PeriodFormPage = () => {
   const params = useParams();
   const router = useRouter();

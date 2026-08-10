@@ -1,11 +1,16 @@
+// key/field mirror backend CS_SENSORS; wind_speed has no reading field.
 export const SENSOR_OPTIONS = [
-  { key: "min_temp", label: "Min temperature" },
-  { key: "max_temp", label: "Max temperature" },
-  { key: "rain_gauge", label: "Rain gauge" },
-  { key: "soil_moisture", label: "Soil moisture" },
+  { key: "min_temp", label: "Min temperature", field: "min_temperature" },
+  { key: "max_temp", label: "Max temperature", field: "max_temperature" },
+  { key: "rain_gauge", label: "Rain gauge", field: "precipitation" },
+  { key: "soil_moisture", label: "Soil moisture", field: "soil_moisture" },
   // keys must match backend CS_SENSORS — this one is not abbreviated
-  { key: "soil_temperature", label: "Soil temperature" },
-  { key: "wind_speed", label: "Wind speed" },
+  {
+    key: "soil_temperature",
+    label: "Soil temperature",
+    field: "soil_temperature",
+  },
+  { key: "wind_speed", label: "Wind speed", field: null },
 ];
 
 export const STATION_TYPES = [

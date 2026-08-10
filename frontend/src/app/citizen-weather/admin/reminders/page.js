@@ -12,12 +12,18 @@ const NextReminderPreview = ({ day, time, deadline, followUp1, followUp2 }) => {
     const now = new Date();
     // Next reminder is the 1st (or chosen day) of next month
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const reminderDay = day === "last"
-      ? new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 0).getDate()
-      : Math.min(parseInt(day, 10) || 1, 28);
-    const reminderDate = day === "last"
-      ? new Date(nextMonth.getFullYear(), nextMonth.getMonth() - 1, reminderDay)
-      : new Date(nextMonth.getFullYear(), nextMonth.getMonth(), reminderDay);
+    const reminderDay =
+      day === "last"
+        ? new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 0).getDate()
+        : Math.min(parseInt(day, 10) || 1, 28);
+    const reminderDate =
+      day === "last"
+        ? new Date(
+            nextMonth.getFullYear(),
+            nextMonth.getMonth() - 1,
+            reminderDay,
+          )
+        : new Date(nextMonth.getFullYear(), nextMonth.getMonth(), reminderDay);
     const reportMonth = MONTH_NAMES[now.getMonth()];
 
     const deadlineDays = deadline === "none" ? null : parseInt(deadline, 10);
@@ -57,20 +63,22 @@ const NextReminderPreview = ({ day, time, deadline, followUp1, followUp2 }) => {
           <b className="text-[#333333]">
             {formatDate(preview.reminderDate)} &middot; {time} SAST
           </b>{" "}
-          &rarr; observers across all 4 regions receive their {preview.reportMonth} reminder.
+          &rarr; observers across all 4 regions receive their{" "}
+          {preview.reportMonth} reminder.
           {(preview.fu1Date || preview.fu2Date) && (
             <div className="text-xs text-[#606060] mt-2 leading-relaxed">
               {preview.fu1Date && (
                 <>
-                  Follow-up 1: {formatDate(preview.fu1Date)} &middot; {time} &middot; sent only to
-                  observers who haven&apos;t submitted yet.
+                  Follow-up 1: {formatDate(preview.fu1Date)} &middot; {time}{" "}
+                  &middot; sent only to observers who haven&apos;t submitted
+                  yet.
                 </>
               )}
               {preview.fu1Date && preview.fu2Date && <br />}
               {preview.fu2Date && (
                 <>
-                  Follow-up 2 (final): {formatDate(preview.fu2Date)} &middot; {time} &middot; sent
-                  only to observers still missing.
+                  Follow-up 2 (final): {formatDate(preview.fu2Date)} &middot;{" "}
+                  {time} &middot; sent only to observers still missing.
                 </>
               )}
             </div>
@@ -305,7 +313,13 @@ const ReminderSchedulePage = () => {
           </div>
 
           {/* Next scheduled preview */}
-          <NextReminderPreview day={day} time={time} deadline={deadline} followUp1={followUp1} followUp2={followUp2} />
+          <NextReminderPreview
+            day={day}
+            time={time}
+            deadline={deadline}
+            followUp1={followUp1}
+            followUp2={followUp2}
+          />
 
           {/* Bottom actions */}
           <div className="flex flex-wrap items-center gap-3 py-4">

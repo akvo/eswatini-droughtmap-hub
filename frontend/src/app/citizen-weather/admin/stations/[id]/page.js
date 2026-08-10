@@ -15,6 +15,7 @@ import { useParams } from "next/navigation";
 import { Can, PageHeader } from "@/components";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
 import { api, apiText } from "@/lib";
+import { SENSOR_OPTIONS } from "@/static/mocks/citizen-weather";
 
 const TIMELINE_COLORS = {
   full: { bg: "#12b76a", text: "#fff" },
@@ -22,47 +23,99 @@ const TIMELINE_COLORS = {
   miss: { bg: "#eaecf0", text: "#667085" },
 };
 
+const WINDOW_MONTHS = 12;
+const ALL_FIELDS = SENSOR_OPTIONS.map((s) => s.field).filter(Boolean);
+
+// Mirrors the backend trailing window (v1_weather/citizen_science.py): the
+// newest fully-ended month is the last reportable one. Oldest first.
+const trailingWindow = () => {
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return Array.from(
+    { length: WINDOW_MONTHS },
+    (_, i) =>
+      new Date(end.getFullYear(), end.getMonth() - (WINDOW_MONTHS - 1 - i), 1),
+  );
+};
+
+const periodKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+// The API returns only submitted months; absent months are misses, never
+// fabricated. Completeness of a month is judged against the station's own
+// sensors (no sensors recorded -> all fields, same as the observer form).
+const buildTimeline = (months, history, sensors) => {
+  const rows = new Map((history || []).map((r) => [r.period, r]));
+  const fields = (sensors || [])
+    .map((key) => SENSOR_OPTIONS.find((s) => s.key === key)?.field)
+    .filter(Boolean);
+  const expected = fields.length ? fields : ALL_FIELDS;
+  return months.map((d) => {
+    const row = rows.get(periodKey(d));
+    const reported = row
+      ? expected.filter((f) => row[f] !== null && row[f] !== undefined).length
+      : 0;
+    return {
+      month: d.toLocaleString("en-GB", { month: "short" }),
+      status: !reported
+        ? "miss"
+        : reported === expected.length
+          ? "full"
+          : "partial",
+    };
+  });
+};
+
 const StationDetailPage = () => {
   const params = useParams();
   const id = params.id;
   const [showNudge, setShowNudge] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [station, setStation] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [completeness, setCompleteness] = useState(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    try {
-      const [stationsRes, timelineRes] = await Promise.all([
-        api("GET", "/weather/citizen-science/stations"),
-        api("GET", `/weather/administrations/${id}/citizen-science?history=12`),
-      ]);
+    setLoadError(null);
+    const months = trailingWindow();
+    const period = periodKey(months[months.length - 1]);
+    // period is required by the API — without it the request 400s.
+    const [stationsRes, timelineRes] = await Promise.allSettled([
+      api("GET", "/weather/citizen-science/stations"),
+      api(
+        "GET",
+        `/weather/administrations/${id}/citizen-science` +
+          `?period=${period}&history=${WINDOW_MONTHS}`,
+      ),
+    ]);
+    setLoading(false);
 
-      const row = (stationsRes.data || []).find(
-        (r) => String(r.key) === String(id),
+    if (stationsRes.status === "rejected") {
+      setLoadError(
+        stationsRes.reason?.message || "Failed to load station details.",
       );
-      if (row) {
-        const pct =
-          row.completeness.of > 0
-            ? Math.round(
-                (row.completeness.reported / row.completeness.of) * 100,
-              )
-            : 0;
-        setStation(row);
-        setCompleteness(pct);
-      }
+      return;
+    }
+    const row = (stationsRes.value?.data || []).find(
+      (r) => String(r.key) === String(id),
+    );
+    setStation(row || null);
+    setCompleteness(
+      row?.completeness?.of > 0
+        ? Math.round((row.completeness.reported / row.completeness.of) * 100)
+        : 0,
+    );
 
-      if (timelineRes) {
-        const months = Array.isArray(timelineRes)
-          ? timelineRes
-          : timelineRes.data || timelineRes.timeline || [];
-        setTimeline(months);
-      }
-    } catch (err) {
-      message.error("Failed to load station details.");
-    } finally {
-      setLoading(false);
+    if (timelineRes.status === "fulfilled") {
+      setTimeline(
+        buildTimeline(months, timelineRes.value?.history, row?.sensors),
+      );
+    } else {
+      // A failed timeline must not hide the station — empty grid + a toast.
+      setTimeline([]);
+      message.error("Failed to load the submission timeline.");
     }
   }, [id]);
 
@@ -103,6 +156,31 @@ const StationDetailPage = () => {
           <Spin size="large" />
         </div>
       </div>
+    );
+  }
+
+  // A failed load is an error, not an empty state — don't claim there is
+  // no observer when we simply could not ask.
+  if (loadError) {
+    return (
+      <Can I="read" a="CitizenScience">
+        <div className="w-full h-auto">
+          <PageHeader
+            title="Could not load this station"
+            description={loadError}
+            actions={
+              <Space>
+                <Link href="/citizen-weather/admin">
+                  <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
+                </Link>
+                <Button type="primary" onClick={fetchData}>
+                  Try again
+                </Button>
+              </Space>
+            }
+          />
+        </div>
+      </Can>
     );
   }
 
@@ -189,26 +267,22 @@ const StationDetailPage = () => {
                     label="Sensors"
                     value={
                       <div className="flex flex-wrap gap-1.5">
-                        {sensors.map((sen, i) => (
-                          <Tag
-                            key={sen.key || i}
-                            className={
-                              sen.active ? "edm-reviews-status-tag" : ""
-                            }
-                            color={sen.active ? "#12b76a" : undefined}
-                            style={
-                              !sen.active
-                                ? {
-                                    background: "#f2f4f7",
-                                    color: "#667085",
-                                    border: "none",
-                                  }
-                                : undefined
-                            }
-                          >
-                            {sen.label}
-                          </Tag>
-                        ))}
+                        {sensors.length ? (
+                          sensors.map((key) => (
+                            <Tag
+                              key={key}
+                              className="edm-reviews-status-tag"
+                              color="#12b76a"
+                            >
+                              {SENSOR_OPTIONS.find((s) => s.key === key)
+                                ?.label || key}
+                            </Tag>
+                          ))
+                        ) : (
+                          <span className="text-xs text-[#606060]">
+                            Not specified
+                          </span>
+                        )}
                       </div>
                     }
                     noBorder
