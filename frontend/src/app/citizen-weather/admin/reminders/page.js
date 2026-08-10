@@ -46,7 +46,7 @@ const NextReminderPreview = ({ day, time, deadline, followUp1, followUp2 }) => {
     }
 
     return { reminderDate, reportMonth, fu1Date, fu2Date };
-  }, [day, time, deadline, followUp1, followUp2]);
+  }, [day, deadline, followUp1, followUp2]);
 
   return (
     <section className="border border-cardBorder bg-white mb-4">

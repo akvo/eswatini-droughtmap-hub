@@ -63,7 +63,7 @@ describe("WeatherColumn (MET + citizen-science blocks)", () => {
     render(<WeatherColumn weather={metWeather} citizenScience={noData} />);
     expect(
       screen.getByText(
-        "No citizen-science submission for this Inkhundla this month.",
+        "No citizen science weather observation submission for this Inkhundla this month.",
       ),
     ).toBeInTheDocument();
   });
@@ -87,7 +87,7 @@ describe("WeatherColumn (MET + citizen-science blocks)", () => {
     render(<WeatherColumn weather={metWeather} citizenScience={null} />);
     expect(
       screen.getByText(
-        "No citizen-science submission for this Inkhundla this month.",
+        "No citizen science weather observation submission for this Inkhundla this month.",
       ),
     ).toBeInTheDocument();
   });

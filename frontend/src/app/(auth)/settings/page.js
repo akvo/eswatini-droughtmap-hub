@@ -396,58 +396,30 @@ const SettingsPage = () => {
                       <h3 className="text-base font-semibold text-[#333333] mb-4">
                         CDI Weight
                       </h3>
-                      <Form.Item
-                        label="LST Weight"
-                        name="lst_weight"
-                        rules={[{ required: true }]}
-                      >
-                        <InputNumber
-                          step={0.1}
-                          min={0}
-                          max={1}
-                          placeholder="LST Weight"
-                          style={{ width: "50%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        label="NDVI Weight"
-                        name="ndvi_weight"
-                        rules={[{ required: true }]}
-                      >
-                        <InputNumber
-                          step={0.1}
-                          min={0}
-                          max={1}
-                          placeholder="NDVI Weight"
-                          style={{ width: "50%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        label="SPI Weight"
-                        name="spi_weight"
-                        rules={[{ required: true }]}
-                      >
-                        <InputNumber
-                          step={0.1}
-                          min={0}
-                          max={1}
-                          placeholder="SPI Weight"
-                          style={{ width: "50%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        label="SM Weight"
-                        name="sm_weight"
-                        rules={[{ required: true }]}
-                      >
-                        <InputNumber
-                          step={0.1}
-                          min={0}
-                          max={1}
-                          placeholder="SM Weight"
-                          style={{ width: "50%" }}
-                        />
-                      </Form.Item>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                        {[
+                          ["LST Weight", "lst_weight"],
+                          ["NDVI Weight", "ndvi_weight"],
+                          ["SPI Weight", "spi_weight"],
+                          ["SM Weight", "sm_weight"],
+                        ].map(([label, name]) => (
+                          <Form.Item
+                            key={name}
+                            label={label}
+                            name={name}
+                            rules={[{ required: true }]}
+                          >
+                            <InputNumber
+                              step={0.1}
+                              min={0}
+                              max={1}
+                              placeholder={label}
+                              // ponytail: inline style — antd's runtime CSS beats Tailwind's w-full
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                        ))}
+                      </div>
                       <div className="w-full">
                         <Button
                           type="primary"

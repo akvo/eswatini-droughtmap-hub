@@ -336,7 +336,8 @@ const WeatherColumn = ({ weather, citizenScience }) => {
         />
       ) : (
         <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
-          No citizen-science submission for this Inkhundla this month.
+          No citizen science weather observation submission for this Inkhundla
+          this month.
         </div>
       )}
 
