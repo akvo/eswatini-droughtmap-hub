@@ -12,13 +12,19 @@ import { ACTIVITY_STATUS } from "@/static/config";
  * requests to show one header. The charts are the exception — they own their
  * own range picker and fetch per range, exactly as they do in the Weather tab.
  *
- * allSettled, not all: three of these are reachable only by some callers
+ * allSettled, not all: some of these are reachable only by some callers
  * (/activities is CanManageActivity-gated) and the design wants a section to
  * degrade to its own placeholder while its neighbours still render. A rejection
- * therefore lands as null in that slot and nowhere else.
+ * therefore lands as null in that slot and nowhere else — a 500 on the
+ * situation draft must not blank the cover, the tiles or the charts.
  */
 const useBriefData = (administrationId) => {
-  const [data, setData] = useState({ cdi: null, risk: null, activities: [] });
+  const [data, setData] = useState({
+    cdi: null,
+    risk: null,
+    activities: [],
+    situation: null,
+  });
   // Seeded from the argument, not hardcoded false. Landing on a URL that
   // already names an Inkhundla must open in the loading state — starting false
   // renders one frame of "no data" sections before the effect flips it, which
@@ -27,7 +33,7 @@ const useBriefData = (administrationId) => {
 
   useEffect(() => {
     if (!administrationId) {
-      setData({ cdi: null, risk: null, activities: [] });
+      setData({ cdi: null, risk: null, activities: [], situation: null });
       // Must clear here too: leaving it true strands the spinner forever when
       // the id goes away (Clear all, or an id that fails validation).
       setLoading(false);
@@ -36,10 +42,11 @@ const useBriefData = (administrationId) => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const [cdi, risk, activities] = await Promise.allSettled([
+      const [cdi, risk, activities, situation] = await Promise.allSettled([
         api("GET", `/cdi/administrations/${administrationId}/stats`),
         api("GET", `/risk-levels/${administrationId}`),
         api("GET", `/activities?status=${ACTIVITY_STATUS.active}`),
+        api("GET", `/brief/${administrationId}/situation`),
       ]);
       if (cancelled) {
         return;
@@ -57,6 +64,7 @@ const useBriefData = (administrationId) => {
             ? risk.value
             : null,
         activities: Array.isArray(activityList) ? activityList : [],
+        situation: situation.status === "fulfilled" ? situation.value : null,
       });
       setLoading(false);
     };
