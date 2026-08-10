@@ -14,6 +14,7 @@ from api.v1.v1_publication.models import Publication
 from api.v1.v1_publication.validation.utils import (
     build_validation_stats,
     consensus,
+    progress_reviews,
     reviewers_required,
     row_status,
 )
@@ -457,6 +458,26 @@ class ValidationQueueAPIsTestCase(APITestCase):
             review.user.save()
         expected = 2 if len(reviews) > 1 else 1
         self.assertEqual(reviewers_required(self.publication), expected)
+
+    def test_progress_reviews_denominator_is_assigned_twgs(self):
+        """The denominator is who was asked, not the size of the TWG enum.
+
+        Two TWGs assigned and both submitted reads 2/2 — it used to read 2/5
+        and never reach completion, because three TWGs that were never
+        assigned sat in the denominator forever.
+        """
+        reviews = list(self.publication.reviews.all())
+        self.assertGreater(len(reviews), 1, "fixture needs >1 reviewer")
+        for index, review in enumerate(reviews):
+            review.user.technical_working_group = (
+                TechnicalWorkingGroup.met if index % 2
+                else TechnicalWorkingGroup.dwa
+            )
+            review.user.save()
+            review.is_completed = True
+            review.save()
+        self.assertLess(2, len(TechnicalWorkingGroup.FieldStr))
+        self.assertEqual(progress_reviews(self.publication), "2/2")
 
     def test_reviewer_without_a_twg_moves_no_counter(self):
         for review in self.publication.reviews.all():
