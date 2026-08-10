@@ -105,6 +105,10 @@ const config = {
     "^next/navigation$": require.resolve("next/navigation"),
     "^jose": require.resolve("jose"),
     "^@/(.*)$": "<rootDir>/src/$1",
+    // static/config became a directory in 7a3f6e5. Jest's resolver appends
+    // ".js" to the request rather than falling back to the directory's
+    // index.js, so every suite that touches config failed to even load.
+    "^(.*)static/config$": "<rootDir>/src/static/config/index.js",
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
