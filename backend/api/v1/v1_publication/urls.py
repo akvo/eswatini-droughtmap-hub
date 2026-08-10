@@ -29,13 +29,18 @@ from .validation.view import (
 )
 from .twg.view import ReviewerAssignmentAPI
 from .insights.view import CDIExplorerStatsAPI, CDIExplorerSeriesAPI
-from .brief.view import BriefForwardView
+from .brief.view import BriefForwardView, BriefSituationView
 
 urlpatterns = [
     re_path(
         r"^(?P<version>(v1))/brief/forward$",
         BriefForwardView.as_view(),
         name="brief-forward",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/brief/(?P<administration_id>[0-9]+)/situation$",
+        BriefSituationView.as_view(),
+        name="brief-situation",
     ),
     re_path(r"^(?P<version>(v1))/config.js", get_config_file),
     # CDI Explorer (INS-3). Under /cdi/ rather than nested below

@@ -34,3 +34,25 @@ class BriefForwardRequestSerializer(serializers.Serializer):
                     f"'{email}' is not a valid email address."
                 )
         return value
+
+
+class BriefSituationMetaSerializer(serializers.Serializer):
+    generated = serializers.BooleanField()
+    editable = serializers.BooleanField()
+    # Clause keys that actually fired, e.g. ["dclass", "trend", "iks"].
+    sources = serializers.ListField(child=serializers.CharField())
+
+
+class BriefSituationAdministrationSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class BriefSituationResponseSerializer(serializers.Serializer):
+    """Documentation shape for Swagger. The service composes a plain dict."""
+
+    administration = BriefSituationAdministrationSerializer()
+    period = serializers.CharField(allow_null=True)
+    meta = BriefSituationMetaSerializer()
+    # Empty string when every source is silent — never a hedged sentence.
+    value = serializers.CharField(allow_blank=True)
