@@ -2,25 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  Button,
-  Checkbox,
-  Input,
-  Select,
-  TreeSelect,
-  Tooltip,
-  message,
-} from "antd";
+import { Button, Checkbox, Input, TreeSelect, message } from "antd";
 import dayjs from "dayjs";
 import useBriefRecipients from "@/hooks/useBriefRecipients";
 import { api } from "@/lib/api";
-import { BRIEF_COMPONENTS, TWG_OPTIONS } from "@/static/config";
+import { BRIEF_COMPONENTS } from "@/static/config";
 
 const { TextArea } = Input;
-
-const TWG_MAP = Object.fromEntries(
-  (TWG_OPTIONS || []).map((t) => [t.value, t.label]),
-);
 
 // Good enough to catch a typo before submit; the real check belongs to the
 // send endpoint, which does not exist yet.
@@ -28,48 +16,6 @@ const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 const SHORT_BY_KEY = Object.fromEntries(
   BRIEF_COMPONENTS.flatMap((g) => g.data).map((c) => [c.key, c.short]),
-);
-
-/**
- * One recipient row (Figma 4878:159173 "Checkbox group item").
- *
- * The design's selector is drawn as a circle, but the component is a checkbox
- * group and forwarding to several people is the point — so it behaves as a
- * checkbox and is announced as one. The whole row is the label, which gives a
- * comfortable hit target without a second focusable element.
- */
-const RecipientRow = ({ recipient, checked, onToggle }) => (
-  <label className="flex w-full cursor-pointer items-start gap-4 rounded-lg border border-[#d2d2d2] bg-white p-3">
-    <span className="flex flex-1 flex-col">
-      <span className="text-base leading-6 text-[#333]">
-        {recipient.name}
-        {recipient.group && (
-          <span className="ml-2 text-xs font-semibold text-neutral-500">
-            ({recipient.group})
-          </span>
-        )}
-      </span>
-      <span className="text-sm leading-[21px] text-[#606060]">
-        {recipient.email}
-      </span>
-    </span>
-    <span className="flex items-center py-1">
-      <input
-        type="checkbox"
-        className="sr-only"
-        checked={checked}
-        onChange={() => onToggle(recipient.id)}
-      />
-      <span
-        aria-hidden
-        className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-          checked ? "border-primary bg-primary" : "border-[#d0d5dd] bg-white"
-        }`}
-      >
-        {checked && <span className="size-1.5 rounded-full bg-white" />}
-      </span>
-    </span>
-  </label>
 );
 
 /**
@@ -95,9 +41,8 @@ const ForwardBriefSlideIn = ({
   period,
   components = [],
 }) => {
-  const { data: recipients, loading, isFallback } = useBriefRecipients(visible);
+  const { tree = [], loading } = useBriefRecipients(visible);
 
-  const [twgFilter, setTwgFilter] = useState([]);
   const [selected, setSelected] = useState([]);
   const [other, setOther] = useState("");
   const [note, setNote] = useState("");
@@ -105,35 +50,17 @@ const ForwardBriefSlideIn = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Build TreeSelect data hierarchy grouped by TWG (matching StartPublicationSlideIn pattern)
-  const recipientTree = useMemo(() => {
-    const groupMap = {};
-
-    recipients.forEach((r) => {
-      const twgVal =
-        r.technical_working_group ?? r.group ?? r.twg ?? r.organization;
-      const groupName =
-        TWG_MAP[twgVal] ||
-        (typeof twgVal === "string" && twgVal.trim() ? twgVal : null) ||
-        "Unassigned TWG";
-
-      if (!groupMap[groupName]) {
-        groupMap[groupName] = [];
-      }
-      groupMap[groupName].push({
-        title: r.name ? `${r.name} (${r.email})` : r.email,
-        value: r.id,
-        key: r.id,
-      });
-    });
-
-    return Object.entries(groupMap).map(([groupName, children]) => ({
-      title: groupName,
-      value: `twg-group-${groupName}`,
-      key: `twg-group-${groupName}`,
-      children,
-    }));
-  }, [recipients]);
+  // The endpoint returns the TWG grouping already; this only flattens it so a
+  // selected id can be turned back into the {email, name} the API wants.
+  const byId = useMemo(() => {
+    const out = {};
+    tree.forEach((group) =>
+      (group.children ?? []).forEach((child) => {
+        out[child.value] = { name: child.title, email: child.subtitle };
+      }),
+    );
+    return out;
+  }, [tree]);
 
   // Reset on every open, so a previous recipient list never carries into a
   // brief for a different Inkhundla.
@@ -153,11 +80,6 @@ const ForwardBriefSlideIn = ({
     return null;
   }
 
-  const toggle = (id) =>
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-
   const cycle = period ? dayjs(period, "YYYY-MM").format("MMMM YYYY") : null;
   const shortNames = components.map((k) => SHORT_BY_KEY[k]).filter(Boolean);
 
@@ -174,9 +96,9 @@ const ForwardBriefSlideIn = ({
     setSubmitting(true);
     try {
       // 1. Build chosen recipients list
-      const chosenRecipients = recipients
-        .filter((r) => selected.includes(r.id))
-        .map((r) => ({ email: r.email, name: r.name }));
+      const chosenRecipients = selected
+        .map((id) => byId[id])
+        .filter((r) => r?.email);
 
       if (other.trim()) {
         chosenRecipients.push({ email: other.trim(), name: "Other" });
@@ -257,20 +179,12 @@ const ForwardBriefSlideIn = ({
           </p>
 
           <div className="flex flex-col gap-3">
-            {isFallback && (
-              <Tooltip title="The reviewer roster could not be loaded — PublicationViewSet is admin-only, and Brief Builder is open to reviewers. Showing illustrative names until that permission is relaxed.">
-                <span className="w-fit cursor-help rounded border border-cardBorder px-2 py-0.5 text-xs text-neutral-500">
-                  Illustrative recipients
-                </span>
-              </Tooltip>
-            )}
-
             <div className="flex flex-col gap-1.5">
               <label className="text-sm text-[#606060]">
                 Select TWG or team member
               </label>
               <TreeSelect
-                treeData={recipientTree}
+                treeData={tree}
                 value={selected}
                 onChange={setSelected}
                 multiple
