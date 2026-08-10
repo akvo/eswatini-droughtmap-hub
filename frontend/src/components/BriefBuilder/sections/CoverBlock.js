@@ -8,7 +8,6 @@ import {
   DROUGHT_CATEGORY_LABEL,
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
-import coverMock from "@/static/mocks/brief-builder/cover.json";
 import { textOn } from "@/lib/helper";
 
 const zoneLabel = (zone) =>
@@ -20,8 +19,6 @@ const zoneLabel = (zone) =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
-const findMock = (key) => coverMock.data.find((d) => d.key === key) ?? null;
-
 const num = (value) => (value == null ? "—" : value.toLocaleString());
 
 /**
@@ -31,8 +28,15 @@ const num = (value) => (value == null ? "—" : value.toLocaleString());
  * them as one block and each can be ticked without the other — splitting them
  * into separate files would duplicate the D-class and period resolution.
  *
- * FOUR tiles, not the five the empty-state checkbox promised: the validated
- * D-class is the header chip, not a tile (design doc C-3).
+ * THREE tiles. The validated D-class is the header chip rather than a tile
+ * (C-3), and "Total land" is gone: it is undefined rather than unsourced — if
+ * it means the Inkhundla's land area it is the header's km² restated in
+ * hectares, and Figma's own figures rule even that out (6,889 ha is 68.9 km²,
+ * not 128). See BB-3 D-1.
+ *
+ * Every figure here comes from the `/risk-levels/{id}` payload useBriefData
+ * already holds — the eligibility rows carry the absolutes, so the IsAdmin-only
+ * /indicators/{id} never has to be touched.
  */
 const CoverBlock = ({
   showHeader,
@@ -50,14 +54,34 @@ const CoverBlock = ({
     ? dayjs(period, "YYYY-MM").format("D MMMM YYYY")
     : null;
 
-  const area = findMock("area");
-  const peopleExposed = findMock("people_exposed");
-  const rainfed = findMock("rainfed_ha");
-  const totalLand = findMock("total_land");
+  const exposureRow = (key) =>
+    (risk?.exposure?.data ?? []).find((r) => r.key === key) ?? null;
 
-  // The one tile with a live source: /risk-levels/{id} is AllowAny, and its
-  // `vulnerability.value` is the IPC-rescaled 0-1 the design shows as "0.30".
+  // Equal-area km², computed from eswatini.topojson at seed time (BB-3 D-1).
+  const area = risk?.administration?.area_km2 ?? null;
+  const population = exposureRow("population");
+  const rainfed = exposureRow("rainfed_cropland");
+  // /risk-levels/{id} is AllowAny, and its `vulnerability.value` is the
+  // IPC-rescaled 0-1 the design shows as "0.30".
   const susceptibility = risk?.vulnerability?.value;
+
+  // These two tiles do NOT share a provenance, and one flag cannot describe
+  // both (BB-3 D-9):
+  //
+  //   population       <- the NDMA handover workbook, a scored risk input.
+  //                       `source.is_placeholder` genuinely describes it.
+  //   rainfed_cropland <- ./source/priority_areas.csv, an eligibility count.
+  //                       `Indicator.source` explicitly does NOT cover it, so
+  //                       the row carries its own `meta.source` instead.
+  const seededRisk = risk?.source?.is_placeholder === true;
+  const seededHint =
+    "The indicator row behind this figure is seeded, not curated — real " +
+    "output from the scoring pipeline, but its source is a placeholder.";
+
+  const rowSource = (row) => row?.meta?.source ?? null;
+  const prototypeHint =
+    "From the prototype dataset (priority_areas.csv), not the NDMA handover " +
+    "workbook — illustrative until an eligibility sheet is delivered.";
 
   return (
     <div>
@@ -83,9 +107,11 @@ const CoverBlock = ({
             <h2 className="mb-0 text-2xl font-bold leading-[30px] text-neutral-800">
               {name}
             </h2>
-            <span className="text-xl font-semibold text-neutral-800">
-              {num(area?.value)} km²
-            </span>
+            {area != null && (
+              <span className="text-xl font-semibold text-neutral-800">
+                {num(area)} km²
+              </span>
+            )}
           </div>
           <p className="mb-0 text-base text-[#606060]">
             {[
@@ -99,32 +125,25 @@ const CoverBlock = ({
       )}
 
       {showTiles && (
-        <div className="grid grid-cols-1 gap-px border-y border-cardBorder print:border-x bg-cardBorder sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-px border-y border-cardBorder print:border-x bg-cardBorder sm:grid-cols-2 xl:grid-cols-3">
           <MetricItemCard
-            label={peopleExposed.label}
-            value={num(peopleExposed.value)}
-            footnote={peopleExposed.description}
-            isPlaceholder
-            placeholderHint="Illustrative only. The real source, /indicators/{id}, is admin-only and Brief Builder is open to reviewers — see C-4."
+            label="People exposed"
+            value={num(population?.value ?? null)}
+            footnote="people exposed this cycle"
+            isPlaceholder={seededRisk}
+            placeholderHint={seededHint}
           />
           <MetricItemCard
-            label={rainfed.label}
-            value={num(rainfed.value)}
-            footnote={rainfed.description}
-            isPlaceholder
-            placeholderHint="Illustrative only — same admin-only source as People exposed (C-4)."
+            label="Rain-fed land use"
+            value={num(rainfed?.value ?? null)}
+            footnote="hectares"
+            isPlaceholder={Boolean(rowSource(rainfed))}
+            placeholderHint={prototypeHint}
           />
           <MetricItemCard
             label="Susceptibility"
             value={susceptibility == null ? "—" : susceptibility.toFixed(2)}
             footnote="to drought (IPC)"
-          />
-          <MetricItemCard
-            label={totalLand.label}
-            value={num(totalLand.value)}
-            footnote={totalLand.description}
-            isPlaceholder
-            placeholderHint="Illustrative only. Administration has no area column, and the design's own figures disagree (128 km² = 12,800 ha, not 6,889) — see C-4."
           />
         </div>
       )}

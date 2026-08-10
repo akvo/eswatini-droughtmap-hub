@@ -56,7 +56,7 @@ const BriefPreview = ({ data }) => {
     inkhundlaResolving,
     inkhundlaUnknown,
   } = useBrief();
-  const { cdi, risk, activities, loading } = data;
+  const { cdi, risk, activities, situation, loading } = data;
   // Range-independent, so fetched once here and shared by both charts —
   // exactly how WeatherTab wires them.
   const normals = useWeatherNormals(administrationId);
@@ -125,7 +125,7 @@ const BriefPreview = ({ data }) => {
       )}
 
       {has("situation_paragraph") && (
-        <SituationParagraph name={selectedInkhundla} period={period} />
+        <SituationParagraph situation={situation} />
       )}
 
       {(has("dclass_strip_24m") || has("historic_comparison_note")) && (
@@ -157,7 +157,7 @@ const BriefPreview = ({ data }) => {
         </div>
       )}
 
-      {has("exposure_numbers") && <ExposureBars />}
+      {has("exposure_numbers") && <ExposureBars risk={risk} />}
 
       {(has("response_activities") || has("notify_list")) && (
         <ResponseAndNotify
