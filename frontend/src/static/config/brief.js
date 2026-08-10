@@ -28,7 +28,7 @@ export const BRIEF_COMPONENTS = [
         short: "kpis",
         label: "KPI tiles",
         description:
-          "4 tiles: people exposed · hectares rain-fed · susceptibility · total land",
+          "3 tiles: people exposed · hectares rain-fed · susceptibility",
       },
       {
         key: "situation_paragraph",
@@ -138,6 +138,56 @@ export const BRIEF_COMPARISON_TEMPLATE = ({
 }) =>
   `Over the last 24 months, ${code} occurred in ${share}% of months for ${name}. ` +
   `Historical modal class: ${modal}. This month is ${verdict} for the location.`;
+
+// The offices NDRMA suggests contacting (Figma 4155:180002). Config, not a
+// fetch: the same eight apply to every Inkhundla, so a model, a migration and
+// an endpoint would be infrastructure for a value that never varies (BB-3 D-3).
+//
+// No contact field by design — the design renders an avatar and a title, and
+// these are offices rather than platform users. Adding an email or a phone
+// number would invent PII the screen never asks for.
+export const BRIEF_NOTIFY_LIST = [
+  {
+    key: "inkhundla_chief",
+    label: "Inkhundla Chief",
+    group: "Traditional authority",
+  },
+  {
+    key: "moa_local",
+    label: "MoA local",
+    group: "MoAg (Ministry of Agriculture)",
+  },
+  {
+    key: "ndrma_regional",
+    label: "NDRMA Regional",
+    group: "NDMA (National Disaster Management Agency)",
+  },
+  {
+    key: "community_health",
+    label: "Community Health Center",
+    group: "Health & Nutrition",
+  },
+  {
+    key: "district_education",
+    label: "District Education Office",
+    group: "Education",
+  },
+  {
+    key: "agri_extension",
+    label: "Agricultural Extension Unit",
+    group: "MoAg (Ministry of Agriculture)",
+  },
+  {
+    key: "water_resources",
+    label: "Water Resources Department",
+    group: "DWA (Department of Water Affairs)",
+  },
+  {
+    key: "local_trade",
+    label: "Local Trade Council",
+    group: "Trade & Commerce",
+  },
+];
 
 // Sources & data credits (Figma 4155:180002). A fixed provenance line, not a
 // fetch: /weather/source is IsAdmin-only and Brief Builder is open to
