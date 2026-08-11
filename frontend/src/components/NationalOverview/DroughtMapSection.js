@@ -9,8 +9,14 @@ import MetricCard from "./MetricCard";
 import { api } from "@/lib";
 
 const OverviewMap = dynamic(() => import("./OverviewMap"), { ssr: false });
+const LayerMap = dynamic(() => import("./LayerMap"), { ssr: false });
 
 const NO_COMPARE = 0;
+
+// Drought class keeps its own renderer: its legend toggles categories on and
+// off, which the generic layer contract does not model. Every other tab is
+// described entirely by /insights/map-layer/{key}.
+const DROUGHT_CLASS = "drought-class";
 
 const MetricSkeletonCard = () => (
   <div className="w-full flex-1 border-b border-neutral-200 p-4 flex flex-col justify-between min-h-[95px] animate-pulse">
@@ -32,8 +38,10 @@ const DroughtMapSection = ({
   metrics,
   mapData,
 }) => {
-  const defaultLayer = mapData?.activeLayer ?? "drought-class";
+  const defaultLayer = mapData?.activeLayer ?? DROUGHT_CLASS;
   const [activeLayer, setActiveLayer] = useState(defaultLayer);
+  const [layerPayload, setLayerPayload] = useState(null);
+  const [compareLayerPayload, setCompareLayerPayload] = useState(null);
   const [currentID, setCurrentID] = useState(mapId ?? null);
   const [compareID, setCompareID] = useState(NO_COMPARE);
   const [values, setValues] = useState(validatedValues);
@@ -59,12 +67,17 @@ const DroughtMapSection = ({
   }, [validatedValues]);
 
   const layers = mapData?.layers || [
-    { key: "drought-class", label: "Drought class" },
+    { key: DROUGHT_CLASS, label: "Drought class", monthVarying: true },
   ];
   const layerOptions = layers.map((l) => ({
     value: l.key,
     label: l.label,
   }));
+
+  // Layers that do not change month to month must not offer a compare
+  // selector — it would be a control that cannot alter the picture.
+  const isMonthVarying =
+    layers.find((l) => l.key === activeLayer)?.monthVarying !== false;
 
   const fetchValues = useCallback(async (id) => {
     setIsMapLoading(true);
@@ -93,6 +106,68 @@ const DroughtMapSection = ({
     }
     fetchValues(compareID).then(setCompareValues);
   }, [compareID, fetchValues]);
+
+  // Leaving a month-varying tab with a comparison active would strand the
+  // compare state: invisible on the new tab, still applied on return.
+  useEffect(() => {
+    if (!isMonthVarying && compareID !== NO_COMPARE) {
+      setCompareID(NO_COMPARE);
+    }
+  }, [isMonthVarying, compareID]);
+
+  // Every tab except drought class is described entirely by the API, so the
+  // month is passed through and the payload decides how to render.
+  useEffect(() => {
+    if (activeLayer === DROUGHT_CLASS) {
+      setLayerPayload(null);
+      setCompareLayerPayload(null);
+      return;
+    }
+    let active = true;
+
+    // /dates labels the month as a full YYYY-MM-DD date; the layer API takes
+    // YYYY-MM and rejects anything else.
+    const monthOf = (id) => {
+      const label = dates.find((d) => d.value === id)?.label || "";
+      const yearMonth = label.slice(0, 7);
+      return /^\d{4}-\d{2}$/.test(yearMonth) ? yearMonth : null;
+    };
+    const fetchLayer = (id) => {
+      const yearMonth = isMonthVarying ? monthOf(id) : null;
+      const query = yearMonth ? `?year_month=${yearMonth}` : "";
+      return api("GET", `/insights/map-layer/${activeLayer}${query}`).catch(
+        (err) => {
+          console.error(err);
+          // An unreachable endpoint still has to render something, so it
+          // becomes the same empty state a data-less month produces.
+          return {
+            key: activeLayer,
+            type: "empty",
+            reason: "This layer could not be loaded.",
+          };
+        },
+      );
+    };
+
+    const wantsCompare = isMonthVarying && compareID !== NO_COMPARE;
+    setIsMapLoading(true);
+    Promise.all([
+      fetchLayer(currentID),
+      wantsCompare ? fetchLayer(compareID) : Promise.resolve(null),
+    ])
+      .then(([payload, comparePayload]) => {
+        if (!active) {
+          return;
+        }
+        setLayerPayload(payload);
+        setCompareLayerPayload(comparePayload);
+      })
+      .finally(() => active && setIsMapLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [activeLayer, currentID, compareID, dates, isMonthVarying]);
 
   const handleInkhundlaSelect = useCallback(
     async (adminId, adminName) => {
@@ -232,18 +307,22 @@ const DroughtMapSection = ({
                 variant="outlined"
                 options={dates.filter((d) => d.value !== compareID)}
               />
-              <span className="text-sm text-neutral-500">Compare to</span>
-              <Select
-                value={compareID}
-                onChange={setCompareID}
-                className="min-w-[160px] select-styled"
-                prefix={<CalendarOutlined className="text-neutral-400" />}
-                variant="outlined"
-                options={[
-                  { value: NO_COMPARE, label: "No comparison" },
-                  ...dates.filter((d) => d.value !== currentID),
-                ]}
-              />
+              {isMonthVarying && (
+                <>
+                  <span className="text-sm text-neutral-500">Compare to</span>
+                  <Select
+                    value={compareID}
+                    onChange={setCompareID}
+                    className="min-w-[160px] select-styled"
+                    prefix={<CalendarOutlined className="text-neutral-400" />}
+                    variant="outlined"
+                    options={[
+                      { value: NO_COMPARE, label: "No comparison" },
+                      ...dates.filter((d) => d.value !== currentID),
+                    ]}
+                  />
+                </>
+              )}
             </div>
 
             {/* Map */}
@@ -260,18 +339,22 @@ const DroughtMapSection = ({
                   </Skeleton.Node>
                 </div>
               )}
-              {activeLayer === "drought-class" ? (
+              {activeLayer === DROUGHT_CLASS ? (
                 <OverviewMap
                   validatedValues={values}
                   compareValues={compareValues}
                   onInkhundlaSelect={handleInkhundlaSelect}
+                  // Driven by the same state as the sidebar filter, so
+                  // "Clear filter" removes the outline too.
+                  selectedInkhundlaId={selectedInkhundlaId}
                 />
               ) : (
-                <div className="w-full h-full min-h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex items-center justify-center text-neutral-400 text-sm">
-                  {layers.find((l) => l.key === activeLayer)?.label ||
-                    activeLayer}{" "}
-                  layer - coming soon
-                </div>
+                <LayerMap
+                  layer={layerPayload}
+                  compareLayer={compareLayerPayload}
+                  onInkhundlaSelect={handleInkhundlaSelect}
+                  selectedInkhundlaId={selectedInkhundlaId}
+                />
               )}
             </div>
           </div>

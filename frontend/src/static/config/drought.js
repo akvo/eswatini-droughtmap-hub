@@ -67,5 +67,6 @@ export const DROUGHT_CATEGORY = Object.values(DROUGHT_CATEGORY_VALUE).map(
     value: v,
     label: DROUGHT_CATEGORY_LABEL[v],
     color: DROUGHT_CATEGORY_COLOR[v],
+    code: DROUGHT_CATEGORY_CODE[v],
   }),
 );
