@@ -171,7 +171,8 @@ class Command(BaseCommand):
             help=(
                 "Local pct-rank GeoTIFF archive for REAL publication and "
                 "component values, e.g. ./storage/geotiffs. Without it the "
-                "seeders fall back to GeoNode, then to synthetic values."
+                "seeders fall back to the cached GeoNode resource list, then "
+                "to live GeoNode, then to synthetic values."
             ),
         )
         parser.add_argument(
@@ -235,6 +236,7 @@ class Command(BaseCommand):
         path = options["path"]
 
         self._warn_about_stale_window(options)
+        self._report_publication_source(path)
 
         # 1-3: reference data every later stage joins to.
         self.stage("Administrations", "generate_administrations_seeder")
@@ -301,6 +303,39 @@ class Command(BaseCommand):
 
         self.summary()
 
+    def _report_publication_source(self, path):
+        """Say up front where publication values will come from.
+
+        The seeders resolve this themselves (path -> cache -> geonode ->
+        synthetic), but they resolve it several stages in. Printing it here
+        turns the two states that look identical on the pages — real values
+        extracted, and rows created with initial_values still empty because
+        GeoNode never answered — into something you can tell apart without
+        opening a shell.
+        """
+        if path:
+            return
+        cached = PublicationGeonode.objects.filter(
+            geonode_id__lt=SEEDED_PUBLICATION_GEONODE_BASE
+        ).count()
+        if cached:
+            self.stdout.write(
+                self.style.MIGRATE_HEADING(
+                    f"Publication source: {cached} cached GeoNode resource(s) "
+                    f"(no catalogue request). Values still need a worker and "
+                    f"a reachable raster host; re-run './job.sh cdi' if any "
+                    f"publication ends up with empty initial_values."
+                )
+            )
+            return
+        self.stdout.write(
+            self.style.WARNING(
+                "Publication source: no cached GeoNode resources. Falling "
+                "back to live GeoNode, then to synthetic values. Run "
+                "sync_publication_geonodes first to seed from real metadata."
+            )
+        )
+
     def _warn_about_stale_window(self, options):
         """`resolve_window` anchors the CDI-E strip on the CURRENT month, not
         the latest published one, so a --publish-through well in the past
@@ -344,6 +379,19 @@ class Command(BaseCommand):
         self.stdout.write("")
         for label, count in rows:
             self.stdout.write(f"  {label:24s} {count}")
+
+        # The one count worth calling out: a publication with no
+        # initial_values renders as an empty review queue and an all-No-Data
+        # map, neither of which looks like a seeding problem from the page.
+        empty = Publication.objects.filter(initial_values=[]).count()
+        if empty:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"\n{empty} publication(s) have empty initial_values — "
+                    f"their raster download has not completed. Check the "
+                    f"worker is running, then './job.sh cdi' to retry."
+                )
+            )
 
         if self.failures:
             self.stdout.write(
