@@ -6,15 +6,15 @@ no WIS2 reachability (DEMO-1 D-5/D-16).
 Two rules carry the whole design:
 
 1. Values are drawn around the REAL 30-year normals in AdministrationNormal
-   (D-16), not invented ranges. That is what makes the insights/metrics
-   deviation cards meaningful rather than arbitrary. Run
-   `extract_weather_normals` first; without it the seeder falls back to a
-   small climatology table and says so.
+   (D-16), or real monthly AdministrationObservation satellite rows
+   if available (D-7). Run `fetch_chirps_monthly` then
+   `generate_weather_seeder`.
 
 2. Station health is deliberately mixed (D-5). `station_health` is computed at
    read time from the WALL CLOCK, so an all-perfect seed renders "8/8 online"
    and the offline/degraded branches of the UI are never exercised.
 """
+
 import calendar
 import random
 from datetime import timedelta
@@ -32,10 +32,12 @@ from api.v1.v1_weather.constants import (
 )
 from api.v1.v1_weather.models import (
     AdministrationNormal,
+    AdministrationObservation,
     StationDailyAggregate,
     WeatherSource,
     WeatherStation,
 )
+
 from api.v1.v1_weather.topo import administration_centroids
 
 # Marks rows this command owns, so `--clean` can find them without touching
@@ -67,12 +69,32 @@ READINGS_PER_DAY = 24
 # against the real station sample in eswatini-v2/data/weather_daily.csv
 # (Oct-Nov 2025: tmean 16.4-24.8 C, daily rain 0-40.4 mm).
 FALLBACK_PRECIP_MM = {
-    1: 140, 2: 120, 3: 90, 4: 45, 5: 20, 6: 12,
-    7: 10, 8: 12, 9: 25, 10: 70, 11: 110, 12: 130,
+    1: 140,
+    2: 120,
+    3: 90,
+    4: 45,
+    5: 20,
+    6: 12,
+    7: 10,
+    8: 12,
+    9: 25,
+    10: 70,
+    11: 110,
+    12: 130,
 }
 FALLBACK_TMEAN_C = {
-    1: 22.0, 2: 22.0, 3: 21.0, 4: 19.0, 5: 16.0, 6: 13.5,
-    7: 13.0, 8: 15.5, 9: 18.0, 10: 20.0, 11: 21.0, 12: 22.0,
+    1: 22.0,
+    2: 22.0,
+    3: 21.0,
+    4: 19.0,
+    5: 16.0,
+    6: 13.5,
+    7: 13.0,
+    8: 15.5,
+    9: 18.0,
+    10: 20.0,
+    11: 21.0,
+    12: 22.0,
 }
 
 # Wet days per month. Rainfall is zero-inflated: the real sample has 9 of 14
@@ -80,8 +102,8 @@ FALLBACK_TMEAN_C = {
 # totals the same but looks nothing like rain, and flattens the daily view
 # into identical stubs.
 WET_DAYS = {
-    True: (8, 12),   # wet season
-    False: (1, 3),   # dry season
+    True: (8, 12),  # wet season
+    False: (1, 3),  # dry season
 }
 WET_SEASON_MONTHS = {10, 11, 12, 1, 2, 3}
 
@@ -94,7 +116,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--months", type=int, default=24,
+            "--months",
+            type=int,
+            default=24,
             help=(
                 "Months of daily observations, ending today. Always anchored "
                 "to now, never to a publication window: station health is a "
@@ -102,11 +126,14 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
-            "--seed", type=int, default=42,
+            "--seed",
+            type=int,
+            default=42,
             help="RNG seed; the same seed reproduces the same values.",
         )
         parser.add_argument(
-            "--clean", action="store_true",
+            "--clean",
+            action="store_true",
             help="Delete seeded stations (and their dailies) and exit.",
         )
 
@@ -142,9 +169,7 @@ class Command(BaseCommand):
                 )
             )
 
-        written = self._observations(
-            stations, normals, options["months"], rng
-        )
+        written = self._observations(stations, normals, options["months"], rng)
         self._report(stations, written)
 
     # --- registry ---------------------------------------------------------
@@ -221,16 +246,47 @@ class Command(BaseCommand):
             .annotate(value=Avg("value"))
         )
         return {
-            (row["administration__region"], row["month"], row["parameter"]):
-                row["value"]
+            (
+                row["administration__region"],
+                row["month"],
+                row["parameter"],
+            ): row["value"]
             for row in rows
         }
 
-    def _baseline(self, normals, region, month):
-        """(monthly precipitation mm, mean temperature C) for one region."""
-        precipitation = normals.get(
-            (region, month, WeatherParameter.precipitation)
+    def _sat_observations(self) -> dict:
+        """{(region, year, month): value} averaged over the region (D-7)."""
+        rows = (
+            AdministrationObservation.objects.filter(
+                parameter=WeatherParameter.precipitation
+            )
+            .exclude(administration__region__isnull=True)
+            .values(
+                "administration__region",
+                "year_month",
+            )
+            .annotate(value=Avg("value"))
         )
+        return {
+            (
+                row["administration__region"],
+                row["year_month"].year,
+                row["year_month"].month,
+            ): row["value"]
+            for row in rows
+        }
+
+    def _baseline(self, normals, sat_obs, region, year, month):
+        """(monthly precipitation mm, mean temperature C) for one region.
+
+        D-7: prefers real AdministrationObservation satellite
+        row when available, falling back to AdministrationNormal climatology.
+        """
+        precipitation = sat_obs.get((region, year, month))
+        if precipitation is None:
+            precipitation = normals.get(
+                (region, month, WeatherParameter.precipitation)
+            )
         tmean = normals.get((region, month, WeatherParameter.tmean))
         if precipitation is None:
             precipitation = FALLBACK_PRECIP_MM[month]
@@ -256,6 +312,7 @@ class Command(BaseCommand):
         today = timezone.now().date()
         start = today - timedelta(days=int(months * 30.44))
         plan = self._health_plan(stations)
+        sat_obs = self._sat_observations()
 
         StationDailyAggregate.objects.filter(station__in=stations).delete()
 
@@ -268,14 +325,16 @@ class Command(BaseCommand):
                 days=OFFLINE_AFTER_DAYS * 5 if health == "offline" else 1
             )
             for value in self._station_rows(
-                station, normals, start, last_day, health, rng
+                station, normals, sat_obs, start, last_day, health, rng
             ):
                 rows.append(value)
 
         StationDailyAggregate.objects.bulk_create(rows, batch_size=2000)
         return len(rows)
 
-    def _station_rows(self, station, normals, start, last_day, health, rng):
+    def _station_rows(
+        self, station, normals, sat_obs, start, last_day, health, rng
+    ):
         # Completeness is a 30-day trailing ratio, so only recent days decide
         # the status; degrading the whole history would be wasted work.
         degraded_from = last_day - timedelta(days=COMPLETENESS_WINDOW_DAYS)
@@ -290,8 +349,9 @@ class Command(BaseCommand):
                 wet_days = self._wet_days(day, rng)
 
             precipitation, tmean_normal = self._baseline(
-                normals, station.region, day.month
+                normals, sat_obs, station.region, day.year, day.month
             )
+
             if health == "degraded" and day >= degraded_from:
                 # Below DEGRADED_COMPLETENESS (0.8) by construction.
                 readings = int(READINGS_PER_DAY * 0.5)
@@ -312,12 +372,8 @@ class Command(BaseCommand):
                 (WeatherParameter.tmean, round(tmean, 1)),
                 (WeatherParameter.tmax, round(tmax, 1)),
                 (WeatherParameter.tmin, round(tmin, 1)),
-                (WeatherParameter.humidity, round(
-                    rng.uniform(60, 92), 1
-                )),
-                (WeatherParameter.wind_speed, round(
-                    rng.uniform(0.2, 1.6), 2
-                )),
+                (WeatherParameter.humidity, round(rng.uniform(60, 92), 1)),
+                (WeatherParameter.wind_speed, round(rng.uniform(0.2, 1.6), 2)),
             ):
                 yield StationDailyAggregate(
                     station=station,
