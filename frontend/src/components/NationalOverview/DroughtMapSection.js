@@ -206,9 +206,15 @@ const DroughtMapSection = ({
                   label={fieldReports.label || "Field reports"}
                   value={fieldReports.count ?? 0}
                   note="In last 30 days"
-                  accentValue={`${fieldReports.verifiedPct ?? 87}%`}
-                  accentLabel="verified"
-                  percentage={fieldReports.verifiedPct ?? 87}
+                  accentValue={
+                    fieldReports.verifiedPct != null
+                      ? `${fieldReports.verifiedPct}%`
+                      : null
+                  }
+                  accentLabel={
+                    fieldReports.verifiedPct != null ? "verified" : null
+                  }
+                  percentage={fieldReports.verifiedPct}
                 />
               </>
             )}
