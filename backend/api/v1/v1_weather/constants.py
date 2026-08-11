@@ -232,3 +232,14 @@ CONFIDENCE_NO_SATELLITE_TEMPERATURE = "no_satellite_temperature"
 # 4 reported days reads as a drought). Roughly two thirds of a month.
 MIN_STATION_DAYS_PER_MONTH = 20
 SPI_WINDOW_MONTHS = 3
+
+# --- CHIRPS monthly satellite constants (WX-10) -------------------------
+CHIRPS_MONTHLY_URL = (
+    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/africa_monthly/tifs/"
+    "chirps-v2.0.{year}.{month:02d}.tif.gz"
+)
+CHIRPS_BBOX = (30.75, -27.5, 32.25, -25.0)
+
+CARD_SATELLITE_DIFFERENCE = "station_satellite_difference"
+REASON_SATELLITE_NOT_PUBLISHED = "satellite_not_published"
+REASON_INCOMPLETE_STATION = "incomplete_station_month"

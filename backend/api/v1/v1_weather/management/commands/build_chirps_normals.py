@@ -9,6 +9,7 @@ Run on demand, not on a schedule: normals change roughly never (the next refresh
 is a new 30-year period). Transfers ~1.6 GB to write a ~65 KB output, then
 `extract_weather_normals` loads it into the DB.
 """
+
 import gzip
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -21,15 +22,13 @@ from django.core.management.base import BaseCommand, CommandError
 from rasterio.io import MemoryFile
 from rasterio.windows import from_bounds
 
-from api.v1.v1_weather.constants import WeatherParameter
+from api.v1.v1_weather.constants import (
+    CHIRPS_BBOX as BBOX,
+    CHIRPS_MONTHLY_URL as BASE,
+    WeatherParameter,
+)
 from api.v1.v1_weather.utils import raster_path, window_keys
 
-BASE = (
-    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/africa_monthly/tifs/"
-    "chirps-v2.0.{year}.{month:02d}.tif.gz"
-)
-# Same bbox as the file being replaced, so a rebuild changes only resolution.
-BBOX = (30.75, -27.5, 32.25, -25.0)
 YEARS = range(1991, 2021)
 MONTHS = range(1, 13)
 
@@ -135,11 +134,13 @@ class Command(BaseCommand):
             # Plain `sum` rather than nansum: a missing month must poison its
             # window, not silently count as a dry zero. The first two months
             # of 1991 have no predecessor and drop out (29 samples, not 30).
-            windows = np.stack([
-                sum(arrays[key] for key in window_keys(year, month))
-                for year in YEARS
-                if all(key in arrays for key in window_keys(year, month))
-            ])
+            windows = np.stack(
+                [
+                    sum(arrays[key] for key in window_keys(year, month))
+                    for year in YEARS
+                    if all(key in arrays for key in window_keys(year, month))
+                ]
+            )
             window_mean[month - 1] = np.nanmean(windows, axis=0)
             # ddof=1: these are a sample of years, not the population.
             window_sd[month - 1] = np.nanstd(windows, axis=0, ddof=1)
