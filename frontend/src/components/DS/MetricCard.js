@@ -7,7 +7,7 @@ import classNames from "classnames";
  * the previous publication month. It is null for the first publication, and the
  * card then renders no arrow at all (design D-8).
  */
-const ARROW = { up: "↑", down: "↓", flat: "→" };
+const ARROW = { up: "↑", down: "↓", flat: "" };
 const ARROW_COLOR = {
   up: "text-[#027A48]",
   down: "text-[#B10D0B]",

@@ -182,7 +182,7 @@ const ReviewQueue = ({
           className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
         />
         <div className="relative z-10 mx-auto -mt-16 flex w-full max-w-[1280px] flex-col gap-6">
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-col gap-0 sm:flex-row">
             <MetricCard
               label="Pending review"
               value={remaining}
@@ -234,7 +234,7 @@ const ReviewQueue = ({
             )}
           </ReviewQueueTable>
 
-          <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="flex flex-col gap-0 lg:flex-row">
             <div className="w-full lg:w-[325px] lg:shrink-0">
               <AssessmentSummary summary={summary} />
             </div>
