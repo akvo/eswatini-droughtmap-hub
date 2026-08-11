@@ -11,6 +11,8 @@ from api.v1.v1_publication.constants import (
     AdministrationZones,
     is_validated,
 )
+from api.v1.v1_insights.constants import LAYERS, METRICS_HISTORY_MONTHS
+from api.v1.v1_insights.drought_aggregation import modal_category
 from api.v1.v1_weather.constants import WeatherParameter
 from api.v1.v1_weather.models import (
     WeatherStation,
@@ -34,9 +36,6 @@ from api.v1.v1_activity.trigger_evaluation import (
 )
 
 logger = logging.getLogger(__name__)
-
-# The metric cards' history window, in calendar months.
-METRICS_HISTORY_MONTHS = 12
 
 
 def _latest_value(series):
@@ -213,12 +212,7 @@ def get_zones_data(group="regions"):
             latest_vals[aid] for aid in admin_ids if aid in latest_vals
         )
         total_count = len(admin_ids) or 1
-        if cat_counts:
-            modal_cat, modal_count = cat_counts.most_common(1)[0]
-            confidence_pct = round((modal_count / total_count) * 100)
-        else:
-            modal_cat = DroughtCategory.none
-            confidence_pct = 0
+        modal_cat, confidence_pct = modal_category(cat_counts, total_count)
 
         zones_list.append(
             {
@@ -522,17 +516,12 @@ def get_map_data_config():
         else timezone.now().strftime("%Y-%m")
     )
 
+    # The inventory lives in map_layers so the tab list and the builders that
+    # serve those tabs cannot drift apart. `temperature` was renamed to `esi`:
+    # the tab shows an ERA5-derived percentile rank, not degrees.
     return {
         "date": date_str,
         "compareTo": None,
-        "layers": [
-            {"key": "drought-class", "label": "Drought class"},
-            {"key": "precipitation", "label": "Precipitation"},
-            {"key": "temperature", "label": "Temperature"},
-            {"key": "land-use", "label": "Land use"},
-            {"key": "population", "label": "Population map"},
-            {"key": "regions", "label": "Regions"},
-            {"key": "agro-eco", "label": "Agro-ecological zones"},
-        ],
+        "layers": LAYERS,
         "activeLayer": "drought-class",
     }
