@@ -19,6 +19,11 @@ class Administration(models.Model):
         blank=True,
         choices=AdministrationZones.choices(),
     )
+    # Equal-area (EPSG:6933) area of the eswatini.topojson polygon, computed
+    # once by generate_administrations_seeder. Stored rather than derived per
+    # request so the web process never imports the geo stack (BB-3 D-1).
+    # Nullable: an unseeded row omits the brief header's km2, never shows 0.
+    area_km2 = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 

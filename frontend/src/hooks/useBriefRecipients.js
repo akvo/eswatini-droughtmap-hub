@@ -2,82 +2,33 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { PUBLICATION_STATUS } from "@/static/config";
-import recipientsMock from "@/static/mocks/brief-builder/recipients.json";
-
-const FALLBACK = recipientsMock.data.map((r) => ({
-  id: r.key,
-  name: r.label,
-  email: r.value,
-  technical_working_group: r.group,
-}));
 
 /**
- * Reviewers a brief can be forwarded to: everyone assigned to the publication
- * the brief describes.
+ * Reviewers a brief can be forwarded to: the whole roster, grouped by TWG.
  *
- * No extra endpoint is needed — PublicationSerializer already embeds a
- * `reviewers` array on every publication, carrying exactly the fields the
- * design's rows render (name, email, technical_working_group). The list is
- * ordered newest-month-first server-side, so the first published row is the
- * cycle a brief built today describes.
+ * `/admin/reviewers-tree` already returns exactly the TreeSelect shape the
+ * slide-in renders — `{value, title, selectable, children:[{value, title,
+ * subtitle}]}` — so the grouping is not rebuilt client-side. It is also
+ * unpaginated, unlike the flat `/admin/reviewers`, which would have quietly
+ * handed back page 1 and called it the roster.
  *
- * Caveat for BB-2: PublicationViewSet is IsAdmin-gated while Brief Builder is
- * open to reviewers, so a reviewer gets 403 here. Rather than showing them an
- * empty picker we fall back to the mock and flag it — the same
- * degrade-don't-break pattern RiskLevelTab uses. Relaxing that permission (or
- * exposing the roster on an Inkhundla-scoped endpoint) retires the mock.
+ * BB-3 D-4 widened that endpoint from IsAdmin to IsAuthenticated + TWG: a
+ * reviewer must be able to forward to colleagues in or outside their own
+ * group, and before the change they got a 403 and an empty picker. There is no
+ * mock fallback any more — an empty roster renders as empty, which is the
+ * truth, and sending to someone off-roster is what the "Other" field is for.
  */
 const useBriefRecipients = (enabled = true) => {
-  const [state, setState] = useState({
-    data: [],
-    loading: false,
-    isFallback: false,
-    publication: null,
-  });
+  const [state, setState] = useState({ tree: [], loading: false });
 
   const load = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }));
     try {
-      const res = await api(
-        "GET",
-        `/admin/publications?page=1&status=${PUBLICATION_STATUS.published}`,
-      );
-      const publication = (res?.data ?? [])[0] ?? null;
-      const reviewers = (publication?.reviewers ?? []).map((r) => ({
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        technical_working_group: r.technical_working_group,
-      }));
-
-      // A published cycle with nobody assigned is possible but useless here,
-      // so treat it the same as an unreachable list rather than rendering an
-      // empty picker with no explanation.
-      if (!reviewers.length) {
-        setState({
-          data: FALLBACK,
-          loading: false,
-          isFallback: true,
-          publication,
-        });
-        return;
-      }
-
-      setState({
-        data: reviewers,
-        loading: false,
-        isFallback: false,
-        publication,
-      });
+      const res = await api("GET", "/admin/reviewers-tree");
+      setState({ tree: Array.isArray(res) ? res : [], loading: false });
     } catch (err) {
       console.error("Failed to load brief recipients:", err);
-      setState({
-        data: FALLBACK,
-        loading: false,
-        isFallback: true,
-        publication: null,
-      });
+      setState({ tree: [], loading: false });
     }
   }, []);
 

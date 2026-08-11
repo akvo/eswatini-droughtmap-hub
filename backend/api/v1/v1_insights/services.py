@@ -100,7 +100,10 @@ def get_hero_data():
 
     if not pub:
         return {
-            "status": {"category": 0, "label": "Normal / No Drought"},
+            "status": {
+                "category": DroughtCategory.none,
+                "label": DroughtCategory.FieldStr.get(DroughtCategory.none),
+            },
             "published": "-",
             "nextUpdate": "-",
             "headline": "Drought situation overview — No active publication",
@@ -417,9 +420,13 @@ def get_metrics_data(inkhundla_id=None):
         },
         "fieldReports": {
             "count": kobo_count,
-            "verifiedPct": 100,
+            # No verification workflow exists (OQ-3) — a synced KoboToolbox
+            # submission counts as verified. None at zero reports: 0/0 is not
+            # 100%, and the card would otherwise paint a full ring over an
+            # empty database.
+            "verifiedPct": 100 if kobo_count else None,
             "label": reports_label,
-            "note": "in last 30 days  100% verified",
+            "note": "in last 30 days",
         },
     }
 

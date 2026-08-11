@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -39,6 +40,17 @@ const parseInkhundla = (raw) => {
   return Number.isInteger(id) && id > 0 ? id : null;
 };
 
+// TinyMCE reformats what it is given — it wraps a bare sentence in <p>, and
+// emits that as an onEditorChange the moment it mounts. Comparing rendered text
+// rather than markup is what stops its own tidy-up from being counted as the
+// user typing.
+const plainText = (html) =>
+  (html ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const BriefContextProvider = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -54,6 +66,8 @@ const BriefContextProvider = ({ children }) => {
   // Tracks whether the user has touched the narrative, so re-seeding never
   // overwrites their words (D-8).
   const [narrativeEdited, setNarrativeEdited] = useState(false);
+  // What the generator last supplied, so an edit can be told from a reformat.
+  const seededRef = useRef("");
 
   // Applied state is read straight off the URL — the page is a function of it.
   const applied = useMemo(
@@ -71,6 +85,17 @@ const BriefContextProvider = ({ children }) => {
   useEffect(() => {
     setDraft(applied);
   }, [applied]);
+
+  // A brief describes one Inkhundla. Carrying the previous one's narrative
+  // across is not a stale-render nuisance — it would attach prose about Gege to
+  // a brief headed Gilgal, and the user could forward it without noticing.
+  // Cleared unconditionally, edits included: an edited paragraph is *more*
+  // dangerous to carry over, not less.
+  useEffect(() => {
+    setNarrative("");
+    setNarrativeEdited(false);
+    seededRef.current = "";
+  }, [applied.inkhundla]);
 
   useEffect(() => {
     const load = async () => {
@@ -168,13 +193,20 @@ const BriefContextProvider = ({ children }) => {
       narrativeEdited,
       setNarrative: (text) => {
         setNarrative(text);
-        setNarrativeEdited(true);
+        // Only a change to the words counts. Without this, TinyMCE's mount-time
+        // <p> wrap marks the draft as user-written, which both hides the
+        // "Suggested draft" tag and freezes the text against any later reseed.
+        if (plainText(text) !== plainText(seededRef.current)) {
+          setNarrativeEdited(true);
+        }
       },
       // Seeding path — only ever fills an untouched editor.
       seedNarrative: (text) => {
-        if (!narrativeEdited) {
-          setNarrative(text);
+        if (narrativeEdited) {
+          return;
         }
+        seededRef.current = text;
+        setNarrative(text);
       },
     };
   }, [

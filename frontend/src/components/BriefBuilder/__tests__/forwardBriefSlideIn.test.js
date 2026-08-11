@@ -7,20 +7,42 @@ import { api } from "@/lib/api";
 jest.mock("@/hooks/useBriefRecipients");
 jest.mock("@/lib/api");
 
-const mockRecipients = [
+// The shape /admin/reviewers-tree returns: TWG groups whose children carry the
+// name as `title` and the address as `subtitle`. The component no longer builds
+// this grouping itself (BB-3 D-4).
+const mockTree = [
   {
-    id: 1,
-    name: "Sibusiso Dlamini",
-    email: "sibusiso@ndma.gov.sz",
-    group: "NDMA",
+    value: "twg-1",
+    title: "NDMA (National Disaster Management Agency)",
+    selectable: false,
+    children: [
+      {
+        value: 1,
+        title: "Sibusiso Dlamini",
+        subtitle: "sibusiso@ndma.gov.sz",
+        selectable: true,
+      },
+    ],
   },
   {
-    id: 2,
-    name: "Nokuthula Simelane",
-    email: "nokuthula@moa.gov.sz",
-    group: "MoAg",
+    value: "twg-2",
+    title: "MoAg (Ministry of Agriculture)",
+    selectable: false,
+    children: [
+      {
+        value: 2,
+        title: "Nokuthula Simelane",
+        subtitle: "nokuthula@moa.gov.sz",
+        selectable: true,
+      },
+      {
+        value: 3,
+        title: "Thabo Maseko",
+        subtitle: "thabo@met.gov.sz",
+        selectable: true,
+      },
+    ],
   },
-  { id: 3, name: "Thabo Maseko", email: "thabo@met.gov.sz", group: "MET" },
 ];
 
 describe("ForwardBriefSlideIn Component", () => {
@@ -36,9 +58,8 @@ describe("ForwardBriefSlideIn Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useBriefRecipients.mockReturnValue({
-      data: mockRecipients,
+      tree: mockTree,
       loading: false,
-      isFallback: false,
     });
   });
 

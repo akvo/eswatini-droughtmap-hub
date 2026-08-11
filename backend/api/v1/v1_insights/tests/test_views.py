@@ -71,7 +71,7 @@ class InsightsAPITests(TestCase):
         response = self.client.get("/api/v1/insights/hero")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(data["status"]["category"], 0)
+        self.assertEqual(data["status"]["category"], DroughtCategory.none)
         self.assertEqual(data["published"], "-")
         self.assertIn("No published drought map", data["summary"])
 
@@ -133,6 +133,15 @@ class InsightsAPITests(TestCase):
         self.assertIn("temperature", data)
         self.assertIn("activeStations", data)
         self.assertEqual(data["fieldReports"]["count"], 1)
+        self.assertEqual(data["fieldReports"]["verifiedPct"], 100)
+
+    def test_metrics_field_reports_verified_pct_null_without_reports(self):
+        """No submissions means no verified share — 0/0 is not 100%."""
+        response = self.client.get("/api/v1/insights/metrics")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        field_reports = response.json()["fieldReports"]
+        self.assertEqual(field_reports["count"], 0)
+        self.assertIsNone(field_reports["verifiedPct"])
 
     def test_response_activities_endpoint(self):
         response = self.client.get("/api/v1/insights/response-activities")

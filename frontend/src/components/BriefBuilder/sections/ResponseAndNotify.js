@@ -1,10 +1,9 @@
 "use client";
 
-import { Avatar, Tag, Tooltip } from "antd";
+import { Avatar, Tooltip } from "antd";
 import { ExportOutlined } from "@ant-design/icons";
-import { SECTOR_CARD_ICONS } from "@/static/config";
+import { BRIEF_NOTIFY_LIST, SECTOR_CARD_ICONS } from "@/static/config";
 import BriefSection from "../BriefSection";
-import notifyMock from "@/static/mocks/brief-builder/notify-list.json";
 
 // Two initials, so "Community Health Center" reads as CH rather than C.
 const initials = (label = "") =>
@@ -71,18 +70,13 @@ const ResponseAndNotify = ({ showActivities, showNotify, activities }) => (
 
       {showNotify && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="mb-0 text-base font-semibold text-neutral-800">
+          <Tooltip title="Offices NDRMA suggests contacting — not platform users, and not who the brief is emailed to. Use Forward to for that.">
+            <h3 className="mb-0 w-fit cursor-help text-base font-semibold text-neutral-800">
               Notify
             </h3>
-            <Tooltip title="Illustrative only. These are offices, not platform users, and no stakeholder roster exists in the backend yet — see the design doc handover.">
-              <Tag color="default" className="m-0 cursor-help text-[10px]">
-                Placeholder
-              </Tag>
-            </Tooltip>
-          </div>
+          </Tooltip>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {notifyMock.data.map((c) => (
+            {BRIEF_NOTIFY_LIST.map((c) => (
               <li key={c.key} className="flex items-center gap-2">
                 <Avatar
                   size={24}

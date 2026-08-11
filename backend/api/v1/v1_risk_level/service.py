@@ -10,6 +10,7 @@ from api.v1.v1_risk_level.constants import (
     BAND_MAP,
     DCLASS_BY_CATEGORY,
     ELIGIBILITY_EXPOSURE_FIELDS,
+    ELIGIBILITY_SOURCE,
     EXPOSURE_UNITS,
     NO_CONFIDENCE_REASON,
     NO_WATER_POINTS_REASON,
@@ -131,6 +132,8 @@ def _exposure_row(indicator, field: str, components: dict) -> dict:
     }
     if field == "water_demand":
         row["meta"] = {"unit_status": WATER_DEMAND_UNIT_STATUS}
+    if field in ELIGIBILITY_EXPOSURE_FIELDS:
+        row["meta"] = {"source": ELIGIBILITY_SOURCE}
     return row
 
 
@@ -212,6 +215,7 @@ def compute_risk_level_detail(administration) -> dict:
             "name": administration.name,
             "region": administration.region,
             "zone": administration.zone,
+            "area_km2": administration.area_km2,
         },
         "rank": ranked["rank"] if ranked else None,
         "drought": {

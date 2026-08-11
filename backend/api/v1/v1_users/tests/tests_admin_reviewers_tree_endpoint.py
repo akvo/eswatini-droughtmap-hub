@@ -96,3 +96,69 @@ class ReviewersTreeEndpointTestCase(APITestCase):
         # Check that empty groups (like MET, MoAg, etc.) are omitted
         moag_group = next((g for g in data if g["value"] == "twg-2"), None)
         self.assertIsNone(moag_group)
+
+
+class ReviewersTreeAccessTestCase(APITestCase):
+    """Who may read the reviewer roster (BB-3 D-4).
+
+    Widened from `IsAdmin` to `IsAdmin | IsReviewer`. Both halves matter: a
+    reviewer needs the roster to forward a brief, and an admin must not lose
+    access they had — StartPublicationSlideIn reads the same endpoint.
+
+    The gate is deliberately on ROLE, not TWG membership. Reading the roster
+    and being allowed to send are different questions: BriefForwardView still
+    refuses a sender with no TWG, so a TWG-less reviewer can see colleagues
+    here and still not forward a brief.
+    """
+
+    def setUp(self):
+        self.url = "/api/v1/admin/reviewers-tree"
+
+    def _user(self, email, role, twg):
+        return SystemUser.objects.create(
+            email=email, name=email, role=role, technical_working_group=twg
+        )
+
+    def test_anonymous_is_rejected(self):
+        res = self.client.get(self.url)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_reviewer_with_twg_may_read_the_roster(self):
+        self.client.force_authenticate(
+            user=self._user(
+                "twg_reviewer@test.com",
+                UserRoleTypes.reviewer,
+                TechnicalWorkingGroup.ndma,
+            )
+        )
+        self.assertEqual(
+            self.client.get(self.url).status_code, status.HTTP_200_OK
+        )
+
+    def test_admin_without_a_twg_keeps_access(self):
+        self.client.force_authenticate(
+            user=self._user("plain_admin@test.com", UserRoleTypes.admin, None)
+        )
+        self.assertEqual(
+            self.client.get(self.url).status_code, status.HTTP_200_OK
+        )
+
+    def test_reviewer_without_a_twg_may_still_read_the_roster(self):
+        """Reading is not sending: BriefForwardView is where the TWG gate
+        lives, and it is unchanged."""
+        self.client.force_authenticate(
+            user=self._user("no_twg@test.com", UserRoleTypes.reviewer, None)
+        )
+        self.assertEqual(
+            self.client.get(self.url).status_code, status.HTTP_200_OK
+        )
+
+    def test_observer_is_rejected(self):
+        self.client.force_authenticate(
+            user=self._user(
+                "observer@test.com", UserRoleTypes.observer, None
+            )
+        )
+        self.assertEqual(
+            self.client.get(self.url).status_code, status.HTTP_403_FORBIDDEN
+        )

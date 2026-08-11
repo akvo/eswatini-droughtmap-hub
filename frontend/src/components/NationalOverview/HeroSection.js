@@ -3,7 +3,9 @@
 import { Button, Skeleton } from "antd";
 import { CalendarOutlined, DownloadOutlined } from "@ant-design/icons";
 import {
+  DROUGHT_CATEGORY_VALUE,
   DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_CODE,
   OVERVIEW_NARRATIVE_MAX_CHARS,
 } from "@/static/config";
 import { textOn } from "@/lib/helper";
@@ -27,9 +29,13 @@ const HeroSection = ({ hero }) => {
     summary = "",
   } = hero;
 
-  const catVal = status?.category ?? 0;
-  const badgeBg = DROUGHT_CATEGORY_COLOR[catVal] || "#b9f8cf";
-  const catLabel = catVal > 0 ? `D${catVal - 1}` : "Normal";
+  const catVal = status?.category;
+  const badgeBg =
+    DROUGHT_CATEGORY_COLOR?.[catVal] ||
+    DROUGHT_CATEGORY_COLOR[DROUGHT_CATEGORY_VALUE.none];
+  const catLabel =
+    DROUGHT_CATEGORY_CODE?.[catVal] ||
+    DROUGHT_CATEGORY_CODE[DROUGHT_CATEGORY_VALUE.none];
 
   return (
     <section className="relative w-full flex flex-col items-center text-center py-12 gap-6">

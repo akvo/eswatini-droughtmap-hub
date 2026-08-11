@@ -48,6 +48,7 @@ class AdministrationMetaSerializer(serializers.Serializer):
     name = serializers.CharField()
     region = serializers.CharField(allow_null=True)
     zone = serializers.CharField(allow_null=True)
+    area_km2 = serializers.FloatField(allow_null=True)
 
 
 class ConfidenceSerializer(serializers.Serializer):
