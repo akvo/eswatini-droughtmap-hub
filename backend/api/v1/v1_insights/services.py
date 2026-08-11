@@ -21,7 +21,7 @@ from api.v1.v1_weather.services import (
     station_health,
 )
 from utils.periods import shift_period
-from api.v1.v1_iks.models import KoboData
+from api.v1.v1_iks.utils import active_kobo_data, active_values
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import (
     ActivityStatus,
@@ -334,12 +334,22 @@ def get_metrics_data(inkhundla_id=None):
         else 0
     )
 
-    # Field Reports (Kobo 30d)
-    kobo_qs = KoboData.objects.filter(submission_time__gte=cutoff_30d)
-    if admin and admin.name:
-        admin_kobo_qs = kobo_qs.filter(raw_data__icontains=admin.name)
-        if admin_kobo_qs.exists():
-            kobo_qs = admin_kobo_qs
+    # Field Reports (Kobo 30d). Scoped through the `active_*` readers like
+    # every other IKS surface, so a deactivated form's submissions never leak
+    # into a public count.
+    kobo_qs = active_kobo_data().filter(submission_time__gte=cutoff_30d)
+    if admin:
+        # Attributed through IKSValue.administration — the same join the IKS
+        # explorer uses. The previous substring match on the raw JSON blob
+        # matched a name appearing in ANY answer, and fell back to the
+        # NATIONAL count whenever an Inkhundla had none of its own, so an
+        # Inkhundla with no reports showed the country's total under its name.
+        kobo_ids = (
+            active_values()
+            .filter(administration=admin)
+            .values_list("kobo_id", flat=True)
+        )
+        kobo_qs = kobo_qs.filter(kobo_id__in=kobo_ids)
 
     kobo_count = kobo_qs.count()
 
@@ -420,11 +430,12 @@ def get_metrics_data(inkhundla_id=None):
         },
         "fieldReports": {
             "count": kobo_count,
-            # No verification workflow exists (OQ-3) — a synced KoboToolbox
-            # submission counts as verified. None at zero reports: 0/0 is not
-            # 100%, and the card would otherwise paint a full ring over an
-            # empty database.
-            "verifiedPct": 100 if kobo_count else None,
+            # Always None: nothing in the data model records whether a
+            # submission was verified — no field, no workflow, nowhere. The
+            # previous hardcoded 100 painted a full "verified" ring on a
+            # public page for a check that never happened. `None` hides the
+            # ring; give it a real value when a verification step exists.
+            "verifiedPct": None,
             "label": reports_label,
             "note": "in last 30 days",
         },
