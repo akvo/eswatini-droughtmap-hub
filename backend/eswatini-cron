@@ -4,3 +4,4 @@
 00 02 * * * date >> /app/cron.log && cd /app/ && bash -l ./job.sh cdi >> /app/cron.log 2>&1
 30 02 * * * date >> /app/cron.log && cd /app/ && bash -l ./job.sh rasters >> /app/cron.log 2>&1
 00 07 1 * * date >> /app/cron.log && cd /app/ && bash -l ./job.sh cs-reminders >> /app/cron.log 2>&1
+00 03 * * * date >> /app/cron.log && cd /app/ && bash -l ./job.sh precipitation >> /app/cron.log 2>&1
