@@ -23,7 +23,12 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         body = response.json()
         charts = {item["key"]: item for item in body["data"]}
         self.assertEqual(
-            set(charts), {"precipitation_monthly", "temperature_monthly"}
+            set(charts),
+            {
+                "precipitation_monthly",
+                "precipitation_satellite_monthly",
+                "temperature_monthly",
+            },
         )
         current = next(
             i["value"]
@@ -33,6 +38,29 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         self.assertEqual(set(current), {"tmax", "tmean", "tmin"})
         self.assertEqual(current["tmax"], 24.0)
         self.assertEqual(body["meta"]["station"], "Mbabane")
+
+    def test_chirps_series_present_and_range_filtered(self):
+        from api.v1.v1_weather.models import AdministrationObservation
+
+        period = self.today.strftime("%Y-%m")
+        AdministrationObservation.objects.create(
+            administration_id=HHUKWINI_ADM,
+            year_month=self.today.replace(day=1),
+            parameter="precipitation",
+            value=75.5,
+            dataset="CHIRPS v2.0 africa_monthly",
+            pixel_count=10,
+        )
+
+        body = self.get_administration(
+            "series", HHUKWINI_ADM, **{"from": period, "to": period}
+        ).json()
+        charts = {item["key"]: item for item in body["data"]}
+        self.assertIn("precipitation_satellite_monthly", charts)
+        sat_data = charts["precipitation_satellite_monthly"]["data"]
+        self.assertEqual(len(sat_data), 1)
+        self.assertEqual(sat_data[0]["period"], period)
+        self.assertEqual(sat_data[0]["value"], 75.5)
 
     def test_default_window_is_year_to_date_with_null_padding(self):
         body = self.get_administration("series", HHUKWINI_ADM).json()
@@ -67,7 +95,8 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         )
         self.assertEqual(
             self.get_administration(
-                "series", HHUKWINI_ADM,
+                "series",
+                HHUKWINI_ADM,
                 **{"from": "2026-06", "to": "2026-04"},
             ).status_code,
             status.HTTP_400_BAD_REQUEST,
@@ -75,16 +104,15 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         # padded responses are bounded: > 120 months is rejected
         self.assertEqual(
             self.get_administration(
-                "series", HHUKWINI_ADM,
+                "series",
+                HHUKWINI_ADM,
                 **{"from": "2000-01", "to": "2026-12"},
             ).status_code,
             status.HTTP_400_BAD_REQUEST,
         )
 
     def test_manzini_uses_labelled_fallback(self):
-        meta = self.get_administration(
-            "series", KWALUSENI_ADM
-        ).json()["meta"]
+        meta = self.get_administration("series", KWALUSENI_ADM).json()["meta"]
         self.assertEqual(meta["resolution"], "nearest_station_fallback")
         self.assertEqual(meta["station_region"], "Hhohho")
         self.assertGreater(meta["distance_km"], 0)
@@ -93,9 +121,7 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         StationDailyAggregate.objects.all().delete()
         body = self.get_administration("series", KWALUSENI_ADM).json()
         self.assertIsNone(body["data"])
-        self.assertEqual(
-            body["meta"]["reason"], "no_station_data_for_period"
-        )
+        self.assertEqual(body["meta"]["reason"], "no_station_data_for_period")
 
     def test_unknown_administration_is_404(self):
         self.assertEqual(

@@ -699,6 +699,14 @@ def administration_series(
             ),
         },
         {
+            "key": "precipitation_satellite_monthly",
+            "label": "CHIRPS observed",
+            "units": "mm",
+            "data": _chirps_monthly_series(
+                administration, from_period, to_period
+            ),
+        },
+        {
             "key": "temperature_monthly",
             "label": "Temperature range",
             "units": "°C",
@@ -716,6 +724,35 @@ def administration_series(
     meta["to"] = to_period
     base["meta"] = meta
     return base
+
+
+def _chirps_monthly_series(
+    administration, from_period: str, to_period: str
+) -> list:
+    """
+    Satellite-observed precipitation monthly series per Inkhundla.
+    (WX-10)
+    """
+    start_date = month_start(from_period)
+    end_date = month_start(to_period)
+
+    obs_qs = AdministrationObservation.objects.filter(
+        administration=administration,
+        parameter=WeatherParameter.precipitation,
+        year_month__gte=start_date,
+        year_month__lte=end_date,
+    ).values("year_month", "value")
+
+    values = {
+        row["year_month"].strftime("%Y-%m"): round(row["value"], 1)
+        for row in obs_qs
+        if row["value"] is not None
+    }
+
+    return [
+        {"period": period, "value": values.get(period)}
+        for period in month_range(from_period, to_period)
+    ]
 
 
 def administration_deviation(

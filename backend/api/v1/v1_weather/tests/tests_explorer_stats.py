@@ -224,7 +224,8 @@ class SatelliteDifferenceCardTests(ExplorerDataMixin, APITestCase):
     def test_card_arithmetic_and_meta(self):
         from api.v1.v1_weather.models import AdministrationObservation
 
-        # Pick a fixed past month date (e.g. 2026-05) so all daily aggregates fall in the same month
+        # Pick a fixed past month date (e.g. 2026-05)
+        # so all daily aggregates fall in the same month
         month_date = date(2026, 5, 1)
         for day_num in range(1, 22):
             StationDailyAggregate.objects.create(
