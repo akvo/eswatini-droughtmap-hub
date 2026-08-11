@@ -176,6 +176,33 @@ class SeededPublicationChainTestCase(TestCase):
         extraction = self._run_download_hook("dl-plain")
         self.assertFalse(extraction.info["is_seeder"])
 
+    def test_a_successful_download_job_is_marked_done(self):
+        """The hook used to rebind `job` to the extraction job it creates, so
+        the download's own `status = done` was never saved and every finished
+        download sat at on_progress forever — a phantom in-flight job that
+        blocks has_active_cdi_download-gated retries permanently."""
+        download = self._download_job("dl-status")
+        extraction = self._run_download_hook("dl-status")
+        download.refresh_from_db()
+        self.assertEqual(download.status, JobStatus.done)
+        self.assertIsNotNone(download.available)
+        self.assertEqual(download.result, "ok")
+        # ...and the extraction job it spawned is the one left in flight.
+        self.assertEqual(extraction.status, JobStatus.on_progress)
+        self.assertEqual(extraction.task_id, "next-task")
+
+    def test_a_failed_download_job_is_marked_failed(self):
+        self._download_job("dl-failed")
+        task = SimpleNamespace(id="dl-failed", success=False, result=False)
+        with patch("api.v1.v1_jobs.job.os.path.exists", return_value=False):
+            download_geonode_dataset_results(task)
+        job = Jobs.objects.get(task_id="dl-failed")
+        self.assertEqual(job.status, JobStatus.failed)
+        # No extraction job: there is no raster to extract.
+        self.assertFalse(
+            Jobs.objects.filter(type=JobTypes.initial_cdi_values).exists()
+        )
+
     def _run_extraction_hook(self, task_id, **extra_info):
         info = {"id": self.publication.id, "subject": None, "message": None}
         info.update(extra_info)
@@ -251,12 +278,13 @@ class CronJobScriptTestCase(SimpleTestCase):
                 f"handle (known tasks: {sorted(known)}).",
             )
 
-    # Tasks job.sh handles on purpose without a crontab entry yet. "rasters"
-    # backfills missing component rasters across every publication; the first
-    # production sweep is meant to be run by hand and watched, with the
-    # crontab entry following in a separate commit. Remove from this set when
-    # it is scheduled.
-    unscheduled_by_design = {"rasters"}
+    # Tasks job.sh handles on purpose without a crontab entry. Empty since
+    # "rasters" was scheduled: its supervised first production run showed the
+    # opposite of what the caution assumed — leaving it manual is what hurt.
+    # A GeoNode catalogue outage silently attaches no component rasters, and
+    # without the SPI one every Inkhundla loses its confidence band, with
+    # nothing retrying until someone notices.
+    unscheduled_by_design = set()
 
     def test_every_job_sh_task_is_scheduled(self):
         scheduled = set(self._cron_tasks())
