@@ -258,3 +258,46 @@ class SatelliteDifferenceCardTests(ExplorerDataMixin, APITestCase):
         self.assertEqual(card["units"], "mm")
         self.assertEqual(card["meta"]["comparator"], "CHIRPS")
         self.assertEqual(card["meta"]["period"], "2026-05")
+        self.assertEqual(card["meta"]["anchor_inkhundla"], "Hhukwini")
+
+    def test_same_difference_card_across_region_tinkhundla(self):
+        from api.v1.v1_weather.models import AdministrationObservation
+
+        month_date = date(2026, 5, 1)
+        for day_num in range(1, 22):
+            StationDailyAggregate.objects.create(
+                station=self.mbabane,
+                date=date(2026, 5, day_num),
+                parameter=WeatherParameter.precipitation,
+                value=2.0,
+                readings_count=24,
+            )
+
+        AdministrationObservation.objects.create(
+            administration_id=HHUKWINI_ADM,
+            year_month=month_date,
+            parameter=WeatherParameter.precipitation,
+            value=30.0,
+            dataset="CHIRPS v2.0 africa_monthly",
+            pixel_count=10,
+        )
+
+        # Hhukwini stats
+        res_h = self.get_administration("stats", HHUKWINI_ADM).json()
+        card_hhukwini = next(
+            c
+            for c in res_h["data"]
+            if c["key"] == "station_satellite_difference"
+        )
+        # Kwaluseni stats (another Inkhundla in fixture)
+        res_k = self.get_administration("stats", KWALUSENI_ADM).json()
+        card_kwaluseni = next(
+            c
+            for c in res_k["data"]
+            if c["key"] == "station_satellite_difference"
+        )
+        self.assertEqual(card_hhukwini["value"], 12.0)
+        self.assertEqual(card_kwaluseni["value"], 12.0)
+        self.assertEqual(
+            card_kwaluseni["meta"]["anchor_inkhundla"], "Hhukwini"
+        )

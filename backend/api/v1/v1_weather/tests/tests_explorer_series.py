@@ -62,7 +62,50 @@ class ExplorerSeriesTests(ExplorerDataMixin, APITestCase):
         self.assertEqual(sat_data[0]["period"], period)
         self.assertEqual(sat_data[0]["value"], 75.5)
 
+    def test_chirps_series_unanchored_per_inkhundla(self):
+        from api.v1.v1_weather.models import AdministrationObservation
+
+        period = self.today.strftime("%Y-%m")
+        # Hhukwini observation
+        AdministrationObservation.objects.create(
+            administration_id=HHUKWINI_ADM,
+            year_month=self.today.replace(day=1),
+            parameter="precipitation",
+            value=80.0,
+            dataset="CHIRPS v2.0 africa_monthly",
+            pixel_count=10,
+        )
+        # Kwaluseni observation (different value for a different Inkhundla)
+        AdministrationObservation.objects.create(
+            administration_id=KWALUSENI_ADM,
+            year_month=self.today.replace(day=1),
+            parameter="precipitation",
+            value=120.0,
+            dataset="CHIRPS v2.0 africa_monthly",
+            pixel_count=10,
+        )
+
+        res_h = self.get_administration(
+            "series", HHUKWINI_ADM, **{"from": period, "to": period}
+        ).json()
+        res_k = self.get_administration(
+            "series", KWALUSENI_ADM, **{"from": period, "to": period}
+        ).json()
+
+        charts_h = {item["key"]: item for item in res_h["data"]}
+        charts_k = {item["key"]: item for item in res_k["data"]}
+
+        self.assertEqual(
+            charts_h["precipitation_satellite_monthly"]["data"][0]["value"],
+            80.0,
+        )
+        self.assertEqual(
+            charts_k["precipitation_satellite_monthly"]["data"][0]["value"],
+            120.0,
+        )
+
     def test_default_window_is_year_to_date_with_null_padding(self):
+
         body = self.get_administration("series", HHUKWINI_ADM).json()
         self.assertEqual(body["meta"]["from"], f"{self.today.year}-01")
         self.assertEqual(body["meta"]["to"], self.today.strftime("%Y-%m"))

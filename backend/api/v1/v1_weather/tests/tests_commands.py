@@ -11,11 +11,15 @@ from api.v1.v1_weather.constants import (
     WIS2_AIR_TEMPERATURE,
     WIS2_PRECIPITATION,
 )
+from api.v1.v1_weather.management.commands.fetch_chirps_monthly import (
+    Command as FetchChirpsMonthlyCommand,
+)
 from api.v1.v1_weather.models import (
     StationDailyAggregate,
     WeatherSource,
     WeatherStation,
 )
+
 from api.v1.v1_weather.tests.fixtures import (
     MBABANE,
     MOTI,
@@ -166,3 +170,38 @@ class FetchChirpsMonthlyCommandTests(TestCase):
         call_command("fetch_chirps_monthly", "--period", "2026-07", stdout=out)
         self.assertIn("not published", out.getvalue())
         mock_get.assert_not_called()
+
+    @patch(
+        "api.v1.v1_weather.management.commands"
+        ".fetch_chirps_monthly.running_tests",
+        return_value=False,
+    )
+    def test_fetch_chirps_monthly_resolve_periods_fallback_empty(
+        self, mock_running
+    ):
+        cmd = FetchChirpsMonthlyCommand()
+        # No daily aggregates present in DB -> returns empty list
+        periods = cmd._resolve_periods({})
+        self.assertEqual(periods, [])
+
+    @patch(
+        "api.v1.v1_weather.management.commands"
+        ".fetch_chirps_monthly.running_tests",
+        return_value=False,
+    )
+    def test_fetch_chirps_monthly_resolve_from_to(self, mock_running):
+        cmd = FetchChirpsMonthlyCommand()
+        periods = cmd._resolve_periods(
+            {"from_period": "2026-01", "to_period": "2026-03"}
+        )
+        self.assertEqual(periods, ["2026-01", "2026-02", "2026-03"])
+
+
+@override_settings(USE_TZ=False, TEST_ENV=True)
+class BuildChirpsNormalsCommandTests(TestCase):
+    def test_build_chirps_normals_raises_under_test_runner(self):
+        with self.assertRaises(CommandError) as ctx:
+            call_command("build_chirps_normals", stdout=StringIO())
+        self.assertIn(
+            "must never run under the test suite", str(ctx.exception)
+        )
