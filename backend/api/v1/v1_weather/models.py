@@ -117,7 +117,8 @@ class AdministrationNormal(models.Model):
     same spirit as StationDailyAggregate / D-3).
 
     Climatology, not a calendar series: `month` is 1..12 and carries no year.
-    Extracted from the rasters in ./source/30years by `extract_weather_normals`.
+    Extracted from the rasters in ./source/30years by
+    `extract_weather_normals`.
     """
 
     administration = models.ForeignKey(

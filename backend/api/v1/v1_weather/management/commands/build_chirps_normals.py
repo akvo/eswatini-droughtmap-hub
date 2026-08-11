@@ -5,8 +5,9 @@ pre-aggregated 5x from CHIRPS native, which left 34 of 59 Tinkhundla without a
 pixel centre and so silently null. CHIRPS africa_monthly is published at 0.05
 deg, giving a 30x50 window instead (5-46 px per Inkhundla).
 
-Run on demand, not on a schedule: normals change roughly never (the next refresh
-is a new 30-year period). Transfers ~1.6 GB to write a ~65 KB output, then
+Run on demand, not on a schedule: normals change roughly never
+(the next refresh is a new 30-year period).
+Transfers ~1.6 GB to write a ~65 KB output, then
 `extract_weather_normals` loads it into the DB.
 """
 
