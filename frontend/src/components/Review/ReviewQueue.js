@@ -182,7 +182,7 @@ const ReviewQueue = ({
           className="absolute inset-x-0 -bottom-9 top-[72px] bg-brandTint"
         />
         <div className="relative z-10 mx-auto -mt-16 flex w-full max-w-[1280px] flex-col gap-6">
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-col gap-0 sm:flex-row">
             <MetricCard
               label="Pending review"
               value={remaining}
@@ -234,14 +234,16 @@ const ReviewQueue = ({
             )}
           </ReviewQueueTable>
 
-          <div className="flex flex-col gap-4 lg:flex-row">
+          {/* The map column carries no height of its own — it stretches to the
+              assessment summary next to it, the way the design pairs them. */}
+          <div className="flex flex-col gap-0 lg:flex-row lg:items-stretch">
             <div className="w-full lg:w-[325px] lg:shrink-0">
               <AssessmentSummary summary={summary} />
             </div>
-            <div className="w-full border border-cardBorder bg-white">
-              <div className="flex flex-col gap-3 border-b border-cardBorder p-4 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-base font-semibold leading-6 text-[#333333]">
-                  CDI-E drought map
+            <div className="flex min-h-[480px] w-full flex-col border border-cardBorder bg-white">
+              <div className="flex flex-col gap-4 border-b border-cardBorder p-4 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-xl font-medium leading-[30px] text-[#333333]">
+                  CDI-E Drought Map
                 </h3>
                 <TabButtons
                   options={REVIEW_MAP_MODE}
@@ -249,7 +251,9 @@ const ReviewQueue = ({
                   onChange={setMapMode}
                 />
               </div>
-              <ReviewerMap data={mapRows} mode={mapMode} onSelect={onOpen} />
+              <div className="flex min-h-0 flex-1 flex-col">
+                <ReviewerMap data={mapRows} mode={mapMode} onSelect={onOpen} />
+              </div>
             </div>
           </div>
 

@@ -12,7 +12,15 @@ const Map = ({ className, isFullHeight, ...props }) => {
   const { height = DEFAULT_MAP_HEIGHT } = props;
   return (
     <div
-      style={{ height: isFullHeight ? "100vh" : `calc(100vh - ${height}px)` }}
+      style={{
+        // A string height is used verbatim ("100%" lets a flex parent size the
+        // map); a number stays the historical viewport offset.
+        height: isFullHeight
+          ? "100vh"
+          : typeof height === "string"
+            ? height
+            : `calc(100vh - ${height}px)`,
+      }}
       role="figure"
       className={classNames("w-full", className)}
     >

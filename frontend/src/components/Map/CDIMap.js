@@ -46,6 +46,7 @@ const CDIMap = ({
   onClick = () => {},
   style = {},
   layerKey = "geodata",
+  wrapperClassName = "",
   ...props
 }) => {
   const appContext = useAppContext();
@@ -100,7 +101,7 @@ const CDIMap = ({
   }
 
   return (
-    <div className="relative bg-neutral-100">
+    <div className={`relative bg-neutral-100 ${wrapperClassName}`}>
       {children}
       <Map
         center={DEFAULT_CENTER}
