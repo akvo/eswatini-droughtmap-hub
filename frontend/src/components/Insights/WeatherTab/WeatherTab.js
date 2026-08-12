@@ -10,7 +10,6 @@ import TabLoader from "../TabLoader";
 import MetricItemCard from "./MetricItemCard";
 import PrecipitationChart from "./PrecipitationChart";
 import TemperatureChart from "./TemperatureChart";
-import { satelliteDifference } from "@/static/mocks/weather/satellite-difference";
 import classNames from "classnames";
 
 const findCard = (stats, key) =>
@@ -27,9 +26,7 @@ const monthLabel = (period) =>
  * Weather Stations Explorer (Figma 3509:110107).
  *
  * Cards, chart series and 30-year normals all come from the public /weather
- * endpoints, keyed by inkhundla. One element in the frame still has no backend
- * — the station-vs-satellite card — and is fed from static/mocks/weather,
- * labelled as a placeholder until the satellite comparison feature lands.
+ * endpoints, keyed by inkhundla.
  */
 const WeatherTab = ({
   selectedInkhundla,
@@ -80,6 +77,7 @@ const WeatherTab = ({
     return <TabLoader tip="Loading weather data..." />;
   }
 
+  const satDiff = findCard(stats, "station_satellite_difference");
   const lastMonth = findCard(stats, "precipitation_last_month");
   const total12m = findCard(stats, "precipitation_12m");
   const completeness = findCard(stats, "completeness_12m");
@@ -131,14 +129,19 @@ const WeatherTab = ({
         )}
       >
         <MetricItemCard
-          label={satelliteDifference.label}
-          value={`${satelliteDifference.value} ${satelliteDifference.units}`}
-          change={satelliteDifference.meta.change}
-          changeUnits={satelliteDifference.units}
-          footnote={`vs ${satelliteDifference.meta.comparator} last month`}
-          isPlaceholder
-          placeholderHint="Illustrative only. The station-vs-satellite comparison has no backend yet — it ships with the satellite comparison feature."
+          label={satDiff?.label ?? "Difference between station and satellite"}
+          value={amount(satDiff)}
+          footnote={
+            satDiff?.value != null
+              ? `${monthLabel(satDiff.meta?.period)} · vs ${satDiff.meta?.comparator} over ${satDiff.meta?.anchor_inkhundla}`
+              : satDiff?.meta?.reason === "satellite_not_published"
+                ? "Satellite data not yet published"
+                : satDiff?.meta?.reason === "incomplete_station_month"
+                  ? "Too few station reporting days"
+                  : "No station data"
+          }
         />
+
         <MetricItemCard
           label={lastMonth?.label ?? "Total precipitation last month"}
           value={amount(lastMonth)}

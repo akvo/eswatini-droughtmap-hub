@@ -198,7 +198,7 @@ describe("WeatherTab", () => {
     ).toBeInTheDocument();
   });
 
-  it("labels the satellite card as placeholder data", async () => {
+  it("renders live satellite difference card from stats API", async () => {
     mockApi();
     renderTab();
 
@@ -207,7 +207,6 @@ describe("WeatherTab", () => {
         screen.getByText("Difference between station and satellite"),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText("Placeholder")).toBeInTheDocument();
   });
 
   it("plots station values and keeps months without data as gaps", async () => {
