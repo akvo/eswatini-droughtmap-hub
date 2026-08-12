@@ -44,7 +44,7 @@ const MetricCard = ({
           : undefined
       }
       className={classNames(
-        "flex min-w-0 flex-1 flex-col gap-2 border bg-white p-4",
+        "flex min-w-0 flex-1 flex-col gap-4 border bg-white p-4",
         active ? "border-[#3E5EB9] bg-[#f2f5fd]" : "border-cardBorder",
         onClick &&
           "text-left hover:bg-[#f7f8fa] focus:outline-none " +
@@ -52,22 +52,29 @@ const MetricCard = ({
         className,
       )}
     >
-      <span className="text-sm font-medium leading-5 text-[#606060]">
+      <span className="text-base font-normal leading-6 text-[#333333]">
         {label}
       </span>
-      <span className="text-[30px] font-semibold leading-9 text-[#20232D]">
-        {value}
-      </span>
-      <span className="flex flex-wrap items-center gap-1.5 text-sm leading-5 text-[#606060]">
-        {delta && (
-          <span
-            className={classNames("font-medium", ARROW_COLOR[delta.direction])}
-          >
-            {ARROW[delta.direction]} {Math.abs(delta.value)}
-            {deltaSuffix}
-          </span>
-        )}
-        {sublabel}
+      {/* The value and its change line are one block (Figma "Number and
+          badge"): 4px apart, 16px below the label. */}
+      <span className="flex flex-col gap-1">
+        <span className="text-[28px] font-bold leading-[42px] text-[#333333]">
+          {value}
+        </span>
+        <span className="flex flex-wrap items-center gap-2 text-sm leading-[21px] text-[#606060]">
+          {delta && (
+            <span
+              className={classNames(
+                "font-medium",
+                ARROW_COLOR[delta.direction],
+              )}
+            >
+              {ARROW[delta.direction]} {Math.abs(delta.value)}
+              {deltaSuffix}
+            </span>
+          )}
+          {sublabel}
+        </span>
       </span>
     </Tag>
   );
