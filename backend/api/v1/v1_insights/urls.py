@@ -6,6 +6,8 @@ from api.v1.v1_insights.views import (
     InsightsMetricsView,
     InsightsResponseActivitiesView,
     InsightsMapDataView,
+    InsightsMapLayerView,
+    InsightsAgroEcoGeoView,
 )
 
 urlpatterns = [
@@ -33,5 +35,15 @@ urlpatterns = [
         r"^(?P<version>(v1))/insights/map-data$",
         InsightsMapDataView.as_view(),
         name="insights-map-data",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/insights/map-layer/(?P<key>[a-z-]+)$",
+        InsightsMapLayerView.as_view(),
+        name="insights-map-layer",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/insights/geo/agro-eco$",
+        InsightsAgroEcoGeoView.as_view(),
+        name="insights-geo-agro-eco",
     ),
 ]

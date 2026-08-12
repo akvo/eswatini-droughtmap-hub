@@ -30,11 +30,22 @@ const categoryKey = (values, feature) => {
   return DROUGHT_CATEGORY_COLOR[cat] === undefined ? NO_DATA : cat;
 };
 
-// Remounts the GeoJSON layer whenever the colors it paints change.
-const layerKeyOf = (values, visible) =>
+// Remounts the GeoJSON layer whenever the colors it paints change. The
+// selection is part of the key because react-leaflet styles layers once on
+// mount — without it the outline would not appear until something else moved.
+const layerKeyOf = (values, visible, selectedId) =>
   values.map((v) => v?.category).join("-") +
   "|" +
-  [...visible].sort().join(",");
+  [...visible].sort().join(",") +
+  `|${selectedId ?? ""}`;
+
+// Matches LayerMap's outline so selection looks the same on every tab.
+const SELECTED_OUTLINE = {
+  color: "#111827",
+  weight: 3,
+  opacity: 1,
+  bringToFront: true,
+};
 
 // Every class including No Data — all start ticked.
 const allCategoryValues = new Set(DROUGHT_CATEGORY.map((c) => c.value));
@@ -43,6 +54,7 @@ const OverviewMap = ({
   validatedValues = [],
   compareValues = [],
   onInkhundlaSelect,
+  selectedInkhundlaId,
 }) => {
   const [selectedFeature, setSelectedFeature] = useState(null);
   // const [selectedCategory, setSelectedCategory] = useState(null);
@@ -89,15 +101,20 @@ const OverviewMap = ({
   const renderMap = (values, withCard) => (
     <div className="w-full">
       <CDIMap
-        layerKey={layerKeyOf(values, visibleCategories)}
+        layerKey={layerKeyOf(values, visibleCategories, selectedInkhundlaId)}
         dragging={!isCompare}
         scrollWheelZoom={false}
         onFeature={(feature) => {
           const cat = categoryKey(values, feature);
           const visible = visibleCategories.has(cat);
+          const adminId = feature?.properties?.administration_id;
+          const isSelected =
+            selectedInkhundlaId != null &&
+            String(adminId) === String(selectedInkhundlaId);
           return {
             fillColor: visible ? DROUGHT_CATEGORY_COLOR?.[cat] : "transparent",
             fillOpacity: visible ? 0.75 : 0,
+            ...(isSelected ? SELECTED_OUTLINE : {}),
           };
         }}
         onClick={(feature) => {

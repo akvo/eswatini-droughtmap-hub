@@ -21,7 +21,7 @@ const AppShell = ({ session, children }) => {
     <>
       <div className="w-full min-h-screen bg-white flex flex-col overflow-x-hidden">
         <Navbar session={session} />
-        <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 pb-9 bg-white">
+        <div className="container w-full h-full relative space-y-4 xl:space-y-8 pt-3 bg-white">
           {children}
         </div>
         <LogoSection />

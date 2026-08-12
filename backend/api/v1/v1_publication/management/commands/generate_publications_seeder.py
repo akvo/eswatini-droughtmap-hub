@@ -8,6 +8,8 @@ to a classifier whose entire scale is 0..1).
 
 Sources, real data first:
 
+  --source cache      the PublicationGeonode rows already in the database —
+                      the same real resource list, minus the catalogue walk
   --source geonode    resource list from GeoNode; values arrive later via the
                       download -> extract -> publish chain (needs a worker)
   --source path       real pct-rank CDI GeoTIFFs from a local archive,
@@ -15,8 +17,13 @@ Sources, real data first:
   --source synthetic  offline: topojson administrations, values drawn from the
                       drought end of the CDI scale.
 
-`--source auto` (the default) preserves the historical behaviour: geonode when
-configured, otherwise synthetic.
+`--source auto` (the default) is path -> cache -> geonode -> synthetic. `cache`
+sits ahead of `geonode` because the two are the same data and only one of them
+can fail: PublicationGeonode is written by the pipeline push and by
+sync_publication_geonodes, and the read path has not called GeoNode since D-1.
+When the catalogue is unreachable, `geonode` creates nothing (or creates rows
+with empty initial_values) and the failure surfaces pages away as an empty
+review queue, which is a genuinely confusing thing to debug.
 
 Component rasters are a separate command, generate_rasters_seeder, which owns
 PublicationRaster and offers the same source ladder.
@@ -36,11 +43,12 @@ from faker import Faker
 from api.v1.v1_jobs.models import Jobs, JobStatus, JobTypes
 from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
+    GEONODE_REQUEST_TIMEOUT,
     CDIGeonodeCategory,
     PublicationStatus,
     SEEDED_PUBLICATION_GEONODE_BASE,
 )
-from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Publication, PublicationGeonode
 from api.v1.v1_publication.raster_archive import scan_raster_archive
 from api.v1.v1_publication.utils import (
     attach_component_rasters,
@@ -68,7 +76,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--source",
-            choices=["auto", "geonode", "path", "synthetic"],
+            choices=["auto", "cache", "geonode", "path", "synthetic"],
             default="auto",
         )
         parser.add_argument(
@@ -147,7 +155,9 @@ class Command(BaseCommand):
         source = self._resolve_source(kwargs)
         self.stdout.write(f"Publication source: {source}")
 
-        if source == "geonode":
+        if source == "cache":
+            self.from_cache(**kwargs)
+        elif source == "geonode":
             self.from_geonode(**kwargs)
         elif source == "path":
             self.from_path(**kwargs)
@@ -168,9 +178,35 @@ class Command(BaseCommand):
             return "path"
         if kwargs["test"]:
             return "synthetic"
+        if self._cached_resources(kwargs.get("category")):
+            return "cache"
         if getattr(settings, "GEONODE_BASE_URL", None):
             return "geonode"
         return "synthetic"
+
+    def _cached_resources(self, category=None) -> list:
+        """Cached GeoNode rows shaped like the live API's resource dicts.
+
+        Same keys `_sync_resource` and `queue_cdi_download` already read, so
+        the cache is a drop-in for the catalogue walk and nothing downstream
+        has to know which one it got. Newest month first, matching the live
+        query's `sort[]=-date`.
+        """
+        queryset = PublicationGeonode.objects.filter(
+            category=category or CDIGeonodeCategory.cdi,
+            # A row with no download_url cannot start the extraction chain;
+            # creating a publication from it would only produce the empty
+            # initial_values this ordering exists to avoid.
+            download_url__isnull=False,
+        ).exclude(download_url="").order_by("-year_month")
+        return [
+            {
+                "pk": row.geonode_id,
+                "date": row.year_month.strftime("%Y-%m-%d"),
+                "download_url": row.download_url,
+            }
+            for row in queryset
+        ]
 
     def _parse_status(self, status):
         if isinstance(status, str):
@@ -374,6 +410,34 @@ class Command(BaseCommand):
             )
         )
 
+    def from_cache(self, **kwargs):
+        """Same work as from_geonode, over the cached resource list.
+
+        Only the catalogue lookup changes. The raster download still goes to
+        GeoNode (a different host, an independent failure — D-7), so this
+        stays a real-data source rather than a synthetic one.
+        """
+        category = kwargs.get("category", CDIGeonodeCategory.cdi)
+        repeat = kwargs["repeat"]
+        resources = self._cached_resources(category)[: repeat * 2]
+        if not resources:
+            raise CommandError(
+                "No PublicationGeonode rows cached for category "
+                f"'{category}'. Run sync_publication_geonodes to populate "
+                "the cache, or pick --source geonode / path / synthetic."
+            )
+
+        for resource in resources:
+            self.stdout.write(f"Processing cached resource: {resource['pk']}")
+            self._sync_resource(resource, category)
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Cache: {len(resources)} {category} resource(s), no "
+                f"catalogue request made."
+            )
+        )
+
     def from_geonode(self, **kwargs):
         category = kwargs.get("category", CDIGeonodeCategory.cdi)
         page = kwargs.get("page", 1)
@@ -386,9 +450,21 @@ class Command(BaseCommand):
                     settings.GEONODE_BASE_URL, category, page
                 )
             )
-            response = requests.get(
-                url, auth=geonode_auth(), verify=GEONODE_SSL_VERIFY
-            )
+            try:
+                response = requests.get(
+                    url,
+                    auth=geonode_auth(),
+                    verify=GEONODE_SSL_VERIFY,
+                    timeout=GEONODE_REQUEST_TIMEOUT,
+                )
+            except requests.RequestException as e:
+                # Untimed and unhandled before: a GeoNode that accepted the
+                # connection and stalled hung the seeder indefinitely, and a
+                # refused one aborted it with a raw traceback mid-run.
+                self.stdout.write(
+                    self.style.ERROR(f"GeoNode unreachable on page {page}: {e}")
+                )
+                break
             if response.status_code != 200:
                 self.stdout.write(
                     self.style.ERROR(

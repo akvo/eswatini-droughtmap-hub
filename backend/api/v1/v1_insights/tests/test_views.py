@@ -133,15 +133,100 @@ class InsightsAPITests(TestCase):
         self.assertIn("temperature", data)
         self.assertIn("activeStations", data)
         self.assertEqual(data["fieldReports"]["count"], 1)
-        self.assertEqual(data["fieldReports"]["verifiedPct"], 100)
+        self.assertIsNone(data["fieldReports"]["verifiedPct"])
 
-    def test_metrics_field_reports_verified_pct_null_without_reports(self):
-        """No submissions means no verified share — 0/0 is not 100%."""
+    def test_metrics_field_reports_verified_pct_is_never_claimed(self):
+        """Nothing records whether a submission was verified.
+
+        The card used to paint a full "100% verified" ring for a check that
+        does not exist anywhere in the data model.
+        """
         response = self.client.get("/api/v1/insights/metrics")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         field_reports = response.json()["fieldReports"]
         self.assertEqual(field_reports["count"], 0)
         self.assertIsNone(field_reports["verifiedPct"])
+
+    def test_field_reports_for_an_inkhundla_with_none_reads_zero(self):
+        """It must not fall back to the national total under a local label.
+
+        The old substring match kept the NATIONAL queryset whenever an
+        Inkhundla had no submissions of its own, so every quiet Inkhundla
+        showed the country's count beside its own name.
+        """
+        from api.v1.v1_iks.models import KoboForm
+
+        form = KoboForm.objects.create(uuid="fr_uuid", name="Field reports")
+        for kobo_id in (1001, 1002, 1003):
+            KoboData.objects.create(
+                form=form,
+                kobo_id=kobo_id,
+                submission_time=timezone.now(),
+                raw_data={},
+            )
+
+        national = self.client.get("/api/v1/insights/metrics").json()
+        self.assertEqual(national["fieldReports"]["count"], 3)
+
+        local = self.client.get(
+            f"/api/v1/insights/metrics?inkhundla_id={self.admin.id}"
+        ).json()
+        self.assertEqual(local["fieldReports"]["count"], 0)
+        self.assertIn(self.admin.name, local["fieldReports"]["label"])
+
+    def test_field_reports_counts_only_this_inkhundlas_submissions(self):
+        """Attribution comes from IKSValue.administration, not a text match."""
+        from api.v1.v1_iks.models import IKSIndicator, IKSValue, KoboForm
+
+        other = Administration.objects.create(
+            name="Ngudzeni", region="Shiselweni"
+        )
+        form = KoboForm.objects.create(uuid="fr_uuid2", name="Field reports")
+        indicator = IKSIndicator.objects.create(
+            kobo_form=form, name="Rainfall", section="B"
+        )
+        for kobo_id, administration in (
+            (2001, self.admin),
+            (2002, self.admin),
+            (2003, other),
+        ):
+            KoboData.objects.create(
+                form=form,
+                kobo_id=kobo_id,
+                submission_time=timezone.now(),
+                raw_data={},
+            )
+            IKSValue.objects.create(
+                kobo_id=kobo_id,
+                administration=administration,
+                iks_indicator=indicator,
+            )
+
+        mine = self.client.get(
+            f"/api/v1/insights/metrics?inkhundla_id={self.admin.id}"
+        ).json()
+        self.assertEqual(mine["fieldReports"]["count"], 2)
+
+        theirs = self.client.get(
+            f"/api/v1/insights/metrics?inkhundla_id={other.id}"
+        ).json()
+        self.assertEqual(theirs["fieldReports"]["count"], 1)
+
+    def test_field_reports_ignore_a_deactivated_form(self):
+        """Every other IKS surface hides deactivated forms; so does this."""
+        from api.v1.v1_iks.models import KoboForm
+
+        form = KoboForm.objects.create(
+            uuid="fr_uuid3", name="Retired", active=False
+        )
+        KoboData.objects.create(
+            form=form,
+            kobo_id=3001,
+            submission_time=timezone.now(),
+            raw_data={},
+        )
+        data = self.client.get("/api/v1/insights/metrics").json()
+        self.assertEqual(data["fieldReports"]["count"], 0)
 
     def test_response_activities_endpoint(self):
         response = self.client.get("/api/v1/insights/response-activities")

@@ -46,6 +46,7 @@ const CDIMap = ({
   onClick = () => {},
   style = {},
   layerKey = "geodata",
+  wrapperClassName = "",
   ...props
 }) => {
   const appContext = useAppContext();
@@ -90,6 +91,12 @@ const CDIMap = ({
   const onEachFeature = (feature, layer, currentMap) => {
     const s = getStyle(feature);
     layer.setStyle(s);
+    // Leaflet paints siblings in document order, so a thick border on a
+    // selected polygon is half overdrawn by whichever neighbours come after
+    // it. Raising it is what makes the outline read as a solid ring.
+    if (s.bringToFront) {
+      layer.bringToFront();
+    }
     layer.on({
       click: () => (typeof onClick === "function" ? onClick(feature) : null),
     });
@@ -100,7 +107,7 @@ const CDIMap = ({
   }
 
   return (
-    <div className="relative bg-neutral-100">
+    <div className={`relative bg-neutral-100 ${wrapperClassName}`}>
       {children}
       <Map
         center={DEFAULT_CENTER}

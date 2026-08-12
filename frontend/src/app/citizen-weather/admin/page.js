@@ -328,7 +328,7 @@ const AdminDashboardPage = () => {
             Showing {stations.length} of {stats.totalStations} stations · admin
             actions logged in the audit trail
           </div>
-          <div className="relative z-10 mx-auto w-full max-w-[1280px] py-8">
+          <div className="relative z-10 mx-auto w-full max-w-[1280px] py-6">
             <FeedbackSection />
           </div>
         </div>

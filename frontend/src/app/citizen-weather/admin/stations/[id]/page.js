@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Button, Space, Tag, Spin, message } from "antd";
+import { Button, Space, Tag, Spin, Modal, message } from "antd";
 import {
   UserOutlined,
   MailOutlined,
@@ -11,9 +11,14 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Can, PageHeader } from "@/components";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
+import {
+  StationEditModal,
+  ObserverEditModal,
+  ReassignObserverModal,
+} from "@/components/CitizenWeather/StationAdminModals";
 import { api, apiText } from "@/lib";
 import { SENSOR_OPTIONS } from "@/static/citizen-weather";
 
@@ -68,8 +73,12 @@ const buildTimeline = (months, history, sensors) => {
 
 const StationDetailPage = () => {
   const params = useParams();
+  const router = useRouter();
   const id = params.id;
   const [showNudge, setShowNudge] = useState(false);
+  const [showStationEdit, setShowStationEdit] = useState(false);
+  const [showObserverEdit, setShowObserverEdit] = useState(false);
+  const [showReassign, setShowReassign] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [station, setStation] = useState(null);
@@ -138,6 +147,26 @@ const StationDetailPage = () => {
     } catch (err) {
       message.error("Failed to export CSV.");
     }
+  };
+
+  const handleArchive = () => {
+    Modal.confirm({
+      title: `Archive ${stationName}?`,
+      content:
+        "Its readings stay on the review page and in the CSV export. " +
+        "The observer will no longer be able to sign in.",
+      okText: "Archive",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await api("DELETE", `/weather/citizen-science/stations/${id}`);
+          message.success("Station archived.");
+          router.push("/citizen-weather/admin");
+        } catch (err) {
+          message.error(err?.message || "Failed to archive station.");
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -252,9 +281,15 @@ const StationDetailPage = () => {
                   <h2 className="text-base font-semibold text-[#333333]">
                     Station
                   </h2>
-                  <Button type="link" className="edm-reviews-action">
-                    Edit
-                  </Button>
+                  <Can I="update" a="CitizenScience">
+                    <Button
+                      type="link"
+                      className="edm-reviews-action"
+                      onClick={() => setShowStationEdit(true)}
+                    >
+                      Edit
+                    </Button>
+                  </Can>
                 </div>
                 <div className="p-4 sm:p-6">
                   <KVRow label="Station name" value={stationName} />
@@ -296,9 +331,15 @@ const StationDetailPage = () => {
                   <h2 className="text-base font-semibold text-[#333333]">
                     Observer
                   </h2>
-                  <Button type="link" className="edm-reviews-action">
-                    Edit
-                  </Button>
+                  <Can I="update" a="CitizenScience">
+                    <Button
+                      type="link"
+                      className="edm-reviews-action"
+                      onClick={() => setShowObserverEdit(true)}
+                    >
+                      Edit
+                    </Button>
+                  </Can>
                 </div>
                 <div className="p-4 sm:p-6">
                   <KVRow label="Name" value={obs.name || ""} />
@@ -381,17 +422,28 @@ const StationDetailPage = () => {
             {/* Actions */}
             <div className="flex flex-wrap items-center gap-3 py-4">
               <span className="text-xs text-[#606060] mr-auto">
-                Admin actions on this station. All actions are logged in the
-                audit trail with your identity + timestamp.
+                Station edits and reassignments take effect immediately. Emails
+                sent from here are recorded in the job log.
               </span>
               <Space wrap>
                 <Button icon={<BarChartOutlined />} onClick={handleExportCSV}>
                   Export CSV
                 </Button>
-                <Button icon={<UserOutlined />}>Reassign observer</Button>
-                <Button danger icon={<InboxOutlined />}>
-                  Archive station
-                </Button>
+                <Can I="update" a="CitizenScience">
+                  <Button
+                    icon={<UserOutlined />}
+                    onClick={() => setShowReassign(true)}
+                  >
+                    Reassign observer
+                  </Button>
+                  <Button
+                    danger
+                    icon={<InboxOutlined />}
+                    onClick={handleArchive}
+                  >
+                    Archive station
+                  </Button>
+                </Can>
                 <Can I="update" a="CitizenScience">
                   <Button
                     type="primary"
@@ -410,6 +462,24 @@ const StationDetailPage = () => {
           open={showNudge}
           onClose={() => setShowNudge(false)}
           station={nudgeStation}
+        />
+        <StationEditModal
+          open={showStationEdit}
+          onClose={() => setShowStationEdit(false)}
+          station={station}
+          onSaved={fetchData}
+        />
+        <ObserverEditModal
+          open={showObserverEdit}
+          onClose={() => setShowObserverEdit(false)}
+          station={station}
+          onSaved={fetchData}
+        />
+        <ReassignObserverModal
+          open={showReassign}
+          onClose={() => setShowReassign(false)}
+          station={station}
+          onSaved={fetchData}
         />
       </div>
     </Can>
