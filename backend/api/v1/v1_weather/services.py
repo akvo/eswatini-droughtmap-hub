@@ -4,16 +4,20 @@ from django.utils import timezone
 
 from api.v1.v1_weather.aggregation import aggregate_daily
 from api.v1.v1_weather.constants import (
+    CARD_SATELLITE_DIFFERENCE,
     COMPLETENESS_WINDOW_DAYS,
     COMPLETENESS_WINDOW_MONTHS,
     DEGRADED_COMPLETENESS,
     EXPECTED_READINGS_PER_DAY,
+    MIN_STATION_DAYS_PER_MONTH,
     NETWORK,
     NORMALS_DEFINITION,
     NORMALS_RASTERS,
     NORMALS_UNAVAILABLE,
-    TEMPERATURE_NORMALS,
     OFFLINE_AFTER_DAYS,
+    REASON_INCOMPLETE_STATION,
+    REASON_SATELLITE_NOT_PUBLISHED,
+    TEMPERATURE_NORMALS,
     UNITS,
     WIS2_PARAMETERS,
     StationStatus,
@@ -21,19 +25,24 @@ from api.v1.v1_weather.constants import (
 )
 from api.v1.v1_weather.models import (
     AdministrationNormal,
+    AdministrationObservation,
     StationDailyAggregate,
     WeatherStation,
 )
+
 from api.v1.v1_weather.topo import (
     administration_centroids,
     assign_region,
     haversine_km,
 )
+
 # Drought class is owned by v1_publication (INS-3 D-6): every Detailed
 # Insights tab renders the same chip, so the rule has one definition, beside
 # the model it reads. No cycle — v1_publication never imports v1_weather.
+from api.v1.v1_publication.models import Administration
 from api.v1.v1_publication.insights.utils import current_dclass
 from utils.periods import month_range, month_start, shift_period
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +54,7 @@ def sync_stations(client, source) -> int:
         props = feature.get("properties", {})
         coordinates = feature.get("geometry", {}).get("coordinates", [])
         if len(coordinates) < 2:
-            logger.warning(
-                "Skipping station without coordinates: %s", props
-            )
+            logger.warning("Skipping station without coordinates: %s", props)
             continue
         lon, lat = coordinates[0], coordinates[1]
         elevation = coordinates[2] if len(coordinates) > 2 else None
@@ -156,18 +163,20 @@ def monthly_series(
             continue
         buckets.setdefault(period, []).append(row["value"])
     aggregate = (
-        sum if parameter == WeatherParameter.precipitation
+        sum
+        if parameter == WeatherParameter.precipitation
         else lambda v: sum(v) / len(v)
     )
     values = {
-        period: round(aggregate(items), 1)
-        for period, items in buckets.items()
+        period: round(aggregate(items), 1) for period, items in buckets.items()
     }
     if from_period and to_period:
         periods = month_range(from_period, to_period)
     else:
         periods = sorted(values)
-    return [{"period": period, "value": values.get(period)} for period in periods]
+    return [
+        {"period": period, "value": values.get(period)} for period in periods
+    ]
 
 
 def _latest_month_values(station):
@@ -218,8 +227,10 @@ def _resolution_candidates(administration) -> list:
         if not centroid:
             return 0.0
         return haversine_km(
-            centroid["lat"], centroid["lon"],
-            station.latitude, station.longitude,
+            centroid["lat"],
+            centroid["lon"],
+            station.latitude,
+            station.longitude,
         )
 
     own_region = sorted(
@@ -230,9 +241,7 @@ def _resolution_candidates(administration) -> list:
         (s for s in stations if s.region != administration.region),
         key=distance,
     )
-    return [
-        (s, "region_station", distance(s)) for s in own_region
-    ] + [
+    return [(s, "region_station", distance(s)) for s in own_region] + [
         (s, "nearest_station_fallback", distance(s)) for s in others
     ]
 
@@ -398,9 +407,7 @@ def administration_stats(administration, include_completeness=False) -> dict:
         date__gte=completeness_start,
         date__lte=today,
     ).dates("date", "month")
-    completeness = round(
-        len(months_with_data) / COMPLETENESS_WINDOW_MONTHS, 3
-    )
+    completeness = round(len(months_with_data) / COMPLETENESS_WINDOW_MONTHS, 3)
 
     precip_window = list(
         station.daily_values.filter(
@@ -470,9 +477,110 @@ def administration_stats(administration, include_completeness=False) -> dict:
             },
         },
         completeness_card,
+        _satellite_difference_card(administration, station),
     ]
     base["meta"] = _resolution_meta(station, resolution, distance_km)
     return base
+
+
+def _satellite_difference_card(administration, station) -> dict:
+    """
+    station - CHIRPS mm for the latest month where both sides exist (WX-10).
+    """
+    # D-5 anchor: find Inkhundla in the station's region closest to the gauge
+
+    centroids = administration_centroids()
+    gauge_admins = list(Administration.objects.filter(region=station.region))
+    if not gauge_admins:
+        gauge_admin = administration
+    else:
+        gauge_admin = min(
+            gauge_admins,
+            key=lambda a: (
+                haversine_km(
+                    station.latitude,
+                    station.longitude,
+                    centroids[a.pk]["lat"],
+                    centroids[a.pk]["lon"],
+                )
+                if a.pk in centroids
+                else float("inf")
+            ),
+        )
+
+    latest_obs = (
+        AdministrationObservation.objects.filter(
+            administration=gauge_admin,
+            parameter=WeatherParameter.precipitation,
+        )
+        .order_by("-year_month")
+        .first()
+    )
+    if not latest_obs:
+        return {
+            "key": CARD_SATELLITE_DIFFERENCE,
+            "label": "Difference between station and satellite",
+            "value": None,
+            "units": "mm",
+            "meta": {"reason": REASON_SATELLITE_NOT_PUBLISHED},
+        }
+
+    period_str = latest_obs.year_month.strftime("%Y-%m")
+
+    # D-6 guard: station reporting days in that period >= MIN_STATION_DAYS
+    days_count = StationDailyAggregate.objects.filter(
+        station=station,
+        parameter=WeatherParameter.precipitation,
+        date__year=latest_obs.year_month.year,
+        date__month=latest_obs.year_month.month,
+        value__isnull=False,
+    ).count()
+    if days_count < MIN_STATION_DAYS_PER_MONTH:
+        return {
+            "key": CARD_SATELLITE_DIFFERENCE,
+            "label": "Difference between station and satellite",
+            "value": None,
+            "units": "mm",
+            "meta": {
+                "reason": REASON_INCOMPLETE_STATION,
+                "period": period_str,
+            },
+        }
+
+    station_series = monthly_series(
+        station,
+        WeatherParameter.precipitation,
+        period_str,
+        period_str,
+    )
+    station_mm = station_series[0]["value"] if station_series else None
+    if station_mm is None:
+        return {
+            "key": CARD_SATELLITE_DIFFERENCE,
+            "label": "Difference between station and satellite",
+            "value": None,
+            "units": "mm",
+            "meta": {
+                "reason": REASON_INCOMPLETE_STATION,
+                "period": period_str,
+            },
+        }
+
+    diff = round(station_mm - latest_obs.value, 1)
+    return {
+        "key": CARD_SATELLITE_DIFFERENCE,
+        "label": "Difference between station and satellite",
+        "value": diff,
+        "units": "mm",
+        "meta": {
+            "period": period_str,
+            "comparator": "CHIRPS",
+            "dataset": latest_obs.dataset,
+            "station_value": round(station_mm, 1),
+            "satellite_value": round(latest_obs.value, 1),
+            "anchor_inkhundla": gauge_admin.name,
+        },
+    }
 
 
 def administration_normals(administration) -> dict:
@@ -572,9 +680,7 @@ def administration_series(
         WeatherParameter.tmean,
         WeatherParameter.tmin,
     ):
-        for item in monthly_series(
-            station, parameter, from_period, to_period
-        ):
+        for item in monthly_series(station, parameter, from_period, to_period):
             if item["value"] is not None:
                 temperature_values.setdefault(item["period"], {})[
                     parameter
@@ -590,6 +696,14 @@ def administration_series(
                 WeatherParameter.precipitation,
                 from_period,
                 to_period,
+            ),
+        },
+        {
+            "key": "precipitation_satellite_monthly",
+            "label": "CHIRPS observed",
+            "units": "mm",
+            "data": _chirps_monthly_series(
+                administration, from_period, to_period
             ),
         },
         {
@@ -610,6 +724,35 @@ def administration_series(
     meta["to"] = to_period
     base["meta"] = meta
     return base
+
+
+def _chirps_monthly_series(
+    administration, from_period: str, to_period: str
+) -> list:
+    """
+    Satellite-observed precipitation monthly series per Inkhundla.
+    (WX-10)
+    """
+    start_date = month_start(from_period)
+    end_date = month_start(to_period)
+
+    obs_qs = AdministrationObservation.objects.filter(
+        administration=administration,
+        parameter=WeatherParameter.precipitation,
+        year_month__gte=start_date,
+        year_month__lte=end_date,
+    ).values("year_month", "value")
+
+    values = {
+        row["year_month"].strftime("%Y-%m"): round(row["value"], 1)
+        for row in obs_qs
+        if row["value"] is not None
+    }
+
+    return [
+        {"period": period, "value": values.get(period)}
+        for period in month_range(from_period, to_period)
+    ]
 
 
 def administration_deviation(
@@ -642,9 +785,7 @@ def administration_deviation(
     }
     observed = {
         item["period"]: item["value"]
-        for item in monthly_series(
-            station, parameter, from_period, to_period
-        )
+        for item in monthly_series(station, parameter, from_period, to_period)
     }
     return [
         {
@@ -687,7 +828,10 @@ def national_deviation(parameter, from_period, to_period) -> list:
     for station, administrations in by_station.values():
         for administration in administrations:
             for item in administration_deviation(
-                administration, parameter, from_period, to_period,
+                administration,
+                parameter,
+                from_period,
+                to_period,
                 station=station,
             ):
                 if item["value"] is not None:
@@ -696,9 +840,7 @@ def national_deviation(parameter, from_period, to_period) -> list:
     return [
         {
             "period": period,
-            "value": (
-                round(sum(values) / len(values), 1) if values else None
-            ),
+            "value": (round(sum(values) / len(values), 1) if values else None),
         }
         for period, values in totals.items()
     ]

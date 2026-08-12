@@ -243,7 +243,7 @@ mislabel theirs as `m01_tmean_c`.. (OQ-2).
 
 - [ ] Existing API consumers unaffected (new table, new endpoint)
 - [ ] Existing data untouched
-- [ ] `frontend/src/static/mocks/weather/{precipitation,temperature}-normals.js` are deleted once the endpoint is consumed; ~~`satellite-difference.js` stays a placeholder (still no source — that is WX-3's satellite comparison)~~ — **superseded 2026-08-10**: a source does exist. CHIRPS `africa_monthly` publishes current months at the same URL this feature's `build_chirps_normals` already downloads, so `satellite-difference.js` is deleted too. See [WX-10 `weather-satellite-difference-card.md`](weather-satellite-difference-card.md).
+- [ ] `frontend/src/static/mocks/weather/{precipitation,temperature}-normals.js` are deleted once the endpoint is consumed; ~~`satellite-difference.js` stays a placeholder (still no source — that is WX-3's satellite comparison)~~ — **superseded 2026-08-10**: a source does exist. CHIRPS `africa_monthly` publishes current months at the same URL this feature's `build_chirps_normals` already downloads, so `satellite-difference.js` was deleted too — the whole `static/mocks/weather/` directory is gone. WX-10 also lifted this feature's `BASE`/`BBOX` module constants into `v1_weather/constants.py` as `CHIRPS_MONTHLY_URL`/`CHIRPS_BBOX`; `build_chirps_normals` imports them aliased, so its body is unchanged. See [WX-10 `weather-satellite-difference-card.md`](weather-satellite-difference-card.md).
 
 ---
 

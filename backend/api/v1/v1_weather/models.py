@@ -100,10 +100,7 @@ class CitizenScienceReading(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return (
-            f"CS {self.administration.name} "
-            f"{self.year_month:%Y-%m}"
-        )
+        return f"CS {self.administration.name} " f"{self.year_month:%Y-%m}"
 
     class Meta:
         db_table = "citizen_science_readings"
@@ -120,7 +117,8 @@ class AdministrationNormal(models.Model):
     same spirit as StationDailyAggregate / D-3).
 
     Climatology, not a calendar series: `month` is 1..12 and carries no year.
-    Extracted from the rasters in ./source/30years by `extract_weather_normals`.
+    Extracted from the rasters in ./source/30years by
+    `extract_weather_normals`.
     """
 
     administration = models.ForeignKey(
@@ -152,5 +150,41 @@ class AdministrationNormal(models.Model):
             models.UniqueConstraint(
                 fields=["administration", "month", "parameter"],
                 name="uniq_administration_month_parameter",
+            )
+        ]
+
+
+class AdministrationObservation(models.Model):
+    """Satellite-observed monthly value per Inkhundla — the observation
+    counterpart to AdministrationNormal's climatology.
+    """
+
+    administration = models.ForeignKey(
+        Administration,
+        on_delete=models.CASCADE,
+        related_name="observations",
+    )
+    year_month = models.DateField()
+    parameter = models.CharField(
+        max_length=30, choices=WeatherParameter.choices()
+    )
+    value = models.FloatField()
+    dataset = models.CharField(max_length=100)
+    pixel_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return (
+            f"{self.administration.name} {self.year_month:%Y-%m} "
+            f"{self.parameter}={self.value}"
+        )
+
+    class Meta:
+        db_table = "weather_administration_observations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["administration", "year_month", "parameter"],
+                name="uniq_administration_observation",
             )
         ]

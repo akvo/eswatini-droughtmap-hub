@@ -1,17 +1,21 @@
 from collections import defaultdict
+from datetime import timedelta
 from io import StringIO
 
 from django.core.management import call_command
 from django.test import TestCase
+from django.utils import timezone
 
 from api.v1.v1_publication.models import Administration
-from api.v1.v1_weather.constants import WeatherParameter, StationStatus
+from api.v1.v1_weather.constants import StationStatus, WeatherParameter
 from api.v1.v1_weather.models import (
     AdministrationNormal,
+    AdministrationObservation,
     StationDailyAggregate,
     WeatherSource,
     WeatherStation,
 )
+
 from api.v1.v1_weather.services import station_health
 
 # Short window: these assertions are about shape, not volume, and 24 months
@@ -27,7 +31,8 @@ class GenerateWeatherSeederTestCase(TestCase):
         out = StringIO()
         call_command(
             "generate_weather_seeder",
-            "--months", MONTHS,
+            "--months",
+            MONTHS,
             *extra,
             stdout=out,
         )
@@ -124,13 +129,16 @@ class GenerateWeatherSeederTestCase(TestCase):
                 )
         output = self.seed()
         self.assertNotIn("falling back", output)
-        mean = sum(
-            StationDailyAggregate.objects.filter(
+        mean = (
+            sum(
+                StationDailyAggregate.objects.filter(
+                    parameter=WeatherParameter.tmean
+                ).values_list("value", flat=True)
+            )
+            / StationDailyAggregate.objects.filter(
                 parameter=WeatherParameter.tmean
-            ).values_list("value", flat=True)
-        ) / StationDailyAggregate.objects.filter(
-            parameter=WeatherParameter.tmean
-        ).count()
+            ).count()
+        )
         # Drawn around 30.0 with sigma 1.5, so nowhere near the fallback
         # table's 13-22 C range.
         self.assertGreater(mean, 27)
@@ -172,7 +180,39 @@ class GenerateWeatherSeederTestCase(TestCase):
         self.assertEqual(
             WeatherStation.objects.filter(metadata_status="demo").count(), 0
         )
-        self.assertTrue(
-            WeatherStation.objects.filter(pk=real.pk).exists()
-        )
+        self.assertTrue(WeatherStation.objects.filter(pk=real.pk).exists())
         self.assertEqual(StationDailyAggregate.objects.count(), 0)
+
+    def test_seeder_draws_around_real_observation_when_available(self):
+        # Seed an observation for all Hhohho administrations with 500mm
+        today = timezone.now().date()
+        target_date = (today.replace(day=1) - timedelta(days=5)).replace(day=1)
+        for admin in Administration.objects.filter(region="Hhohho"):
+            AdministrationObservation.objects.create(
+                administration=admin,
+                year_month=target_date,
+                parameter=WeatherParameter.precipitation,
+                value=500.0,
+                dataset="CHIRPS v2.0 africa_monthly",
+                pixel_count=10,
+            )
+
+        self.seed("--months", 1)
+
+        # Check total precipitation for stations in Hhohho in target month
+        hhohho_stations = WeatherStation.objects.filter(
+            region="Hhohho", metadata_status="demo"
+        )
+        station_precip_sum = sum(
+            StationDailyAggregate.objects.filter(
+                station__in=hhohho_stations,
+                parameter=WeatherParameter.precipitation,
+                date__year=target_date.year,
+                date__month=target_date.month,
+            ).values_list("value", flat=True)
+        )
+        avg_precip_per_station = station_precip_sum / max(
+            len(hhohho_stations), 1
+        )
+        # Should be drawn around real 500mm (far above normal ~10-140mm)
+        self.assertGreater(avg_precip_per_station, 150.0)

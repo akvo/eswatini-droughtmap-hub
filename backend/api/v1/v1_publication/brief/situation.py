@@ -110,7 +110,11 @@ def build_situation(administration) -> dict:
     period = detail["period"]
 
     # ponytail: no rainfall clause yet. It needs AdministrationObservation
-    # (real CHIRPS mm per Inkhundla), which WX-10 designs but has not shipped.
+    # (real CHIRPS mm per Inkhundla), which WX-10 shipped — the model and
+    # `fetch_chirps_observations` both exist, but the command has never been
+    # run, so the table is empty and the clause would omit itself on every
+    # call. Add it once a month of rows lands: observed minus the same
+    # month's AdministrationNormal, same Inkhundla.
     # A station-based interim is deliberately NOT built — WX-10 measured the
     # within-region satellite spread at 25-135 mm against a real delta of
     # ~0.6 mm, so a station-anchored figure would say more about which

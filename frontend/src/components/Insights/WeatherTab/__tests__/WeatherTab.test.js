@@ -62,6 +62,15 @@ const SERIES = {
       ],
     },
     {
+      key: "precipitation_satellite_monthly",
+      label: "CHIRPS observed",
+      units: "mm",
+      data: [
+        { period: "2026-04", value: 115.0 },
+        { period: "2026-05", value: 42.0 },
+      ],
+    },
+    {
       key: "temperature_monthly",
       label: "Temperature range",
       units: "°C",
@@ -198,16 +207,72 @@ describe("WeatherTab", () => {
     ).toBeInTheDocument();
   });
 
-  it("labels the satellite card as placeholder data", async () => {
-    mockApi();
+  it("renders live satellite difference value from stats API", async () => {
+    const statsWithCard = {
+      ...STATS,
+      data: [
+        ...STATS.data,
+        {
+          key: "station_satellite_difference",
+          label: "Difference between station and satellite",
+          value: 12.0,
+          units: "mm",
+          meta: {
+            comparator: "CHIRPS",
+            period: "2026-05",
+            anchor_inkhundla: "Hhukwini",
+          },
+        },
+      ],
+    };
+    api.mockImplementation((method, url) => {
+      if (url.includes("/stats")) return Promise.resolve(statsWithCard);
+      if (url.includes("/series")) return Promise.resolve(SERIES);
+      if (url.includes("/normals")) return Promise.resolve(NORMALS);
+      return Promise.reject(new Error(`unexpected URL ${url}`));
+    });
+
     renderTab();
 
     await waitFor(() => {
       expect(
         screen.getByText("Difference between station and satellite"),
       ).toBeInTheDocument();
+      expect(screen.getByText("12 mm")).toBeInTheDocument();
+      expect(
+        screen.getByText("May 2026 · vs CHIRPS over Hhukwini"),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByText("Placeholder")).toBeInTheDocument();
+  });
+
+  it("renders em-dash and satellite_not_published reason when card value is null", async () => {
+    const statsNullCard = {
+      ...STATS,
+      data: [
+        ...STATS.data,
+        {
+          key: "station_satellite_difference",
+          label: "Difference between station and satellite",
+          value: null,
+          units: "mm",
+          meta: { reason: "satellite_not_published" },
+        },
+      ],
+    };
+    api.mockImplementation((method, url) => {
+      if (url.includes("/stats")) return Promise.resolve(statsNullCard);
+      if (url.includes("/series")) return Promise.resolve(SERIES);
+      if (url.includes("/normals")) return Promise.resolve(NORMALS);
+      return Promise.reject(new Error(`unexpected URL ${url}`));
+    });
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Satellite data not yet published"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("plots station values and keeps months without data as gaps", async () => {
@@ -223,6 +288,9 @@ describe("WeatherTab", () => {
     );
     const station = bar.series.find((s) => s.name === "Station monthly total");
     expect(station.data).toEqual([109.0, 39.0]);
+
+    const satellite = bar.series.find((s) => s.name === "CHIRPS observed");
+    expect(satellite.data).toEqual([115.0, 42.0]);
 
     // The 30-year average is climatology: keyed by month-of-year, so the April
     // and May series entries map onto the "04"/"05" normals, not the index.
@@ -319,7 +387,10 @@ describe("WeatherTab", () => {
     const bar = JSON.parse(
       screen.getByTestId("bar-chart").getAttribute("data-config"),
     );
-    expect(bar.series.map((s) => s.name)).toEqual(["Station monthly total"]);
+    expect(bar.series.map((s) => s.name)).toEqual([
+      "Station monthly total",
+      "CHIRPS observed",
+    ]);
   });
 
   it("surfaces the nearest-station fallback rather than passing it off as local", async () => {

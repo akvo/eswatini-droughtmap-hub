@@ -15,7 +15,9 @@ import {
 } from "@/lib/helper";
 
 const STATION_COLOR = SERIES_COLOR.station;
+const SATELLITE_COLOR = SERIES_COLOR.satellite ?? "#0284c7";
 const STATION_NAME = "Station monthly total";
+const SATELLITE_NAME = "CHIRPS observed";
 const NORMAL_NAME = "30-year average";
 
 // Both rainfall series share one blue: they are the same metric (mm of rain)
@@ -49,20 +51,24 @@ const HATCH_MARKER =
 
 /**
  * Monthly precipitation bars (Figma 3509:110472): observed station totals
- * against the 30-year average.
+ * against CHIRPS observed satellite totals and the 30-year average.
  *
- * Both series are live — normals come from /normals (CHIRPS, extracted per
- * inkhundla by `extract_weather_normals`).
+ * All series are live — normals come from /normals, CHIRPS observed from /series.
  */
 const PrecipitationChart = ({ administrationId, normals }) => {
   // Default to the last 12 months (current month on the right) rather than the
   // backend's calendar-year-to-date; the picker overrides it.
   const [range, setRange] = useState(() => lastNMonths(12));
   const [showStation, setShowStation] = useState(true);
+  const [showSatellite, setShowSatellite] = useState(true);
   const [showNormals, setShowNormals] = useState(true);
   const { data, loading } = useWeatherSeries(administrationId, range);
 
   const series = findWeatherSeries(data, "precipitation_monthly");
+  const satelliteSeries = findWeatherSeries(
+    data,
+    "precipitation_satellite_monthly",
+  );
   const points = series?.data ?? [];
   const periods = points.map((p) => p.period);
   const units = series?.units ?? "mm";
@@ -77,6 +83,15 @@ const PrecipitationChart = ({ administrationId, normals }) => {
       type: "bar",
       data: points.map((p) => p.value),
       itemStyle: { color: STATION_COLOR },
+      barMaxWidth: 42,
+    });
+  }
+  if (showSatellite && satelliteSeries) {
+    chartSeries.push({
+      name: SATELLITE_NAME,
+      type: "bar",
+      data: (satelliteSeries.data ?? []).map((p) => p.value),
+      itemStyle: { color: SATELLITE_COLOR },
       barMaxWidth: 42,
     });
   }
@@ -136,7 +151,7 @@ const PrecipitationChart = ({ administrationId, normals }) => {
   };
 
   const subtitle = [
-    `${units} / month · station rain gauge compared with the 30-year average`,
+    `${units} / month · station rain gauge & CHIRPS satellite compared with the 30-year average`,
     dataset,
     provenance,
   ]
@@ -162,6 +177,13 @@ const PrecipitationChart = ({ administrationId, normals }) => {
               onChange={(e) => setShowStation(e.target.checked)}
             >
               <span className="text-sm">{STATION_NAME}</span>
+            </Checkbox>
+            <Checkbox
+              checked={showSatellite}
+              disabled={!satelliteSeries}
+              onChange={(e) => setShowSatellite(e.target.checked)}
+            >
+              <span className="text-sm">{SATELLITE_NAME}</span>
             </Checkbox>
             {/* The box itself carries the hatch (see globals.css), so the
                 control is the legend key — no extra swatch beside it. */}
