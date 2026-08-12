@@ -3,6 +3,7 @@ import StationDetailPage from "../page";
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ id: "7" }),
+  useRouter: () => ({ push: jest.fn() }),
 }));
 
 jest.mock("@/components", () => ({

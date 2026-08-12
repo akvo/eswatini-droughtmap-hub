@@ -32,11 +32,11 @@ export const StationEditModal = ({ open, onClose, station, onSaved }) => {
   const handleOk = async () => {
     setLoading(true);
     try {
-      await api(
-        "PATCH",
-        `/weather/citizen-science/stations/${station.key}`,
-        { station_name: stationName, station_type: stationType, sensors },
-      );
+      await api("PATCH", `/weather/citizen-science/stations/${station.key}`, {
+        station_name: stationName,
+        station_type: stationType,
+        sensors,
+      });
       message.success("Station updated.");
       onSaved?.();
       onClose();
@@ -112,11 +112,10 @@ export const ObserverEditModal = ({ open, onClose, station, onSaved }) => {
   const handleOk = async () => {
     setLoading(true);
     try {
-      await api(
-        "PATCH",
-        `/weather/citizen-science/stations/${station.key}`,
-        { name, email },
-      );
+      await api("PATCH", `/weather/citizen-science/stations/${station.key}`, {
+        name,
+        email,
+      });
       message.success("Observer details updated.");
       onSaved?.();
       onClose();
@@ -184,11 +183,11 @@ export const ReassignObserverModal = ({ open, onClose, station, onSaved }) => {
     }
     setLoading(true);
     try {
-      await api(
-        "POST",
-        `/weather/citizen-science/stations/${station.key}`,
-        { name, email, send_welcome_email: sendEmail },
-      );
+      await api("POST", `/weather/citizen-science/stations/${station.key}`, {
+        name,
+        email,
+        send_welcome_email: sendEmail,
+      });
       message.success("Station reassigned to new observer.");
       onSaved?.();
       onClose();
@@ -210,8 +209,8 @@ export const ReassignObserverModal = ({ open, onClose, station, onSaved }) => {
       destroyOnClose
     >
       <p className="text-xs text-[#606060] mb-4">
-        The current observer will be archived and can no longer sign in.
-        Their submitted readings are kept.
+        The current observer will be archived and can no longer sign in. Their
+        submitted readings are kept.
       </p>
       <div className="flex flex-col gap-4 py-2">
         <div>
