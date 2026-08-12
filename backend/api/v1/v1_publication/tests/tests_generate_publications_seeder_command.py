@@ -7,6 +7,7 @@ from io import StringIO
 from datetime import datetime, timedelta
 from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.constants import (
+    GEONODE_REQUEST_TIMEOUT,
     PublicationStatus,
     CDIGeonodeCategory,
 )
@@ -177,6 +178,7 @@ class PublicationsSeederCommandTestCase(TestCase):
             expected_url,
             auth=("admin", "admin"),
             verify=True,
+            timeout=GEONODE_REQUEST_TIMEOUT,
         )
 
     @patch("django_q.tasks.async_task")

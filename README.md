@@ -405,13 +405,116 @@ Notes:
 ./job.sh reviews                      # overdue-review notifications
 ./job.sh weather                      # daily WIS2 ingestion
 ./job.sh weather --from 2026-07-01    # manual backfill
+./job.sh rasters                      # attach CDI component rasters
+./job.sh cdi                          # retry CDI extraction
+./job.sh cs-reminders                 # citizen-science monthly reminders
+./job.sh precipitation                # CHIRPS rainfall for the current month
 ```
+
+Every task in `job.sh` has a matching crontab entry in `backend/eswatini-cron`,
+and a test fails the build if the two drift apart — cron only logs a usage
+error to `cron.log`, so a scheduled task that no longer exists would otherwise
+stop running with nobody told.
 
 Cron example (daily at midnight):
 
 ```bash
 0 0 * * * cd /backend && ./job.sh weather >> /home/user/logs/weather_ingest.log 2>&1
 ```
+
+### **National Overview map tabs: `fetch_chirps_monthly` & `generate_agro_geojson`**
+
+The Drought Map card on the National overview has seven tabs. Five read data
+already in the database and need no setup. Two need a command run once:
+
+| Tab | Source | Setup |
+|-----|--------|-------|
+| Drought class, Evaporative Stress Index, Regions, Agro-ecological zones, Land use, Population map | database | none |
+| **Precipitation** | CHIRPS rasters | `fetch_chirps_monthly` |
+| **Agro-ecological zones** *(geometry)* | reprojected topojson | `generate_agro_geojson` |
+
+Until they are run, those tabs render an explicit empty state naming what is
+missing — never a blank map.
+
+#### **`fetch_chirps_monthly`**
+
+Downloads one month's CHIRPS rainfall raster, clips it to Eswatini, and
+extracts the **mean millimetres per Inkhundla** so the tab can paint the
+Tinkhundla polygons. The extract is written beside the raster, so the web
+process never opens a GeoTIFF.
+
+`--year-month` is a **flag**, not a positional argument:
+
+```bash
+# ✅ correct
+docker compose exec backend python manage.py fetch_chirps_monthly --year-month=2026-06
+
+# ✅ no month — defaults to the latest published month, which is the one the
+#    Precipitation tab asks for
+docker compose exec backend python manage.py fetch_chirps_monthly
+
+# ✅ re-download and re-extract a month already stored
+docker compose exec backend python manage.py fetch_chirps_monthly --year-month=2026-06 --force
+
+# ❌ underscores are not accepted
+#    manage.py fetch_chirps_monthly --year_month='2026-06'
+#    error: unrecognized arguments: --year_month=2026-06
+```
+
+Expected output:
+
+```bash
+Fetching CHIRPS 2026-06...
+Wrote /app/./source/chirps_monthly/ESW_CHIRPS_precip_mm_2026-06.tif — 50x30 px, min 1.6 mean 8.3 max 20.8 mm
+Extracted rainfall for 59 Tinkhundla.
+```
+
+Notes:
+
+- **Idempotent.** An already-stored month exits immediately without touching
+  the network. Use `--force` to redo it.
+- **A month CHIRPS has not published yet is not an error.** `africa_monthly`
+  lags the month end by a few weeks, so the command reports "not published
+  yet" and exits `0` rather than failing a scheduled run.
+- **Watch for a missing-Inkhundla warning.** At 0.05° an Inkhundla can be
+  smaller than a CHIRPS pixel; masking uses `all_touched=True` to prevent
+  that, and any Inkhundla still left without a pixel is named in the output
+  rather than silently rendering as No data.
+- A month fetched before the tab became a choropleth has a raster but no
+  extract. Re-run with `--force` — the API says so explicitly.
+
+#### **`generate_agro_geojson`**
+
+`source/eswatini-ecological_regions.topojson` carries **no CRS** and its
+coordinates are metres in a Transverse Mercator projection. Handed straight to
+Leaflet it would place Eswatini off the coast of Africa, so it is reprojected
+to WGS84 once at deploy time:
+
+```bash
+docker compose exec backend python manage.py generate_agro_geojson
+```
+
+```bash
+Wrote /app/./source/config/agro-eco.geojson — 6 zones, bounds 30.79,-27.31 to 32.14,-25.71
+```
+
+`backend/seeder.sh` runs it automatically beside `generate_config`. Like
+`config.min.js`, the output is generated and gitignored — regenerate it after
+any change to the agro layer.
+
+#### **Keeping Precipitation current**
+
+`job.sh precipitation` runs `fetch_chirps_monthly` with no month, so it fetches
+whatever the Precipitation tab will ask for:
+
+```bash
+./job.sh precipitation                        # latest published month
+./job.sh precipitation --year-month=2026-06   # a specific month
+```
+
+It is scheduled **daily**, not monthly, on purpose: CHIRPS lags the month end,
+so a monthly run that fires before the raster exists would wait a full month to
+retry. A day where nothing is needed costs one file-existence check.
 
 ### **Seed and Sync Kobo IKS data: `kobo_seeder` and `download_iks_data`**
 

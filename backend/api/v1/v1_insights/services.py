@@ -11,6 +11,8 @@ from api.v1.v1_publication.constants import (
     AdministrationZones,
     is_validated,
 )
+from api.v1.v1_insights.constants import LAYERS, METRICS_HISTORY_MONTHS
+from api.v1.v1_insights.drought_aggregation import modal_category
 from api.v1.v1_weather.constants import WeatherParameter
 from api.v1.v1_weather.models import (
     WeatherStation,
@@ -21,7 +23,7 @@ from api.v1.v1_weather.services import (
     station_health,
 )
 from utils.periods import shift_period
-from api.v1.v1_iks.models import KoboData
+from api.v1.v1_iks.utils import active_kobo_data, active_values
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import (
     ActivityStatus,
@@ -34,9 +36,6 @@ from api.v1.v1_activity.trigger_evaluation import (
 )
 
 logger = logging.getLogger(__name__)
-
-# The metric cards' history window, in calendar months.
-METRICS_HISTORY_MONTHS = 12
 
 
 def _latest_value(series):
@@ -213,12 +212,7 @@ def get_zones_data(group="regions"):
             latest_vals[aid] for aid in admin_ids if aid in latest_vals
         )
         total_count = len(admin_ids) or 1
-        if cat_counts:
-            modal_cat, modal_count = cat_counts.most_common(1)[0]
-            confidence_pct = round((modal_count / total_count) * 100)
-        else:
-            modal_cat = DroughtCategory.none
-            confidence_pct = 0
+        modal_cat, confidence_pct = modal_category(cat_counts, total_count)
 
         zones_list.append(
             {
@@ -334,12 +328,22 @@ def get_metrics_data(inkhundla_id=None):
         else 0
     )
 
-    # Field Reports (Kobo 30d)
-    kobo_qs = KoboData.objects.filter(submission_time__gte=cutoff_30d)
-    if admin and admin.name:
-        admin_kobo_qs = kobo_qs.filter(raw_data__icontains=admin.name)
-        if admin_kobo_qs.exists():
-            kobo_qs = admin_kobo_qs
+    # Field Reports (Kobo 30d). Scoped through the `active_*` readers like
+    # every other IKS surface, so a deactivated form's submissions never leak
+    # into a public count.
+    kobo_qs = active_kobo_data().filter(submission_time__gte=cutoff_30d)
+    if admin:
+        # Attributed through IKSValue.administration — the same join the IKS
+        # explorer uses. The previous substring match on the raw JSON blob
+        # matched a name appearing in ANY answer, and fell back to the
+        # NATIONAL count whenever an Inkhundla had none of its own, so an
+        # Inkhundla with no reports showed the country's total under its name.
+        kobo_ids = (
+            active_values()
+            .filter(administration=admin)
+            .values_list("kobo_id", flat=True)
+        )
+        kobo_qs = kobo_qs.filter(kobo_id__in=kobo_ids)
 
     kobo_count = kobo_qs.count()
 
@@ -420,11 +424,12 @@ def get_metrics_data(inkhundla_id=None):
         },
         "fieldReports": {
             "count": kobo_count,
-            # No verification workflow exists (OQ-3) — a synced KoboToolbox
-            # submission counts as verified. None at zero reports: 0/0 is not
-            # 100%, and the card would otherwise paint a full ring over an
-            # empty database.
-            "verifiedPct": 100 if kobo_count else None,
+            # Always None: nothing in the data model records whether a
+            # submission was verified — no field, no workflow, nowhere. The
+            # previous hardcoded 100 painted a full "verified" ring on a
+            # public page for a check that never happened. `None` hides the
+            # ring; give it a real value when a verification step exists.
+            "verifiedPct": None,
             "label": reports_label,
             "note": "in last 30 days",
         },
@@ -511,17 +516,12 @@ def get_map_data_config():
         else timezone.now().strftime("%Y-%m")
     )
 
+    # The inventory lives in map_layers so the tab list and the builders that
+    # serve those tabs cannot drift apart. `temperature` was renamed to `esi`:
+    # the tab shows an ERA5-derived percentile rank, not degrees.
     return {
         "date": date_str,
         "compareTo": None,
-        "layers": [
-            {"key": "drought-class", "label": "Drought class"},
-            {"key": "precipitation", "label": "Precipitation"},
-            {"key": "temperature", "label": "Temperature"},
-            {"key": "land-use", "label": "Land use"},
-            {"key": "population", "label": "Population map"},
-            {"key": "regions", "label": "Regions"},
-            {"key": "agro-eco", "label": "Agro-ecological zones"},
-        ],
+        "layers": LAYERS,
         "activeLayer": "drought-class",
     }

@@ -13,7 +13,10 @@ from django.conf import settings
 from django_q.tasks import async_task
 from api.v1.v1_jobs.models import Jobs
 from api.v1.v1_jobs.constants import JobStatus, JobTypes
-from api.v1.v1_publication.constants import GEONODE_SSL_VERIFY
+from api.v1.v1_publication.constants import (
+    GEONODE_SSL_VERIFY,
+    GEONODE_REQUEST_TIMEOUT,
+)
 from api.v1.v1_users.constants import CS_LINK_SALT
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.models import Publication, PublicationRaster
@@ -257,7 +260,15 @@ def download_geonode_dataset(
 
     # Download and store it in /tmp directory
     input_file = os.path.join(tmp_dir, filename)
-    response = requests.get(download_url, stream=True, verify=GEONODE_SSL_VERIFY)
+    # Timeout is not optional here: without one a GeoNode that accepts the
+    # connection and then stalls pins this worker forever, and django-q has
+    # no other way to reclaim it.
+    response = requests.get(
+        download_url,
+        stream=True,
+        verify=GEONODE_SSL_VERIFY,
+        timeout=GEONODE_REQUEST_TIMEOUT,
+    )
     if response.status_code == 200:
         with open(input_file, "wb") as f:
             # Write the response in chunks to handle large files
@@ -288,8 +299,13 @@ def download_geonode_dataset_results(task):
         job.status = JobStatus.done
         job.available = timezone.now()
 
-        # Create a job
-        job = Jobs.objects.create(
+        # `next_job`, not `job`: rebinding the name here meant the download
+        # job's own `status = done` above was never written (the save at the
+        # bottom hit the extraction job instead), so every successful download
+        # stayed on_progress forever. That reads as a job permanently in
+        # flight, which is exactly what has_active_cdi_download checks — one
+        # stuck row would block that publication's retry for good.
+        next_job = Jobs.objects.create(
             type=JobTypes.initial_cdi_values,
             status=JobStatus.on_progress,
             info={
@@ -313,8 +329,8 @@ def download_geonode_dataset_results(task):
             hook=hook,
         )
         # Update the job with the task ID
-        job.task_id = task_id
-        job.save()
+        next_job.task_id = task_id
+        next_job.save()
     else:
         job.status = JobStatus.failed
     job.result = task.result

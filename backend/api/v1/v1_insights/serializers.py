@@ -123,6 +123,9 @@ class InsightsResponseActivitiesSerializer(serializers.Serializer):
 class InsightsLayerItemSerializer(serializers.Serializer):
     key = serializers.CharField()
     label = serializers.CharField()
+    # Whether the compare-date selector applies to this layer. Population and
+    # the boundary layers do not change month to month.
+    monthVarying = serializers.BooleanField()
 
 
 class InsightsMapDataSerializer(serializers.Serializer):
@@ -130,3 +133,26 @@ class InsightsMapDataSerializer(serializers.Serializer):
     compareTo = serializers.CharField(allow_null=True)
     layers = InsightsLayerItemSerializer(many=True)
     activeLayer = serializers.CharField()
+
+
+class InsightsMapLayerSerializer(serializers.Serializer):
+    """One tab's render instructions.
+
+    Documentation only — the view returns the builder's dict as-is. The fields
+    present depend on `type` (choropleth carries `data`, image carries `url`
+    and `bounds`, empty carries `reason`), which a fixed Serializer cannot
+    express without either dropping keys or inventing empty ones.
+    """
+
+    key = serializers.CharField()
+    label = serializers.CharField()
+    type = serializers.ChoiceField(
+        choices=["choropleth", "image", "vector", "empty"]
+    )
+    data = serializers.ListField(required=False)
+    url = serializers.CharField(required=False)
+    bounds = serializers.ListField(required=False)
+    property = serializers.CharField(required=False)
+    legend = serializers.DictField(required=False, allow_null=True)
+    meta = serializers.DictField(required=False)
+    reason = serializers.CharField(required=False)

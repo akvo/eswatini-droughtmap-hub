@@ -16,7 +16,7 @@ from .constants import (
     GEONODE_REQUEST_TIMEOUT,
     PublicationStatus,
 )
-from .models import PublicationRaster
+from .models import PublicationGeonode, PublicationRaster
 
 logger = logging.getLogger(__name__)
 
@@ -75,17 +75,29 @@ def has_active_cdi_download(publication) -> bool:
     """True when a CDI download/extraction chain is already in flight for this
     publication, so a retry would only duplicate work.
 
+    Both halves of the chain count. Once the download finishes it is marked
+    done and hands off to a SEPARATE initial_cdi_values job; checking only the
+    download left that whole extraction window looking idle, so a retry during
+    it would queue a second download of the same raster.
+
+    The two halves key the publication differently — the download job stores
+    `publication_id`, the extraction job stores `id` — which is why this takes
+    two filters rather than one.
+
     A FAILED job does not count as active — same rule as
     attach_component_rasters — so a failed download is retried on the next
     pass instead of being stuck forever.
     """
+    live = Jobs.objects.exclude(status=JobStatus.failed)
     return (
-        Jobs.objects.filter(
+        live.filter(
             type=JobTypes.download_geonode_dataset,
             info__publication_id=publication.id,
-        )
-        .exclude(status=JobStatus.failed)
-        .exists()
+        ).exists()
+        or live.filter(
+            type=JobTypes.initial_cdi_values,
+            info__id=publication.id,
+        ).exists()
     )
 
 
@@ -130,7 +142,39 @@ def as_target_month(year_month) -> str:
     return year_month.strftime("%Y-%m")
 
 
+def cached_component_resource(category: str, target_month: str):
+    """The cached GeoNode row for this category/month, in resource shape.
+
+    The catalogue API and the file host fail independently (D-7): a read
+    timeout on /api/v2/resources says nothing about whether the raster itself
+    can be downloaded. Observed in production 2026-08-11 — the CDI download
+    succeeded while every component lookup timed out, so no component raster
+    attached and the review queue rendered every Inkhundla with no confidence
+    band at all (the score needs the SPI raster and nothing else provides it).
+
+    PublicationGeonode already held the row. Checking it first turns that into
+    an ordinary attach.
+    """
+    row = (
+        PublicationGeonode.objects.filter(
+            category=category, year_month=f"{target_month}-01"
+        )
+        .exclude(download_url="")
+        .exclude(download_url__isnull=True)
+        .values("geonode_id", "download_url")
+        .first()
+    )
+    if not row:
+        return None
+    return {"pk": row["geonode_id"], "download_url": row["download_url"]}
+
+
 def find_component_resource(category: str, target_month: str):
+    # Cache before network: same data, and only one of the two can time out.
+    cached = cached_component_resource(category, target_month)
+    if cached:
+        return cached
+
     # Paginated GeoNode catalogue query that stops as soon as a resource in
     # the target month is found rather than walking every page.
     page = 1
@@ -260,6 +304,84 @@ def attach_component_rasters(publication) -> list:
         attached.append(indicator)
 
     return attached
+
+
+def requeue_cdi_extraction(publication) -> bool:
+    """Re-queue the CDI download -> extract chain when `initial_values` is
+    still empty.
+
+    The create-time chain is one-shot. `download_geonode_dataset` returns
+    False for any non-200, `download_geonode_dataset_results` marks the job
+    failed, and nothing ever retries it — so a publication created while
+    GeoNode was down keeps `initial_values = []` forever. `build_rows` derives
+    one row per entry there, which is why every /reviewer/* endpoint then
+    returns zero Tinkhundla and the reviewers never get their request email
+    (it is sent at the *end* of the extraction chain). The component rasters
+    already had this retry via `attach_component_rasters`; the CDI composite
+    did not.
+
+    Idempotent, so it is safe on a schedule: returns False without queueing
+    anything when values are already extracted or a download/extraction job
+    for this publication is still live. A FAILED job does not count as live,
+    which is what makes the retry possible at all.
+    """
+    if publication.initial_values or has_active_cdi_download(publication):
+        return False
+
+    # The cached URL, not a live GeoNode resolve: PublicationGeonode is
+    # already the GeoNode-independent read path (D-1), and it holds the very
+    # URL the pipeline published.
+    download_url = (
+        PublicationGeonode.objects.filter(
+            geonode_id=publication.cdi_geonode_id
+        )
+        .values_list("download_url", flat=True)
+        .first()
+    )
+    if not download_url:
+        logger.warning(
+            f"Publication {publication.id} has no cached GeoNode "
+            f"download_url for {publication.cdi_geonode_id}; skipping retry."
+        )
+        return False
+
+    # Carry the original notification copy so the review-request emails that
+    # never went out are sent when the chain finally completes. No risk of a
+    # double send: a publication whose emails already went out has non-empty
+    # initial_values and returned above.
+    previous = (
+        Jobs.objects.filter(
+            type=JobTypes.download_geonode_dataset,
+            info__publication_id=publication.id,
+        )
+        .order_by("-id")
+        .values_list("info", flat=True)
+        .first()
+    ) or {}
+
+    filename = "raster_{0}_{1}.tif".format(
+        publication.cdi_geonode_id, int(time.time())
+    )
+    job = Jobs.objects.create(
+        type=JobTypes.download_geonode_dataset,
+        status=JobStatus.on_progress,
+        info={
+            "publication_id": publication.id,
+            "filename": filename,
+            # Both hooks index these unconditionally; None means "extract,
+            # but send no email".
+            "subject": previous.get("subject"),
+            "message": previous.get("message"),
+        },
+    )
+    job.task_id = async_task(
+        "api.v1.v1_jobs.job.download_geonode_dataset",
+        download_url,
+        filename,
+        hook="api.v1.v1_jobs.job.download_geonode_dataset_results",
+    )
+    job.save()
+    return True
 
 
 # --- Seeding helpers --------------------------------------------------------
