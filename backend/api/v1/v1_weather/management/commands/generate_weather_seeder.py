@@ -7,7 +7,7 @@ Two rules carry the whole design:
 
 1. Values are drawn around the REAL 30-year normals in AdministrationNormal
    (D-16), or real monthly AdministrationObservation satellite rows
-   if available (D-7). Run `fetch_chirps_monthly` then
+   if available (D-7). Run `fetch_chirps_observations` then
    `generate_weather_seeder`.
 
 2. Station health is deliberately mixed (D-5). `station_health` is computed at

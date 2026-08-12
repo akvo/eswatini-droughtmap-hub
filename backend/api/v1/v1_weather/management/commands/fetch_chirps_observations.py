@@ -3,9 +3,18 @@
 Downloads CHIRPS 0.05 deg monthly rasters for requested calendar months,
 extracts zonal means for all Tinkhundla using `zonal_means(all_touched=True)`,
 and upserts `AdministrationObservation` rows.
+
+NAME: not `fetch_chirps_monthly` — `v1_insights` already owns that name for a
+different command (it writes a GeoTIFF window + sidecar for the Precipitation
+tab choropleth, and `job.sh precipitation` calls it). Django's `get_commands()`
+maps one name to one app, so two commands sharing a name means one silently
+shadows the other: this one won, and `job.sh precipitation` started writing DB
+rows instead of the raster the map reads, with no error anywhere. Same source
+and bbox, different output — keep the names distinct (WX-10 DEF-1).
 """
 
 import gzip
+import geopandas as gpd
 from datetime import date
 
 import numpy as np
@@ -65,16 +74,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if running_tests():
             raise CommandError(
-                "fetch_chirps_monthly must never run under the test suite."
+                "fetch_chirps_observations must never run under the test suite."
             )
 
         periods = self._resolve_periods(options)
         if not periods:
             self.stdout.write("No periods specified or found to fetch.")
             return
-
-        import geopandas as gpd
-
         gdf = gpd.read_file(TOPOJSON_PATH).set_crs(4326)
         administrations = {
             adm.pk: adm

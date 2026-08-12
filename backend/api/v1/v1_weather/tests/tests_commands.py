@@ -11,7 +11,7 @@ from api.v1.v1_weather.constants import (
     WIS2_AIR_TEMPERATURE,
     WIS2_PRECIPITATION,
 )
-from api.v1.v1_weather.management.commands.fetch_chirps_monthly import (
+from api.v1.v1_weather.management.commands.fetch_chirps_observations import (
     Command as FetchChirpsMonthlyCommand,
 )
 from api.v1.v1_weather.models import (
@@ -145,38 +145,40 @@ class WeatherCommandTests(TestCase):
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
 class FetchChirpsMonthlyCommandTests(TestCase):
-    def test_fetch_chirps_monthly_raises_under_test_runner(self):
+    def test_fetch_chirps_observations_raises_under_test_runner(self):
         with self.assertRaises(CommandError) as ctx:
-            call_command("fetch_chirps_monthly", stdout=StringIO())
+            call_command("fetch_chirps_observations", stdout=StringIO())
         self.assertIn(
             "must never run under the test suite", str(ctx.exception)
         )
 
     @patch(
-        "api.v1.v1_weather.management.commands.fetch_chirps_monthly.running_tests",  # noqa
+        "api.v1.v1_weather.management.commands.fetch_chirps_observations.running_tests",  # noqa
         return_value=False,
     )
     @patch(
-        "api.v1.v1_weather.management.commands.fetch_chirps_monthly.requests.head"  # noqa
+        "api.v1.v1_weather.management.commands.fetch_chirps_observations.requests.head"  # noqa
     )
     @patch(
-        "api.v1.v1_weather.management.commands.fetch_chirps_monthly.requests.get"  # noqa
+        "api.v1.v1_weather.management.commands.fetch_chirps_observations.requests.get"  # noqa
     )
-    def test_fetch_chirps_monthly_skips_404(
+    def test_fetch_chirps_observations_skips_404(
         self, mock_get, mock_head, mock_running
     ):
         mock_head.return_value.status_code = 404
         out = StringIO()
-        call_command("fetch_chirps_monthly", "--period", "2026-07", stdout=out)
+        call_command(
+            "fetch_chirps_observations", "--period", "2026-07", stdout=out
+        )
         self.assertIn("not published", out.getvalue())
         mock_get.assert_not_called()
 
     @patch(
         "api.v1.v1_weather.management.commands"
-        ".fetch_chirps_monthly.running_tests",
+        ".fetch_chirps_observations.running_tests",
         return_value=False,
     )
-    def test_fetch_chirps_monthly_resolve_periods_fallback_empty(
+    def test_fetch_chirps_observations_resolve_periods_fallback_empty(
         self, mock_running
     ):
         cmd = FetchChirpsMonthlyCommand()
@@ -186,10 +188,10 @@ class FetchChirpsMonthlyCommandTests(TestCase):
 
     @patch(
         "api.v1.v1_weather.management.commands"
-        ".fetch_chirps_monthly.running_tests",
+        ".fetch_chirps_observations.running_tests",
         return_value=False,
     )
-    def test_fetch_chirps_monthly_resolve_from_to(self, mock_running):
+    def test_fetch_chirps_observations_resolve_from_to(self, mock_running):
         cmd = FetchChirpsMonthlyCommand()
         periods = cmd._resolve_periods(
             {"from_period": "2026-01", "to_period": "2026-03"}
