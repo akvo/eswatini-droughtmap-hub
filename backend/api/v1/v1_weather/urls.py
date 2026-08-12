@@ -10,6 +10,7 @@ from api.v1.v1_weather.views import (
     CitizenScienceReadingDetailAPI,
     CitizenScienceReadingListAPI,
     CitizenScienceReminderAPI,
+    CitizenScienceStationDetailAPI,
     CitizenScienceStationListAPI,
     WeatherSourceAPI,
     WeatherStationListAPI,
@@ -27,6 +28,12 @@ urlpatterns = [
         r"^(?P<version>(v1))/weather/citizen-science/readings",
         CitizenScienceReadingListAPI.as_view(),
         name="cs-reading-list",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/weather/citizen-science/stations/"
+        r"(?P<administration_id>[0-9]+)",
+        CitizenScienceStationDetailAPI.as_view(),
+        name="cs-station-detail",
     ),
     re_path(
         r"^(?P<version>(v1))/weather/citizen-science/stations",
