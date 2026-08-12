@@ -474,6 +474,225 @@ class CitizenScienceTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    # -- WX-7: edit / reassign / archive -----------------------------------
+    def detail_url(self, administration_id=HHUKWINI_ADM):
+        return reverse(
+            "cs-station-detail",
+            kwargs={
+                "version": "v1",
+                "administration_id": administration_id,
+            },
+        )
+
+    def test_patch_station_and_observer_fields(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Edit station fields
+        response = self.client.patch(
+            self.detail_url(),
+            {
+                "station_name": "Hhukwini Upgraded",
+                "station_type": "Davis Vantage Pro2",
+                "sensors": ["min_temp", "max_temp", "rain_gauge"],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["station_name"], "Hhukwini Upgraded")
+        self.assertEqual(data["station_type"], "Davis Vantage Pro2")
+        self.assertEqual(
+            data["sensors"], ["min_temp", "max_temp", "rain_gauge"]
+        )
+        # Edit observer name only
+        response = self.client.patch(
+            self.detail_url(), {"name": "Sipho Dlamini"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["observer"]["name"], "Sipho Dlamini")
+        # DB reflects both changes
+        self.observer.refresh_from_db()
+        self.assertEqual(self.observer.station_name, "Hhukwini Upgraded")
+        self.assertEqual(self.observer.name, "Sipho Dlamini")
+        # Network table also reflects it
+        network = self.client.get(
+            reverse("cs-stations", kwargs={"version": "v1"})
+        ).json()
+        row = next(r for r in network["data"]
+                   if r["key"] == HHUKWINI_ADM)
+        self.assertEqual(row["label"], "Hhukwini Upgraded")
+        # No email job created
+        self.assertEqual(
+            Jobs.objects.filter(type=JobTypes.cs_magic_link).count(), 0
+        )
+
+    def test_patch_rejects_taken_email_allows_own(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Resending the observer's own address is fine
+        response = self.client.patch(
+            self.detail_url(),
+            {"email": self.observer.email},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Another user's email is rejected
+        response = self.client.patch(
+            self.detail_url(),
+            {"email": self.admin_user.email},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Soft-deleted user's email is also rejected
+        deleted = SystemUser.objects._create_user(
+            email="gone@example.sz", password=None, name="Gone",
+            role=UserRoleTypes.observer,
+            administration=self.kwaluseni,
+        )
+        deleted.soft_delete()
+        response = self.client.patch(
+            self.detail_url(),
+            {"email": "gone@example.sz"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_rejects_unknown_sensor_and_dedupes(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            self.detail_url(),
+            {"sensors": ["laser_rangefinder"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.patch(
+            self.detail_url(),
+            {"sensors": ["min_temp", "min_temp"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["sensors"], ["min_temp"])
+
+    def test_patch_empty_body_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            self.detail_url(), {}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reassign_archives_old_creates_new(self):
+        self.seed_reading(precipitation=55)
+        readings_before = CitizenScienceReading.objects.filter(
+            administration=self.hhukwini
+        ).count()
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(
+            self.detail_url(),
+            {"name": "Thabo Nkosi", "email": "thabo@example.sz"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data["observer"]["name"], "Thabo Nkosi")
+        self.assertNotEqual(data["observer"]["id"], self.observer.id)
+        # Station fields carried over
+        self.assertEqual(data["station_name"], "Hhukwini Community")
+        # Old observer is soft-deleted
+        self.observer.refresh_from_db()
+        self.assertIsNotNone(self.observer.deleted_at)
+        # New observer is active
+        new_obs = SystemUser.objects.get(email="thabo@example.sz")
+        self.assertIsNone(new_obs.deleted_at)
+        self.assertEqual(new_obs.administration_id, HHUKWINI_ADM)
+        # Welcome email dispatched
+        self.assertEqual(
+            Jobs.objects.filter(type=JobTypes.cs_magic_link).count(), 1
+        )
+        # Readings untouched
+        self.assertEqual(
+            CitizenScienceReading.objects.filter(
+                administration=self.hhukwini
+            ).count(),
+            readings_before,
+        )
+
+    def test_reassign_without_welcome_email(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(
+            self.detail_url(),
+            {
+                "name": "Silent Swap",
+                "email": "silent@example.sz",
+                "send_welcome_email": False,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            Jobs.objects.filter(type=JobTypes.cs_magic_link).count(), 0
+        )
+
+    def test_archive_removes_station_keeps_readings(self):
+        self.seed_reading(precipitation=55)
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.delete(self.detail_url())
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Network table no longer shows the station
+        network = self.client.get(
+            reverse("cs-stations", kwargs={"version": "v1"})
+        ).json()
+        self.assertEqual(network["stats"]["stations"], 0)
+        self.assertEqual(len(network["data"]), 0)
+        # Readings survive
+        self.assertEqual(
+            CitizenScienceReading.objects.filter(
+                administration=self.hhukwini
+            ).count(),
+            1,
+        )
+        # Inkhundla is now free — create succeeds
+        response = self.client.post(
+            reverse("cs-stations", kwargs={"version": "v1"}),
+            {
+                "name": "New Person",
+                "email": "newperson@example.sz",
+                "administration_id": HHUKWINI_ADM,
+                "station_name": "Hhukwini Reborn",
+                "send_welcome_email": False,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_station_detail_rejects_non_admin(self):
+        url = self.detail_url()
+        # Observer gets 403
+        self.client.force_authenticate(user=self.observer)
+        self.assertEqual(
+            self.client.patch(url, {}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.post(url, {}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.delete(url).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        # Reviewer gets 403
+        self.client.force_authenticate(user=self.reviewer)
+        self.assertEqual(
+            self.client.patch(url, {}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        # Unknown Inkhundla is 404 for admin
+        self.client.force_authenticate(user=self.admin_user)
+        self.assertEqual(
+            self.client.patch(
+                self.detail_url(999999), {"name": "x"}, format="json"
+            ).status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+
     # -- export + admin CSV backfill --------------------------------------
     def test_export_csv(self):
         self.seed_reading(precipitation=55, notes="gauge overflowed")
