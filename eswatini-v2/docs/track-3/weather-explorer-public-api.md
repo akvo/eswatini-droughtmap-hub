@@ -46,6 +46,8 @@ Goal:
 - **Satellite-difference card** (visible in the Figma frame): NOT in the
   product AC card list — explicitly out of scope until the satellite
   comparison feature (WX-3 foundation) lands.
+  *(Landed 2026-08-10 as [WX-10](weather-satellite-difference-card.md); the
+  card is now the first entry in `/stats` `data[]`. See D-3 below.)*
 - **Date-range picker**: `from`/`to` month params; with today's ~99-day
   archive most ranges will be partially empty — the frontend fills the
   12-slot axis and labels gaps.
@@ -232,12 +234,19 @@ product AC list (2026-07-15) replaces it with **total rain last month**. The
 satellite card returns with the comparison feature — no placeholder slot is
 shipped meanwhile.
 
-> **Superseded 2026-08-10** by [WX-10 `weather-satellite-difference-card.md`](weather-satellite-difference-card.md).
-> The card returns to the grid with a real millimetre value: CHIRPS
-> `africa_monthly` publishes current months at the URL `build_chirps_normals`
-> already downloads, so the comparison needed a zonal extraction, not a new data
-> source. The "no placeholder slot" half of this decision still stands and is
-> the reason `frontend/src/static/mocks/weather/` is deleted rather than kept.
+> **Superseded 2026-08-10** by [WX-10 `weather-satellite-difference-card.md`](weather-satellite-difference-card.md),
+> **now implemented**. The card is back in the grid with a real millimetre
+> value: CHIRPS `africa_monthly` publishes current months at the URL
+> `build_chirps_normals` already downloads, so the comparison needed a zonal
+> extraction, not a new data source. The "no placeholder slot" half of this
+> decision still stands and is why `frontend/src/static/mocks/weather/` was
+> deleted rather than kept.
+>
+> Card set as served today is therefore **four**, not three:
+> `station_satellite_difference`, `precipitation_last_month`,
+> `precipitation_12m`, `completeness_12m`. `/series` also gained
+> `precipitation_satellite_monthly`. Note the satellite card renders its empty
+> state everywhere until `fetch_chirps_observations` is run (WX-10 §12).
 
 ---
 

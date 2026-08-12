@@ -2,8 +2,27 @@
 
 **Task ID**: WX-10 (Track 3 — closes the last frontend mock in the Weather Explorer; builds on [WX-5 `weather-normals-extraction.md`](weather-normals-extraction.md) and [WX-4 `weather-explorer-public-api.md`](weather-explorer-public-api.md))
 **Author**: Iwan Firmawan
-**Date**: 2026-08-10
-**Status**: Draft
+**Date**: 2026-08-10 (rev. 2 — as-built)
+**Status**: **Implemented** — model, command, both endpoints, both frontend surfaces and the seeder all shipped. DEF-1 (command-name collision) is **fixed**. Two decisions were built differently from this design (D-2, D-5) and are unratified, and **no data has been extracted yet** (§12).
+
+---
+
+> **Rev. 2 — as-built.** Rev. 1 was the design; rev. 2 records what the code
+> actually does. Three things a reader needs before trusting the sections below:
+>
+> 1. **D-5 shipped as nearest-centroid, not point-in-polygon**, and D-2 shipped
+>    as "latest satellite month" rather than "latest month where both sides
+>    exist". Both are recorded in place with an **As-built** note; neither was
+>    a documented decision change, so the risk each carries is written down
+>    rather than quietly blessed.
+> 2. **`AdministrationObservation` holds 0 rows.** The table and the command
+>    exist; the command has never been run. Every satellite card in every
+>    environment is currently the `satellite_not_published` empty state, and
+>    BB-3's rainfall clause stays dark until it runs.
+> 3. ~~**The command name collides with `v1_insights`**~~ — **fixed
+>    2026-08-10** by renaming this feature's command to
+>    `fetch_chirps_observations`. See §13 DEF-1 for what the collision broke
+>    and how to avoid repeating it.
 
 ---
 
@@ -61,29 +80,31 @@ subtract. No new dependency, no new external system, no new auth.
 ## 2. Requirements
 
 ### User Acceptance Criteria
-- [ ] A visitor to the Weather Explorer sees a "Difference between station and
-      satellite" card holding a real signed millimetre value for the most recent
-      month where **both** sides exist.
-- [ ] The card names the month it describes, the comparator (CHIRPS), and the
-      gauge the comparison is anchored to — so a visitor is never guessing which
-      period or which station the number covers.
-- [ ] When the satellite month has not been published, the station month is too
-      thin to trust, or there is no station, the card renders the em-dash empty
-      state with a reason — it never shows a stale or fabricated number.
-- [ ] The precipitation chart gains a toggleable **CHIRPS observed** series
-      alongside the existing station bars and 30-year average, so the card's
-      single number can be read in the context of the months around it.
-- [ ] No card in the Explorer is labelled "Illustrative only" any more.
+- [~] A visitor to the Weather Explorer sees a "Difference between station and
+      satellite" card holding a real signed millimetre value — **code path
+      shipped, but no value renders anywhere yet** (0 observation rows, §12),
+      and it is the latest *satellite* month rather than the latest month where
+      both sides exist (D-2 as-built).
+- [x] The card names the month it describes, the comparator (CHIRPS), and the
+      anchor gauge — `meta.period` / `meta.comparator` / `meta.anchor_inkhundla`.
+- [x] Empty states carry a reason and never a fabricated number — two branches
+      shipped, `satellite_not_published` and `incomplete_station_month` (§4).
+- [x] The precipitation chart has a toggleable **CHIRPS observed** series
+      (`PrecipitationChart`, disabled when the series is absent).
+- [x] No card in the Explorer is labelled "Illustrative only" any more.
 
 ### Technical Acceptance Criteria
-- [ ] `frontend/src/static/mocks/weather/` is deleted, directory and all.
-- [ ] The card value comes from `/weather/administrations/<id>/stats`, the
-      endpoint the grid already calls — no second request, no new hook.
-- [ ] Extraction is a management command, idempotent, re-runnable, and never
-      reaches the network under `manage.py test`.
-- [ ] `/stats` stays a fixed, small number of queries — the new card adds at
-      most one, and does not scale with the 59 Tinkhundla.
-- [ ] `/stats` remains fully public and cacheable; the new card is not TWG-gated.
+- [x] `frontend/src/static/mocks/weather/` is deleted, directory and all.
+- [x] The card value comes from `/weather/administrations/<id>/stats` — one
+      request, no new hook.
+- [x] Extraction is a management command that refuses to run under
+      `manage.py test` (`running_tests()` reused) and upserts via
+      `update_or_create`. **Idempotency is not covered by a test** (§9).
+- [ ] **Not verified.** `_satellite_difference_card` runs one
+      `Administration.objects.filter(region=...)` plus a centroid scan per
+      request, and no test pins the query count. The design's "does not scale
+      with the 59 Tinkhundla" claim is unproven as built.
+- [x] `/stats` remains public and cacheable; the card is not TWG-gated.
 
 ---
 
@@ -175,22 +196,36 @@ No new endpoint. One new card appended to an existing response.
         "comparator": "CHIRPS",
         "dataset": "CHIRPS v2.0 africa_monthly",
         "station_value": 96.4,
-        "satellite_value": 88.4
+        "satellite_value": 88.4,
+        "anchor_inkhundla": "Mbabane West"
       }
     }
   ]
 }
 ```
 
-Empty state — satellite month not published, or no station:
+Empty states — as built there are **two**, with different `meta`:
 
-```json
+```jsonc
+// No AdministrationObservation row for the anchor Inkhundla at all.
+// NOTE: no `period` — there is no month to name. (The rev. 1 draft showed one
+// here; the code cannot supply it, so the contract follows the code.)
 {
   "key": "station_satellite_difference",
   "label": "Difference between station and satellite",
   "value": null,
   "units": "mm",
-  "meta": { "reason": "satellite_not_published", "period": "2026-07" }
+  "meta": { "reason": "satellite_not_published" }
+}
+
+// Satellite month exists, but the gauge reported < MIN_STATION_DAYS_PER_MONTH
+// days in it (D-6) — or reported none at all. `period` IS present.
+{
+  "key": "station_satellite_difference",
+  "label": "Difference between station and satellite",
+  "value": null,
+  "units": "mm",
+  "meta": { "reason": "incomplete_station_month", "period": "2026-06" }
 }
 ```
 
@@ -246,6 +281,21 @@ still absent on 2026-08-10 — so for part of every month the honest answer is
 **Impact**: the card's period can legitimately differ from the neighbouring
 "Total precipitation last month" card's period. `meta.period` is therefore
 mandatory, and the frontend must render it rather than assuming "last month".
+
+> **As-built (differs from this decision).** `_satellite_difference_card` takes
+> the **latest `AdministrationObservation` month** and then tests the station
+> against *that* month only. It never walks back to an earlier month where both
+> sides are present, so option 2 ("latest month where both exist") is not what
+> shipped — what shipped is closer to "latest satellite month, or nothing".
+>
+> Consequence: once CHIRPS publishes month *M*, an Inkhundla whose gauge was
+> thin in *M* shows an empty card **even when month M−1 has a perfectly good
+> comparison on both sides**. Given D-6 voids 5 of 12 station-months on real
+> data, this turns a recoverable gap into a blank card fairly often.
+>
+> `reason` also differs: `satellite_not_published` is returned when the table
+> has **no row at all** for the anchor Inkhundla, not when the station leads
+> CHIRPS. With 0 rows extracted today, that is the branch every request takes.
 
 ### D-3: Sign convention is station minus satellite
 
@@ -309,6 +359,27 @@ matches how the station series in the charts already behaves. The label must say
 so: *"Mbabane gauge vs CHIRPS over Mbabane West"*, not *"vs CHIRPS here"*.
 `/stats` already returns `meta.station` and `meta.resolution`; add the anchor
 Inkhundla name.
+
+> **As-built (differs from this decision).** `meta.anchor_inkhundla` ships as
+> specified, but the anchor is resolved as **the Inkhundla in the station's
+> region whose centroid is nearest the gauge** (`haversine_km` over
+> `administration_centroids()`), not the Inkhundla whose polygon *contains* the
+> gauge. Those are not the same test, and the codebase already knows it:
+> `topo.py::assign_region` uses true point-in-polygon precisely because
+> *"MOTI sits near a region tripoint, where nearest-centroid guesses wrong"*,
+> keeping nearest-centroid only as an outside-every-polygon fallback.
+>
+> A gauge sitting near the edge of a large Inkhundla can therefore be compared
+> against a **neighbouring** polygon's rainfall. That reintroduces exactly the
+> geometry error D-5 exists to remove — bounded by the within-region spread in
+> §11 (25–46 mm in April/May, up to 135 mm in March) rather than by the ±6.5 mm
+> that made option 2 viable.
+>
+> This was not measured against the shipped code: the 4 `operational` stations
+> the probe used are no longer in the database (§12), so the two rules could not
+> be compared on real gauges. Switching to `shapely` `contains()` with
+> nearest-centroid as fallback would match both this decision and the existing
+> `assign_region` precedent.
 
 ### D-6: Void a month the station barely reported, reusing the existing threshold
 
@@ -420,6 +491,13 @@ The URL template and bbox currently live as module constants inside
 `constants.py` and `build_chirps_normals` imports them. Two copies of a bbox is
 how one of them silently drifts.
 
+> **As-built: done as specified.** All five constants live in
+> `v1_weather/constants.py`, and `build_chirps_normals` imports them aliased
+> (`CHIRPS_BBOX as BBOX`, `CHIRPS_MONTHLY_URL as BASE`) so its body was left
+> untouched. Note `v1_insights` keeps its **own** `CHIRPS_BBOX` in
+> `v1_insights/constants.py` — the drift this decision guards against still
+> exists across the app boundary (§13).
+
 ---
 
 ## 7. Compatibility & Migration
@@ -433,20 +511,29 @@ how one of them silently drifts.
       constants from their new home.
 
 ### Seeder/CLI Compatibility
-- [ ] New command: `fetch_chirps_monthly [--period YYYY-MM] [--from YYYY-MM]
-      [--dry-run]`. Default: every month from the earliest station reading to
-      the last published CHIRPS month that is not already stored.
-- [ ] `generate_weather_seeder` is **modified in the same PR** (D-7): demo
-      station values are drawn around the real `AdministrationObservation` for
-      the month, falling back to `AdministrationNormal` only for months CHIRPS
-      has not published. Its D-16 rationale in
-      [`demo-data-seeder.md`](demo-data-seeder.md) is amended to match.
-- [ ] Demo environments run `fetch_chirps_monthly` **before**
-      `generate_weather_seeder`, since the seeder now reads what it writes.
-      Ordering belongs in the demo bootstrap sequence, not in either command.
-- [ ] Scheduling is out of scope here; the command is run on demand like its
-      siblings. A monthly Rundeck job is the obvious follow-up but should not
-      be built before the first month is verified by hand.
+- [x] **Shipped** as `backend/api/v1/v1_weather/management/commands/fetch_chirps_observations.py`
+      (renamed from `fetch_chirps_monthly` on 2026-08-10 — see DEF-1):
+      `[--period YYYY-MM] [--from YYYY-MM] [--to YYYY-MM] [--dry-run]` — `--to`
+      was added beyond this design. Default range is the earliest station
+      reading month through the current month; a `HEAD` request skips months
+      CHIRPS has not published (404) instead of failing the run.
+      Originally shipped as `fetch_chirps_monthly`, which collided with a
+      `v1_insights` command; renamed to resolve DEF-1.
+- [x] **Shipped** — `generate_weather_seeder` prefers the real
+      `AdministrationObservation` row for the month and falls back to
+      `AdministrationNormal` otherwise (D-7), as designed.
+- [ ] **Outstanding**: the D-16 rationale in
+      [`demo-data-seeder.md`](demo-data-seeder.md) still describes normals as
+      the only baseline and has **not** been amended to mention the observation
+      path.
+- [ ] **Not done**: nothing enforces or documents running
+      `fetch_chirps_observations` **before** `generate_weather_seeder`. With 0
+      observation rows today the seeder always takes its climatology fallback,
+      so the demo data still carries the §11 artifact D-7 was written to remove.
+- [~] Scheduling: `job.sh precipitation` exists and is described as a daily
+      run that catches the month once CHIRPS publishes it — but it was written
+      for the **`v1_insights`** command and now reaches this one (§13). No month
+      has been verified by hand yet.
 
 ---
 
@@ -460,7 +547,7 @@ how one of them silently drifts.
       layer.
 - [x] No new attack vectors: one outbound HTTPS GET to a hardcoded host, run
       from a management command, never from a request path.
-- [x] Test-suite guard: `fetch_chirps_monthly` reuses
+- [x] Test-suite guard: `fetch_chirps_observations` reuses
       `build_chirps_normals.running_tests()` — which checks `sys.argv` directly
       rather than `settings.TEST_ENV`, because `TEST_ENV` is not set in
       `docker-compose.test.yml` or the CI workflow and the house guard would
@@ -472,7 +559,7 @@ how one of them silently drifts.
 
 | Test Type | Coverage |
 |---|---|
-| Unit — extraction | filename/URL built for a given period; single-band raster yields one row per Inkhundla via `zonal_means`; `all_touched` coverage regression (all 59 Tinkhundla, not 25); upsert is idempotent on re-run; network call raises under the test runner |
+| Unit — extraction | **Partial as built** (`tests_commands.py::FetchChirpsMonthlyCommandTests`): the test-runner guard and the 404-skip path are covered. **Not covered**: `all_touched` 59/59 coverage regression, upsert idempotency, and the URL/period construction. |
 | Unit — stats card | station − satellite arithmetic and sign; comparison anchored at the gauge's own Inkhundla, not the viewed one (D-5) — two Tinkhundla in one region return the same value; period chosen as the latest month present on both sides; `satellite_not_published` when the station leads CHIRPS; `incomplete_station_month` below `MIN_STATION_DAYS_PER_MONTH` (D-6) — a 3-day 0.0 mm month must NOT render a large negative delta; empty card when there is no station; card absent-safe when the table is empty; query count unchanged by the number of Tinkhundla |
 | Unit — series | `precipitation_satellite_monthly` present, ascending, range-filtered like its siblings; null for months with no extraction; per-Inkhundla (not station-anchored) |
 | Unit — seeder | demo station values track the real `AdministrationObservation` for the month, not `AdministrationNormal` (D-7); climatology fallback used only for unpublished months; regression guard — seeded delta must not scale with the month's anomaly, which is the exact artifact §12 found |
@@ -511,7 +598,19 @@ how one of them silently drifts.
       anomaly. See the revised D-7 (product principle: real data even in the
       seed).
 
-**No open questions remain. This document is ready for implementation.**
+~~**No open questions remain. This document is ready for implementation.**~~
+**Superseded by rev. 2.** Q1–Q6 remain resolved as above, but implementation
+opened three new items:
+
+- [x] **Q7 — Rename one `fetch_chirps_monthly`.** **DONE 2026-08-10**: this
+      feature's command is now `fetch_chirps_observations`, so
+      `fetch_chirps_monthly` resolves to `v1_insights` again and
+      `job.sh precipitation` works. Verified via `get_commands()` (DEF-1).
+- [ ] **Q8 — Run `fetch_chirps_observations`**, before `generate_weather_seeder`, so
+      the card renders and D-7 stops being inert (§12).
+- [ ] **Q9 — Accept or correct the two as-built divergences** (D-2's
+      no-walk-back, D-5's nearest-centroid anchor). Both are recorded in place;
+      neither has been ratified as a decision change.
 
 ---
 
@@ -560,7 +659,94 @@ and 2 in June. Ungated, the card would read **−47.1 mm** for May. → D-6.
 
 ---
 
-## 12. References
+## 12. Current State (local dev database, verified 2026-08-10)
+
+Read this before testing the feature or trusting a screenshot. These are counts
+from the **local Docker database**, not an assertion about staging or
+production — check those separately before drawing conclusions there.
+
+| Fact | Value |
+|---|---|
+| `AdministrationObservation` rows | **0** — `fetch_chirps_observations` has never been run here |
+| Weather stations | **8, all `metadata_status="demo"`** |
+| `operational` stations | **0** — MBABANE, BIG BEND, LUBOVANE and MOTI are gone since the §11 probe |
+| `StationDailyAggregate` rows | 34,986 |
+
+Two consequences that look like bugs but are not:
+
+1. **Every satellite card is the `satellite_not_published` empty state**, in
+   every environment, because the observations table is empty. The feature
+   cannot be visually reviewed until the command runs.
+2. **D-7's seeder improvement is inert.** `generate_weather_seeder` prefers a
+   real observation row, finds none, and falls back to `AdministrationNormal` —
+   so the seeded data still carries the climatology artifact §11 measured
+   (spurious mean −33.3 mm). Running `fetch_chirps_observations` **before** the
+   seeder is what activates D-7, and nothing enforces that order yet.
+
+The §11 probe numbers stand as evidence for D-5/D-6/D-7 — they were measured on
+real gauges and real CHIRPS — but they can no longer be reproduced in this
+database, because the gauges they used are no longer in it.
+
+---
+
+## 13. Known Defects
+
+### DEF-1: `fetch_chirps_monthly` existed twice and the wrong one won — FIXED 2026-08-10
+
+`v1_weather` and `v1_insights` both define a management command called
+`fetch_chirps_monthly`. Django's `get_commands()` resolves the name to a single
+app — verified on 2026-08-10 to be **`api.v1.v1_weather`**, this feature's
+command. The `v1_insights` command is unreachable by name.
+
+They are not the same command:
+
+| | `v1_weather` (this feature, wins) | `v1_insights` (shadowed) |
+|---|---|---|
+| Writes | `AdministrationObservation` DB rows | a GeoTIFF window + sidecar under `CHIRPS_MONTHLY_DIR` |
+| Consumer | the satellite card + `/series` | `map_layers.py`, the Precipitation tab choropleth |
+| Flags | `--period --from --to --dry-run` | `--force`, skip-if-exists |
+
+Confirmed impact:
+
+- **`job.sh precipitation` is broken.** Its comment describes the insights
+  behaviour ("Skips instantly if already stored… exits 0 while CHIRPS has not
+  published"), but it now writes DB rows and never produces the raster the
+  Precipitation tab reads. `map_layers.py:361`'s "missing file is the normal
+  state until `fetch_chirps_monthly` has [run]" can no longer become true.
+- **`--force` is now an error.** `manage.py fetch_chirps_monthly --help`
+  lists only this feature's four flags, so any runbook or cron passing
+  `--force` fails with an unrecognised-argument error.
+
+Nothing warns about this: Django silently picks a winner, and both commands are
+individually well-formed.
+
+**Fix applied 2026-08-10**: this feature's command was renamed to
+**`fetch_chirps_observations`** (`git mv`, plus its test module and the
+`generate_weather_seeder` docstring). The `v1_insights` command keeps
+`fetch_chirps_monthly` — it is the older consumer, it is documented under that
+name in [`../track-1/national-overview-map-data-tabs.md`](../track-1/national-overview-map-data-tabs.md),
+and `job.sh` calls it; this feature's command had no external callers precisely
+because it had never been run.
+
+Verified after the rename via `django.core.management.get_commands()`:
+
+| Command | Resolves to |
+|---|---|
+| `fetch_chirps_monthly` | `api.v1.v1_insights` ✅ (restored) |
+| `fetch_chirps_observations` | `api.v1.v1_weather` ✅ |
+
+`job.sh precipitation` therefore reaches the raster-writing command again and
+`--force` is accepted once more. The renamed module carries a `NAME:` docstring
+note explaining why the two must stay distinct, so the collision is not
+reintroduced by someone renaming it "back" for symmetry.
+
+**Still worth doing**: `v1_insights` keeps its own `CHIRPS_BBOX`/base-URL
+constants separate from `v1_weather`'s, so the same bbox is defined twice across
+the app boundary — the drift risk §6 names, one boundary further out.
+
+---
+
+## 14. References
 
 - Mock being deleted: `frontend/src/static/mocks/weather/satellite-difference.js`
 - Sole consumer: `frontend/src/components/Insights/WeatherTab/WeatherTab.js:13,134-141`

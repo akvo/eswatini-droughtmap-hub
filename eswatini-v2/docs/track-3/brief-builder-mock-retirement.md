@@ -13,7 +13,9 @@
 > the code met the codebase. Four decisions moved: **D-4** (the roster endpoint and its gate),
 > **D-9** (per-tile provenance, added after review found the first cut mislabelled a tile), and
 > **D-10** (narrative reset, added after a bug report). The **rainfall clause of D-5 is specified
-> but not built** — its source model does not exist yet, and the clause omits itself by design.
+> but not built** — the clause omits itself by design. *(Correction 2026-08-10: its source model
+> `AdministrationObservation` **does** now exist — WX-10 shipped. The clause stays dark because
+> the extraction command has not been run, not because the model is missing.)*
 
 ---
 
@@ -185,7 +187,7 @@ when that source is silent:
 |---|---|---|
 | validated D-class for the cycle | `/risk-levels/{id}` → `drought.key` + `publication.year_month` | no published cycle |
 | trend direction | `drought.trend` / `trend_desc` | trend null |
-| rainfall deficit in mm — **specified, not built** | `AdministrationObservation` − `AdministrationNormal`, same month, same Inkhundla (D-5) | always, until WX-10 creates the model. `situation.py` carries a comment naming the dependency; there is no dead code for a model that does not exist |
+| rainfall deficit in mm — **specified, not built** | `AdministrationObservation` − `AdministrationNormal`, same month, same Inkhundla (D-5) | always. **Updated 2026-08-10:** WX-10 shipped, so the model now exists — the blocker moved from "no model" to "no rows" (`fetch_chirps_observations` has never been run) |
 | IKS observer signal | `/iks/{id}/stats` → `total_reports_received`, `indicator_activity` (D-7) | no submissions this cycle |
 
 `meta.sources` lists which clauses fired, so a reviewer can see what the draft rests on.
@@ -566,7 +568,7 @@ population, and an unpermitted sub-catchment is not zero water demand.
 - [x] Existing seeders work unchanged.
 - [x] `generate_administrations_seeder` is **modified in the same PR** (D-1): it already opens `./source/eswatini.topojson` and iterates the 59 geometries; it now also computes `area_km2` via `shapely`/`geopandas` in that pass. Re-runnable and idempotent (`update_or_create` already).
 - [ ] **Not this PR** — loading `all_water_demand_aligned.xlsx` into `Indicator.water_demand` (D-6). Its own task, with its own decisions about zero-vs-missing.
-- [ ] **Not this PR** — WX-10's `fetch_chirps_monthly` (D-5). BB-3's rainfall clause activates when it runs.
+- [ ] **Not this PR** — WX-10's extraction command (D-5). BB-3's rainfall clause activates when it runs. **Status 2026-08-10:** the command and `AdministrationObservation` are merged but the command has **not been run** (0 rows), so the clause is still dark. It is named **`fetch_chirps_observations`** — renamed from `fetch_chirps_monthly`, which belongs to a different `v1_insights` command (WX-10 DEF-1).
 
 ---
 
@@ -616,7 +618,7 @@ pre-existing by stashing this branch's changes and reproducing on a clean tree.
 - [x] **OQ-5 — area source?** → **D-1**: `eswatini.topojson`, already parsed by the seeder that creates these rows. 17,366 km² against an official 17,364.
 
 **Two sequencing notes, not questions:**
-- The rainfall clause is dark until [WX-10](weather-satellite-difference-card.md) ships. Do not build a station-based interim (D-5).
+- ~~The rainfall clause is dark until [WX-10](weather-satellite-difference-card.md) ships.~~ **Updated 2026-08-10: WX-10 has shipped** — model, command and migration `0006` are all merged. The clause is dark only because no observation rows have been extracted yet; it needs one `fetch_chirps_observations` run, not more code. The instruction not to build a station-based interim (D-5) still stands, and WX-10 §11 is the measurement behind it.
 - Two of five exposure bars are unavailable until the DWA load and a cattle source land (D-6, §1b). That is the honest state, and shipping it is the point.
 
 ---
