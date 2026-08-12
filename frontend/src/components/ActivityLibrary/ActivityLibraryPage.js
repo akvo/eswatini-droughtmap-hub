@@ -229,7 +229,7 @@ export default function ActivityLibraryPage() {
             }}
           />
         </section>
-        <div className="mx-auto w-full max-w-[1280px] py-8">
+        <div className="mx-auto w-full max-w-[1280px] py-6">
           <FeedbackSection />
         </div>
       </div>
