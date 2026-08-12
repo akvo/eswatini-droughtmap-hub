@@ -96,19 +96,28 @@ const ReviewerMap = ({
       ];
 
   // The legend is its own row beneath the map, ruled off from it (Figma
-  // 3324-52326) — not an overlay floating on top of the polygons.
+  // 3324-52326) — not an overlay floating on top of the polygons. The map body
+  // takes the rest of the column so the panel matches the assessment summary
+  // beside it, exactly as the design pairs them.
   return (
-    <div className="w-full">
-      <CDIMap {...{ onFeature, onClick }} style={mapStyle} />
-      <div className="flex flex-wrap items-center gap-4 border-t border-cardBorder px-4 py-3 text-xs leading-4 text-[#606060]">
+    <div className="flex h-full w-full flex-col">
+      <CDIMap
+        {...{ onFeature, onClick }}
+        style={mapStyle}
+        wrapperClassName="min-h-0 flex-1"
+        height="100%"
+      />
+      <div className="flex flex-wrap content-center items-center gap-2 border-t border-cardBorder p-4 text-xs leading-4 text-[#606060]">
         {legend.map(({ color, stroke, label }) => (
-          <span key={label} className="flex items-center gap-1.5">
-            <span
-              className={`h-2.5 w-2.5 border ${
-                isProgress ? "rounded-sm" : "rounded-full"
-              }`}
-              style={{ backgroundColor: color, borderColor: stroke || color }}
-            />
+          <span key={label} className="flex items-center gap-1">
+            <span className="flex size-4 items-center justify-center">
+              <span
+                className={`size-3 border ${
+                  isProgress ? "rounded-sm" : "rounded-full"
+                }`}
+                style={{ backgroundColor: color, borderColor: stroke || color }}
+              />
+            </span>
             {label}
           </span>
         ))}

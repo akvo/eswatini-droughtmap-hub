@@ -20,25 +20,9 @@ class WeatherSourceSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "updated_at"]
 
 
-class ObserverCreateSerializer(serializers.Serializer):
-    """Unified add station + observer (brief §6.4, mockup): one call
-    registers the passwordless observer bound to an Inkhundla."""
-
-    name = serializers.CharField(max_length=100)
-    email = serializers.EmailField()
-    administration_id = serializers.PrimaryKeyRelatedField(
-        queryset=Administration.objects.all(), source="administration"
-    )
-    station_name = serializers.CharField(max_length=120)
-    sensors = serializers.ListField(
-        child=serializers.ChoiceField(choices=list(CS_SENSORS)),
-        required=False,
-        default=list,
-    )
-    station_type = serializers.CharField(
-        max_length=60, required=False, allow_blank=True, default=""
-    )
-    send_welcome_email = serializers.BooleanField(default=True)
+class ObserverStationSerializer(serializers.Serializer):
+    """Validation shared by every write to a station + its observer:
+    create (WX-6), edit (WX-7 PATCH) and reassign (WX-7 POST)."""
 
     def to_internal_value(self, data):
         # Swagger's form-data mode sends the array as ONE comma-joined
@@ -60,11 +44,35 @@ class ObserverCreateSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         # The DB unique index spans soft-deleted rows too
-        if SystemUser.objects_with_deleted.filter(email=value).exists():
+        taken = SystemUser.objects_with_deleted.filter(email=value)
+        if self.instance:  # PATCH: the observer owns this address
+            taken = taken.exclude(pk=self.instance.pk)
+        if taken.exists():
             raise serializers.ValidationError(
                 "A user with this email already exists."
             )
         return value
+
+
+class ObserverCreateSerializer(ObserverStationSerializer):
+    """Unified add station + observer (brief §6.4, mockup): one call
+    registers the passwordless observer bound to an Inkhundla."""
+
+    name = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    administration_id = serializers.PrimaryKeyRelatedField(
+        queryset=Administration.objects.all(), source="administration"
+    )
+    station_name = serializers.CharField(max_length=120)
+    sensors = serializers.ListField(
+        child=serializers.ChoiceField(choices=list(CS_SENSORS)),
+        required=False,
+        default=list,
+    )
+    station_type = serializers.CharField(
+        max_length=60, required=False, allow_blank=True, default=""
+    )
+    send_welcome_email = serializers.BooleanField(default=True)
 
     def validate_administration_id(self, value):
         if SystemUser.objects.filter(
@@ -74,6 +82,35 @@ class ObserverCreateSerializer(serializers.Serializer):
                 "This Inkhundla already has an active observer."
             )
         return value
+
+
+class StationUpdateSerializer(ObserverStationSerializer):
+    """WX-7 PATCH: any subset of the Station card's and Observer card's
+    fields. The Inkhundla comes from the URL; nothing is emailed (D-5)."""
+
+    name = serializers.CharField(max_length=100, required=False)
+    email = serializers.EmailField(required=False)
+    station_name = serializers.CharField(max_length=120, required=False)
+    sensors = serializers.ListField(
+        child=serializers.ChoiceField(choices=list(CS_SENSORS)),
+        required=False,
+    )
+    station_type = serializers.CharField(
+        max_length=60, required=False, allow_blank=True
+    )
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("No fields to update.")
+        return attrs
+
+
+class ObserverReassignSerializer(ObserverStationSerializer):
+    """WX-7 POST: hand the station to a different person (D-2)."""
+
+    name = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    send_welcome_email = serializers.BooleanField(default=True)
 
 
 class CitizenScienceReadingUpsertSerializer(serializers.ModelSerializer):

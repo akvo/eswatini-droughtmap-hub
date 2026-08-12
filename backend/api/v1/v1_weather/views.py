@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -15,6 +16,7 @@ from rest_framework.exceptions import ValidationError
 
 from api.v1.v1_weather.citizen_science import (
     CS_FIELD_KEYS,
+    active_observers,
     admin_network,
     dispatch_cs_magic_link,
     dispatch_cs_reminders,
@@ -42,6 +44,8 @@ from api.v1.v1_weather.models import (
 from api.v1.v1_weather.serializers import (
     CitizenScienceReadingUpsertSerializer,
     ObserverCreateSerializer,
+    ObserverReassignSerializer,
+    StationUpdateSerializer,
     WeatherSourceSerializer,
 )
 from api.v1.v1_weather.services import (
@@ -394,6 +398,108 @@ class CitizenScienceStationListAPI(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+def station_payload(observer):
+    """Response body for PATCH and POST — one shape for the frontend."""
+    return {
+        "administration_id": observer.administration_id,
+        "station_name": observer.station_name,
+        "sensors": observer.station_sensors,
+        "station_type": observer.station_type,
+        "observer": {
+            "id": observer.id,
+            "name": observer.name,
+            "email": observer.email,
+        },
+    }
+
+
+class CitizenScienceStationDetailAPI(APIView):
+    """WX-7: edit (PATCH), reassign (POST) and archive (DELETE) one
+    station. The station IS its active observer row (WX-6 D-2)."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_observer(self, administration_id):
+        return get_object_or_404(
+            active_observers(), administration_id=administration_id
+        )
+
+    @extend_schema(
+        tags=["Citizen Science"],
+        summary="Edit station and/or observer fields",
+        request=StationUpdateSerializer,
+    )
+    def patch(self, request, version, administration_id):
+        observer = self.get_observer(administration_id)
+        serializer = StationUpdateSerializer(
+            observer, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        update_fields = []
+        for field in ("name", "email", "station_type"):
+            if field in data:
+                setattr(observer, field, data[field])
+                update_fields.append(field)
+        if "station_name" in data:
+            observer.station_name = data["station_name"]
+            update_fields.append("station_name")
+        if "sensors" in data:
+            observer.station_sensors = data["sensors"]
+            update_fields.append("station_sensors")
+
+        observer.save(update_fields=update_fields)
+        return Response(station_payload(observer), status=status.HTTP_200_OK)
+
+    @extend_schema(
+        tags=["Citizen Science"],
+        summary="Reassign station to a different observer",
+        request=ObserverReassignSerializer,
+    )
+    def post(self, request, version, administration_id):
+        observer = self.get_observer(administration_id)
+        serializer = ObserverReassignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            # Carry station fields to the new observer
+            station_name = observer.station_name
+            station_sensors = observer.station_sensors
+            station_type = observer.station_type
+            administration = observer.administration
+
+            observer.soft_delete()
+
+            new_observer = SystemUser.objects._create_user(
+                email=data["email"],
+                password=None,
+                name=data["name"],
+                role=UserRoleTypes.observer,
+                administration=administration,
+                station_name=station_name,
+                station_sensors=station_sensors,
+                station_type=station_type,
+            )
+
+        if data["send_welcome_email"]:
+            dispatch_cs_magic_link(new_observer)
+
+        return Response(
+            station_payload(new_observer), status=status.HTTP_201_CREATED
+        )
+
+    @extend_schema(
+        tags=["Citizen Science"],
+        summary="Archive station (soft-delete the observer)",
+    )
+    def delete(self, request, version, administration_id):
+        observer = self.get_observer(administration_id)
+        observer.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CitizenScienceReminderAPI(APIView):

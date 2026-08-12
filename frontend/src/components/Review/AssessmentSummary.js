@@ -1,5 +1,6 @@
 "use client";
 
+// import Link from "next/link";
 import { Progress } from "antd";
 import { MetricCard } from "@/components/DS";
 
@@ -8,12 +9,12 @@ import { MetricCard } from "@/components/DS";
  * no chart library for one arc.
  */
 const Gauge = ({ percent = 0 }) => {
-  const radius = 80;
+  const radius = 100;
   const arc = Math.PI * radius; // half circumference
   const filled = (Math.min(Math.max(percent, 0), 100) / 100) * arc;
   return (
-    <div className="relative flex w-full justify-center">
-      <svg viewBox="0 0 200 110" className="w-[200px]" role="img">
+    <div className="relative flex h-[120px] w-full justify-center overflow-hidden">
+      <svg viewBox="0 0 240 120" className="h-[120px] w-[240px]" role="img">
         <title>{`${percent}% overall readiness`}</title>
         {[
           { color: "#EAECF0", length: arc },
@@ -21,27 +22,27 @@ const Gauge = ({ percent = 0 }) => {
         ].map(({ color, length }) => (
           <path
             key={color}
-            d={`M 20 100 A ${radius} ${radius} 0 0 1 180 100`}
+            d={`M 20 118 A ${radius} ${radius} 0 0 1 220 118`}
             fill="none"
             stroke={color}
-            strokeWidth="16"
+            strokeWidth="20"
             strokeLinecap="butt"
             strokeDasharray={`${length} ${arc}`}
           />
         ))}
         <text
-          x="100"
-          y="88"
+          x="120"
+          y="72"
           textAnchor="middle"
-          className="fill-[#20232D] text-[28px] font-semibold"
+          className="fill-[#0A0D14] text-[24px] font-bold"
         >
           {`${percent}%`}
         </text>
         <text
-          x="100"
-          y="106"
+          x="120"
+          y="94"
           textAnchor="middle"
-          className="fill-[#606060] text-[11px] uppercase tracking-wide"
+          className="fill-[#525866] text-[12px] font-medium uppercase tracking-[0.48px]"
         >
           Overall readiness
         </text>
@@ -56,18 +57,24 @@ const AssessmentSummary = ({ summary }) => {
   // One continuous panel: the breakdown cards sit flush against the summary,
   // separated by a hairline rather than a gap (Figma).
   return (
-    <div className="flex w-full flex-col border border-cardBorder bg-white">
-      <div className="flex flex-col gap-4 p-4">
-        <h3 className="text-base font-semibold leading-6 text-[#333333]">
-          Assessment summary
-        </h3>
+    <div className="flex w-full flex-col border-y border-l border-cardBorder bg-white">
+      <div className="flex flex-col gap-6 px-4 pb-6 shadow-[0px_1px_2px_0px_rgba(228,229,231,0.24)]">
+        <div className="flex items-center gap-4 py-6 border-b border-cardBorder">
+          <h3 className="flex-1 text-base font-normal leading-6 text-[#333333]">
+            Assessment Summary
+          </h3>
+          {/* <Link
+            href="/validations"
+            className="text-sm leading-5 text-[#485D92] hover:underline"
+          >
+            validation step &gt;
+          </Link> */}
+        </div>
         <Gauge percent={summary?.overall_readiness || 0} />
-        <div className="flex flex-col gap-1.5 border-t border-cardBorder pt-4">
-          <div className="flex items-center justify-between text-sm leading-5">
-            <span className="font-medium text-[#333333]">
-              Reviews collected
-            </span>
-            <span className="text-[#606060]">
+        <div className="flex flex-col gap-3 border-t border-cardBorder pt-6">
+          <div className="flex items-center justify-between text-sm font-bold leading-[21px] text-[#333333]">
+            <span>Reviews collected</span>
+            <span>
               {collected.value}/{collected.total}
             </span>
           </div>
@@ -76,8 +83,10 @@ const AssessmentSummary = ({ summary }) => {
               collected.total ? (collected.value / collected.total) * 100 : 0
             }
             showInfo={false}
+            strokeWidth={8}
             strokeColor="#3E5EB9"
             trailColor="#EAECF0"
+            className="[&_.ant-progress-line]:m-0 [&_.ant-progress-outer]:block"
           />
         </div>
       </div>
