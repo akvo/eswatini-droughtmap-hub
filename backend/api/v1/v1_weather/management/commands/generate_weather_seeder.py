@@ -349,7 +349,11 @@ class Command(BaseCommand):
                 wet_days = self._wet_days(day, rng)
 
             precipitation, tmean_normal = self._baseline(
-                normals, sat_obs, station.region, day.year, day.month
+                normals,
+                sat_obs,
+                station.region,
+                day.year,
+                day.month,
             )
 
             if health == "degraded" and day >= degraded_from:

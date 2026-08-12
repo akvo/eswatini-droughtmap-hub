@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import timedelta
 from io import StringIO
 
 from django.core.management import call_command
@@ -183,21 +184,22 @@ class GenerateWeatherSeederTestCase(TestCase):
         self.assertEqual(StationDailyAggregate.objects.count(), 0)
 
     def test_seeder_draws_around_real_observation_when_available(self):
-        # Seed an observation for Hhohho region with 500mm (far above normal)
-        admin = Administration.objects.filter(region="Hhohho").first()
+        # Seed an observation for all Hhohho administrations with 500mm
         today = timezone.now().date()
-        AdministrationObservation.objects.create(
-            administration=admin,
-            year_month=today.replace(day=1),
-            parameter=WeatherParameter.precipitation,
-            value=500.0,
-            dataset="CHIRPS v2.0 africa_monthly",
-            pixel_count=10,
-        )
+        target_date = (today.replace(day=1) - timedelta(days=5)).replace(day=1)
+        for admin in Administration.objects.filter(region="Hhohho"):
+            AdministrationObservation.objects.create(
+                administration=admin,
+                year_month=target_date,
+                parameter=WeatherParameter.precipitation,
+                value=500.0,
+                dataset="CHIRPS v2.0 africa_monthly",
+                pixel_count=10,
+            )
 
         self.seed("--months", 1)
 
-        # Check total precipitation for stations in Hhohho in current month
+        # Check total precipitation for stations in Hhohho in target month
         hhohho_stations = WeatherStation.objects.filter(
             region="Hhohho", metadata_status="demo"
         )
@@ -205,11 +207,12 @@ class GenerateWeatherSeederTestCase(TestCase):
             StationDailyAggregate.objects.filter(
                 station__in=hhohho_stations,
                 parameter=WeatherParameter.precipitation,
-                date__year=today.year,
-                date__month=today.month,
+                date__year=target_date.year,
+                date__month=target_date.month,
             ).values_list("value", flat=True)
         )
-        avg_precip_per_station = station_precip_sum / len(hhohho_stations)
-        # Should be close to 500mm (offline station cuts last days),
-        # far above the normal ~10-140mm
+        avg_precip_per_station = station_precip_sum / max(
+            len(hhohho_stations), 1
+        )
+        # Should be drawn around real 500mm (far above normal ~10-140mm)
         self.assertGreater(avg_precip_per_station, 150.0)
