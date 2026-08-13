@@ -13,8 +13,6 @@ export const DROUGHT_CATEGORY_VALUE = {
   none: -9999,
 };
 
-export const DROUGHT_CATEGORY_LEVELS = ["None", "D0", "D1", "D2", "D3", "D4"];
-
 export const DROUGHT_CATEGORY_COLOR = {
   [DROUGHT_CATEGORY_VALUE.normal]: "#12b76a",
   [DROUGHT_CATEGORY_VALUE.d0]: "#ffff00",
@@ -69,4 +67,15 @@ export const DROUGHT_CATEGORY = Object.values(DROUGHT_CATEGORY_VALUE).map(
     color: DROUGHT_CATEGORY_COLOR[v],
     code: DROUGHT_CATEGORY_CODE[v],
   }),
+);
+
+// Every class a human may assign, i.e. the ramp without `none` (-9999):
+// "No Data" is raster output where the CDI had no signal, never someone's
+// decision. Mirrors the backend's VALIDATABLE_CATEGORIES (constants.py), so
+// a picker built from this can only produce values the API accepts.
+//
+// Replaces the old DROUGHT_CATEGORY_LEVELS array, whose index-as-value scheme
+// labelled 0 "None" — 0 is `normal` (wet conditions); `none` is -9999.
+export const DROUGHT_CATEGORY_ASSIGNABLE = DROUGHT_CATEGORY.filter(
+  (c) => c.value !== DROUGHT_CATEGORY_VALUE.none,
 );

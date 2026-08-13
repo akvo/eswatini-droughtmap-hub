@@ -217,21 +217,29 @@ header. An intermediate version measured team submission-coverage
 and not what the design shows — the panel is one reviewer's progress, not the
 team's.
 
-### D-10: "Review completed" chip = fully reviewed by the whole team — fixed 2026-07-24
+### D-10: "Review completed" chip is reviewer-scoped — revised 2026-08-13
 
-`filter_rows(reviewed=True)` kept every row that was not `not_started`, i.e. any
-row with a **single** submission. Once one reviewer had worked the queue, the
-chip returned the same set as **All** — the two were indistinguishable.
+Two earlier readings of `filter_rows(reviewed=True)`, both wrong:
 
-The chip now keeps only `review_status == fully_reviewed`: **every assigned
-reviewer** has submitted the Inkhundla (progress N/N). So on a 3-reviewer
-publication where one TWG has not started, "Review completed" is empty, and on a
-1-reviewer publication it is exactly the rows that reviewer has done.
+1. `!= not_started` — any row with a **single** submission. Once one reviewer
+   had worked the queue, the chip returned the same set as **All**.
+2. `== fully_reviewed` (2026-07-24) — every assigned reviewer submitted
+   (progress N/N). Team completion is not the reviewer's own work: on a
+   3-reviewer publication the chip listed Tinkhundla this reviewer had never
+   opened (the other two finished them) and hid ones they had just submitted.
 
-> A reviewer-scoped reading ("Tinkhundla *I* have submitted") was considered and
-> rejected by product: the chip reflects **queue completion**, not personal
-> progress. Personal progress is the `tinkhundla_reviewed` / `pending_review`
-> cards (D-9).
+**Now:** the chip keeps the rows the **requesting reviewer** has submitted —
+`my_suggestion.reviewed`, i.e. `is_mine_reviewed(row)`. That is the same signal
+as the `tinkhundla_reviewed` / `pending_review` cards (D-9), so the chip's count
+and the card agree by construction; a Django test asserts exactly that. The
+whole queue is reviewer-scoped now except `status_breakdown`, which stays
+team-level.
+
+Team completion is still visible per row (the `Reviews` progress column,
+`completed/total`) and in the `fully_reviewed` breakdown — it just is not what
+the chip filters on. Rows only carry `my_suggestion` when `build_rows` is given
+a user, so this filter is reviewer endpoints only; the validation queue does not
+call it.
 
 ---
 
@@ -282,7 +290,7 @@ app/(auth)/reviews/[id]/page.js            RSC — fetch review + stats + page 1
 |---|---|---|
 | `search` | free text | table |
 | `confidence` | `low` \| `medium` \| `high` | table + map |
-| `reviewed` | `true` (the "Review completed" chip) — keeps only **fully-reviewed** Tinkhundla, i.e. every assigned reviewer submitted (progress N/N), not merely one (D-10) | table + map |
+| `reviewed` | `true` (the "Review completed" chip) — keeps only the Tinkhundla **the requesting reviewer** has submitted (D-10) | table + map |
 | `region` | Hhohho \| Manzini \| Lubombo \| Shiselweni | table + map |
 | `zone` | the six agro-ecological zones: `highveld` \| `upper_middleveld` \| `lower_middleveld` \| `western_lowveld` \| `eastern_lowveld` \| `lubombo_range` (backend-owned vocabulary, served via `window.zones`) | table + map |
 | `page` | int | table only |

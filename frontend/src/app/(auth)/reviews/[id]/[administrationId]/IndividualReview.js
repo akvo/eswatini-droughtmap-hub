@@ -15,9 +15,8 @@ import { api } from "@/lib";
 import { textOn } from "@/lib/helper";
 import { useAppContext } from "@/context/AppContextProvider";
 import {
-  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_ASSIGNABLE,
   DROUGHT_CATEGORY_LABEL,
-  DROUGHT_CATEGORY_LEVELS,
   CDI_SUBINDICATOR_LABELS,
   IKS_REVIEW_INDICATORS,
 } from "@/static/config";
@@ -27,11 +26,12 @@ import InkhundlaMap from "./InkhundlaMap";
 
 const { TextArea } = Input;
 
-/* ── Drought-class chips read from the shared DroughtCategory scale (OQ-5) ── */
-const DClassChip = ({ level, selected, onClick }) => {
-  const bg =
-    level === 0 ? "#3E5EB9" : (DROUGHT_CATEGORY_COLOR?.[level] ?? "#f3f4f6");
-  const label = level === 0 ? "None" : DROUGHT_CATEGORY_LEVELS[level];
+/* ── Drought-class chips read from the shared DroughtCategory scale (OQ-5).
+      One chip per assignable category, so the value submitted is the config's
+      own — never a list index, which is what labelled `normal` (0) "None". ── */
+const DClassChip = ({ category, selected, onClick }) => {
+  const bg = category.color ?? "#f3f4f6";
+  const label = category.code;
   return (
     <button
       type="button"
@@ -664,12 +664,12 @@ const IndividualReview = ({
                   className="flex items-center bg-[#f2f4f7] p-1"
                   style={{ borderRadius: 10 }}
                 >
-                  {DROUGHT_CATEGORY_LEVELS.map((_, level) => (
+                  {DROUGHT_CATEGORY_ASSIGNABLE.map((category) => (
                     <DClassChip
-                      key={level}
-                      level={level}
-                      selected={selectedCategory === level}
-                      onClick={() => setSelectedCategory(level)}
+                      key={category.value}
+                      category={category}
+                      selected={selectedCategory === category.value}
+                      onClick={() => setSelectedCategory(category.value)}
                     />
                   ))}
                 </div>

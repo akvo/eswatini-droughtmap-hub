@@ -344,32 +344,57 @@ class ReviewQueueAPIsTestCase(APITestCase):
         review.suggestion_values = vals
         review.save()
 
-    def test_table_reviewed_filter_is_fully_reviewed(self):
-        """"Review completed" lists Tinkhundla EVERY assigned reviewer has
-        submitted (progress N/N) — not ones only some reviewers touched, which
-        made the chip identical to "All".
+    def _split_reviews(self):
+        """(my review, another reviewer's review or None)."""
+        mine = self.publication.reviews.get(user_id=self.user.id)
+        theirs = self.publication.reviews.exclude(
+            user_id=self.user.id
+        ).first()
+        return mine, theirs
+
+    def test_table_reviewed_filter_is_scoped_to_me(self):
+        """"Review completed" lists the Tinkhundla THIS reviewer submitted.
+
+        Not team completion (N/N): that showed rows the reviewer had never
+        touched and hid ones they had.
         """
         adm_ids = [
             v["administration_id"] for v in self.publication.initial_values
         ]
-        full, partial = adm_ids[0], adm_ids[1]
-        reviewers = list(self.publication.reviews.all())
-        for review in reviewers:  # everyone submits `full`
-            self._submit(review, full, DroughtCategory.d2)
-        # only the first reviewer submits `partial`
-        self._submit(reviewers[0], partial, DroughtCategory.d1)
+        mine_only, theirs_only = adm_ids[0], adm_ids[1]
+        my_review, their_review = self._split_reviews()
+        self._submit(my_review, mine_only, DroughtCategory.d2)
+        if their_review:
+            self._submit(their_review, theirs_only, DroughtCategory.d1)
 
         res = self.client.get(f"{self.table_url}?reviewed=true&page_size=100")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         ids = {r["administration_id"] for r in res.data["data"]}
-        self.assertIn(full, ids)
-        if len(reviewers) > 1:
-            self.assertNotIn(partial, ids)  # N/N only; partial is excluded
+        self.assertIn(mine_only, ids)
+        if their_review:
+            self.assertNotIn(theirs_only, ids)
         self.assertTrue(
             all(
-                r["review_status"] == "fully_reviewed"
-                for r in res.data["data"]
+                r["my_suggestion"]["reviewed"] for r in res.data["data"]
             )
+        )
+
+    def test_table_reviewed_filter_matches_reviewed_card(self):
+        """The chip and the "Tinkhundla reviewed" card count the same rows."""
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        my_review, _ = self._split_reviews()
+        for adm_id in adm_ids[:3]:
+            self._submit(my_review, adm_id, DroughtCategory.d2)
+
+        table = self.client.get(
+            f"{self.table_url}?reviewed=true&page_size=100"
+        )
+        stats = self.client.get(self.stats_url)
+        self.assertEqual(
+            table.data["total"],
+            stats.data["summary"]["tinkhundla_reviewed"]["value"],
         )
 
     def test_table_carries_my_own_suggestion(self):
@@ -487,27 +512,24 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertNotIn(DroughtCategory.d4, cats)       # other reviewer's
 
     # ---- map -------------------------------------------------------------
-    def test_map_reviewed_filter_is_fully_reviewed(self):
+    def test_map_reviewed_filter_is_scoped_to_me(self):
         adm_ids = [
             v["administration_id"] for v in self.publication.initial_values
         ]
-        full, partial = adm_ids[0], adm_ids[1]
-        reviewers = list(self.publication.reviews.all())
-        for review in reviewers:
-            self._submit(review, full, DroughtCategory.d2)
-        self._submit(reviewers[0], partial, DroughtCategory.d1)
+        mine_only, theirs_only = adm_ids[0], adm_ids[1]
+        my_review, their_review = self._split_reviews()
+        self._submit(my_review, mine_only, DroughtCategory.d2)
+        if their_review:
+            self._submit(their_review, theirs_only, DroughtCategory.d1)
 
         res = self.client.get(f"{self.map_url}?reviewed=true")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         ids = {r["administration_id"] for r in res.data["data"]}
-        self.assertIn(full, ids)
-        if len(reviewers) > 1:
-            self.assertNotIn(partial, ids)
+        self.assertIn(mine_only, ids)
+        if their_review:
+            self.assertNotIn(theirs_only, ids)
         self.assertTrue(
-            all(
-                r["review_status"] == "fully_reviewed"
-                for r in res.data["data"]
-            )
+            all(r["my_suggestion"]["reviewed"] for r in res.data["data"])
         )
 
     # ---- auth ------------------------------------------------------------

@@ -1,9 +1,5 @@
 import React from "react";
-import {
-  DROUGHT_CATEGORY_COLOR,
-  ACTIVITY_INDICATORS,
-  DROUGHT_CATEGORY_LEVELS,
-} from "@/static/config";
+import { ACTIVITY_INDICATORS, DROUGHT_CATEGORY_CODE } from "@/static/config";
 import ConditionItem from "./ConditionItem";
 
 export default function TriggerConditionsView({ triggers }) {
@@ -50,7 +46,10 @@ export default function TriggerConditionsView({ triggers }) {
           label="D-class threshold"
           value={
             hasDclass
-              ? `D${dclass.class}+, for ${dclass.months} month${dclass.months > 1 ? "s" : ""} or more`
+              ? // `class` is a DroughtCategory value, not a D-number: 3 is D2.
+                // `D${dclass.class}` shifted every threshold one step up and
+                // disagreed with the backend's own trigger_summary.
+                `${DROUGHT_CATEGORY_CODE[dclass.class] ?? dclass.class}+, for ${dclass.months} month${dclass.months > 1 ? "s" : ""} or more`
               : "-"
           }
         />

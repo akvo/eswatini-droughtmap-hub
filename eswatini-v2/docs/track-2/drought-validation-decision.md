@@ -608,7 +608,7 @@ Category `0` is **wet/normal conditions**; `-9999` is No Data. The page labels `
 
 **Rationale**: the bug is the duplication, not the string. Two hand-written label arrays in one file, neither derived from the config that the map, the legend and every D-badge already use, will drift again the moment a label changes. Editing the two strings fixes today's symptom; deleting the arrays fixes the class of bug. It also removes ~16 lines.
 
-**Out of scope, flagged**: `DROUGHT_CATEGORY_LEVELS` (`config.js:36`) also starts with `"None"` and has the same defect, but it is consumed by two Track 3 components (`ActivityLibrary/AddActivity/Step2Trigger.js:29`, `ActivityLibrary/TriggerConditionsView.js`) where it drives trigger conditions. Changing it is a Track 3 change with its own review — not bundled here.
+**Flagged then closed (2026-08-13)**: `DROUGHT_CATEGORY_LEVELS` had the same defect and was deleted. Its consumers now read `DROUGHT_CATEGORY_ASSIGNABLE` (`static/config/drought.js`) — the ramp minus `none` (-9999), mirroring the backend's `VALIDATABLE_CATEGORIES` — so a picker can only emit values the API accepts: the individual review chips (`reviews/[id]/[administrationId]/IndividualReview.js`) and the trigger wizard (`ActivityLibrary/AddActivity/Step2Trigger.js`, which additionally drops `normal` because the activity gate is D0–D4, `VALID_DCLASS`). `TriggerConditionsView.js` was rendering the stored value as `D${class}`, one step off the backend's own `trigger_summary`; it now reads `DROUGHT_CATEGORY_CODE`.
 
 Frontend copy only; no API or constant change. `DROUGHT_CATEGORY_CODE[0]` already says `"Normal"`.
 
@@ -774,7 +774,7 @@ Every deviation between the mock and §4's contract, so none is discovered at ru
 | 2 | History backfill (§3) | **No backfill.** A backfilled row could carry only a D-class — no rationale, validator or marker, which is the information AC-7.1 exists to show. History starts empty; the page already renders "No previous decisions recorded." |
 | 3 | Reviewer row count (D-12) | **Variable, confirmed.** Nothing constrains assignment to one reviewer per TWG — no unique constraint on `Review`, arbitrary reviewer list at creation. "4 / 5" may sit beside six rows; rows count people, `reviews_total` counts institutions. |
 | 4 | `is_tie` treatment (D-9) | **Reasoning is required on a tie**, as for an override — there is no majority to accept, so the pick is the validator's own judgement and belongs on the record. `default_reasoning` is `null`; the summary line reads "No single majority — D1 and D2 tied at 2 of 4"; `tied_categories` names them. `consensus`/`band` are left truthful and unsuppressed. |
-| 5 | "None" label for category 0 (D-13) | **Rename to "Normal", by deleting the page's two local label arrays and reading `DROUGHT_CATEGORY_CODE` from `config.js`**, which already says "Normal". Fixes the duplication, not just the string. `DROUGHT_CATEGORY_LEVELS` has the same defect but belongs to Track 3 — flagged, not touched. |
+| 5 | "None" label for category 0 (D-13) | **Rename to "Normal", by deleting the page's two local label arrays and reading `DROUGHT_CATEGORY_CODE` from `config.js`**, which already says "Normal". Fixes the duplication, not just the string. `DROUGHT_CATEGORY_LEVELS` had the same defect and was deleted on 2026-08-13; its consumers read `DROUGHT_CATEGORY_ASSIGNABLE`. |
 | 6 | Clear / delete a decision | **No deletion.** Correct by re-submitting; each submit re-snapshots the majority (D-6). |
 
 No open questions remain.
@@ -784,7 +784,6 @@ No open questions remain.
 | Item | Where | Promote when |
 |---|---|---|
 | Legacy `/publications/{id}/validation` bypasses `ValidationDecision` | D-1, D-11 | That page is retired — it is the last writer to `validated_values` outside this endpoint |
-| `DROUGHT_CATEGORY_LEVELS[0] === "None"` | D-13 | Track 3 trigger-condition work touches `ActivityLibrary` next |
 | Real confidence formula | D-10 | `is_mock` flips; no change here |
 | Compositing window as stored dates | D-8 | The pipeline needs to publish a window that is not the calendar month |
 
@@ -854,7 +853,7 @@ Verified: **546 backend tests**, **122 frontend tests**, lint clean both sides, 
 
 1. **Deploy**: migrate before serving — the new endpoints 500 without the table.
 2. The legacy `/publications/{id}/validation` page still writes `validated_values` wholesale, bypassing `ValidationDecision`, so categories set there never appear in history (D-1, D-11).
-3. `DROUGHT_CATEGORY_LEVELS[0] === "None"` remains for Track 3 (D-13).
+3. ~~`DROUGHT_CATEGORY_LEVELS[0] === "None"` remains for Track 3~~ — done 2026-08-13: the array is deleted, `DROUGHT_CATEGORY_ASSIGNABLE` replaces it (D-13).
 
 ---
 

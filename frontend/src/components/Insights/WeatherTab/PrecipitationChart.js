@@ -169,8 +169,8 @@ const PrecipitationChart = ({ administrationId, normals }) => {
       emptyText="No station data available for this period"
       controls={
         <ConfigProvider theme={{ token: { colorPrimary: STATION_COLOR } }}>
-          {/* One provider for both: the series share a colour now, so the
-              controls do too — the hatched swatch marks the average. */}
+          {/* Station and the average share this blue — the hatched swatch is
+              what separates them; CHIRPS overrides it below. */}
           <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
             <Checkbox
               checked={showStation}
@@ -178,13 +178,20 @@ const PrecipitationChart = ({ administrationId, normals }) => {
             >
               <span className="text-sm">{STATION_NAME}</span>
             </Checkbox>
-            <Checkbox
-              checked={showSatellite}
-              disabled={!satelliteSeries}
-              onChange={(e) => setShowSatellite(e.target.checked)}
+            {/* CHIRPS is the one series that does not share the station blue,
+                so its box takes its own primary — the control is the legend
+                key, and a key in the wrong colour is worse than none. */}
+            <ConfigProvider
+              theme={{ token: { colorPrimary: SATELLITE_COLOR } }}
             >
-              <span className="text-sm">{SATELLITE_NAME}</span>
-            </Checkbox>
+              <Checkbox
+                checked={showSatellite}
+                disabled={!satelliteSeries}
+                onChange={(e) => setShowSatellite(e.target.checked)}
+              >
+                <span className="text-sm">{SATELLITE_NAME}</span>
+              </Checkbox>
+            </ConfigProvider>
             {/* The box itself carries the hatch (see globals.css), so the
                 control is the legend key — no extra swatch beside it. */}
             <Checkbox

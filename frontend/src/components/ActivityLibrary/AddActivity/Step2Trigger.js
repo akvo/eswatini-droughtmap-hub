@@ -1,12 +1,19 @@
 import React, { useState } from "react";
 import { Input, InputNumber, Button } from "antd";
 import {
-  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_ASSIGNABLE,
   DROUGHT_CATEGORY_VALUE,
   ACTIVITY_INDICATORS,
-  DROUGHT_CATEGORY_LEVELS,
 } from "@/static/config";
 import { api } from "@/lib/api";
+import { textOn } from "@/lib/helper";
+
+// The gate the backend accepts is D0..D4 (VALID_DCLASS): `none` is raster
+// "No Data" and `normal` is not a drought threshold — "at least Normal" would
+// fire for every Inkhundla. Selecting nothing (null) disables the condition.
+const D_CLASSES = DROUGHT_CATEGORY_ASSIGNABLE.filter(
+  (c) => c.value !== DROUGHT_CATEGORY_VALUE.normal,
+);
 
 export default function Step2Trigger({ formData, setFormData }) {
   const [preview, setPreview] = useState(null);
@@ -26,20 +33,17 @@ export default function Step2Trigger({ formData, setFormData }) {
     }
   };
 
-  const dClasses = DROUGHT_CATEGORY_LEVELS;
-
   // Use the shared indicator configuration
   const indicators = ACTIVITY_INDICATORS;
 
-  const handleDClassClick = (cls) => {
-    const val = cls === "None" ? null : dClasses.indexOf(cls);
+  const handleDClassClick = (value) => {
     setFormData({
       ...formData,
       triggers: {
         ...formData.triggers,
         dclass:
-          val !== null
-            ? { class: val, months: formData.triggers.dclass?.months || 1 }
+          value !== null
+            ? { class: value, months: formData.triggers.dclass?.months || 1 }
             : null,
       },
     });
@@ -121,11 +125,7 @@ export default function Step2Trigger({ formData, setFormData }) {
     });
   };
 
-  const getDclassVal = () => {
-    return formData.triggers.dclass?.class !== undefined
-      ? dClasses[formData.triggers.dclass.class]
-      : "None";
-  };
+  const selectedClass = formData.triggers.dclass?.class ?? null;
 
   return (
     <div className="flex flex-col gap-6 w-full text-neutral-800">
@@ -153,35 +153,33 @@ export default function Step2Trigger({ formData, setFormData }) {
           </p>
         </div>
         <div className="flex bg-brandTint p-0.5 rounded-[10px] w-max border border-neutral-100">
-          {dClasses.map((cls) => {
-            const isActive = getDclassVal() === cls;
-            // dClasses index matches DROUGHT_CATEGORY_VALUE (None=normal=0, D0=1, ...)
-            const categoryColor = DROUGHT_CATEGORY_COLOR[dClasses.indexOf(cls)];
-            const darkText = dClasses.indexOf(cls) < DROUGHT_CATEGORY_VALUE.d3;
-            const activeStyle =
-              cls === "None"
-                ? { className: "bg-primary text-white" }
-                : {
-                    className: darkText ? "text-neutral-800" : "text-white",
-                    style: { backgroundColor: categoryColor },
-                  };
-
-            return (
-              <button
-                key={cls}
-                type="button"
-                onClick={() => handleDClassClick(cls)}
-                style={isActive ? activeStyle.style : undefined}
-                className={`px-3 py-1 rounded-[8px] text-sm font-normal transition-all ${
-                  isActive
-                    ? `${activeStyle.className} shadow-sm`
-                    : "text-textDisabled hover:text-neutral-700 bg-transparent"
-                }`}
-              >
-                {cls}
-              </button>
-            );
-          })}
+          {[{ value: null, code: "None", color: null }, ...D_CLASSES].map(
+            (cls) => {
+              const isActive = selectedClass === cls.value;
+              return (
+                <button
+                  key={cls.code}
+                  type="button"
+                  onClick={() => handleDClassClick(cls.value)}
+                  style={
+                    isActive && cls.color
+                      ? {
+                          backgroundColor: cls.color,
+                          color: textOn(cls.color),
+                        }
+                      : undefined
+                  }
+                  className={`px-3 py-1 rounded-[8px] text-sm font-normal transition-all ${
+                    isActive
+                      ? `shadow-sm ${cls.color ? "" : "bg-primary text-white"}`
+                      : "text-textDisabled hover:text-neutral-700 bg-transparent"
+                  }`}
+                >
+                  {cls.code}
+                </button>
+              );
+            },
+          )}
         </div>
       </div>
 

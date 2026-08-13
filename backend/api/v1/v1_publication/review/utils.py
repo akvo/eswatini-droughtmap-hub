@@ -284,18 +284,23 @@ def filter_rows(rows, search=None, confidence=None,
                 reviewed=None, region=None, zone=None):
     """Apply the review-queue table / map filters over pre-built rows.
 
-    ``reviewed`` (the "Review completed" chip) keeps only Tinkhundla that
-    **every assigned reviewer** has submitted — review progress N/N,
-    ``review_status == fully_reviewed``. It previously kept anything with a
-    single submission (``!= not_started``), so one reviewer's activity made the
-    chip identical to "All".
+    ``reviewed`` (the "Review completed" chip) is **scoped to the requesting
+    reviewer**: it keeps the Tinkhundla *they* have submitted a suggestion for
+    (``my_suggestion.reviewed``), which is the same signal as the
+    ``tinkhundla_reviewed`` / ``pending_review`` cards.
+
+    Two earlier readings were wrong for different reasons: ``!= not_started``
+    made the chip identical to "All" as soon as one reviewer worked the queue,
+    and ``== fully_reviewed`` (team N/N) showed a reviewer rows they had never
+    touched while hiding ones they had. Rows carry ``my_suggestion`` only when
+    ``build_rows`` is given a user, so this filter is reviewer endpoints only.
     """
     def keep(row):
         if search and search.lower() not in (row["name"] or "").lower():
             return False
         if confidence and row["confidence"]["band"] != confidence:
             return False
-        if reviewed and row["review_status"] != "fully_reviewed":
+        if reviewed and not is_mine_reviewed(row):
             return False
         if region and row["region"] != region:
             return False
