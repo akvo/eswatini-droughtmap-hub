@@ -16,8 +16,11 @@ const MetricCard = ({
   const hasHistory = history && history.length > 0;
   const hasPercentage = percentage != null;
 
+  // No min-h on the card: an explicit min-height replaces `auto`, which is what
+  // lets a flex-1 card be squeezed below its own content and spill the chart
+  // over the bottom border. `auto` floors every card at its content height.
   return (
-    <div className="w-full flex-1 border-b border-neutral-200 p-4 flex flex-col justify-between min-h-[135px]">
+    <div className="w-full flex-1 border-b border-neutral-200 p-4 flex flex-col justify-between">
       {/* Top Heading */}
       <div className="flex items-center justify-between">
         <span className="text-[14px] font-normal text-[#333]">{label}</span>
@@ -51,7 +54,9 @@ const MetricCard = ({
         )}
         {hasPercentage && (
           <div className="shrink-0">
-            <MiniDonutChart percentage={percentage} size={120} />
+            {/* Same 80px height as MiniBarChart, so every card's content block
+                is one height and the cards share identical inner spacing. */}
+            <MiniDonutChart percentage={percentage} size={80} />
           </div>
         )}
       </div>

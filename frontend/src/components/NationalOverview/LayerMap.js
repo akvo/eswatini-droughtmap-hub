@@ -30,7 +30,9 @@ import MapLayerLegend from "./MapLayerLegend";
 const MAP_HEIGHT = 250;
 
 const EmptyState = ({ reason }) => (
-  <div className="w-full h-full min-h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex flex-col items-center justify-center gap-2 px-6 text-center">
+  // flex-1 rather than h-full: the whole chain from the map slot down is flex,
+  // so growth does not depend on a percentage resolving against a parent.
+  <div className="w-full flex-1 min-h-[400px] bg-neutral-50 border border-dashed border-neutral-300 flex flex-col items-center justify-center gap-2 px-6 text-center">
     <span className="text-sm font-medium text-neutral-500">
       No data to display
     </span>
@@ -228,7 +230,7 @@ const VectorLayer = ({ layer }) => {
   }
   if (!geoData) {
     return (
-      <div className="w-full h-full min-h-[400px] bg-neutral-50 flex items-center justify-center text-sm text-neutral-400">
+      <div className="w-full flex-1 min-h-[400px] bg-neutral-50 flex items-center justify-center text-sm text-neutral-400">
         Loading zones...
       </div>
     );
@@ -329,9 +331,12 @@ const LayerMap = ({
   );
 
   return (
-    <div className="w-full relative">
+    // Full height column so the body fills whatever the map slot is given —
+    // MapLayerLegend returns null when a layer has nothing to explain, and the
+    // empty state should take that space instead of leaving a white band.
+    <div className="w-full relative flex-1 flex flex-col">
       <div
-        className="[&_.bg-neutral-100]:!bg-[#F2F2F2] [&_.leaflet-container]:!bg-[#F2F2F2]"
+        className="flex-1 min-h-0 flex flex-col [&_.bg-neutral-100]:!bg-[#F2F2F2] [&_.leaflet-container]:!bg-[#F2F2F2]"
         style={{ backgroundColor: "#F2F2F2" }}
       >
         {compareLayer ? (

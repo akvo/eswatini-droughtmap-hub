@@ -329,7 +329,7 @@ const DroughtMapSection = ({
             {/* No min-h here: OverviewMap is calc(100vh-250px) tall plus a
                 48px legend, so a hardcoded floor just reserves dead space
                 under the legend on shorter viewports. */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative flex flex-col">
               {isMapLoading && (
                 <div className="absolute inset-0 z-10 bg-white/75 flex flex-col items-center justify-center gap-3 backdrop-blur-xs">
                   <Skeleton.Node active style={{ width: 260, height: 180 }}>
