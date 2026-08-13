@@ -17,6 +17,7 @@ import {
   Table,
   Typography,
 } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
@@ -457,15 +458,6 @@ const SettingsPage = () => {
                   </div>
                   <div className="p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
-                      {execList?.[0]?.date_started && (
-                        <Text type="secondary" className="text-xs">
-                          Last executed:{" "}
-                          {dayjs
-                            .utc(execList[0].date_started)
-                            .local()
-                            .format("MMMM Do, YYYY - h:mm A")}
-                        </Text>
-                      )}
                       <div className="ml-auto">
                         <Form
                           onFinish={onRunJob}
@@ -500,12 +492,23 @@ const SettingsPage = () => {
                     <Divider className="!my-4" />
                     <div className="w-full">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-base font-semibold text-[#333333]">
-                          Recent Executions
-                        </h3>
+                        <div className="w-full">
+                          <h3 className="text-base font-semibold text-[#333333]">
+                            Recent Executions
+                          </h3>
+                          {execList?.[0]?.date_started && (
+                            <Text type="secondary" className="text-xs">
+                              Last executed:{" "}
+                              {dayjs
+                                .utc(execList[0].date_started)
+                                .local()
+                                .format("MMMM Do, YYYY - h:mm A")}
+                            </Text>
+                          )}
+                        </div>
                         <Button
-                          size="small"
                           onClick={() => setJobChecking(true)}
+                          icon={<ReloadOutlined />}
                         >
                           Refresh
                         </Button>
