@@ -8,6 +8,9 @@ class InsightsHeroStatusSerializer(serializers.Serializer):
 
 class InsightsHeroSerializer(serializers.Serializer):
     status = InsightsHeroStatusSerializer()
+    # "YYYY-MM" CDI period, null when nothing is published. Distinct from
+    # `published`, which is a display date for when it went out.
+    period = serializers.CharField(allow_null=True)
     published = serializers.CharField()
     nextUpdate = serializers.CharField()
     headline = serializers.CharField()

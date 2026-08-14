@@ -66,6 +66,19 @@ class InsightsAPITests(TestCase):
             "Severe drought conditions emerging across eastern Eswatini.",
         )  # noqa
 
+    def test_hero_endpoint_period_is_cdi_month_not_publish_date(self):
+        """`period` drives the PDF export filename (INS-PDF-1).
+
+        It must come from year_month, not published_at — the fixture is
+        published "now" for a May 2026 map, which is exactly the lag that makes
+        the two disagree.
+        """
+        response = self.client.get("/api/v1/insights/hero")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["period"], "2026-05")
+        self.assertNotEqual(data["period"], data["published"])
+
     def test_hero_endpoint_no_publication(self):
         Publication.objects.all().delete()
         response = self.client.get("/api/v1/insights/hero")
@@ -73,6 +86,7 @@ class InsightsAPITests(TestCase):
         data = response.json()
         self.assertEqual(data["status"]["category"], DroughtCategory.none)
         self.assertEqual(data["published"], "-")
+        self.assertIsNone(data["period"])
         self.assertIn("No published drought map", data["summary"])
 
     def test_zones_endpoint_regions(self):
