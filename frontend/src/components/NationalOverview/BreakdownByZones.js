@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DROUGHT_CATEGORY } from "@/static/config";
 import TabButtons from "@/components/TabButtons";
 import ZoneBreakdown from "@/components/ZoneBreakdown";
+import { usePrintContext } from "@/context/PrintContextProvider";
 
 const GROUPING_OPTIONS = [
   { value: "climatic", label: "Agro-ecological zones" },
@@ -12,12 +13,18 @@ const GROUPING_OPTIONS = [
 
 const BreakdownByZones = ({ regionsData, climaticData }) => {
   const [grouping, setGrouping] = useState("climatic");
+  const { printMode } = usePrintContext() ?? {};
 
   const isClimatic = grouping === "climatic";
   const currentData = isClimatic ? climaticData : regionsData;
   const zones = currentData?.zones || { data: [] };
   const trends = currentData?.trends || { data: [] };
   const breakdowns = currentData?.breakdowns || { data: [] };
+
+  // The tab the user is NOT looking at. Both datasets are already props, so
+  // printing both groupings costs a second render and no fetch (D-9).
+  const otherOption = GROUPING_OPTIONS.find((o) => o.value !== grouping);
+  const otherData = isClimatic ? regionsData : climaticData;
 
   return (
     <section className="w-full">
@@ -62,6 +69,27 @@ const BreakdownByZones = ({ regionsData, climaticData }) => {
           </span>
         </div>
       </div>
+
+      {/* The other grouping, for the PDF only. Off-canvas rather than
+          display:none so it still has real layout — the charts inside measure
+          their container on mount and would come out zero-width otherwise. */}
+      {printMode && (
+        <div className="overview-print-only" aria-hidden>
+          <div className="border border-neutral-200 bg-white">
+            <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+              <h2 className="text-lg font-semibold text-neutral-800">
+                Breakdown by zones — {otherOption?.label}
+              </h2>
+            </div>
+            <ZoneBreakdown
+              zones={otherData?.zones || { data: [] }}
+              trends={otherData?.trends || { data: [] }}
+              breakdowns={otherData?.breakdowns || { data: [] }}
+              columns={isClimatic ? 2 : 3}
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 };

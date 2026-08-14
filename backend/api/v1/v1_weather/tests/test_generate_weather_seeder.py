@@ -1,10 +1,11 @@
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, datetime
+from datetime import timezone as dt_timezone
 from io import StringIO
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TestCase
-from django.utils import timezone
 
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_weather.constants import StationStatus, WeatherParameter
@@ -21,6 +22,22 @@ from api.v1.v1_weather.services import station_health
 # Short window: these assertions are about shape, not volume, and 24 months
 # of six parameters is ~35k rows per run.
 MONTHS = 3
+
+# A frozen clock for the satellite-observation test, which is the one assertion
+# here that depends on WHERE in a month the seeded rain lands.
+#
+# `--months 1` seeds `today - 30 days` through yesterday, while `_wet_days`
+# scatters a month's rainfall over 1-3 randomly chosen days. On a live clock
+# that window covers an arbitrary slice of the previous month, so an arbitrary
+# share of the month's rain falls outside it — the test passed near the 1st and
+# failed near the end of the month.
+#
+# 1 July is the fixed point that removes the guesswork: June has exactly 30
+# days, so `today - 30 days` lands on 1 June and the window IS the target
+# month, whole. Every wet day is inside it and the total is exact.
+FROZEN_NOW = datetime(2026, 7, 1, 12, 0, tzinfo=dt_timezone.utc)
+FROZEN_TARGET_MONTH = date(2026, 6, 1)
+SATELLITE_PRECIP_MM = 500.0
 
 
 class GenerateWeatherSeederTestCase(TestCase):
@@ -184,22 +201,25 @@ class GenerateWeatherSeederTestCase(TestCase):
         self.assertEqual(StationDailyAggregate.objects.count(), 0)
 
     def test_seeder_draws_around_real_observation_when_available(self):
-        # Seed an observation for all Hhohho administrations with 500mm
-        today = timezone.now().date()
-        target_date = (today.replace(day=1) - timedelta(days=5)).replace(day=1)
+        """A real satellite month overrides the climatology normal (D-7).
+
+        Clock frozen (see FROZEN_NOW) so the seeded window is exactly the
+        target month. That makes the expected total a static 500mm rather than
+        "some fraction of 500mm, depending on the date the suite runs".
+        """
         for admin in Administration.objects.filter(region="Hhohho"):
             AdministrationObservation.objects.create(
                 administration=admin,
-                year_month=target_date,
+                year_month=FROZEN_TARGET_MONTH,
                 parameter=WeatherParameter.precipitation,
-                value=500.0,
+                value=SATELLITE_PRECIP_MM,
                 dataset="CHIRPS v2.0 africa_monthly",
                 pixel_count=10,
             )
 
-        self.seed("--months", 1)
+        with patch("django.utils.timezone.now", return_value=FROZEN_NOW):
+            self.seed("--months", 1)
 
-        # Check total precipitation for stations in Hhohho in target month
         hhohho_stations = WeatherStation.objects.filter(
             region="Hhohho", metadata_status="demo"
         )
@@ -207,12 +227,18 @@ class GenerateWeatherSeederTestCase(TestCase):
             StationDailyAggregate.objects.filter(
                 station__in=hhohho_stations,
                 parameter=WeatherParameter.precipitation,
-                date__year=target_date.year,
-                date__month=target_date.month,
+                date__year=FROZEN_TARGET_MONTH.year,
+                date__month=FROZEN_TARGET_MONTH.month,
             ).values_list("value", flat=True)
         )
-        avg_precip_per_station = station_precip_sum / max(
-            len(hhohho_stations), 1
+        avg_precip_per_station = station_precip_sum / len(hhohho_stations)
+
+        # The daily shares a month is split into sum to 1, so a whole month in
+        # the window totals the observation exactly. The tolerance is only for
+        # the per-day round(_, 1) — at most 0.05mm on each of <=3 wet days.
+        self.assertAlmostEqual(
+            avg_precip_per_station, SATELLITE_PRECIP_MM, delta=1.0
         )
-        # Should be drawn around real 500mm (far above normal ~10-140mm)
+        # And it is the satellite figure, not the ~10-140mm climatology it
+        # replaced — the point of D-7.
         self.assertGreater(avg_precip_per_station, 150.0)

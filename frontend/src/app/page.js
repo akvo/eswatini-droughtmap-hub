@@ -1,6 +1,8 @@
 import dynamic from "next/dynamic";
 import { api } from "@/lib";
 import { FeedbackSection } from "@/components";
+import { PrintContextProvider } from "@/context";
+import "./print.css";
 
 const HeroSkeleton = () => (
   <div className="w-full flex flex-col items-center justify-center py-12 gap-4 min-h-[300px] animate-pulse">
@@ -115,34 +117,40 @@ const Home = async () => {
     (Array.isArray(datesResponse) ? datesResponse : []);
 
   return (
-    <div className="w-full">
-      {/* Hero - full width */}
-      <div className="relative w-screen left-1/2 -translate-x-1/2 min-h-[300px]">
-        <HeroSection hero={hero} />
-      </div>
+    // PrintContextProvider spans hero and sections because the download button
+    // lives in one and the content that expands for print lives in the other
+    // (D-9). id + class are print hooks, not layout: app/print.css keys the
+    // whole stylesheet off them. See track-1/national-overview-pdf-export.md.
+    <PrintContextProvider>
+      <div className="w-full" id="overview-print-area">
+        {/* Hero - full width */}
+        <div className="relative w-screen left-1/2 -translate-x-1/2 min-h-[300px]">
+          <HeroSection hero={hero} />
+        </div>
 
-      {/* Main sections */}
-      <div
-        className="relative w-screen left-1/2 -translate-x-1/2 pt-8 pb-16 min-h-[600px]"
-        style={{ backgroundColor: "#ECEFF8" }}
-      >
-        <div className="container mx-auto px-4 -mt-32 flex flex-col gap-6">
-          <BreakdownByZones
-            regionsData={regionsData}
-            climaticData={climaticData}
-          />
-          <DroughtMapSection
-            mapId={map?.id}
-            dates={dates}
-            validatedValues={validatedValues}
-            metrics={metrics}
-            mapData={mapData}
-          />
-          <ResponseActivities responseActivities={responseActivities} />
-          <FeedbackSection />
+        {/* Main sections */}
+        <div
+          className="relative w-screen left-1/2 -translate-x-1/2 pt-8 pb-16 min-h-[600px]"
+          style={{ backgroundColor: "#ECEFF8" }}
+        >
+          <div className="container mx-auto px-4 -mt-32 flex flex-col gap-6 overview-print-sections">
+            <BreakdownByZones
+              regionsData={regionsData}
+              climaticData={climaticData}
+            />
+            <DroughtMapSection
+              mapId={map?.id}
+              dates={dates}
+              validatedValues={validatedValues}
+              metrics={metrics}
+              mapData={mapData}
+            />
+            <ResponseActivities responseActivities={responseActivities} />
+            <FeedbackSection />
+          </div>
         </div>
       </div>
-    </div>
+    </PrintContextProvider>
   );
 };
 

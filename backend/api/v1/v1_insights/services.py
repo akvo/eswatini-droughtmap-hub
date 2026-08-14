@@ -103,6 +103,7 @@ def get_hero_data():
                 "category": DroughtCategory.none,
                 "label": DroughtCategory.FieldStr.get(DroughtCategory.none),
             },
+            "period": None,
             "published": "-",
             "nextUpdate": "-",
             "headline": "Drought situation overview — No active publication",
@@ -136,6 +137,10 @@ def get_hero_data():
 
     return {
         "status": {"category": avg_cat, "label": label},
+        # The CDI period the overview describes, for the PDF export filename.
+        # Distinct from `published`, which is when it went out — they differ
+        # whenever publication lags the month it covers, i.e. usually.
+        "period": pub.year_month.strftime("%Y-%m"),
         "published": published_str,
         "nextUpdate": next_update_str,
         "headline": headline,

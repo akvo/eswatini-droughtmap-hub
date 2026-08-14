@@ -56,7 +56,9 @@
   label:has(.ant-switch),
   div:has(> .ant-switch),
   .order-2, /* BriefComponentPanel selection sidebar */
-  .FeedbackSection,
+  /* `.FeedbackSection` used to be listed here and never matched anything —
+     the component renders no such class, so the CTA has always printed. It now
+     carries `print:hidden` on its own root instead. (INS-PDF-1 D-4) */
   .print\:hidden {
     display: none !important;
   }
