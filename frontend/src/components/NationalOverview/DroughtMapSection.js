@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Button, Select, Skeleton } from "antd";
 import { CalendarOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import TabButtons from "@/components/TabButtons";
 import MetricCard from "./MetricCard";
 import { api } from "@/lib";
+import { usePrintContext } from "@/context/PrintContextProvider";
 
 const OverviewMap = dynamic(() => import("./OverviewMap"), { ssr: false });
 const LayerMap = dynamic(() => import("./LayerMap"), { ssr: false });
@@ -17,6 +18,33 @@ const NO_COMPARE = 0;
 // off, which the generic layer contract does not model. Every other tab is
 // described entirely by /insights/map-layer/{key}.
 const DROUGHT_CLASS = "drought-class";
+
+// Identifies this section to the print coordinator (D-9).
+const PRINT_SECTION_KEY = "drought-map";
+
+// /dates labels the month as a full YYYY-MM-DD date; the layer API takes
+// YYYY-MM and rejects anything else.
+const monthOf = (dates, id) => {
+  const label = dates.find((d) => d.value === id)?.label || "";
+  const yearMonth = label.slice(0, 7);
+  return /^\d{4}-\d{2}$/.test(yearMonth) ? yearMonth : null;
+};
+
+// Shared by the on-screen tab and the print-all-layers pass (D-9), so the two
+// cannot drift on error handling or query shape.
+const fetchLayerPayload = (key, yearMonth) => {
+  const query = yearMonth ? `?year_month=${yearMonth}` : "";
+  return api("GET", `/insights/map-layer/${key}${query}`).catch((err) => {
+    console.error(err);
+    // An unreachable endpoint still has to render something, so it becomes
+    // the same empty state a data-less month produces.
+    return {
+      key,
+      type: "empty",
+      reason: "This layer could not be loaded.",
+    };
+  });
+};
 
 const MetricSkeletonCard = () => (
   <div className="w-full flex-1 border-b border-neutral-200 p-4 flex flex-col justify-between min-h-[95px] animate-pulse">
@@ -66,9 +94,15 @@ const DroughtMapSection = ({
     setValues(validatedValues);
   }, [validatedValues]);
 
-  const layers = mapData?.layers || [
-    { key: DROUGHT_CLASS, label: "Drought class", monthVarying: true },
-  ];
+  // Memoised because the print effect below depends on it — rebuilt every
+  // render, it would refetch all seven layers on every keystroke of state.
+  const layers = useMemo(
+    () =>
+      mapData?.layers || [
+        { key: DROUGHT_CLASS, label: "Drought class", monthVarying: true },
+      ],
+    [mapData],
+  );
   const layerOptions = layers.map((l) => ({
     value: l.key,
     label: l.label,
@@ -125,29 +159,11 @@ const DroughtMapSection = ({
     }
     let active = true;
 
-    // /dates labels the month as a full YYYY-MM-DD date; the layer API takes
-    // YYYY-MM and rejects anything else.
-    const monthOf = (id) => {
-      const label = dates.find((d) => d.value === id)?.label || "";
-      const yearMonth = label.slice(0, 7);
-      return /^\d{4}-\d{2}$/.test(yearMonth) ? yearMonth : null;
-    };
-    const fetchLayer = (id) => {
-      const yearMonth = isMonthVarying ? monthOf(id) : null;
-      const query = yearMonth ? `?year_month=${yearMonth}` : "";
-      return api("GET", `/insights/map-layer/${activeLayer}${query}`).catch(
-        (err) => {
-          console.error(err);
-          // An unreachable endpoint still has to render something, so it
-          // becomes the same empty state a data-less month produces.
-          return {
-            key: activeLayer,
-            type: "empty",
-            reason: "This layer could not be loaded.",
-          };
-        },
+    const fetchLayer = (id) =>
+      fetchLayerPayload(
+        activeLayer,
+        isMonthVarying ? monthOf(dates, id) : null,
       );
-    };
 
     const wantsCompare = isMonthVarying && compareID !== NO_COMPARE;
     setIsMapLoading(true);
@@ -168,6 +184,63 @@ const DroughtMapSection = ({
       active = false;
     };
   }, [activeLayer, currentID, compareID, dates, isMonthVarying]);
+
+  // PRINT: every layer, not just the open tab (D-9).
+  //
+  // Mounted on demand rather than kept alive hidden: seven Leaflet instances
+  // is a real cost to impose on every visitor to a public landing page for a
+  // feature most of them never use. The button awaits reportReady before it
+  // opens the print dialog, which is what the AC-4 spinner now actually covers.
+  const { printMode, registerSection, reportReady } = usePrintContext() ?? {};
+  const [printLayers, setPrintLayers] = useState(null);
+
+  // Registered at mount, not on expand: the button must know this section
+  // exists before it starts waiting, or it prints past an empty participant
+  // list and the extra layers never make it into the PDF.
+  useEffect(() => registerSection?.(PRINT_SECTION_KEY), [registerSection]);
+
+  useEffect(() => {
+    if (!printMode) {
+      setPrintLayers(null);
+      return;
+    }
+    let active = true;
+
+    const yearMonth = monthOf(dates, currentID);
+    Promise.all(
+      layers.map(async (layer) => ({
+        layer,
+        // Drought class renders from validated_values already in state; only
+        // the API-described layers need fetching.
+        payload:
+          layer.key === DROUGHT_CLASS
+            ? null
+            : await fetchLayerPayload(
+                layer.key,
+                layer.monthVarying === false ? null : yearMonth,
+              ),
+      })),
+    ).then((resolved) => {
+      if (!active) {
+        return;
+      }
+      setPrintLayers(resolved);
+      // ponytail: a fixed beat rather than per-map mount callbacks. React has
+      // committed and Leaflet has laid out well inside 400ms for seven
+      // GeoJSON-only maps, and the button's own rAF adds another frame on top.
+      // If a slower machine ever prints a blank map, the upgrade is to have
+      // each LayerMap report its own readiness — not a longer sleep.
+      setTimeout(() => {
+        if (active) {
+          reportReady?.(PRINT_SECTION_KEY);
+        }
+      }, 400);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [printMode, reportReady, dates, currentID, layers]);
 
   const handleInkhundlaSelect = useCallback(
     async (adminId, adminName) => {
@@ -360,6 +433,34 @@ const DroughtMapSection = ({
           </div>
         </div>
       </div>
+
+      {/* Every layer, for the PDF only (D-9). Off-canvas rather than
+          display:none: Leaflet measures its container on mount and a hidden
+          one is 0x0, so the map paints blank — and nothing can put that right
+          during a synchronous print, when no JavaScript runs (D-10). */}
+      {printMode && printLayers && (
+        <div className="overview-print-only" aria-hidden>
+          {printLayers.map(({ layer, payload }) => (
+            <div
+              key={layer.key}
+              className="overview-print-layer border border-neutral-200 bg-white"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+                <h2 className="text-lg font-semibold text-neutral-800">
+                  Drought Map — {layer.label}
+                </h2>
+              </div>
+              <div className="flex flex-col">
+                {layer.key === DROUGHT_CLASS ? (
+                  <OverviewMap validatedValues={values} />
+                ) : (
+                  <LayerMap layer={payload} />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

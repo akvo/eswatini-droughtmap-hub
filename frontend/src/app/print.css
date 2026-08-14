@@ -1,0 +1,302 @@
+/* Scoped print stylesheet for the National Overview (INS-PDF-1).
+   Forked from app/brief-builder/print.css — see track-1/national-overview-pdf-export.md
+   D-3 for why this is a fork rather than a shared base. Loaded only by the `/`
+   route segment, so nothing here reaches another page.
+*/
+
+/* Landscape: this is a wide dashboard, and the map reads badly squeezed into a
+   210mm column. The section still fits one page — 198mm of usable height is
+   ~748px against the map row's 580px min-height. (D-8)
+
+   Written as explicit dimensions rather than `A4 landscape`: the build's CSS
+   pipeline drops the orientation keyword, and the rule reaches the browser as
+   plain `size: a4` — portrait. Verified by reading the rule back out of
+   document.styleSheets. The same thing happens to brief-builder's
+   `A4 portrait`, which survives only because portrait is what `a4` means
+   anyway. */
+/* THE MARGIN IS SET HERE OR NOWHERE (D-11). The print dialog's Margins
+   dropdown is browser chrome and no API reaches it — same for the "Headers and
+   footers" checkbox beside it. What a page CAN do is declare its own @page
+   margin, which Chrome's "Default" setting then honours, so this is the
+   default the user gets without touching the dialog.
+
+   12mm top/bottom, 0 at the sides: the sides are already full-bleed by design,
+   and per-page insets can only come from here — padding on a fragmented
+   element applies at its start and end, not on every page. Going to 0 also
+   suppresses the browser's URL/date/title strip (no margin box, nowhere to
+   draw it) at the cost of content touching the paper edge, if that trade is
+   ever wanted. */
+@page {
+  margin: 12mm 0mm;
+  size: 297mm 210mm;
+}
+
+/* PRINT-ONLY CONTENT, PARKED OFF-CANVAS ON SCREEN (D-9).
+   These blocks hold every map layer and the unselected zone grouping. They are
+   mounted only while a print is being prepared, and must NOT be display:none:
+   Leaflet and ECharts both measure their container at mount, and a hidden
+   container measures 0x0 — the map would paint blank and no ResizeObserver
+   would rescue it before a synchronous window.print(). Parking them off to the
+   left keeps real layout while keeping them out of sight.
+   1000px is arbitrary but must be wide enough to lay out like a desktop; the
+   print rules below hand them the full page width and the map's own
+   ResizeObserver picks up the change. */
+.overview-print-only {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 1000px;
+}
+
+/* THE MAP MUST BE RESIZED BEFORE THE PRINT, NOT DURING IT (D-10).
+   Every map on this page is a fixed center + zoom 9 and calls fitBounds
+   nowhere, so at zoom 9 the country is a fixed ~489x580px. Give it a 480px
+   box and it is cropped, full stop — invalidateSize() preserves zoom, so
+   re-measuring shows LESS of the map rather than scaling it down. Only
+   re-fitting the bounds can help, and that is JavaScript, which cannot run
+   between print styles being applied and the snapshot being taken.
+
+   So the button applies this class before it prints. The container resizes
+   while the page is still on screen, DynamicMap's ResizeObserver fires, and
+   its print branch re-fits each map to its content. Dropping the class again
+   restores the user's original view.
+
+   A FIXED WIDTH matters as much as the height, and must be identical to the
+   @media print rule below. The fit happens on screen; if the container is a
+   different width when it prints, the pane keeps the centre it was fitted to
+   and the map lands off to one side. Pinning both axes in both phases means
+   the map is fitted at exactly the geometry it is printed at.
+
+   640x560 sits comfortably on a landscape page next to a card header and a
+   legend (~748px of usable height), and is wide enough that the country is
+   sized by its height, which is the axis that was cropping. */
+html.printing #overview-print-area .leaflet-container {
+  width: 640px !important;
+  height: 560px !important;
+  min-height: 560px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media print {
+  .overview-print-only {
+    position: static !important;
+    left: auto !important;
+    width: 100% !important;
+  }
+
+  /* One layer per page. Seven maps sharing pages would break mid-map, and a
+     map cut in half is worse than a page with room to spare. */
+  .overview-print-layer {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Each print-only card is atomic in its own right. The wrapper must NOT be
+     — it holds seven pages of maps, and a box taller than a page cannot be
+     moved anywhere, so marking it atomic is what makes a browser slice it. */
+  .overview-print-only > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Drought category badges, legend swatches and the D-class colours are the
+     content here, not decoration — without this the PDF prints white boxes. */
+  *,
+  *::before,
+  *::after,
+  html,
+  body,
+  div,
+  span,
+  section {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    box-sizing: border-box !important;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* App chrome and every interactive control (AC-3). TabButtons renders plain
+     <button> elements, so the bare `button` selector takes the zone and layer
+     toggles with it; the leaflet-* entries cover the zoom buttons, hover
+     tooltips and the ValueInfoCard popup, which have no antd class to catch. */
+  nav,
+  header,
+  footer,
+  aside,
+  button,
+  .ant-btn,
+  .ant-select,
+  .ant-picker,
+  .ant-dropdown,
+  .ant-tooltip,
+  .leaflet-control-container,
+  .leaflet-tooltip,
+  .leaflet-popup,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Decorative aria-hidden wash behind the hero. Pure ink cost. */
+  .bg-dhi-pattern {
+    display: none !important;
+  }
+
+  /* UNWIND THE ANCESTOR CHAIN — required before any break below can fire.
+     Firefox will not fragment a flex container, a scroll container, or a
+     transformed box: it slices them across page edges and ignores every break
+     inside. :has() selects exactly the ancestors of the print area, which here
+     is AppShell's `flex flex-col overflow-x-hidden` wrapper (one clipped axis
+     forces the other to auto, making it a scroll box) plus its container div. */
+  body :has(#overview-print-area) {
+    display: block !important;
+    overflow: visible !important;
+    transform: none !important;
+    position: static !important;
+    left: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+  }
+
+  /* The same unwind, downwards. page.js wraps BOTH bands in the full-bleed
+     `w-screen left-1/2 -translate-x-1/2` trick, and those are descendants of
+     the print area, so the :has() rule above does not reach them. Dropping the
+     transform means dropping the position/left/width it pairs with, or each
+     band lands half a page to the right. The inline backgroundColor on the
+     second band needs !important to beat the style attribute. */
+  #overview-print-area,
+  #overview-print-area > div {
+    display: block !important;
+    position: static !important;
+    left: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  /* -mt-32 pulls the sections up over the hero on screen. On paper the hero is
+     not a backdrop, so the overlap becomes a collision. */
+  #overview-print-area .overview-print-sections {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* DO NOT TRUST TAILWIND'S lg: UTILITIES IN PRINT.
+     The width a browser lays print out at is neither the @page width nor the
+     browser viewport — measured here, an A4 landscape page (297mm ≈ 1122px)
+     still resolves below the 1024px lg breakpoint, and the figure differs per
+     engine. Depending on it made the map section stack into a full-width
+     column, which pushed it past one page and split it across a break.
+
+     So force the split instead of asking for it. Three declarations, no
+     breakpoint involved, same result in every browser.
+
+     ponytail: matches by class substring rather than a component-specific
+     hook, so it keeps working if the section is re-nested. If a second
+     lg:flex-row ever appears on this page and does NOT want the print split,
+     that is the point to give the map row its own class. */
+  #overview-print-area [class*="lg:flex-row"] {
+    flex-direction: row !important;
+  }
+
+  #overview-print-area [class*="lg:w-1/3"] {
+    width: 33.333% !important;
+  }
+
+  #overview-print-area [class*="lg:w-2/3"] {
+    width: 66.667% !important;
+  }
+
+  /* KEEP EACH CARD WHOLE, BUT PACK THEM. A card that will not fit in what is
+     left of the page moves down entire, so a chart or the map is never split —
+     but cards still share a page.
+
+     Anchored on the card inside each section, not the section itself: since
+     D-9 a section also carries its off-canvas print-only block, which is up to
+     seven pages of maps. A box taller than a page cannot be moved anywhere, so
+     marking the section atomic is exactly what would make a browser slice it. */
+  #overview-print-area .overview-print-sections > * {
+    margin-bottom: 12px !important;
+  }
+
+  #overview-print-area
+    .overview-print-sections
+    > *
+    > div:not(.overview-print-only) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* A scroll box prints its scrollport and nothing else. The map legend and the
+     layer strip are both overflow-x-auto and would lose everything past the
+     visible edge — on paper there is nothing to scroll with. */
+  #overview-print-area [class*="overflow-x-auto"],
+  #overview-print-area [class*="overflow-y-auto"],
+  #overview-print-area [class*="overflow-auto"] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Must stay byte-for-byte the same geometry as the html.printing rule above
+     — that is the whole point, see D-10. It is repeated rather than shared
+     because a rule cannot be in a media query and out of it at once, and the
+     Ctrl+P path (no JS, so no .printing class, so no re-fit) still needs a
+     height or the map collapses. */
+  #overview-print-area .leaflet-container {
+    width: 640px !important;
+    height: 560px !important;
+    min-height: 560px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* LayerMap wraps the map in `flex-1 min-h-0`, which on screen lets the map
+     shrink to whatever the viewport leaves. Against the fixed print height
+     above, min-height:0 means the wrapper computes SHORTER than the map inside
+     it, so the map overflows downward and paints over the legend instead of
+     pushing it down.
+
+     Pinned to the same 560px as the map rather than `auto`: content-based
+     minimum measured clean under emulated print media but still overlapped in
+     a real page.pdf() render, and the real render is the one that ships. */
+  #overview-print-area [class*="min-h-0"] {
+    min-height: 560px !important;
+  }
+
+  /* ECharts measures its container once at mount and writes that pixel width
+     onto its own wrapper div and the canvas; akvo-charts registers no resize
+     listener, so nothing re-measures for print and the plot keeps its ~1200px
+     screen width against a ~700px page. Releasing the wrapper's inline width
+     lets the canvas shrink; bounded on both axes and left to letterbox itself
+     rather than resized, since forcing height:auto makes the canvas take its
+     own bitmap ratio and spill over the section below. It prints crisp either
+     way because ECharts renders the backing store at devicePixelRatio. */
+  #overview-print-area [role="figure"],
+  #overview-print-area [role="figure"] > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+  }
+}

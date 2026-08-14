@@ -6,7 +6,11 @@ import { Button } from "antd";
 // old `mt-4` stacked on top of that gap and pushed it to 40px.
 const FeedbackSection = () => {
   return (
-    <div className="relative w-full overflow-hidden bg-primary p-8 flex items-start justify-between gap-8">
+    // print:hidden — a "get in touch" CTA is chrome on paper, and no print
+    // surface wants it. Lives on the component rather than each caller because
+    // brief-builder/print.css previously tried to hide this with a
+    // `.FeedbackSection` class that never existed. (INS-PDF-1 D-4)
+    <div className="relative w-full overflow-hidden bg-primary p-8 flex items-start justify-between gap-8 print:hidden">
       {/* Topo pattern: source is gray lines on white, so invert + screen
           drops the white bg (blue preserved) and shows lines as faint highlights */}
       <div
