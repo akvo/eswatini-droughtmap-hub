@@ -1,10 +1,17 @@
 import classNames from "classnames";
 
-const AboutSection = ({
+// Heading + supporting copy + content, the section shape shared by the public
+// pages. Pass `description` an array to get the design's two-column paragraphs.
+const ContentSection = ({
   title,
   titleSize = "text-3xl",
   description,
   textAlign = "text-left",
+  // Caps a single supporting paragraph. Body copy is 768px (max-w-3xl) in the
+  // design; the centered hero is 720px (Figma 5416:116338). Ignored when
+  // `description` is an array — those paragraphs are the full-width two-column
+  // pair and cap themselves at half the container.
+  descriptionWidth = "max-w-3xl",
   children,
   className = "",
 }) => {
@@ -26,7 +33,7 @@ const AboutSection = ({
             <p
               key={i}
               className={classNames("text-base leading-7 text-[#606060]", {
-                "max-w-3xl": descriptions.length === 1,
+                [descriptionWidth]: descriptions.length === 1,
                 "mx-auto":
                   textAlign === "text-center" && descriptions.length === 1,
               })}
@@ -41,4 +48,4 @@ const AboutSection = ({
   );
 };
 
-export default AboutSection;
+export default ContentSection;

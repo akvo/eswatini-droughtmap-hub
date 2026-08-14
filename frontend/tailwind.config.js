@@ -28,6 +28,7 @@ module.exports = {
         textHint: tokens.text.hint,
         textDisabled: tokens.text.disabled,
         tableBorder: tokens.border.table,
+        tableHeaderBg: tokens.table.headerBg,
         inputBorder: tokens.border.input,
         cardBorder: tokens.border.card,
         sectionBorder: tokens.border.section,

@@ -1,12 +1,17 @@
 import classNames from "classnames";
 import Image from "next/image";
 
-const AboutSectionChild = ({
+// One "_Feature text" item: bordered icon tile plus title and optional copy.
+// Stacked (`flex="col"`) in a grid, or inline (`flex="row"`) in a list.
+const FeatureItem = ({
   icon: Icon,
   iconSrc,
   title,
   description,
   flex = "col",
+  // Size + weight together: passing only a size would collide with the default
+  // weight (two font-* utilities, and source order does not decide the winner).
+  titleClass = "text-base font-semibold",
 }) => {
   return (
     <div
@@ -26,7 +31,7 @@ const AboutSectionChild = ({
       )}
       <div className="flex flex-col gap-1">
         {title && (
-          <h3 className="text-base font-semibold text-[#333333]">{title}</h3>
+          <h3 className={classNames("text-[#333333]", titleClass)}>{title}</h3>
         )}
         {description && (
           <p className="text-sm leading-6 text-[#606060]">{description}</p>
@@ -36,4 +41,4 @@ const AboutSectionChild = ({
   );
 };
 
-export default AboutSectionChild;
+export default FeatureItem;
