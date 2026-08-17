@@ -1,16 +1,13 @@
-import AboutSection from "@/components/AboutSection";
-import AboutSectionChild from "@/components/AboutSectionChild";
-import { FeedbackSection } from "@/components";
+import {
+  ContentSection,
+  FeatureItem,
+  FeedbackSection,
+  SectionLine,
+} from "@/components";
 import { headerConfig } from "@/static/about/header";
 import { howCdiComputedConfig } from "@/static/about/how-cdi-computed";
 import { whatCdiCategoriesMeanConfig } from "@/static/about/what-cdi-categories-mean";
 import { whoInvolvedValidationConfig } from "@/static/about/who-involved-validation";
-
-// Section separators run edge-to-edge in the design while the content stays in
-// the shell's centered container — same breakout idiom used across the app.
-const SectionLine = () => (
-  <hr className="relative left-1/2 w-screen -translate-x-1/2 border-t border-cardBorder" />
-);
 
 const AboutPage = () => {
   return (
@@ -21,7 +18,7 @@ const AboutPage = () => {
           aria-hidden
           className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
         />
-        <AboutSection
+        <ContentSection
           title={headerConfig.title}
           titleSize="text-3xl"
           description={headerConfig.description}
@@ -40,13 +37,13 @@ const AboutPage = () => {
 
       {/* How is the CDI Computed? */}
       <div>
-        <AboutSection
+        <ContentSection
           title={howCdiComputedConfig.title}
           description={howCdiComputedConfig.description}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
             {howCdiComputedConfig.children.map((child) => (
-              <AboutSectionChild
+              <FeatureItem
                 key={child.id}
                 icon={child.icon}
                 title={child.title}
@@ -55,14 +52,14 @@ const AboutPage = () => {
               />
             ))}
           </div>
-        </AboutSection>
+        </ContentSection>
       </div>
 
       <SectionLine />
 
       {/* What Do the CDI Categories Mean? */}
       <div>
-        <AboutSection
+        <ContentSection
           title={whatCdiCategoriesMeanConfig.title}
           description={whatCdiCategoriesMeanConfig.description}
         >
@@ -101,13 +98,13 @@ const AboutPage = () => {
               </tbody>
             </table>
           </div>
-        </AboutSection>
+        </ContentSection>
       </div>
 
       <SectionLine />
 
       {/* Who is Involved in Validation? */}
-      <AboutSection
+      <ContentSection
         title={whoInvolvedValidationConfig.title}
         description={whoInvolvedValidationConfig.description}
         className="pt-8 pb-4"
@@ -115,7 +112,7 @@ const AboutPage = () => {
         <div className="flex flex-col md:flex-row gap-8 mt-6">
           <div className="flex flex-col gap-6 md:w-1/2">
             {whoInvolvedValidationConfig.children.map((child, index) => (
-              <AboutSectionChild
+              <FeatureItem
                 key={index}
                 icon={child.icon}
                 iconSrc={child.iconSrc}
@@ -135,7 +132,7 @@ const AboutPage = () => {
             </div>
           )}
         </div>
-      </AboutSection>
+      </ContentSection>
 
       {/* Feedback */}
       <div className="my-8">

@@ -117,7 +117,7 @@ const InsightsShell = ({ children }) => {
           date={lastUpdatedDate}
           actions={
             <a
-              href="#methodology"
+              href="/methodology"
               className="inline-flex items-center justify-center px-6 py-3 border border-cardBorder bg-white text-sm font-normal text-primary hover:bg-neutral-50 hover:text-[#2c4383] transition-colors"
             >
               Methodology
