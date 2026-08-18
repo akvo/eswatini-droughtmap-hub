@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Table, Button, Space, Spin, message } from "antd";
+import { Table, Button, Space, Spin, message, Modal } from "antd";
 import { ExportOutlined, MailOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
@@ -78,6 +78,7 @@ const AdminDashboardPage = () => {
         return {
           id: row.key,
           name: row.label,
+          administration: row.administration || "",
           region: row.group,
           observer: row.observer?.name || "",
           observerId: row.observer?.id,
@@ -117,16 +118,38 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const handleTriggerReminders = async () => {
+  const sendReminders = async () => {
     setTriggeringReminders(true);
     try {
-      await api("POST", "/weather/citizen-science/reminders", {});
-      message.success("Reminders triggered for all observers.");
+      const res = await api("POST", "/weather/citizen-science/reminders", {});
+      const sent = res?.dispatched ?? 0;
+      message.success(
+        sent
+          ? `Reminder sent to ${sent} observer${sent === 1 ? "" : "s"}.`
+          : "No reminders sent — every observer has already reported.",
+      );
     } catch (err) {
-      message.error("Failed to trigger reminders.");
+      console.error(err);
+      message.error(err?.message || "Failed to trigger reminders.");
     } finally {
       setTriggeringReminders(false);
     }
+  };
+
+  // Emails leave immediately and cannot be recalled, so confirm first. The
+  // backend targets only observers still missing last month's reading — say
+  // so, or an admin reads this as "email all 42".
+  const handleTriggerReminders = () => {
+    Modal.confirm({
+      title: "Send reminder emails?",
+      content:
+        "Every observer who has not yet submitted last month's reading " +
+        "gets an email straight away. Observers who have already " +
+        "reported are skipped.",
+      okText: "Send reminders",
+      cancelText: "Cancel",
+      onOk: sendReminders,
+    });
   };
 
   // Count stations per status bucket for filter labels
@@ -157,7 +180,9 @@ const AdminDashboardPage = () => {
           <div className="text-sm font-medium text-[#333333]">
             {record.name}
           </div>
-          <div className="text-xs text-[#606060]">{record.region}</div>
+          <div className="text-xs text-[#606060]">
+            {[record.administration, record.region].filter(Boolean).join(" · ")}
+          </div>
         </div>
       ),
     },

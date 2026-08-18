@@ -245,6 +245,7 @@ const StationDetailPage = () => {
   const sensors = station.sensors || [];
   const stationName = station.label || "";
   const region = station.group || "";
+  const administration = station.administration || "";
 
   const nudgeStation = {
     name: stationName,
@@ -259,7 +260,14 @@ const StationDetailPage = () => {
       <div className="w-full h-auto">
         <PageHeader
           title={stationName}
-          description={`${region} region · ${completeness}% completeness`}
+          description={[
+            [administration, region && `${region} region`]
+              .filter(Boolean)
+              .join(" · "),
+            `${completeness}% completeness`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           actions={
             <Link href="/citizen-weather/admin">
               <Button icon={<ArrowLeftOutlined />}>Back to admin</Button>
@@ -293,6 +301,7 @@ const StationDetailPage = () => {
                 </div>
                 <div className="p-4 sm:p-6">
                   <KVRow label="Station name" value={stationName} />
+                  <KVRow label="Inkhundla" value={administration} />
                   <KVRow label="Region" value={region} />
                   <KVRow
                     label="Station type"
@@ -467,7 +476,13 @@ const StationDetailPage = () => {
           open={showStationEdit}
           onClose={() => setShowStationEdit(false)}
           station={station}
-          onSaved={fetchData}
+          // The route is keyed by administration_id, so a move makes this
+          // URL a 404 — follow the station to its new one instead.
+          onSaved={(newId) =>
+            newId && String(newId) !== String(id)
+              ? router.replace(`/citizen-weather/admin/stations/${newId}`)
+              : fetchData()
+          }
         />
         <ObserverEditModal
           open={showObserverEdit}

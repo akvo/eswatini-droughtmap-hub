@@ -20,27 +20,67 @@ export const StationEditModal = ({ open, onClose, station, onSaved }) => {
   const [stationName, setStationName] = useState("");
   const [stationType, setStationType] = useState("");
   const [sensors, setSensors] = useState([]);
+  const [administrationId, setAdministrationId] = useState(null);
+  const [administrations, setAdministrations] = useState([]);
 
   useEffect(() => {
     if (open && station) {
       setStationName(station.label || "");
       setStationType(station.station_type || "");
       setSensors(station.sensors || []);
+      setAdministrationId(station.key ?? null);
     }
   }, [open, station]);
+
+  // One active observer per Inkhundla (uniq_observer_per_administration), so
+  // the only selectable targets are the free ones plus the station's own.
+  useEffect(() => {
+    if (!open) return;
+    Promise.all([
+      api("GET", "/iks/administrations"),
+      api("GET", "/weather/citizen-science/stations"),
+    ])
+      .then(([res, network]) => {
+        const data = Array.isArray(res) ? res : res.data || [];
+        const taken = new Set((network?.data || []).map((row) => row.key));
+        setAdministrations(
+          data.filter((a) => !taken.has(a.id) || a.id === station?.key),
+        );
+      })
+      .catch((err) => {
+        console.error(err);
+        message.error("Failed to load Inkhundla list.");
+      });
+  }, [open, station?.key]);
+
+  const moved = administrationId && administrationId !== station?.key;
+  const region =
+    administrations.find((a) => a.id === administrationId)?.region || "";
 
   const handleOk = async () => {
     setLoading(true);
     try {
-      await api("PATCH", `/weather/citizen-science/stations/${station.key}`, {
-        station_name: stationName,
-        station_type: stationType,
-        sensors,
-      });
-      message.success("Station updated.");
-      onSaved?.();
+      const res = await api(
+        "PATCH",
+        `/weather/citizen-science/stations/${station.key}`,
+        {
+          station_name: stationName,
+          station_type: stationType,
+          sensors,
+          administration_id: administrationId,
+        },
+      );
+      message.success(
+        moved
+          ? "Station moved. Readings stay with the previous Inkhundla."
+          : "Station updated.",
+      );
+      // Moving re-keys the station, so hand back the new id — the caller's
+      // current URL points at the old Inkhundla and would 404 on refetch.
+      onSaved?.(res?.administration_id);
       onClose();
     } catch (err) {
+      console.error(err);
       message.error(err?.message || "Failed to update station.");
     } finally {
       setLoading(false);
@@ -67,6 +107,35 @@ export const StationEditModal = ({ open, onClose, station, onSaved }) => {
             onChange={(e) => setStationName(e.target.value)}
             maxLength={120}
           />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-[#333] block mb-1">
+            Inkhundla
+            <span className="text-xs text-[#606060] font-normal ml-1">
+              &middot; only Tinkhundla without a station are listed
+            </span>
+          </label>
+          <Select
+            showSearch
+            style={{ width: "100%" }}
+            value={administrationId || undefined}
+            onChange={setAdministrationId}
+            optionFilterProp="label"
+            options={administrations.map((a) => ({
+              label: a.name,
+              value: a.id,
+            }))}
+          />
+          {region && (
+            <div className="text-xs text-[#606060] mt-1">{region} region</div>
+          )}
+          {moved && (
+            <div className="text-xs text-[#d46b08] mt-1">
+              Moving this station leaves its reading history with the previous
+              Inkhundla — readings belong to the Inkhundla they were reported
+              for, not to the station.
+            </div>
+          )}
         </div>
         <div>
           <label className="text-sm font-medium text-[#333] block mb-1">
