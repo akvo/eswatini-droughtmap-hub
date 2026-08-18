@@ -214,6 +214,11 @@ class CitizenScienceTests(APITestCase):
         row = data["data"][0]
         self.assertEqual(row["completeness"], {"reported": 0, "of": 12})
         self.assertIsNone(row["last_submission"])
+        # Station name, Inkhundla and region are three separate things —
+        # the admin table shows all three, so the row must carry all three.
+        self.assertEqual(row["label"], "Hhukwini Community")
+        self.assertEqual(row["administration"], "Hhukwini")
+        self.assertEqual(row["group"], "Hhohho")
         # 10 of 12 submitted -> reporting well, not at risk
         for months_ago in range(10):
             self.seed_reading(months_ago=months_ago, precipitation=1)
@@ -524,6 +529,81 @@ class CitizenScienceTests(APITestCase):
         self.assertEqual(
             Jobs.objects.filter(type=JobTypes.cs_magic_link).count(), 0
         )
+
+    def test_patch_moves_station_and_leaves_readings_behind(self):
+        # Readings are keyed by administration, not by observer (D-6), so a
+        # move must not drag the old Inkhundla's climate record with it.
+        CitizenScienceReading.objects.create(
+            administration=self.hhukwini,
+            year_month=self.period,
+            min_temperature=11.0,
+            submitted_at=timezone.now(),
+        )
+        empty = Administration.objects.create(
+            pk=999001, name="Lobamba", region="Hhohho"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            self.detail_url(),
+            {"administration_id": empty.pk},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # The response carries the new key — the old URL is now a 404
+        self.assertEqual(response.json()["administration_id"], empty.pk)
+        self.observer.refresh_from_db()
+        self.assertEqual(self.observer.administration_id, empty.pk)
+        self.assertEqual(
+            self.client.patch(
+                self.detail_url(), {"name": "X"}, format="json"
+            ).status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        # History stayed with the Inkhundla it was reported for
+        self.assertEqual(
+            CitizenScienceReading.objects.filter(
+                administration=self.hhukwini
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            CitizenScienceReading.objects.filter(
+                administration=empty
+            ).count(),
+            0,
+        )
+
+    def test_patch_rejects_move_to_an_occupied_inkhundla(self):
+        SystemUser.objects._create_user(
+            email="other@example.sz",
+            password="unused",
+            name="Other",
+            role=UserRoleTypes.observer,
+            administration=self.kwaluseni,
+            station_name="Kwaluseni Community",
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            self.detail_url(),
+            {"administration_id": KWALUSENI_ADM},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.observer.refresh_from_db()
+        self.assertEqual(self.observer.administration_id, HHUKWINI_ADM)
+
+    def test_patch_accepts_the_stations_own_inkhundla(self):
+        # Saving the edit form without touching the dropdown posts the
+        # current Inkhundla back — that is a no-op, not a clash with itself.
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            self.detail_url(),
+            {"administration_id": HHUKWINI_ADM, "station_name": "Renamed"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["administration_id"], HHUKWINI_ADM)
+        self.assertEqual(response.json()["station_name"], "Renamed")
 
     def test_patch_rejects_taken_email_allows_own(self):
         self.client.force_authenticate(user=self.admin_user)

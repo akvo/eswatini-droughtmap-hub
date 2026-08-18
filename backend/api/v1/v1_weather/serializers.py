@@ -86,10 +86,17 @@ class ObserverCreateSerializer(ObserverStationSerializer):
 
 class StationUpdateSerializer(ObserverStationSerializer):
     """WX-7 PATCH: any subset of the Station card's and Observer card's
-    fields. The Inkhundla comes from the URL; nothing is emailed (D-5)."""
+    fields. Nothing is emailed (D-5). The Inkhundla is addressed by the
+    URL but may also be *changed* by the payload (D-6) — readings stay
+    with the Inkhundla they were reported for and do not follow."""
 
     name = serializers.CharField(max_length=100, required=False)
     email = serializers.EmailField(required=False)
+    administration_id = serializers.PrimaryKeyRelatedField(
+        queryset=Administration.objects.all(),
+        source="administration",
+        required=False,
+    )
     station_name = serializers.CharField(max_length=120, required=False)
     sensors = serializers.ListField(
         child=serializers.ChoiceField(choices=list(CS_SENSORS)),
@@ -98,6 +105,21 @@ class StationUpdateSerializer(ObserverStationSerializer):
     station_type = serializers.CharField(
         max_length=60, required=False, allow_blank=True
     )
+
+    def validate_administration_id(self, value):
+        # uniq_observer_per_administration is a partial index over active
+        # observers, so the station itself must be excluded — re-saving a
+        # station on its current Inkhundla is a no-op, not a clash.
+        taken = SystemUser.objects.filter(
+            role=UserRoleTypes.observer, administration=value
+        )
+        if self.instance:
+            taken = taken.exclude(pk=self.instance.pk)
+        if taken.exists():
+            raise serializers.ValidationError(
+                "This Inkhundla already has an active observer."
+            )
+        return value
 
     def validate(self, attrs):
         if not attrs:

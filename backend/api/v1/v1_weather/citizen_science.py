@@ -140,6 +140,10 @@ def admin_network() -> dict:
             {
                 "key": observer.administration_id,
                 "label": observer.station_name,
+                # Same pair as the observer payload above: `administration`
+                # is the Inkhundla, `group` its region. active_observers()
+                # select_related's it, so this costs no extra query.
+                "administration": observer.administration.name,
                 "group": observer.administration.region,
                 "sensors": observer.station_sensors,
                 "station_type": observer.station_type,

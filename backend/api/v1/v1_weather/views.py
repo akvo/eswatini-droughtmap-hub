@@ -440,6 +440,13 @@ class CitizenScienceStationDetailAPI(APIView):
         data = serializer.validated_data
 
         update_fields = []
+        # Moving the station re-keys it: administration_id is its URL and
+        # the readings' foreign key alike, so the history reported under
+        # the old Inkhundla stays there (D-6). Callers must follow the
+        # administration_id in the response.
+        if "administration" in data:
+            observer.administration = data["administration"]
+            update_fields.append("administration")
         for field in ("name", "email", "station_type"):
             if field in data:
                 setattr(observer, field, data[field])
