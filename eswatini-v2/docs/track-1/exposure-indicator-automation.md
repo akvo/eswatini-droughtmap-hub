@@ -8,6 +8,7 @@
 **Status**: Draft
 **Track**: 1 (Decision Track) — consumed by Track 3 risk scoring
 **Sibling**: [`national-overview-map-data-tabs.md`](./national-overview-map-data-tabs.md) (INS-3) renders what this feature ingests
+**Follow-up**: [`dynamic-world-earth-engine-assessment.md`](./dynamic-world-earth-engine-assessment.md) (PA-5, 2026-08-17) resolves **OQ-1** and **supersedes the Dynamic World verdict** in §11. The WorldPop half of this document is unaffected.
 
 ---
 
@@ -337,7 +338,7 @@ The `Normalised (0–1)` column is a straight min–max stretch over that range 
 
 ## 10. Open Questions
 
-- [ ] **OQ-1 (blocks Dynamic World — highest risk in this document)**: which Earth Engine licence tier applies to a government-facing platform? Free covers research/education/nonprofit. *Can invalidate the work after it is built, so ask first.*
+- [x] **OQ-1 — ANSWERED 2026-08-17, negatively.** The Earth Engine free tier is **not available** to this platform: Eswatini is not a UN Least Developed Country, the excluded-activity list ("repeated production of data products", "tooling for management, policy, or web applications") describes DIH exactly, and implementer nonprofit status does not transfer. A **commercial EE licence** would be required. See [`dynamic-world-earth-engine-assessment.md`](./dynamic-world-earth-engine-assessment.md) (PA-5) **D-10**, which supersedes this document's Dynamic World verdict.
 - [x] **OQ-2 — the DVI weights: ANSWERED 2026-08-11.** Cropland 0.9, Grassland 0.75, Shrubland 0.55, Trees 0.3, Water/Built/Other 0.05, applied before mask and aggregation. Recorded in **D-8**. The perishable part is now captured in the repo.
 - [ ] **OQ-2a (blocks Dynamic World)**: how is the **agricultural mask** defined — which classes pass, and at what probability threshold? It sets the denominator, so it moves the result more than any weight does.
 - [ ] **OQ-2b (blocks Dynamic World)**: what **zonal statistic**, what **compositing window**, `label` band or probability blend, and where does `flooded_vegetation` go? Three readings of "aggregated zonally" give 0.90 / 0.48 / 0.27 for the same Inkhundla (D-8). Partly resolvable empirically via `--dry-run` (D-9) rather than by asking.
@@ -354,7 +355,7 @@ The `Normalised (0–1)` column is a straight min–max stretch over that range 
 | Dataset | Verdict | Eng. effort | Blocked on |
 |---|---|---|---|
 | **WorldPop** | **GO** as a one-shot re-runnable command · **NO-GO** as a recurring pipeline stage (D-2) | **~1 day** | nothing |
-| **Dynamic World** | **CONDITIONAL GO** — proceed to a spike (D-5), not to implementation | **~3–5 days** once unblocked | OQ-1, OQ-2, OQ-4 |
+| **Dynamic World** | ~~CONDITIONAL GO~~ → **NO-GO as specified** (superseded 2026-08-17 by PA-5 **D-10**: free EE tier unavailable). PA-5 recommends **ESA WorldCover** instead, ~1.5–2 days, unblocked | ~3–4 days *after* a commercial licence exists | Commercial EE licence — procurement, not engineering |
 
 Dynamic World's ~3–5 days breaks down as ~1 day auth and Inkhundla asset upload, 1–2 days replicating and validating against the existing 59 values, ~1 day scheduling and tests. **Access setup and licence confirmation are the long pole and are not engineering days.**
 
