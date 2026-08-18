@@ -309,7 +309,7 @@ Land use and Population are excluded because comparing them is meaningless, not 
 
 **Decision**: Ship both with a visible badge, rather than deferring them or shipping them silently.
 
-**Rationale**: Deferring costs more than it saves — these are the *cheapest* tabs, choropleths over already-populated columns, and deferring leaves dead tabs on a public page. But both have real problems worth admitting: **Population's** CSV records no dataset, product or vintage, so `meta.asOf` is `null`; **Land Use** has 55 of 59 Tinkhundla within 0.08 of each other (PA-4 D-9), so it renders close to one flat colour with no way for a viewer to tell "uniform vulnerability" from "this indicator is not discriminating".
+**Rationale**: Deferring costs more than it saves — these are the *cheapest* tabs, choropleths over already-populated columns, and deferring leaves dead tabs on a public page. But both have real problems worth admitting: **Population's** CSV records no dataset, product or vintage, so `meta.asOf` is `null`; **Land Use** has 54 of 59 Tinkhundla within 0.0755 of each other (PA-4 D-9, count corrected 2026-08-18), so it renders close to one flat colour with no way for a viewer to tell "uniform vulnerability" from "this indicator is not discriminating".
 
 The mechanism already existed and was already correct: `generate_indicators_seeder` writes **`is_placeholder=True`** on every row it creates. The database had been declaring these provisional all along; nothing read it.
 

@@ -278,11 +278,27 @@ Two of PA-4's open ambiguities dissolve rather than transfer:
 
 ### D-14: OQ-7 outranks all of this, and D-9's explanation may be wrong
 
-**Finding.** PA-4 D-9 observed that 55 of 59 Tinkhundla sit within 0.08 of each other (min 0.5806, max 0.8424, mean 0.6225) and attributed the clustering to **probability blending** — Dynamic World rarely assigning any pixel probability 1.0, so a blend regresses to a common value. It used that to argue Reading A was the method.
+**Finding.** PA-4 D-9 observed that the Tinkhundla cluster tightly (**recomputed 2026-08-18: 54 of 59** within 0.0755 — 0.5806 to 0.6561; PA-4 stated 55, which is off by one, and five values not two sit above 0.66) (min 0.5806, max 0.8424, mean 0.6225) and attributed the clustering to **probability blending** — Dynamic World rarely assigning any pixel probability 1.0, so a blend regresses to a common value. It used that to argue Reading A was the method.
 
-A discrete weighted mean over **all** pixels produces the same clustering, without needing probabilities. Eswatini is land-cover-homogeneous at Inkhundla scale: most Tinkhundla are a similar mix of tree cover, grassland and smallholder cropland. Weighting a plausible national mix (roughly 35% tree / 30% grass / 15% shrub / 11% crop / 9% other) gives ≈ 0.51 — the same order as the observed 0.58–0.66, and nowhere near the ≈0.90 that a cropland-masked mean would give. *The class shares here are illustrative, not measured — this is an arithmetic sketch to be tested by `--dry-run`, not a result.*
+A discrete weighted mean over **all** pixels produces the same clustering, without needing probabilities. Eswatini is land-cover-homogeneous at Inkhundla scale: most Tinkhundla are a similar mix of tree cover, grassland and smallholder cropland.
 
-**Decision**: Keep D-9's conclusion about **which reading** (a mean over all pixels, not a masked mean) and discard its **reason**. The clustering is explained by the weights interacting with a homogeneous landscape, so probability blending is not required to account for it.
+**Measured, not assumed (2026-08-17).** A windowed read of ESA WorldCover over a 0.3° × 0.3° box of central Eswatini (31.0–31.3 E, 26.3–26.6 S; 12.96 M pixels at 10 m) gives:
+
+| Class | Share | DVI weight |
+|---|---|---|
+| Grassland | 40.8% | 0.75 |
+| Tree cover | 38.1% | 0.30 |
+| Cropland | 10.6% | 0.90 |
+| Shrubland | 7.7% | 0.55 |
+| Built-up / Water / Bare | 2.9% | 0.05 |
+
+**All-pixel weighted mean = 0.5592.**
+
+That sits just below the delivered CSV's observed minimum (0.5806) and inside the same band as its 0.58–0.66 cluster — from a *different dataset, a different year, and an arbitrary rectangle rather than an Inkhundla boundary*. The competing readings are nowhere close: a cropland-masked mean would give ≈0.90, an agricultural-share weighting ≈0.27.
+
+*Scope of this evidence: one rectangular window, not 59 zonal aggregations. It pins down the **level**, and so identifies which reading is in play; it says nothing yet about the **spread** across the 59. That still needs the `--dry-run`.*
+
+**Decision**: Keep D-9's conclusion about **which reading** (a mean over all pixels, not a masked mean) — now with measured support rather than inference — and discard its **reason**. The clustering is explained by the weights interacting with a homogeneous landscape, so probability blending is not required to account for it. Grassland and tree cover alone account for ~79% of the sampled area, and those two are what pin the value near 0.55–0.60 wherever their balance is similar.
 
 **Why this matters more than the platform choice**: if the clustering is a property of the weights and the landscape, then **every faithful reproduction of this method will be near-constant across the 59** — Dynamic World, WorldCover or a hand-built spreadsheet alike. The narrow spread is not an artefact of how the number was computed, and no automation will widen it. Stretching a 0.08 real range across the full 0–1 exposure scale using two outliers as the ceiling then manufactures apparent discrimination that the underlying data does not support.
 
@@ -406,6 +422,9 @@ Verified 2026-08-17. Load-bearing above, so recorded.
 | Cadence: *"The revisit frequency of Sentinel-2 is between 2-5 days depending on latitude"* — verbatim from the catalog page. ESA: 5 days at equator, **2–3 at mid-latitudes**; Eswatini ~26–27°S | [DW V1 catalog](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1) · [ESA constellation](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Sentinel-2/Satellite_constellation) |
 | **Revisit ≠ delivered cadence** — DW uses only scenes with `CLOUDY_PIXEL_PERCENTAGE <= 35%`, then masks cloud/shadow. Usable observations are fewest in the Oct–Mar wet season, the drought-relevant window (D-12) | [DW V1 catalog](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1) |
 | ESA WorldCover v200: 10 m, CC-BY 4.0, public S3 `s3://esa-worldcover/` (eu-central-1), 3°×3° COG tiles, no auth | [AWS Open Data](https://registry.opendata.aws/esa-worldcover-vito/) · [data access](https://esa-worldcover.org/en/data-access) |
+| **Access proven end-to-end 2026-08-17**, from inside the backend container: `HTTP 200`, no credential, not requester-pays. Eswatini needs exactly **2 tiles** — `S27E030` (130 MB) and `S30E030` (93 MB); the country crosses 27°S | `curl -I https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S27E030_Map.tif` |
+| Tiles are true COGs — `Accept-Ranges: bytes`, 1024×1024 blocks, overviews [2,4,8,16,32], EPSG:4326, `uint8`, nodata 0. `rasterio` read 12.96 M pixels through `/vsicurl/` in **9.2 s without downloading the 130 MB file** | verified in the running backend container |
+| Measured all-pixel weighted DVI over a central-Eswatini window = **0.5592**, inside the delivered CSV's 0.58–0.66 band (D-14) | ibid. |
 | WorldCover class codes 10/20/30/40/50/60/70/80/90/95/100 — map 1:1 onto the D-8 weights | [ESA WorldCover v200](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v200) |
 | WorldCover newest vintage is **2021** (v200); v100 is 2020 | [about](https://esa-worldcover.org/en/about/about) |
 | Esri / Impact Observatory 10 m annual LULC covers 2017–2024, on AWS Open Data | [io-lulc](https://registry.opendata.aws/io-lulc/) |
@@ -415,7 +434,9 @@ Verified 2026-08-17. Load-bearing above, so recorded.
 | Fetch + fail-hard + `sys.argv` test guard pattern already exists | `v1_weather/management/commands/build_chirps_normals.py:37,58,93` |
 | `TEST_ENV` unset in CI, so the guard must check `sys.argv` | ibid. `::running_tests` |
 | DVI-agri has a DB [0, 1] check constraint that **cannot** distinguish a wrong method | `Indicator.Meta.constraints:ck_indicator_dvi_agri_unit`; PA-4 D-8 |
-| DVI-agri: n=59, min 0.5806, max 0.8424, mean 0.6225; 55/59 within 0.58–0.66 | PA-4 D-9, from `risk_dataset__Exposure_LandUse.csv` |
+| DVI-agri: n=59, min 0.5806, max 0.8424, mean 0.6225; **54**/59 within 0.5806–0.6561 (spread 0.0755); five outliers above 0.66 (0.7177, 0.7306, 0.7330, 0.8189, 0.8424) | recomputed from `risk_dataset__Exposure_LandUse.csv`, 2026-08-18. PA-4 D-9 said 55/two outliers — corrected |
+| The DVI weights exist in **no code** — only in PA-4 D-8, recovered verbally. Grep for them returns only unrelated `ndvi_weight` (Rundeck) | `api/`, `utils/` |
+| The min–max stretch **is** code, and the outliers set its ceiling | `v1_indicators/services.py:70-91` `_min_max_norm`, called at `:116` |
 | CSV header carries source `dynamic world`, reference date 2026-07-22 | `backend/source/csv/risk_dataset__Exposure_LandUse.csv:1` |
 
 ---

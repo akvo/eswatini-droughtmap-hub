@@ -250,8 +250,10 @@ Pipeline order confirmed: **per-pixel DVI weights → agricultural mask → zona
 ```
 n = 59    min = 0.5806    max = 0.8424    mean = 0.6225    range = 0.2618
 
-55 of 59 Tinkhundla fall between 0.58 and 0.66.
-Two outliers (0.82, 0.84) set the top of the scale.
+54 of 59 Tinkhundla fall between 0.5806 and 0.6561 (spread 0.0755).
+Five outliers (0.72, 0.73, 0.73, 0.82, 0.84) sit above; the top two set the ceiling.
+[Corrected 2026-08-18: this block previously read "55 of 59" and "two outliers".
+Recomputed from the same CSV — the count is 54 and there are five values above 0.66.]
 ```
 
 The `Normalised (0–1)` column is a straight min–max stretch over that range — verified: `0.5806 → 0.0000`, `0.8424 → 1.0000`, and Hhukwini's `0.5987 → 0.0691` reproduces exactly.
@@ -346,7 +348,7 @@ The `Normalised (0–1)` column is a straight min–max stretch over that range 
 - [ ] **OQ-4**: who owns the Google Cloud project and service account? Procurement/admin, not engineering, and it is on the critical path.
 - [ ] **OQ-5**: what is the exact required WorldPop attribution string?
 - [ ] **OQ-6**: should a DVI-agri refresh trigger a risk-score recomputation, or is the score recomputed on read? Determines whether these commands need to enqueue downstream work.
-- [ ] **OQ-7 (new, and larger than this document)**: does DVI-agri contribute usable signal to the exposure score? 55 of 59 Tinkhundla sit within 0.08 of each other, and min–max normalisation stretches that narrow band across the full 0–1 scale using two outliers as the ceiling (D-9). Automating it faithfully reproduces a near-constant indicator. **For the risk-model owner, not for engineering** — and worth answering before the 3–5 days are spent.
+- [ ] **OQ-7 (new, and larger than this document)**: does DVI-agri contribute usable signal to the exposure score? 54 of 59 Tinkhundla sit within 0.0755 of each other, and min–max normalisation stretches that narrow band across the full 0–1 scale using two outliers as the ceiling (D-9). Automating it faithfully reproduces a near-constant indicator. **For the risk-model owner, not for engineering** — and worth answering before the 3–5 days are spent.
 
 ---
 
@@ -364,7 +366,7 @@ Dynamic World's ~3–5 days breaks down as ~1 day auth and Inkhundla asset uploa
 - **WorldPop: build it.** Unblocked, self-contained, no new dependency, and it upgrades real provenance on data already shown to users.
 - **Dynamic World: do not spike it yet.** INS-3 D-2 means the Land Use tab renders from `Indicator` whatever writes it, and the existing values already work — so there is no deadline pressure. The blockers are non-engineering ones that can invalidate the work *after* it is built (OQ-1 especially), and recomputing DVI-agri would move the Track 3 risk score, which deserves a deliberate decision rather than arriving as a side effect of an automation ticket.
 - **The weights are now captured (D-8)** — the perishable half of OQ-2 is safe in the repo. What remains (OQ-2a/2b) is method detail that the `--dry-run` comparison can largely settle empirically, so it no longer has the same urgency.
-- **The new priority is OQ-7, and it is not an engineering question.** D-9 shows 55 of 59 Tinkhundla sitting within 0.08 of each other, with the 0–1 normalisation stretched over that narrow band by two outliers. Before committing 3–5 days to automating this indicator, someone who owns the risk model should confirm it carries usable signal at all. If it does not, the fix is in the weighting or the normalisation, not in the refresh cadence — and automation would only deliver a near-constant number faster.
+- **The new priority is OQ-7, and it is not an engineering question.** D-9 shows 54 of 59 Tinkhundla sitting within 0.0755 of each other, with the 0–1 normalisation stretched over that narrow band by the top outliers. Before committing 3–5 days to automating this indicator, someone who owns the risk model should confirm it carries usable signal at all. If it does not, the fix is in the weighting or the normalisation, not in the refresh cadence — and automation would only deliver a near-constant number faster.
 
 ---
 
@@ -383,7 +385,7 @@ What was verified in the codebase on 2026-08-11, kept because several of these f
 | `TEST_ENV` is unset in CI, so the network guard must check `sys.argv` | `build_chirps_normals.py::running_tests` |
 | DVI-agri has a DB-level [0, 1] check constraint | `Indicator.Meta.constraints:ck_indicator_dvi_agri_unit` |
 | DVI-agri CSV records source `dynamic world`, reference date **2026-07-22** | `risk_dataset__Exposure_LandUse.csv` header row |
-| DVI-agri raw: n=59, min 0.5806, max 0.8424, mean 0.6225 — 55/59 within 0.58–0.66 | computed from the CSV, 2026-08-11 (D-9) |
+| DVI-agri raw: n=59, min 0.5806, max 0.8424, mean 0.6225 — **54**/59 within 0.5806–0.6561 | recomputed from the CSV 2026-08-18; originally stated as 55 (D-9) |
 | `Normalised (0–1)` is a plain min–max stretch over that range | verified: 0.5806→0.0000, 0.8424→1.0000, 0.5987→0.0691 |
 | The [0, 1] constraint cannot catch a wrong aggregation choice — all three candidates land in range | D-8 |
 
