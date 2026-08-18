@@ -17,7 +17,7 @@ CHIRPS_BASE_URL = (
     "https://data.chc.ucsb.edu/products/CHIRPS-2.0/africa_monthly/tifs/"
     "chirps-v2.0.{year}.{month:02d}.tif.gz"
 )
-CHIRPS_MONTHLY_DIR = "./source/chirps_monthly"
+CHIRPS_MONTHLY_DIR = "./storage/chirps_monthly"
 CHIRPS_MONTHLY_FILE = "ESW_CHIRPS_precip_mm_{year_month}.tif"
 # Identical to build_chirps_normals.BBOX, so a monthly raster and the normals
 # it is compared against cover the same window.
@@ -29,7 +29,7 @@ AGRO_TOPOJSON = "./source/eswatini-ecological_regions.topojson"
 # WGS84 GeoJSON written by `generate_agro_geojson`. NOT the topojson above:
 # that one is in Transverse Mercator metres and Leaflet would draw it off the
 # map entirely.
-AGRO_GEOJSON = "./source/config/agro-eco.geojson"
+AGRO_GEOJSON = "./storage/agro-eco.geojson"
 
 # --- Map data tabs ---------------------------------------------------------
 
