@@ -10,9 +10,17 @@ Two rules carry the whole design:
    if available (D-7). Run `fetch_chirps_observations` then
    `generate_weather_seeder`.
 
-2. Station health is deliberately mixed (D-5). `station_health` is computed at
-   read time from the WALL CLOCK, so an all-perfect seed renders "8/8 online"
-   and the offline/degraded branches of the UI are never exercised.
+2. Station health is deliberately mixed (D-5) — but only for stations this
+   command created. `station_health` is computed at read time from the WALL
+   CLOCK, so an all-perfect seed renders "8/8 online" and the offline/degraded
+   branches of the UI are never exercised.
+
+3. The REGISTRY is never invented (D-5, revised 2026-08-19). This command
+   backfills history onto the stations WIS2 published and creates none of its
+   own, so the ops card counts the same network the WIS2 map does. An empty
+   registry is reported, not filled: `--demo-stations` exists for a box that
+   cannot reach WIS2 at all, and it is off by default because a station is a
+   number partners read off the page and compare.
 """
 
 import calendar
@@ -47,6 +55,11 @@ DEMO_MARKER = "demo"
 # Real WIGOS ids look like 0-20000-0-68391. This block is reserved for seeded
 # stations so it can never collide with a real registry entry.
 DEMO_WIGOS_PREFIX = "0-999-0-9"
+
+# The seeded stations hang off their own WeatherSource, so nothing that
+# iterates the ACTIVE source can reach them (see `_source`).
+DEMO_SOURCE_URL = "https://demo.invalid/oapi"
+DEMO_SOURCE_COLLECTION = "demo-surface-observations"
 
 STATIONS_PER_REGION = 2
 
@@ -120,9 +133,10 @@ class Command(BaseCommand):
             type=int,
             default=24,
             help=(
-                "Months of daily observations, ending today. Always anchored "
-                "to now, never to a publication window: station health is a "
-                "function of the wall clock (DEMO-1 D-15)."
+                "Months of daily observations, ending today — or, on a real "
+                "station, ending the day before its archive starts. Always "
+                "anchored to now, never to a publication window: station "
+                "health is a function of the wall clock (DEMO-1 D-15)."
             ),
         )
         parser.add_argument(
@@ -136,25 +150,32 @@ class Command(BaseCommand):
             action="store_true",
             help="Delete seeded stations (and their dailies) and exit.",
         )
+        parser.add_argument(
+            "--demo-stations",
+            action="store_true",
+            help=(
+                "Invent 8 stations when the registry is empty. OFF by "
+                "default: an invented station is a station the partner can "
+                "count, and it will not match the network WIS2 publishes. "
+                "For a box that cannot reach WIS2 at all."
+            ),
+        )
 
     def handle(self, *args, **options):
         if options["clean"]:
-            deleted, _ = WeatherStation.objects.filter(
-                metadata_status=DEMO_MARKER
-            ).delete()
-            self.stdout.write(
-                self.style.SUCCESS(f"Removed {deleted} seeded weather row(s).")
-            )
+            self._clean()
             return
 
         rng = random.Random(options["seed"])
-        source = self._source()
-        stations = self._stations(source, rng)
+        stations = self._stations(rng, options["demo_stations"])
         if not stations:
             self.stderr.write(
                 self.style.ERROR(
-                    "No administrations with a region; run "
-                    "generate_administrations_seeder first."
+                    "No weather stations to seed history onto. Run "
+                    "`fetch_weather_observations` to sync the registry from "
+                    "WIS2 — or, on a box that cannot reach it, pass "
+                    "--demo-stations (which needs "
+                    "generate_administrations_seeder to have run)."
                 )
             )
             return
@@ -172,25 +193,85 @@ class Command(BaseCommand):
         written = self._observations(stations, normals, options["months"], rng)
         self._report(stations, written)
 
+    # --- clean ------------------------------------------------------------
+
+    def _clean(self):
+        """Seeded rows only — the real registry and its observations stay.
+
+        Backfilled days sit on REAL stations now, so deleting by station is
+        not enough on one side and far too much on the other.
+        """
+        backfilled, _ = StationDailyAggregate.objects.filter(
+            is_seeded=True
+        ).delete()
+        stations, _ = WeatherStation.objects.filter(
+            metadata_status=DEMO_MARKER
+        ).delete()
+        WeatherSource.objects.filter(base_url=DEMO_SOURCE_URL).delete()
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Removed {backfilled} seeded daily row(s) and {stations} "
+                f"demo station row(s)."
+            )
+        )
+
     # --- registry ---------------------------------------------------------
 
     def _source(self):
-        source = WeatherSource.objects.filter(is_active=True).first()
-        if source:
-            return source
-        return WeatherSource.objects.create(
-            base_url="https://demo.invalid/oapi",
-            collection_id="demo-surface-observations",
-            is_active=True,
-        )
+        """The demo source, always its own row — never the real WIS2 one.
 
-    def _stations(self, source, rng):
+        Adopting the active source put seeded stations into
+        `source.stations`, so `fetch_weather_observations` queried the real
+        WIS2 API for WIGOS ids that exist nowhere, and `--clean weather` was
+        one careless queryset away from deleting the real registry. Inactive
+        by construction: `is_active=True` is what selects the ingestion
+        target, and a demo row must never be it.
+        """
+        source, _ = WeatherSource.objects.get_or_create(
+            base_url=DEMO_SOURCE_URL,
+            defaults={
+                "collection_id": DEMO_SOURCE_COLLECTION,
+                "is_active": False,
+            },
+        )
+        return source
+
+    def _stations(self, rng, allow_demo=False):
+        """The real registry. Inventing one is opt-in and off by default.
+
+        Seeding 8 demo stations beside the 4 WIS2 publishes made the ops card
+        read `9/12 online` while the WIS2 map for the same network read `3/4`
+        — one network, two numbers, and no way for a partner to tell which
+        was the truth. So a synced registry is left exactly as it is and only
+        its HISTORY is filled in (see `_backfill_cutoff`), and an EMPTY
+        registry is reported rather than filled with plausible fiction: the
+        station count is a number partners read off the page and compare with
+        the WIS2 map, so there is no such thing as a harmless extra station.
+
+        `self.owns_stations` records whether this command created what it is
+        writing to; it gates the deliberate health split, which must never be
+        applied to a real station.
+        """
+        existing = list(
+            WeatherStation.objects.exclude(metadata_status=DEMO_MARKER)
+        )
+        self.owns_stations = not existing
+        if existing:
+            return existing
+        if not allow_demo:
+            return []
+        return self._demo_stations(rng)
+
+    def _demo_stations(self, rng):
         """Two stations per region, placed on real Inkhundla centroids.
+
+        `--demo-stations` only. These are fiction with a marker on them.
 
         Real coordinates matter: `_resolution_candidates` ranks stations by
         haversine distance, so arbitrary points would produce a nearest-station
         fallback that makes no geographic sense on the map.
         """
+        source = self._source()
         centroids = administration_centroids()
         by_region = {}
         for administration in Administration.objects.exclude(
@@ -300,7 +381,9 @@ class Command(BaseCommand):
         """One offline, one degraded, the rest online (D-5).
 
         Keyed by station so the split is stable across runs rather than
-        depending on iteration order.
+        depending on iteration order. Only ever applied to stations this
+        command created: forcing a synthetic status onto a real station is
+        how the ops card would start disagreeing with WIS2 again.
         """
         plan = {station.id: "online" for station in stations}
         if len(stations) >= 2:
@@ -308,22 +391,56 @@ class Command(BaseCommand):
             plan[stations[-2].id] = "degraded"
         return plan
 
+    def _backfill_cutoff(self, station, today):
+        """Last day this command may write for a real station.
+
+        `station_health` reads the latest reading and the trailing 30 days,
+        and both must stay the INGESTER's answer — a backfill that ran up to
+        yesterday would report a dead station as online. So it stops the day
+        before the archive starts (WIS2 keeps a short window; everything
+        before it is a gap no ingester can ever fill).
+
+        A station with nothing ingested at all has no boundary to respect, so
+        it takes the ordinary yesterday.
+        """
+        first_real = (
+            station.daily_values.filter(is_seeded=False)
+            .order_by("date")
+            .values_list("date", flat=True)
+            .first()
+        )
+        if not first_real:
+            return today - timedelta(days=1)
+        return first_real - timedelta(days=1)
+
     def _observations(self, stations, normals, months, rng):
         today = timezone.now().date()
         start = today - timedelta(days=int(months * 30.44))
-        plan = self._health_plan(stations)
+        plan = self._health_plan(stations) if self.owns_stations else {}
         sat_obs = self._sat_observations()
 
-        StationDailyAggregate.objects.filter(station__in=stations).delete()
+        # is_seeded, not station: re-running must replace this command's own
+        # rows and never an ingested observation.
+        StationDailyAggregate.objects.filter(
+            station__in=stations, is_seeded=True
+        ).delete()
 
         rows = []
+        self.cutoffs = {}
         for station in stations:
-            health = plan[station.id]
-            # Comfortably past OFFLINE_AFTER_DAYS so the status cannot flip
-            # just because the seed ran near midnight.
-            last_day = today - timedelta(
-                days=OFFLINE_AFTER_DAYS * 5 if health == "offline" else 1
-            )
+            health = plan.get(station.id, "online")
+            if self.owns_stations:
+                # Comfortably past OFFLINE_AFTER_DAYS so the status cannot
+                # flip just because the seed ran near midnight.
+                last_day = today - timedelta(
+                    days=OFFLINE_AFTER_DAYS * 5 if health == "offline" else 1
+                )
+            else:
+                last_day = self._backfill_cutoff(station, today)
+            self.cutoffs[station.id] = last_day
+            if last_day < start:
+                # The archive already covers the whole requested window.
+                continue
             for value in self._station_rows(
                 station, normals, sat_obs, start, last_day, health, rng
             ):
@@ -386,6 +503,7 @@ class Command(BaseCommand):
                     value=value,
                     readings_count=readings,
                     expected_count=READINGS_PER_DAY,
+                    is_seeded=True,
                 )
             day += timedelta(days=1)
 
@@ -415,12 +533,33 @@ class Command(BaseCommand):
         counts = {"online": 0, "degraded": 0, "offline": 0}
         for station in stations:
             counts[station_health(station)["status"]] += 1
+        if self.owns_stations:
+            registry = f"created {len(stations)} demo station(s)"
+        else:
+            latest = max(self.cutoffs.values()) if self.cutoffs else None
+            registry = (
+                f"backfilled {len(stations)} existing station(s) up to "
+                f"{latest} — registry untouched, health is the ingester's"
+            )
         self.stdout.write(
             self.style.SUCCESS(
-                f"{len(stations)} station(s), {written} daily row(s). "
+                f"{registry}; {written} daily row(s). "
                 f"Health: {counts['online']} online, "
                 f"{counts['degraded']} degraded, {counts['offline']} offline "
                 f"(thresholds: offline >={OFFLINE_AFTER_DAYS}d stale, "
                 f"degraded <{DEGRADED_COMPLETENESS} completeness)."
             )
         )
+        stale = WeatherStation.objects.filter(
+            metadata_status=DEMO_MARKER
+        ).count()
+        if stale and not self.owns_stations:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"{stale} demo station(s) from an earlier run are still "
+                    f"in the registry, so the ops card counts "
+                    f"{stale + len(stations)} stations where WIS2 publishes "
+                    f"{len(stations)}. Run `generate_weather_seeder --clean` "
+                    f"then re-run this command."
+                )
+            )

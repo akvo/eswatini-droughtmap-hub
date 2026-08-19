@@ -297,6 +297,47 @@ def get_zones_data(group="regions"):
     }
 
 
+def _active_stations_card(
+    label,
+    online,
+    total,
+    online_pct,
+    offline,
+    degraded,
+    scoped_to_region=False,
+):
+    """The ops KPI, with an explicit empty state for "no station here".
+
+    Nulls rather than zeroes when the network is empty: `0/0` and a 0 % ring
+    say "every station is down", which is a different and much more alarming
+    claim than "this region has no station". The frontend renders the dash
+    and hides the ring off these nulls, the way it already does for
+    fieldReports.verifiedPct.
+    """
+    if total:
+        return {
+            "online": online,
+            "total": total,
+            "onlinePct": online_pct,
+            "label": label,
+            "note": f"{offline} Offline  {degraded} Degraded",
+        }
+    return {
+        "online": None,
+        "total": None,
+        "onlinePct": None,
+        "label": label,
+        "note": (
+            "No station in this region"
+            if scoped_to_region
+            else "No weather stations registered"
+        ),
+        "reason": (
+            "no_station_in_region" if scoped_to_region else "no_stations"
+        ),
+    }
+
+
 def get_metrics_data(inkhundla_id=None):
     """Service for GET /api/v1/insights/metrics"""
     now = timezone.now()
@@ -306,12 +347,16 @@ def get_metrics_data(inkhundla_id=None):
     if inkhundla_id:
         admin = Administration.objects.filter(id=inkhundla_id).first()
 
-    # Weather Stations health
+    # Weather Stations health.
+    #
+    # Scoped to the region with NO fallback: falling back to every station
+    # when the region had none put the national figure under a regional label
+    # — Manzini has no station, so its card read "Active stations (Manzini)
+    # 3/4", a number about the whole country presented as being about
+    # Manzini. An absent network is its own state, reported below.
     all_stations = WeatherStation.objects.filter(is_active=True)
     if admin and admin.region:
-        stations_in_region = all_stations.filter(region=admin.region)
-        if stations_in_region.exists():
-            all_stations = stations_in_region
+        all_stations = all_stations.filter(region=admin.region)
 
     total_stations = all_stations.count()
     online_count = 0
@@ -328,9 +373,7 @@ def get_metrics_data(inkhundla_id=None):
             degraded_count += 1
 
     online_pct = (
-        round((online_count / total_stations * 100))
-        if total_stations > 0
-        else 0
+        round((online_count / total_stations * 100)) if total_stations else None
     )
 
     # Field Reports (Kobo 30d). Scoped through the `active_*` readers like
@@ -420,13 +463,15 @@ def get_metrics_data(inkhundla_id=None):
             "label": temp_label,
             "history": temp_history,
         },
-        "activeStations": {
-            "online": online_count,
-            "total": total_stations,
-            "onlinePct": online_pct,
-            "label": station_label,
-            "note": f"{offline_count} Offline  {degraded_count} Degraded",
-        },
+        "activeStations": _active_stations_card(
+            station_label,
+            online_count,
+            total_stations,
+            online_pct,
+            offline_count,
+            degraded_count,
+            scoped_to_region=bool(admin and admin.region),
+        ),
         "fieldReports": {
             "count": kobo_count,
             # Always None: nothing in the data model records whether a

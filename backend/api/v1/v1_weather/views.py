@@ -32,7 +32,6 @@ from api.v1.v1_weather.constants import (
     CS_HISTORY_MAX,
     CS_VALUE_BOUNDS,
     NETWORK,
-    TOTAL_PLANNED_STATIONS,
     UNITS,
     WeatherParameter,
 )
@@ -124,7 +123,6 @@ class WeatherStationListAPI(APIView):
                 "meta": {
                     "source": source.base_url if source else None,
                     "network": NETWORK,
-                    "total_planned": TOTAL_PLANNED_STATIONS,
                 },
             },
             status=status.HTTP_200_OK,

@@ -87,11 +87,14 @@ class InsightsMetricItemSerializer(serializers.Serializer):
 
 
 class InsightsActiveStationsSerializer(serializers.Serializer):
-    online = serializers.IntegerField()
-    total = serializers.IntegerField()
-    onlinePct = serializers.IntegerField()
+    # Nullable, never 0: a region with no station is not a region whose
+    # stations are all offline, and "0/0" reads as the second one.
+    online = serializers.IntegerField(allow_null=True)
+    total = serializers.IntegerField(allow_null=True)
+    onlinePct = serializers.IntegerField(allow_null=True)
     label = serializers.CharField()
     note = serializers.CharField()
+    reason = serializers.CharField(required=False)
 
 
 class InsightsFieldReportsSerializer(serializers.Serializer):

@@ -97,6 +97,10 @@ def ingest_station_observations(client, station, start_date=None) -> int:
                 "value": row["value"],
                 "readings_count": row["readings_count"],
                 "expected_count": EXPECTED_READINGS_PER_DAY,
+                # A real observation for a day the seeder had backfilled
+                # replaces it, marker included — otherwise `--clean weather`
+                # would later delete an ingested row.
+                "is_seeded": False,
                 "updated_at": timezone.now(),
             },
         )

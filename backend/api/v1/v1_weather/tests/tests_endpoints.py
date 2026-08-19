@@ -94,7 +94,6 @@ class WeatherEndpointTests(APITestCase):
         for item in body["data"]:
             self.assertNotIn("meta", item)
         self.assertEqual(body["meta"]["source"], "http://wis2.test")
-        self.assertEqual(body["meta"]["total_planned"], 8)
 
     def test_stations_list_authenticated_includes_health_meta(self):
         self.client.force_authenticate(user=self.reviewer)

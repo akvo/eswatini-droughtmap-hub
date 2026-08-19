@@ -58,6 +58,12 @@ class StationDailyAggregate(models.Model):
     value = models.FloatField(null=True)
     readings_count = models.IntegerField(default=0)
     expected_count = models.IntegerField(default=24)
+    # Backfilled history, not an observation the ingester pulled. The seeder
+    # writes real stations' pre-archive months (the WIS2 archive is short), so
+    # the marker has to live on the row: the station itself is real, and
+    # `--clean weather` must be able to take the fabricated days back out
+    # without touching a single ingested one.
+    is_seeded = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 

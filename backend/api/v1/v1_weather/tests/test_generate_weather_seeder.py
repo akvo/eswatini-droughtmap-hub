@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
 from io import StringIO
 from unittest.mock import patch
@@ -9,6 +9,9 @@ from django.test import TestCase
 
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_weather.constants import StationStatus, WeatherParameter
+from api.v1.v1_weather.management.commands.generate_weather_seeder import (
+    DEMO_SOURCE_URL,
+)
 from api.v1.v1_weather.models import (
     AdministrationNormal,
     AdministrationObservation,
@@ -48,6 +51,9 @@ class GenerateWeatherSeederTestCase(TestCase):
         out = StringIO()
         call_command(
             "generate_weather_seeder",
+            # Explicit now: an empty registry is reported, never filled with
+            # plausible fiction (D-5, 2026-08-19).
+            "--demo-stations",
             "--months",
             MONTHS,
             *extra,
@@ -64,10 +70,34 @@ class GenerateWeatherSeederTestCase(TestCase):
             per_region[station.region] += 1
         self.assertTrue(all(count == 2 for count in per_region.values()))
 
-    def test_creates_a_source_when_none_exists(self):
+    def test_creates_its_own_inactive_source(self):
+        """`is_active=True` selects the ingestion target — a demo row must
+        never be it, or `fetch_weather_observations` walks the real WIS2 API
+        asking for WIGOS ids that exist nowhere."""
         WeatherSource.objects.all().delete()
         self.seed()
-        self.assertTrue(WeatherSource.objects.filter(is_active=True).exists())
+        source = WeatherSource.objects.get()
+        self.assertFalse(source.is_active)
+        self.assertEqual(
+            set(
+                WeatherStation.objects.filter(
+                    metadata_status="demo"
+                ).values_list("source_id", flat=True)
+            ),
+            {source.id},
+        )
+
+    def test_never_adopts_the_real_source(self):
+        real = WeatherSource.objects.create(
+            base_url="http://wis2.real", collection_id="real", is_active=True
+        )
+        self.seed()
+        self.assertEqual(real.stations.count(), 0)
+        self.assertFalse(
+            WeatherSource.objects.filter(
+                is_active=True, base_url=DEMO_SOURCE_URL
+            ).exists()
+        )
 
     def test_health_split_is_deliberate(self):
         """One offline, one degraded, the rest online (DEMO-1 D-5).
@@ -184,9 +214,13 @@ class GenerateWeatherSeederTestCase(TestCase):
 
     def test_clean_removes_only_seeded_rows(self):
         self.seed()
-        source = WeatherSource.objects.first()
+        # On its own source, the way the real sync creates it — --clean drops
+        # the demo source, and that FK cascades.
+        real_source = WeatherSource.objects.create(
+            base_url="http://wis2.real", collection_id="real", is_active=True
+        )
         real = WeatherStation.objects.create(
-            source=source,
+            source=real_source,
             wigos_id="0-20000-0-68391",
             name="Real Station",
             region="Hhohho",
@@ -242,3 +276,126 @@ class GenerateWeatherSeederTestCase(TestCase):
         # And it is the satellite figure, not the ~10-140mm climatology it
         # replaced — the point of D-7.
         self.assertGreater(avg_precip_per_station, 150.0)
+
+
+class SeederRefusesToInventAregistryTestCase(TestCase):
+    """No fake stations by default (partner decision, 2026-08-19).
+
+    A station is a number partners read off the page and compare with the
+    WIS2 map, so an invented one is never harmless.
+    """
+
+    def setUp(self):
+        call_command("generate_administrations_seeder", "--test", True)
+
+    def test_empty_registry_is_reported_not_filled(self):
+        err = StringIO()
+        call_command(
+            "generate_weather_seeder",
+            "--months", 1,
+            stderr=err,
+            stdout=StringIO(),
+        )
+        self.assertEqual(WeatherStation.objects.count(), 0)
+        self.assertEqual(StationDailyAggregate.objects.count(), 0)
+        self.assertIn("fetch_weather_observations", err.getvalue())
+
+    def test_demo_stations_are_available_when_asked_for(self):
+        call_command(
+            "generate_weather_seeder",
+            "--demo-stations",
+            "--months", 1,
+            stdout=StringIO(),
+        )
+        self.assertEqual(
+            WeatherStation.objects.filter(metadata_status="demo").count(), 8
+        )
+
+
+class SeederUsesTheExistingRegistryTestCase(TestCase):
+    """A synced registry is history to fill in, not a thing to duplicate.
+
+    Seeding 8 demo stations beside the 4 WIS2 publishes made the ops card
+    read 9/12 while the WIS2 map read 3/4 for the same network (2026-08-19).
+    """
+
+    def setUp(self):
+        call_command("generate_administrations_seeder", "--test", True)
+        self.source = WeatherSource.objects.create(
+            base_url="http://wis2.real", collection_id="real", is_active=True
+        )
+        self.station = WeatherStation.objects.create(
+            source=self.source,
+            wigos_id="0-20000-0-68391",
+            name="MBABANE",
+            region="Hhohho",
+            latitude=-26.3,
+            longitude=31.1,
+            metadata_status="operational",
+        )
+        self.archive_start = date.today() - timedelta(days=5)
+        for offset in range(5):
+            StationDailyAggregate.objects.create(
+                station=self.station,
+                date=self.archive_start + timedelta(days=offset),
+                parameter=WeatherParameter.precipitation,
+                value=1.0,
+                readings_count=24,
+                expected_count=24,
+            )
+
+    def seed(self):
+        out = StringIO()
+        call_command(
+            "generate_weather_seeder",
+            "--months", MONTHS,
+            "--seed", 42,
+            stdout=out,
+        )
+        return out.getvalue()
+
+    def test_creates_no_stations_when_a_registry_exists(self):
+        output = self.seed()
+        self.assertEqual(WeatherStation.objects.count(), 1)
+        self.assertEqual(
+            WeatherStation.objects.filter(metadata_status="demo").count(), 0
+        )
+        self.assertNotIn(DEMO_SOURCE_URL, output)
+        self.assertIn("backfilled 1 existing station(s)", output)
+
+    def test_backfill_stops_before_the_ingested_archive(self):
+        """station_health must stay the ingester's answer, or the ops card
+        stops matching the WIS2 map."""
+        self.seed()
+        seeded = StationDailyAggregate.objects.filter(is_seeded=True)
+        self.assertTrue(seeded.exists())
+        self.assertEqual(
+            seeded.order_by("-date").first().date,
+            self.archive_start - timedelta(days=1),
+        )
+        self.assertEqual(
+            station_health(self.station)["last_reading"],
+            (self.archive_start + timedelta(days=4)).isoformat(),
+        )
+
+    def test_reseeding_never_touches_an_ingested_row(self):
+        self.seed()
+        self.seed()
+        real = StationDailyAggregate.objects.filter(is_seeded=False)
+        self.assertEqual(real.count(), 5)
+
+    def test_clean_removes_the_backfill_and_keeps_the_station(self):
+        self.seed()
+        call_command("generate_weather_seeder", "--clean", verbosity=0)
+        self.assertEqual(
+            StationDailyAggregate.objects.filter(is_seeded=True).count(), 0
+        )
+        self.assertEqual(
+            StationDailyAggregate.objects.filter(is_seeded=False).count(), 5
+        )
+        self.assertTrue(
+            WeatherStation.objects.filter(pk=self.station.pk).exists()
+        )
+        self.assertTrue(
+            WeatherSource.objects.filter(pk=self.source.pk).exists()
+        )

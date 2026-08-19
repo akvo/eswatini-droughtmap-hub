@@ -87,7 +87,6 @@ COMPLETENESS_WINDOW_MONTHS = 12
 # Ingestion-lag alert threshold (design D-6)
 INGESTION_LAG_ALERT_DAYS = 30
 
-TOTAL_PLANNED_STATIONS = 8
 NETWORK = "MET"
 
 # --- Citizen science (WX-6) ---------------------------------------------
