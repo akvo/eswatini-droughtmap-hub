@@ -340,9 +340,11 @@ is that any reviewer can list every reviewer's email — see §8.
 geometry: stations are regional (8 for 59 Tinkhundla), and WX-10 §11 measured the within-region
 satellite spread at **25–46 mm in April/May and 59.7–135.5 mm in March** against a real
 station-satellite delta of ~0.6 mm median — so a station-anchored number is dominated by which
-Inkhundla you picked. It also fails on the seed: 8 of 12 stations are demo stations **drawn from
-the normals themselves**, so a station-minus-normal delta reads ≈0 by construction and would
-render as "no anomaly" rather than "no data". Option 2 is real but changes the sentence from
+Inkhundla you picked. It also failed on the seed as it stood: 8 of 12 stations were demo stations **drawn from
+the normals themselves**, so a station-minus-normal delta read ≈0 by construction and would
+render as "no anomaly" rather than "no data". *(The seed changed on 2026-08-19 — no demo
+stations by default — but the geometry argument above is the load-bearing one and is
+unaffected.)* Option 2 is real but changes the sentence from
 millimetres to a z-score no reviewer asked for.
 
 Option 3 has neither problem. It is per-Inkhundla on both sides, so no gauge geometry enters;

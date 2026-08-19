@@ -47,6 +47,8 @@ This is the publication-side twin of [`drought-review-queue.md`](drought-review-
 - [ ] The table shows, per Figma: **CREATED AT**, **PREVIEW** (file icon + resource filename + size), **PUBLICATION DATE** (Month YYYY), **STATUS** (colour-coded tag), **ACTIONS** (`Validate` / `Start new publication`, right-aligned link).
 - [ ] Clicking the preview cell still opens the existing embed **Modal** (iframe of the GeoNode `embed_url`).
 - [ ] `Start new publication` routes to `/publications/create?cdi_geonode_id=<pk>`; a row already tied to a publication routes to its detail / validation page — exactly as today.
+
+  > **The "already tied" half only started working on seeded data on 2026-08-19.** The join is `PublicationGeonode.geonode_id == Publication.cdi_geonode_id`, and seeded publications used to be minted in a reserved `900000+` id range with no matching cache row — so every seeded month rendered `Not yet started` + `Start new publication` here while `/validations` showed the same month with 3/3 completed reviews. Clicking through would have created a *second* publication for a month that already had one. Seeded rows now bind to the real asset for their month; see [cdi-publication-backend.md](cdi-publication-backend.md) §4 and demo-data-seeder D-2. Nothing on this page changed — the contract was always right, the data was not.
 - [ ] Pagination sits centered at the bottom of the card; `Previous / Next` behave as the Figma shows.
 - [ ] `FeedbackSection` is centered within the `max-w-[1280px]` frame, matching `/validations`.
 

@@ -74,7 +74,7 @@ Goal:
 - [ ] An anonymous visitor lands on `/` and sees, without signing in: the bulletin bar, a national **status badge + headline + summary**, the **zone breakdown**, the **metric cards**, the **drought map**, **priority actions**, CTA, about, and footer — all populated from mock data.
 - [ ] The **zone breakdown** shows 4 cards, each with a drought-class badge, a Worsening/Stable/Improving trend chip **derived from the zone's history** (multiple past periods), a donut showing that zone's **per-Inkhundla D-class distribution** (segments differ per zone), and a confidence score in the donut center; a `Regions ⇄ Climatic zones` toggle switches the grouping.
 - [ ] The **drought map** shows an Eswatini choropleth coloured by Inkhundla drought class, with layer tabs, a date "Compare to" control, hover tooltips, zoom, and a legend.
-- [ ] The **metric cards** show Rainfall vs 30-yr normal, Temperature vs 30-yr normal, Active stations (n/N), and Field reports (count + % verified).
+- [ ] The **metric cards** show Rainfall vs 30-yr normal, Temperature vs 30-yr normal, Active stations (n/N), and Field reports (count + % verified). *(Since 2026-08-19: with an Inkhundla selected, Active stations counts that region's stations only and renders "No station in this region" where there are none — it never borrows the national figure. Contract in [national-overview-backend-v1-insights.md](national-overview-backend-v1-insights.md).)*
 - [ ] **Priority adaptation actions** shows the 4 sectors with per-sector activity/Tinkhundla counts and action cards, plus an "Open priority areas page" link.
 - [ ] Layout is responsive (single column on mobile, two-column map block on desktop) and colours use the official USDM `DROUGHT_CATEGORY_COLOR`.
 
@@ -209,7 +209,11 @@ Equivalent future backend responses can be split across endpoints, for example:
 > `legend` is intentionally **not** part of the response. Drought labels and colours come from `frontend/src/static/config.js` (`DROUGHT_CATEGORY_LABEL`, `DROUGHT_CATEGORY_COLOR`). The doughnut ring is coloured by `DROUGHT_CATEGORY_COLOR[category]`; `breakdownsData.data[].data` counts drive segment sizes and **vary per zone**. `zonesData.value`, `zonesData.confidence`, and `breakdownsData` come from the **latest** map; `trendsData.data[].data` is the **history window**.
 
 ```json
-// Future metrics response
+// Future metrics response — DESIGN-PHASE SKETCH, superseded.
+// The served contract is in national-overview-backend-v1-insights.md §5:
+// `awaitingQc` and `verifier` were never built, `verifiedPct` is null because
+// nothing records verification, and activeStations carries `label`/`note` plus
+// a null-with-`reason` empty state. Numbers here are illustrative only.
 {
   "rainfall":       { "value": -58, "unit": "mm", "note": "2-month cumulative, vs 30-yr normal" },
   "temperature":    { "value": 1.4, "unit": "°C", "note": "May mean Tmax anomaly vs 30-yr normal, all stations" },

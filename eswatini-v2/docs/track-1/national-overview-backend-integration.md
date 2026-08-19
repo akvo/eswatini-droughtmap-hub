@@ -168,8 +168,14 @@ the service can change.
 
 > `rainfall.value` / `temperature.value` are placeholders fixed at `0`. With
 > `?inkhundla_id=`, labels and notes gain an ` ({Inkhundla name})` suffix and the
-> station/Kobo queries narrow, falling back to national figures when the narrower
-> query returns nothing.
+> station/Kobo queries narrow.
+>
+> **No national fallback (revised 2026-08-19).** A narrowed query that returns
+> nothing is reported as nothing: `activeStations` comes back with `online`,
+> `total` and `onlinePct` all `null`, `note` `"No station in this region"` and
+> `reason` `"no_station_in_region"`. Rendering `0/0` or the national `3/4`
+> under a regional label were both wrong in the same way — the card claimed
+> something about a region it had no data for.
 
 ### `GET /api/v1/insights/response-activities`
 ```json

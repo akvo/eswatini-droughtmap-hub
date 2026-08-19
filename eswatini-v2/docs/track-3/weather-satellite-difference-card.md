@@ -412,11 +412,21 @@ than an edge case.
 **Decision**: Option 2 — real data even in the seed (product principle,
 confirmed 2026-08-10).
 
-**Rationale**: found the hard way (§12). 8 of the 12 stations in the current
-database are `metadata_status="demo"` with WIGOS ids in the reserved
+**Rationale**: found the hard way (§12). 8 of the 12 stations in the database
+*at the time* were `metadata_status="demo"` with WIGOS ids in the reserved
 `0-999-0-9` block, and the seeder's own docstring states that values are "drawn
 around the REAL 30-year normals in AdministrationNormal (D-16)". Demo stations
-therefore report climatology **by construction**. Comparing them against a real
+therefore report climatology **by construction**.
+
+> **Since 2026-08-19 the premise is narrower, and the decision still holds.**
+> `generate_weather_seeder` no longer invents a registry: it backfills onto the
+> stations WIS2 published and needs `--demo-stations` to create any of its own
+> (demo-data-seeder D-5). So the artifact this decision was written about now
+> only reaches the months *before* the WIS2 archive starts — the recent months
+> the card actually compares are ingested gauge readings. D-7 still applies to
+> those pre-archive months, and it is now enforced by order rather than by
+> hope: `seed_demo` runs `fetch_chirps_observations` **before** the weather
+> seeder (see the §12 note below). Comparing them against a real
 CHIRPS month that was ~2× normal produced an apparent bias of **mean −33.3 mm,
 min −198.6 mm** across 224 rows — entirely an artifact of the seed.
 
@@ -661,6 +671,19 @@ and 2 in June. Ungated, the card would read **−47.1 mm** for May. → D-6.
 
 ## 12. Current State (local dev database, verified 2026-08-10)
 
+> **Superseded 2026-08-19 — read this box first.** Both consequences below are
+> fixed, and by the orchestrator rather than by remembering:
+> - `seed_demo` now runs `fetch_chirps_observations` itself (12-month window,
+>   narrowed to the months with no rows) **before** `generate_weather_seeder`,
+>   so D-7 is active by construction and the observations table is no longer
+>   empty after a seed.
+> - The demo-station premise is gone by default: the seeder backfills onto the
+>   real registry and `seed_demo` runs `fetch_weather_observations` to bring it
+>   in. A local database now holds the 4 operational stations, not 8 demo ones.
+>
+> The counts in the table below are kept as the record of what §11's probe was
+> measured against.
+
 Read this before testing the feature or trusting a screenshot. These are counts
 from the **local Docker database**, not an assertion about staging or
 production — check those separately before drawing conclusions there.
@@ -682,6 +705,8 @@ Two consequences that look like bugs but are not:
    so the seeded data still carries the climatology artifact §11 measured
    (spurious mean −33.3 mm). Running `fetch_chirps_observations` **before** the
    seeder is what activates D-7, and nothing enforces that order yet.
+   *(Enforced 2026-08-19: it is a `seed_demo` stage, ordered before the weather
+   seeder for exactly this reason.)*
 
 The §11 probe numbers stand as evidence for D-5/D-6/D-7 — they were measured on
 real gauges and real CHIRPS — but they can no longer be reproduced in this

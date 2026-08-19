@@ -193,7 +193,29 @@ Its fields are a superset of `CDIGeonodeListSerializer`, so the list serializer 
 
 The cache is populated by two writers, never by a read:
 - **Steady state** — the pipeline push (`POST /geonode/publications`) after each monthly upload (D-4).
-- **History / recovery** — the `sync_publication_geonodes` backfill command, run manually, which is the *only* place that walks GeoNode (§3).
+- **History / recovery** — the `sync_publication_geonodes` backfill command, still the *only* place that walks GeoNode (§3). Run by hand, and since 2026-08-19 also by `seed_demo` — but **only when the CDI cache is empty**, because a publication now binds to the GeoNode asset for its month and a fresh volume otherwise seeds stand-in ids (see the note below). Refreshing a populated cache stays manual.
+
+> **`year_month` is normalised to first-of-month on write (2026-08-19).**
+> GeoNode's resource `date` is a full date and the backfill stored it verbatim,
+> while every reader looks the row up as `year_month=<YYYY-MM>-01` —
+> `cached_geonode_id` for the publication binding, `cached_component_resource`
+> for the component attach. A resource dated the 31st was invisible to both: 2
+> of 317 cached CDI rows in the dev catalogue, unattachable, with nothing in
+> the logs beyond the ordinary "no resource for this month".
+> `PublicationGeonode.save()` now normalises for all three writers; rows
+> written before that need the one-off `0011_normalise_geonode_year_month`
+> backfill (see demo-data-seeder §7 — the file is currently missing from the
+> tree).
+
+> **The seeder binds to this cache (2026-08-19).** `generate_publications_seeder`
+> sets `cdi_geonode_id` from `cached_geonode_id(category, period)` whatever its
+> value source is, so a demo publication points at the real asset for its month
+> and the list joins it. Only a month with no cached asset gets a stand-in id
+> (`DEMO_GEONODE_ID_BASE + months_since_2000`) plus a matching
+> `PublicationGeonode` row flagged `raw.demo = true`, so the join always
+> resolves. Rows are marked `Publication.is_seeded`, which is also what
+> `seed_demo --clean` scopes to — a synced cache row is never deleted, since it
+> describes an asset that still exists. Background: demo-data-seeder D-2/D-9.
 
 ---
 
@@ -302,7 +324,7 @@ Constant-time compare; `default-secret-key` is a dev default and **must be overr
 
 ### Seeder / CLI
 - [ ] New `sync_publication_geonodes` command (backfill + manual refresh; rows-only, never creates/publishes a Publication — WX-3 D-7 guard).
-- [ ] `publications_seeder` unaffected; can optionally read the cache instead of GeoNode later (out of scope).
+- [x] `publications_seeder` **does** read the cache now (`--source auto` tries path → cache → geonode → synthetic, and every source binds `cdi_geonode_id` to the cached asset for the month). Superseded the "out of scope" note above on 2026-08-19; the rows-only guard on `sync_publication_geonodes` is unchanged.
 
 ---
 

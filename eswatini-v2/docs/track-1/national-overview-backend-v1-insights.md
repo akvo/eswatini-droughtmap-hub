@@ -254,6 +254,17 @@ zone chip, and `TREND.unknown` renders `– NO TREND DATA`
     "label": "Active stations",
     "note": "5 Offline  2 Degraded"
   },
+  // With ?inkhundla_id= for a region that has no station (revised
+  // 2026-08-19). Counts are null, never 0: "0/0" and an empty ring say every
+  // station is down, which is a different claim. The card previously fell
+  // back to the NATIONAL figures here, so Manzini — which has no station —
+  // read "Active stations (Manzini) 3/4".
+  // "activeStations": {
+  //   "online": null, "total": null, "onlinePct": null,
+  //   "label": "Active stations (Manzini)",
+  //   "note": "No station in this region",
+  //   "reason": "no_station_in_region"    // or "no_stations" nationally
+  // },
   "fieldReports": {
     "count": 142,
     "verifiedPct": 100,
@@ -267,14 +278,26 @@ zone chip, and `TREND.unknown` renders `– NO TREND DATA`
 > the logic notes below. Everything else on this endpoint is real.
 
 **Query param**: `?inkhundla_id={id}` (optional, added by TRACK1-NAT-001). When
-set, station health filters to the Inkhundla's region and KoboData filters on the
-Inkhundla name, each falling back to the national figure when that narrower
-query returns nothing. The labels/notes are suffixed with the Inkhundla name.
+set, station health filters to the Inkhundla's region and field reports filter
+through `IKSValue.administration`. The labels/notes are suffixed with the
+Inkhundla name.
+
+> **Neither narrowing falls back to the national figure any more.** Both did
+> once, and both lied in the same way: a national number under a regional
+> label. Field reports lost the fallback when the Kobo attribution moved to the
+> `IKSValue.administration` join; station health lost it on 2026-08-19, after
+> Manzini — which has no station — rendered `Active stations (Manzini) 3/4`.
+> An empty scope is now its own answer, not a wider one.
 
 **Logic** (as implemented in `get_metrics_data()`):
-- `activeStations`: real — `WeatherStation.objects.filter(is_active=True)` scored
+- `activeStations`: real — `WeatherStation.objects.filter(is_active=True)`,
+  narrowed to `region=` the Inkhundla's region when one is selected, scored
   through `station_health()` in `v1_weather/services.py`. `note` is
-  `"{offline} Offline  {degraded} Degraded"`.
+  `"{offline} Offline  {degraded} Degraded"`. When the scope holds no station,
+  `online` / `total` / `onlinePct` are **null** — never `0`, which claims every
+  station is down — with `note` `"No station in this region"` and `reason`
+  `"no_station_in_region"` (`"no_stations"` nationally). The frontend renders a
+  dash and hides the ring off those nulls.
 - `fieldReports.count`: real — `KoboData.objects.filter(submission_time__gte=30_days_ago).count()`.
   `verifiedPct` is a constant `100` (OQ-3).
 - `rainfall.value` / `temperature.value`: **NOT IMPLEMENTED**. Both are

@@ -257,6 +257,18 @@ the catalogue-by-category discovery pattern.
 drift risk. Matching rule: GeoNode resource `category.identifier` → indicator, resource
 `date` (YYYY-MM) → `Publication.year_month`.
 
+**The month is the key, so the day must not be part of it (added 2026-08-19).**
+GeoNode's `date` is a full date and `sync_publication_geonodes` stored it verbatim,
+while every reader — `cached_component_resource` here, `cached_geonode_id` for the
+publication binding — looks the row up as `year_month=<YYYY-MM>-01`. A resource dated
+the 31st was therefore invisible to both: 2 of 317 cached CDI rows in the dev
+catalogue, silently unattachable, with nothing in the logs beyond the ordinary "no
+resource for this month". `PublicationGeonode.save()` now normalises `year_month` to
+first-of-month for all three writers (pipeline push, sync command, seeder). Rows
+written *before* that need the one-off `0011_normalise_geonode_year_month`
+backfill — see the migration note in
+[demo-data-seeder.md](demo-data-seeder.md) §7.
+
 **Impact**: `publications_seeder` is extended (it "needs improvement" anyway — see
 Work Plan B6): after creating/finding a publication, it also queries the component
 categories for the same month, creates missing `PublicationRaster` rows and queues

@@ -25,7 +25,7 @@ flag, and synthetic values became the last resort instead of the only option:
 | `path` | Extract from a local GeoTIFF archive, synchronously. Real values, no GeoNode, no worker. |
 | `geonode` | The production path (delegates to existing code; needs credentials + worker). |
 | `synthetic` | Offline fallback, anchored on real committed data where possible. |
-| `auto` | path → geonode → synthetic |
+| `auto` | path → **cache** → geonode → synthetic (`cache` = the `PublicationGeonode` rows, same data as `geonode` but no catalogue walk) |
 
 **2. One command per table, not one per data source.** The plan kept
 `fake_publications_seeder` and `fake_published_maps_seeder` and added flags.
@@ -49,9 +49,23 @@ python manage.py seed_demo --clean[=publications,rasters,weather,iks,
 # individually
 python manage.py generate_publications_seeder --source path --path ... --with-reviews
 python manage.py generate_rasters_seeder      --source path --path ...
-python manage.py generate_weather_seeder      --months 24
+python manage.py generate_weather_seeder      --months 24   # backfills onto the
+                                                            # REAL registry
 python manage.py generate_iks_seeder          --months 24
 ```
+
+**Four real ingesters run as stages too** (added 2026-08-19), so a demo box is
+one command rather than one command plus four things to remember:
+`sync_publication_geonodes` (only when the CDI cache is empty),
+`fetch_chirps_observations`, `fetch_chirps_monthly` and
+`fetch_weather_observations`. They are the only stages that leave the machine;
+each is reported and non-fatal, and all four are skipped under the test
+runner. Order and rationale in D-3.
+
+**No fake weather stations** (partner decision, same date). The registry is
+never invented: `generate_weather_seeder --demo-stations` is the opt-in
+escape hatch for a box that cannot reach WIS2, and `seed_demo` never passes
+it. See D-5.
 
 `./storage` is already a persistent volume in both the dev compose file and
 self-hosted, so a local archive needs no new docker configuration — copy it
@@ -87,7 +101,7 @@ anticipated by the plan at all — see D-17.
 |---------|--------|
 | Publications / component rasters | 24 months + 96 rasters, extracted from the real archive |
 | `insights/metrics` | rain −8.7 mm, temp −0.3 °C, 12 consecutive calendar months |
-| Weather stations | 8 stations, 34,986 dailies, **6 online / 1 degraded / 1 offline** |
+| Weather stations | 8 stations, 34,986 dailies, **6 online / 1 degraded / 1 offline** — superseded 2026-08-19: the default is now the REAL registry (4 stations, health from the ingester), and the 8 seeded ones need `--demo-stations`. See D-5. |
 | Rainfall shape | 80 % dry days, monthly totals tracking CHIRPS normals |
 | `tmin < tmean < tmax` | 0 violations of 730 |
 | IKS | 573 submissions, 5,482 values, photos serving 200 / `image/jpeg` |
@@ -186,7 +200,12 @@ Goal:
 - Not a replacement for the real ingesters. `sync_weather_stations`,
   `fetch_weather_observations`, `download_iks_data` and
   `sync_publication_geonodes` stay exactly as they are and remain the
-  production path.
+  production path. **Revised 2026-08-19**: `seed_demo` now *calls* four of
+  them — `sync_publication_geonodes` (empty cache only),
+  `fetch_chirps_observations`, `fetch_chirps_monthly` and
+  `fetch_weather_observations` — unchanged and with their own arguments,
+  because the alternative was inventing the data they fetch. Calling a real
+  ingester is the opposite of replacing it; see D-3.
 - Not seeding Track 2 (review/validation) workflow state beyond what
   `fake_publications_seeder` already creates.
 - No new frontend mock files. Everything is served by the real API.
@@ -195,8 +214,16 @@ Goal:
 
 ## 3. Data Model Changes
 
-**None.** No new models, no migrations. This is the central constraint: every
-page in scope is already backed by a model, and the gap is rows, not schema.
+**None at design time.** No new models: every page in scope is already backed
+by one, and the gap is rows, not schema.
+
+> **Two marker columns were added on 2026-08-19**, after seeded rows started
+> binding to real assets and real stations and the old "reserved id range"
+> convention stopped being able to identify them:
+> `Publication.is_seeded` (`0010`) and `StationDailyAggregate.is_seeded`
+> (`v1_weather.0007`). Both additive, both default `False`, and a third
+> migration (`0011`) normalises `PublicationGeonode.year_month` to
+> first-of-month. See §7 and D-9.
 
 ### Coverage matrix — what feeds each page, and what is missing today
 
@@ -207,8 +234,8 @@ page in scope is already backed by a model, and the gap is rows, not schema.
 | `Publication` (+`Review`) | hero, zones, map, CDI strip, risk level | `fake_publications_seeder`, `fake_published_maps_seeder` | ⚠️ `--test` gives 2 hardcoded 2020 maps only | **A** |
 | `PublicationGeonode` | publication list/detail geodata | `sync_publication_geonodes` | ❌ GeoNode | **A** |
 | `PublicationRaster.values` | CDI-E component charts | `attach_component_rasters` | ❌ GeoNode download + extraction | **B** |
-| `WeatherStation` | metrics `activeStations`, weather explorer | `sync_weather_stations` | ❌ WIS2 | **C** |
-| `StationDailyAggregate` | station health, weather series/stats | `fetch_weather_observations` | ❌ WIS2 | **C** |
+| `WeatherStation` | metrics `activeStations`, weather explorer | `sync_weather_stations` | ❌ WIS2 | **none as of 2026-08-19** — the registry is never seeded, `seed_demo` runs `fetch_weather_observations` (D-5) |
+| `StationDailyAggregate` | station health, weather series/stats | `fetch_weather_observations` | ❌ WIS2 | **C**, but only for months BEFORE the WIS2 archive; recent days stay the ingester's (D-5) |
 | `AdministrationNormal` | weather normals overlay | `extract_weather_normals` | ✅ rasters in `./source/30years` | none (reuse) |
 | `CitizenScienceReading` | weather explorer CS block | `fake_citizen_weather_seeder` | ✅ | none (reuse) |
 | `KoboForm`/`KoboData`/`IKSIndicator`/`IKSValue` | IKS explorer + metrics field reports | `kobo_seeder` (creds only), `download_iks_data` | ❌ Kobo API | **D** |
@@ -304,10 +331,36 @@ months*, so 2020 data renders an empty strip). Generalising that existing
 escape hatch into `--offline --months N` is a smaller diff than a parallel
 command, and it keeps one definition of how a Publication is constructed.
 
-**Impact**: `--offline` synthesises `cdi_geonode_id` from a fixed high base
-(e.g. `900000 + month_index`) so it can never collide with a real GeoNode pk,
-and writes a matching `PublicationGeonode` cache row (raw payload flagged
-`{"demo": true}`) so publication list/detail render without `sync_publication_geonodes`.
+**Impact**: a seeded publication points at the **real** GeoNode asset for its
+month — `cached_geonode_id(category, period)` — whatever source produced its
+values. Only a month with no cached asset at all falls back to a stand-in id
+(`DEMO_GEONODE_ID_BASE + months_since_2000`, derived from the month so a
+later run over a different range cannot re-point it), and that fallback
+writes the matching `PublicationGeonode` row (raw flagged `{"demo": true}`)
+so publication list/detail render without `sync_publication_geonodes`.
+
+**Revised 2026-08-19.** The original wording minted a stand-in id
+*unconditionally* and the matching cache row was never written, which broke
+the CDI publication list: it is `PublicationGeonode` joined to `Publication`
+on `geonode_id == cdi_geonode_id`, so every seeded month showed as "Not yet
+started" with a "Start new publication" action while `/validations` showed
+the same month with 3/3 completed reviews. Two pages, opposite claims, one
+database. Clicking through would have created a **second** publication for a
+month that already had one.
+
+Seeding no longer marks rows by id range at all — see D-9.
+
+`--source path` exists because GeoNode falls over under load, but that is a
+statement about the **raster host**, not about the catalogue we already have
+cached: a locally-extracted month still belongs to the GeoNode asset for that
+month, and the cache can say which one without a single request. The archive
+filename carries the period (`step_0303_cdi_pct_rank_eswatini_202607` →
+`2026-07`, parsed by `raster_archive.scan_raster_archive`), and that period is
+the lookup key. The month is matched on the indexed `year_month` column rather
+than by re-parsing the cached title, so the binding does not depend on the
+pipeline's filename convention holding forever — see
+[publication-raster-extraction.md](publication-raster-extraction.md) for why
+that column had to be normalised to first-of-month before it could be trusted.
 
 ---
 
@@ -323,21 +376,74 @@ if a stage's precondition is unmet.
 4. generate_indicators_seeder               # risk inputs from ./source/csv
 5. generate_eligibility_seeder              # eligibility counts
 6. generate_activity_seeder                 # ResponseActivity + triggers
+6b. sync_publication_geonodes               # network; ONLY when the CDI cache
+                                            #   is empty. (7) binds each
+                                            #   publication to the GeoNode
+                                            #   asset for its month, so the
+                                            #   catalogue must be cached first
 7. generate_publications_seeder             # Publication + Review (one command)
 8. generate_rasters_seeder                  # NEW - needs publications (7)
-9. extract_weather_normals                  # existing; needs ./source/30years
-10. generate_weather_seeder                 # NEW - needs Administration.region
-                                            #   AND the normals from (9), which
-                                            #   are its value baseline (D-16)
-11. fake_citizen_weather_seeder             # existing; needs observers + admins
-12. generate_iks_seeder                    # NEW - needs Administration
-13. generate_config                         # frontend config.js
+9.  extract_weather_normals                 # existing; needs ./source/30years
+10. fetch_chirps_observations               # network; explicit 12-month range,
+                                            #   NOT its own default (which
+                                            #   starts at the earliest station
+                                            #   reading — not written yet)
+11. fetch_chirps_monthly                    # network; defaults to the latest
+                                            #   PUBLISHED month, so it needs (7)
+11b. fetch_weather_observations             # network; brings the REAL station
+                                            #   registry + recent readings in
+12. generate_weather_seeder                 # NEW - backfills history onto the
+                                            #   stations from (11b); needs the
+                                            #   normals from (9) as its value
+                                            #   baseline (D-16) and the
+                                            #   satellite rain from (10) where
+                                            #   it exists (D-7)
+13. fake_citizen_weather_seeder             # existing; needs observers + admins
+14. generate_iks_seeder                     # NEW - needs Administration
+15. generate_config                         # frontend config.js
 ```
 
 **Rationale**: `insights/response-activities` evaluates activity triggers
 against `Indicator` *and* the latest published `Publication` — seeded in the
 wrong order it silently reports 0 triggered Tinkhundla, which looks like a UI
-bug rather than a seeding bug. Same for `risk-levels`, which returns
+bug rather than a seeding bug.
+
+**Step 6b closes the gap the orchestrator used to only warn about.** It
+previously printed "run `sync_publication_geonodes` first to seed from real
+metadata" and carried on — naming its own prerequisite instead of satisfying
+it. On a fresh volume that hint is easy to miss and expensive to miss: the
+publication stage falls back to a stand-in id per month, and when the real
+assets are synced later, every seeded month appears TWICE on the CDI
+publication list — once as the stub its publication points at, once as the
+real asset still offering "Start new publication" (D-2). It runs **only when
+the CDI cache is empty**, because it is ~25 catalogue requests against the
+GeoNode that falls over under load — the reason `--source path` exists at all.
+Refreshing a populated cache stays a manual `sync_publication_geonodes`.
+
+*Race analysis (2026-08-19)*: none that blocks this. Concurrent writers to
+`PublicationGeonode` (this command, the pipeline push, the seeder's stub) all
+go through `update_or_create`, which Django 4.2 wraps in `transaction.atomic`
++ `select_for_update()`, so they serialise per row and both copy the same
+upstream resource — last-writer-wins is a no-op. The one real race is
+inherent to the command and predates this change: it walks offset pages
+sorted `-date`, so a resource uploaded mid-walk shifts every later row and one
+gets skipped. Self-healing — the pipeline's own push writes that row, and the
+next sync catches it.
+
+**Steps 10-11 are the only ones that reach the internet on purpose**
+(data.chc.ucsb.edu, added 2026-08-19 — they were previously left to
+`job.sh precipitation` and to whoever remembered). They are stages like any
+other, so an offline box gets two loud failure lines and a database that is
+complete apart from the satellite layers: the Precipitation tab's choropleth
+(step 11 writes the clipped GeoTIFF + sidecar the map reads) and the
+satellite-difference card / "CHIRPS observed" series (step 10 writes
+`AdministrationObservation`). Both are cheap by construction rather than by
+flag — step 11 skips a month already on disk, and step 10 is capped at the
+12-month explorer window instead of the full seeded history AND narrowed to
+start at the first month with no `AdministrationObservation` rows, so
+re-seeding normally downloads one month rather than twelve. Neither runs
+under the test runner; both commands refuse to, and `seed_demo` skips them
+before they can be counted as failures. Same for `risk-levels`, which returns
 `{"data": []}` outright when no published publication exists.
 
 **Impact**: `seed_demo` prints each stage and its row delta, so a partial
@@ -366,6 +472,13 @@ seeded random walk, clamped to [0, 1].
 series instead of white noise. Values stay in 0–1 so the `PCT_RANK_UNITS`
 contract holds.
 
+**`geonode_id` follows the same binding as the publication (2026-08-19).** The
+row takes the cached `{indicator}-raster-map` asset for its month when GeoNode
+has one, and a stand-in derived from the publication only when it does not —
+so a seeded component row names the asset it is standing in for, the way
+`attach_component_rasters` would have. `--clean rasters` scopes on
+`publication__is_seeded`, not on an id range (D-9).
+
 ---
 
 ### D-5: Faked weather data must reproduce the *health* distribution, not just the values
@@ -373,6 +486,12 @@ contract holds.
 **Decision**: `generate_weather_seeder` seeds 8 stations (2 per region — see the
 2026-07-15 partner decision that stations are per region, not per Inkhundla)
 and deliberately produces a mixed health picture:
+
+> **Revised 2026-08-19 — the registry is never invented by default.**
+> The command backfills history onto the stations WIS2 published and creates
+> none of its own; an empty registry is *reported*, not filled. The 8 demo
+> stations below are what `--demo-stations` produces on a box that cannot
+> reach WIS2 at all. See "Real registry first" after the table.
 
 | Stations | Shape of `StationDailyAggregate` | `station_health` verdict |
 |----------|----------------------------------|--------------------------|
@@ -386,7 +505,57 @@ and deliberately produces a mixed health picture:
 the offline/degraded copy in the metric card note is never exercised — the
 demo would hide a whole branch of the UI. The three-way split is the point.
 
-**Impact**: Metric card reads `6 of 8 online (75%) — 1 Offline 1 Degraded`.
+**The seeded stations hang off their own `WeatherSource`** — `base_url
+https://demo.invalid/oapi`, `is_active=False` — never the configured WIS2 row
+(revised 2026-08-19). `_source()` used to adopt the first active source,
+which put demo stations into `source.stations`: `fetch_weather_observations`
+then queried the live WIS2 API for WIGOS ids in the reserved `0-999-0-9`
+block that exist nowhere upstream, and `--clean weather` was one queryset
+away from deleting the real registry. `is_active=True` is what selects the
+ingestion target, so a demo row must never carry it.
+
+#### Real registry first
+
+The original rule seeded 8 stations unconditionally. Once a dev box had also
+synced WIS2, the ops card counted `9 of 12 online` while the WIS2 map for the
+same network read `3 of 4` — one network, two numbers, and nothing on the page
+to say which was real. A partner cannot be asked to hold that distinction in
+their head.
+
+| Registry state | What the seeder does | Card |
+|---|---|---|
+| Stations synced from WIS2 | Creates nothing; backfills daily rows onto the real stations | Whatever the ingester says — `3 of 4` |
+| Empty | Refuses, naming `fetch_weather_observations` | — |
+| Empty, `--demo-stations` | Creates 8 demo stations, applies the health split below | `6 of 8 online` |
+
+**There is no fake station by default (partner decision, 2026-08-19).** The
+count is a number partners read off the page and compare against the WIS2
+map, so an invented station is never harmless — `9 of 12` beside a published
+`3 of 4` is not a demo, it is a contradiction with no way for the reader to
+tell which is true. `seed_demo` therefore runs `fetch_weather_observations`
+first and never passes `--demo-stations`: on a box with no WIS2 reachability
+the weather stages fail loudly and the explorer is empty, which is the honest
+outcome.
+
+Two rules keep the backfill honest:
+
+1. **It stops before the archive.** `_backfill_cutoff` writes up to the day
+   *before* each station's earliest ingested reading. `station_health` reads
+   the latest reading and the trailing 30 days, so a backfill that ran to
+   yesterday would report a dead station as online. Only the months WIS2's
+   short archive can never cover get filled.
+2. **The rows carry the marker, not the station.**
+   `StationDailyAggregate.is_seeded` — the station is real, so `--clean
+   weather` has to be able to remove the fabricated days and nothing else.
+   `ingest_station_observations` sets it back to `False` whenever a real
+   observation lands on a day that had been backfilled.
+
+The deliberate offline/degraded split applies **only** to stations the command
+created. Forcing a synthetic status onto a real station is the same
+contradiction in a different place.
+
+**Impact**: Metric card reads `6 of 8 online (75%) — 1 Offline 1 Degraded`
+on an offline box.
 Seeded values are monthly-seasonal (wet Oct–Mar, dry Apr–Sep) so the weather
 explorer's 12-month precipitation series is not flat.
 
@@ -627,12 +796,19 @@ default.
 #### Trap 1 — a fixed `--to` silently kills the station-health demo
 
 `station_health` compares `last_reading` against `timezone.now()` with
-`OFFLINE_AFTER_DAYS = 2` (`v1_weather/constants.py:67-69`). Seed weather up to
-2026-02 while today is 2026-08 and **all 8 stations read `offline`** — the
-metric card shows `0 of 8 online`, and D-5's deliberate online/degraded/offline
+`OFFLINE_AFTER_DAYS = 2` (`v1_weather/constants.py`). Seed weather up to
+2026-02 while today is 2026-08 and **every station reads `offline`** — the
+metric card shows `0 of N online`, and D-5's deliberate online/degraded/offline
 split is destroyed. Station health is a function of the wall clock, so weather
 observations must always run to ~today regardless of `--to`. Hence the separate
 `--weather-months`.
+
+*Since 2026-08-19 this bites in one direction only.* Against the real registry
+the seeder writes nothing inside the health window at all — it stops the day
+before each station's earliest ingested reading — so the card is whatever the
+ingester last saw. The trap is now specific to `--demo-stations`, where the
+seeded rows ARE the health picture. It also explains the state a stale demo
+box lands in: seeded on Thursday, read on the following Wednesday, `0 of 8`.
 
 #### Trap 2 — the row-count asymmetry is ~1000×
 
@@ -641,8 +817,9 @@ At the defaults this is comfortable:
 ```
 Publication                 24 rows
 PublicationRaster           24 x 4 indicators    =      96 rows
-StationDailyAggregate       8 stations x 4 params x ~730 days
-                                                 =  ~23,400 rows
+StationDailyAggregate       N stations x 4 params x ~730 days
+                            (N = 4 real, or 8 with --demo-stations)
+                                                 =  ~11,700-23,400 rows
 ```
 
 The asymmetry only bites if someone points `--weather-months` at a long
@@ -700,8 +877,8 @@ behaviour). Setting it earlier opts into the manual-workflow demo.
 - D-3's ordering is unchanged.
 - D-7 (deliberate gaps) still applies *within* the published range.
 - D-9's `--clean` is range-independent — it deletes by marker, not by date.
-- The demo `cdi_geonode_id` convention (`900000 + month_index`) comfortably
-  covers 313 months (900000–900312).
+- `cdi_geonode_id` is the real GeoNode asset's pk wherever one is cached; the
+  stand-in base covers 313 months (900000–900312) for months that have none.
 
 ---
 
@@ -897,7 +1074,7 @@ The schema settles it: `administration_id` is the join key throughout —
 `AdministrationNormal`, `Indicator`, `CitizenScienceReading`, `IKSValue` and
 the entries inside `Publication.validated_values` are all keyed by it, and
 `WeatherStation` is the sole model in this chain that is not (it carries a
-`region` string). Averaging over the 8 stations would:
+`region` string). Averaging over the stations would:
 
 - introduce a second key space for exactly one card;
 - silently weight by station rather than by Inkhundla, so a region with two
@@ -1013,14 +1190,29 @@ Reused as-is — the seeder introduces no new vocabulary.
 | Station status | `StationStatus.{online,degraded,offline}` | computed, never stored |
 | Publication status | `PublicationStatus.{in_review,validated,published}` | int |
 | Activity sector | `ActivitySector.{wash,food,env,health}` | int, mapped in `v1_insights.services.SECTOR_MAP` |
-| Demo GeoNode id | *new convention* | `900000 + month_index` (never collides with real pks) |
+| Seeded-row marker | `Publication.is_seeded` | `true` on every row a seeder created |
+| Stand-in GeoNode id | `DEMO_GEONODE_ID_BASE` | `900000 + months_since_2000`, only when the month has no cached asset |
 
 ---
 
 ## 7. Compatibility & Migration
 
 ### Backward Compatibility
-- [ ] No migrations, so no rollback plan is needed beyond `DELETE`.
+- [x] Three migrations, all reversible:
+  - `0010_publication_is_seeded` — additive, defaults `False`, so existing
+    rows read as real. It replaces the reserved-id convention, which could
+    not survive seeded publications binding to real GeoNode assets (D-2).
+  - `0011_normalise_geonode_year_month` — moves cached rows stored on the
+    resource's exact date to first-of-month, the key every reader uses.
+    Reverse is a no-op: the original day is not recoverable and nothing
+    reads it. **⚠ Not in the tree as of this writing** — the file was deleted
+    locally after being applied once. New writes are normalised by
+    `PublicationGeonode.save()` regardless, so a fresh database is correct;
+    an environment whose cache predates 2026-08-19 still needs this backfill.
+    Restore before deploying there.
+  - `v1_weather.0007_stationdailyaggregate_is_seeded` — additive, defaults
+    `False`, so every existing row reads as ingested. Required by the
+    backfill-onto-real-stations rule in D-5.
 - [ ] Production ingesters untouched; `--offline` is opt-in and defaults off.
 - [ ] Existing API consumers unaffected — no serializer or endpoint changes.
 - [ ] `fake_published_maps_seeder --test` keeps its current behaviour.
@@ -1082,9 +1274,9 @@ python manage.py seed_demo --clean --seed 42        # clean, then reseed
 
 | Family | Parent deleted | Cascades away |
 |--------|----------------|---------------|
-| `publications` | `Publication` (**hard**) | `Review`, `ValidationDecision`, `PublicationRaster`; plus `PublicationGeonode` (no FK — deleted explicitly) |
+| `publications` | `Publication` where `is_seeded=True` (**hard**) | `Review`, `ValidationDecision`, `PublicationRaster`; plus the **stand-in** `PublicationGeonode` rows (`raw.demo=true`, no FK — deleted explicitly). A row synced from GeoNode describes an asset that still exists and is never deleted. |
 | `rasters` | `PublicationRaster` | — (subset of `publications`, for re-extracting without re-seeding months) |
-| `weather` | `WeatherSource` | `WeatherStation` → `StationDailyAggregate` |
+| `weather` | `StationDailyAggregate` where `is_seeded=True`, plus the demo `WeatherStation`s and their `WeatherSource` | A synced station and every ingested row on it survive |
 | `iks` | `KoboForm` | `KoboData`, `IKSIndicator` → `IKSValue` |
 | `citizen-science` | `CitizenScienceReading` | — |
 | `activities` | `ResponseActivity` (**hard**) | `ActivitySignOff`, `ActivityHistory` |
@@ -1107,7 +1299,7 @@ Never touched by any family: `Administration`, `SystemUser`, roles/abilities,
 
 **Options Considered**
 1. **Marker-scoped** — delete only rows carrying a demo marker
-   (`cdi_geonode_id >= 900000`, `WeatherStation.metadata_status="demo"`,
+   (`Publication.is_seeded=True`, `WeatherStation.metadata_status="demo"`,
    the demo `KoboForm.uuid`, `Indicator.is_placeholder=True`).
 2. **Family-scoped** — delete the whole family regardless of origin.
 

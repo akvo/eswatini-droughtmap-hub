@@ -246,7 +246,8 @@ shipped meanwhile.
 > `station_satellite_difference`, `precipitation_last_month`,
 > `precipitation_12m`, `completeness_12m`. `/series` also gained
 > `precipitation_satellite_monthly`. Note the satellite card renders its empty
-> state everywhere until `fetch_chirps_observations` is run (WX-10 §12).
+> state everywhere until `fetch_chirps_observations` is run (WX-10 §12) — a
+> `seed_demo` stage since 2026-08-19, so a seeded database has it.
 
 ---
 

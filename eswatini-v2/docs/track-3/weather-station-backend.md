@@ -38,7 +38,10 @@ Goal:
 ```
 
 **Confirmed decisions carried in** (see requirements doc §9):
-per-region coverage, 8 stations, "No data available" fallback · daily midnight fetch,
+per-region coverage, 8 stations *(the PLANNED rollout — WIS2 publishes 4 today;
+the hardcoded `TOTAL_PLANNED_STATIONS = 8` that asserted this on
+`GET /weather/stations` was removed on 2026-08-19, see the integration
+report)*, "No data available" fallback · daily midnight fetch,
 no MQTT · daily aggregates only, no raw hourly table · 30-yr normals & SPI-3 out of
 scope (frontend placeholder) · satellite comparison is a separate feature (its data
 foundation is WX-3).
@@ -127,6 +130,13 @@ class StationDailyAggregate(models.Model):
     value = models.FloatField(null=True)
     readings_count = models.IntegerField(default=0)   # hourly reports received
     expected_count = models.IntegerField(default=24)  # completeness = count/expected
+    # Added 2026-08-19 (migration v1_weather.0007). Backfilled history, not an
+    # ingested observation: the demo seeder fills the months BEFORE the WIS2
+    # archive on real stations, so the marker has to live on the row rather
+    # than the station. `ingest_station_observations` sets it back to False
+    # when a real reading lands on a day that had been backfilled, and
+    # `seed_demo --clean weather` deletes only the rows carrying it.
+    is_seeded = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 
@@ -186,7 +196,7 @@ Validated drafts built from real data: `eswatini-v2/data/weather_api_contracts/*
                "completeness_30d": 0.96}
     }
   ],
-  "meta": {"source": "http://<WIS2_HOST>", "network": "MET", "total_planned": 8}
+  "meta": {"source": "http://<WIS2_HOST>", "network": "MET"}
 }
 
 // GET /api/v1/weather/administrations/2042786/latest

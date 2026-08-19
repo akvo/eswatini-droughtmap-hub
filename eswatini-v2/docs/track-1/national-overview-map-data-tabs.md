@@ -361,6 +361,8 @@ Two mechanics make or break it: Leaflet paints siblings in document order, so a 
 
 `--year-month` is a **flag**, matching `--from` / `--category` / `--publish-through`. `job.sh precipitation` runs it **daily**: CHIRPS lags the month end by weeks, so a monthly run firing early would wait a month to retry; an already-stored month costs one file-existence check, and an unpublished month exits `0`.
 
+Since 2026-08-19 `seed_demo` runs it too, as a stage after publications — it defaults to the latest *published* month, which is the month the Precipitation tab opens on, so a seeded database has the raster its default view needs instead of an empty tab and a command to remember. Same idempotence: an already-stored month is a file-existence check. See [demo-data-seeder.md](../track-3/demo-data-seeder.md) D-3.
+
 ---
 
 ## 8. Security Considerations

@@ -24,6 +24,8 @@ Yes. **~260 KB of raw JSON per night (~24 KB gzipped on the wire)** as the netwo
 
 Rundeck calls `./job.sh weather`, which dispatches to the `fetch_weather_observations` management command. The command's fan-out is fully determined by two things: the count of active `WeatherStation` rows, and the fixed `WIS2_PARAMETERS` list.
 
+> Since 2026-08-19 `seed_demo` runs this same command as a stage, unchanged and with no arguments — the demo seeder backfills history onto the stations WIS2 publishes and invents none, so it needs the registry this command brings in. One more caller, same fan-out, and it is the numbers below that bound the cost of a seed run.
+
 ```
 ./job.sh weather
   └─ manage.py fetch_weather_observations [--from YYYY-MM-DD]
@@ -53,7 +55,12 @@ From `WIS2_PARAMETERS` in `backend/api/v1/v1_weather/constants.py`:
 
 ### The 4 stations pulled
 
-Live from the `stations` collection on 2026-08-10 (`numberMatched: 4`) — against `TOTAL_PLANNED_STATIONS = 8`:
+Live from the `stations` collection on 2026-08-10 (`numberMatched: 4`):
+
+> `TOTAL_PLANNED_STATIONS = 8` was removed on 2026-08-19. It was a hardcoded
+> guess at the network size, served as `meta.total_planned` on
+> `GET /weather/stations`, and it contradicted the registry it sat next to —
+> the source publishes 4. The endpoint now reports only what exists.
 
 | WIGOS id | Name |
 |---|---|
@@ -189,7 +196,7 @@ Nothing in this report suggests a sizing problem. At the 8-station ceiling the j
 | Path | Role |
 |---|---|
 | `backend/api/v1/v1_weather/client.py` | `Wis2Client` — OGC API Features client. Offset pagination (`PAGE_SIZE = 1000`, `MAX_PAGES = 200`), the ordered `(name, wigos_station_identifier)` filter tuples, per-feature filter verification and dedupe. **This is where every byte counted here is fetched.** |
-| `backend/api/v1/v1_weather/constants.py` | `WIS2_PARAMETERS` (the 6), `WIS2_MEAN_PARAMETERS`, `EXPECTED_READINGS_PER_DAY = 24`, `TOTAL_PLANNED_STATIONS = 8`, `INGESTION_LAG_ALERT_DAYS = 30`, health thresholds |
+| `backend/api/v1/v1_weather/constants.py` | `WIS2_PARAMETERS` (the 6), `WIS2_MEAN_PARAMETERS`, `EXPECTED_READINGS_PER_DAY = 24`, `INGESTION_LAG_ALERT_DAYS = 30`, health thresholds |
 | `backend/api/v1/v1_weather/services.py` | `sync_stations`, `ingest_station_observations` (the parameter loop + `update_or_create` upsert), `station_health`, `monthly_series` |
 | `backend/api/v1/v1_weather/aggregation.py` | `aggregate_daily` — hourly features → daily rows. Precipitation sum with 24 h fallback, tmean/tmax/tmin merge, mean parameters |
 | `backend/api/v1/v1_weather/models.py` | `WeatherSource`, `WeatherStation`, `StationDailyAggregate` (unique on station+date+parameter — what makes the job idempotent), `CitizenScienceReading`, `AdministrationNormal` |
