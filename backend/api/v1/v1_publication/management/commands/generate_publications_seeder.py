@@ -25,6 +25,13 @@ When the catalogue is unreachable, `geonode` creates nothing (or creates rows
 with empty initial_values) and the failure surfaces pages away as an empty
 review queue, which is a genuinely confusing thing to debug.
 
+Whatever the source, the publication it creates points at the GeoNode asset
+for its month: `cached_geonode_id` first, and only a month with no asset at
+all gets a stand-in id plus the matching `PublicationGeonode` row to go with
+it. That link is what the CDI publication list joins on, so a seeded month
+shows its real status there instead of offering "Start new publication" for a
+publication that already exists (D-2).
+
 Component rasters are a separate command, generate_rasters_seeder, which owns
 PublicationRaster and offers the same source ladder.
 """
@@ -45,13 +52,14 @@ from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
     GEONODE_REQUEST_TIMEOUT,
     CDIGeonodeCategory,
+    DEMO_GEONODE_ID_BASE,
     PublicationStatus,
-    SEEDED_PUBLICATION_GEONODE_BASE,
 )
 from api.v1.v1_publication.models import Publication, PublicationGeonode
 from api.v1.v1_publication.raster_archive import scan_raster_archive
 from api.v1.v1_publication.utils import (
     attach_component_rasters,
+    cached_geonode_id,
     geonode_auth,
     get_category,
     has_active_cdi_download,
@@ -235,6 +243,34 @@ class Command(BaseCommand):
             return PublicationStatus.in_validation
         return status
 
+    def _geonode_id_for(self, period, category=CDIGeonodeCategory.cdi):
+        """The GeoNode asset id this month's publication belongs to.
+
+        Real cached asset when there is one. Otherwise a stand-in id derived
+        from the month itself — never from a loop index, which re-points an
+        existing stub at a different month as soon as a run covers a
+        different range — plus the `PublicationGeonode` row that makes it
+        resolvable.
+        """
+        geonode_id = cached_geonode_id(category, period)
+        if geonode_id:
+            return geonode_id
+
+        year, month = (int(part) for part in period.split("-"))
+        geonode_id = DEMO_GEONODE_ID_BASE + (year - 2000) * 12 + (month - 1)
+        PublicationGeonode.objects.update_or_create(
+            geonode_id=geonode_id,
+            defaults={
+                "category": category,
+                "title": f"demo_cdi_pct_rank_eswatini_{year}{month:02d}",
+                "year_month": f"{period}-01",
+                # The marker for a stand-in row, so --clean can drop it
+                # without touching a real synced resource.
+                "raw": {"demo": True},
+            },
+        )
+        return geonode_id
+
     def _finalise(self, publication, start_date):
         if publication.status == PublicationStatus.published:
             publish_seeded(publication, self.fake, self.rng)
@@ -248,17 +284,12 @@ class Command(BaseCommand):
         repeat = kwargs["repeat"]
         administration_ids = topojson_administration_ids()
 
-        geonode_ids = (
-            TEST_GEONODE_IDS
-            if kwargs["test"]
-            else [
-                SEEDED_PUBLICATION_GEONODE_BASE + i
-                for i in range(repeat * 2)
-            ]
-        )[: repeat * 2]
+        # Offline fixture mode keeps its two hardcoded ids, and with them its
+        # historical two-publication shape.
+        months = len(TEST_GEONODE_IDS) if kwargs["test"] else repeat * 2
 
         current = datetime(datetime.now().year, datetime.now().month, 1)
-        for index, geonode_id in enumerate(geonode_ids):
+        for index in range(months):
             last_day = monthrange(current.year, current.month)[1]
             due_date = datetime(current.year, current.month, last_day)
             previous = due_date - relativedelta(months=1)
@@ -266,6 +297,11 @@ class Command(BaseCommand):
             current -= relativedelta(months=1)
 
             period = previous.strftime("%Y-%m")
+            geonode_id = (
+                TEST_GEONODE_IDS[index]
+                if kwargs["test"]
+                else self._geonode_id_for(period)
+            )
             publication = Publication.objects.filter(
                 cdi_geonode_id=geonode_id
             ).first()
@@ -276,10 +312,11 @@ class Command(BaseCommand):
                     initial_values=seed_values(administration_ids, self.rng),
                     status=self._status_for(index, status, repeat, period),
                     due_date=due_date,
+                    is_seeded=True,
                 )
             self._finalise(publication, start_date)
 
-        self.stdout.write(f"Synthetic: {len(geonode_ids)} publication(s).")
+        self.stdout.write(f"Synthetic: {months} publication(s).")
 
     # --- local raster archive --------------------------------------------
 
@@ -322,7 +359,7 @@ class Command(BaseCommand):
             ]
 
             publication, _ = Publication.objects.get_or_create(
-                cdi_geonode_id=SEEDED_PUBLICATION_GEONODE_BASE + index,
+                cdi_geonode_id=self._geonode_id_for(period),
                 defaults={
                     "year_month": f"{period}-01",
                     "initial_values": values,
@@ -330,6 +367,7 @@ class Command(BaseCommand):
                         index, status, repeat, period
                     ),
                     "due_date": due_date,
+                    "is_seeded": True,
                 },
             )
             self._finalise(publication, start_date)
@@ -517,6 +555,7 @@ class Command(BaseCommand):
             initial_values=[],
             due_date=due_date,
             status=PublicationStatus.published,
+            is_seeded=True,
         )
         self.queue_cdi_download(publication, resource)
         if category == CDIGeonodeCategory.cdi:

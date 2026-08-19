@@ -36,7 +36,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from api.v1.v1_publication.constants import (
-    SEEDED_RASTER_GEONODE_BASE,
+    DEMO_RASTER_GEONODE_ID_BASE,
     PublicationStatus,
     RasterIndicatorTypes,
 )
@@ -52,6 +52,7 @@ from api.v1.v1_publication.raster_archive import (
 from api.v1.v1_publication.utils import (
     COMPONENT_RASTER_CATEGORIES,
     attach_component_rasters,
+    cached_geonode_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -359,18 +360,31 @@ class Command(BaseCommand):
 
     # --- shared write -----------------------------------------------------
 
+    def _geonode_id_for(self, publication, indicator):
+        """The component asset this row is about.
+
+        The real cached one for this indicator/month when GeoNode has it —
+        the same binding the CDI publication itself now uses — and otherwise
+        a stand-in derived from the publication, so re-runs stay stable
+        rather than churning the column with a new id every pass.
+        """
+        geonode_id = cached_geonode_id(
+            f"{indicator}-raster-map", publication.year_month.strftime("%Y-%m")
+        )
+        if geonode_id:
+            return geonode_id
+        return (
+            DEMO_RASTER_GEONODE_ID_BASE
+            + publication.id * len(INDICATORS)
+            + INDICATORS.index(indicator)
+        )
+
     def _write(self, publication, indicator, values, filepath=None):
         PublicationRaster.objects.update_or_create(
             publication=publication,
             indicator=indicator,
             defaults={
-                # Derived from the publication so re-runs are stable rather
-                # than churning the column with a new id every pass.
-                "geonode_id": (
-                    SEEDED_RASTER_GEONODE_BASE
-                    + publication.id * len(INDICATORS)
-                    + INDICATORS.index(indicator)
-                ),
+                "geonode_id": self._geonode_id_for(publication, indicator),
                 "values": values,
                 "extracted_at": timezone.now(),
             },

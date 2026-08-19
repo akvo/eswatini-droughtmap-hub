@@ -169,6 +169,24 @@ def cached_component_resource(category: str, target_month: str):
     return {"pk": row["geonode_id"], "download_url": row["download_url"]}
 
 
+def cached_geonode_id(category: str, target_month: str):
+    """pk of the cached GeoNode asset for this category/month, or None.
+
+    Deliberately looser than `cached_component_resource`: this answers "which
+    asset is this month's publication about", which a row with no
+    download_url still answers perfectly well. Requiring one would mint a
+    stand-in id for a month the list page already shows, putting two rows for
+    the same month on it.
+    """
+    return (
+        PublicationGeonode.objects.filter(
+            category=category, year_month=f"{target_month}-01"
+        )
+        .values_list("geonode_id", flat=True)
+        .first()
+    )
+
+
 def find_component_resource(category: str, target_month: str):
     # Cache before network: same data, and only one of the two can time out.
     cached = cached_component_resource(category, target_month)

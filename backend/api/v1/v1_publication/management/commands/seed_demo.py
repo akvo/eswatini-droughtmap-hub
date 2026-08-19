@@ -10,7 +10,14 @@ rather than a preference (D-3). Two links that fail silently when wrong:
     AND the latest published Publication; seeded out of order it reports 0
     triggered Tinkhundla, which reads as a UI bug rather than a seeding one.
   - generate_weather_seeder draws its values from AdministrationNormal, so
-    extract_weather_normals has to run BEFORE it (D-16).
+    extract_weather_normals has to run BEFORE it (D-16) — and from
+    AdministrationObservation where the satellite has a real figure for the
+    month, so fetch_chirps_observations belongs before it too (D-7).
+  - fetch_chirps_monthly defaults to the latest PUBLISHED month, so it has
+    nothing to fetch until the publication stage has run.
+  - generate_weather_seeder backfills history onto the stations WIS2
+    publishes and invents none, so fetch_weather_observations has to bring
+    the registry in first (D-5).
 
 Lives in v1_publication because that app owns Administration, the root every
 other seeder joins to.
@@ -18,12 +25,12 @@ other seeder joins to.
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_indicators.models import Indicator
 from api.v1.v1_publication.constants import (
-    SEEDED_PUBLICATION_GEONODE_BASE,
-    SEEDED_RASTER_GEONODE_BASE,
+    CDIGeonodeCategory,
     PublicationStatus,
 )
 from api.v1.v1_publication.models import (
@@ -33,12 +40,20 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_weather.models import (
     AdministrationNormal,
+    AdministrationObservation,
     CitizenScienceReading,
     StationDailyAggregate,
 )
+from api.v1.v1_weather.constants import WeatherParameter
+from utils.periods import month_range, month_start, shift_period
 
 DEFAULT_MONTHS = 24
 DEFAULT_WEATHER_MONTHS = 24
+
+# Months of CHIRPS per-Inkhundla observations to pull. 12, not --months: this
+# is one ~4 MB download plus a 59-polygon zonal extraction per month, and the
+# explorer charts and the satellite-difference card both window into 12.
+CHIRPS_OBSERVATION_MONTHS = 12
 
 # Months before which --to is far enough in the past that the CDI-E strip —
 # anchored on the CURRENT month, never on the latest published one — renders
@@ -47,37 +62,43 @@ CDI_STRIP_MONTHS = 12
 
 
 def _clean_publications():
-    """Publication + everything CASCADEd off it, plus the GeoNode cache.
+    """Publication + everything CASCADEd off it, plus its stand-in GeoNode
+    rows.
+
+    Scoped by `is_seeded`, the marker the seeders write. A seeded publication
+    now points at the REAL GeoNode asset for its month wherever one is cached
+    (D-2), so its id says nothing about where it came from — the old
+    `cdi_geonode_id >= 900000` scope would spare exactly the rows this is
+    supposed to remove.
+
+    Only the stand-in `PublicationGeonode` rows go with it: a row synced from
+    GeoNode describes an asset that still exists, and deleting it would take
+    the publication list's entry for a real month with it.
 
     hard=True is mandatory: Publication is SoftDeletes, so a plain delete only
     stamps deleted_at, leaves Review/ValidationDecision/PublicationRaster
     orphaned, AND leaves the unique cdi_geonode_id in place — which then blocks
     re-seeding that same month (D-9).
     """
-    queryset = Publication.objects.filter(
-        cdi_geonode_id__gte=SEEDED_PUBLICATION_GEONODE_BASE
-    )
+    queryset = Publication.objects.filter(is_seeded=True)
     count = queryset.count()
     queryset.delete(hard=True)
-    PublicationGeonode.objects.filter(
-        geonode_id__gte=SEEDED_PUBLICATION_GEONODE_BASE
-    ).delete()
+    PublicationGeonode.objects.filter(raw__demo=True).delete()
     return count
 
 
 def _clean_rasters():
-    queryset = PublicationRaster.objects.filter(
-        geonode_id__gte=SEEDED_RASTER_GEONODE_BASE
-    )
+    queryset = PublicationRaster.objects.filter(publication__is_seeded=True)
     count = queryset.count()
     queryset.delete()
     return count
 
 
 def _clean_weather():
-    count = StationDailyAggregate.objects.filter(
-        station__metadata_status="demo"
-    ).count()
+    # Counted by marker, not by station: the seeder backfills history onto the
+    # REAL stations when the registry has been synced, so most seeded rows can
+    # sit on a station that must survive the clean.
+    count = StationDailyAggregate.objects.filter(is_seeded=True).count()
     call_command("generate_weather_seeder", "--clean", verbosity=0)
     return count
 
@@ -155,7 +176,8 @@ class Command(BaseCommand):
             help=(
                 "Months of daily observations. Always ends TODAY regardless "
                 "of --months: station health is computed against the wall "
-                "clock, so a historical end date reads as 0 of 8 online."
+                "clock, so a historical end date reads as every station "
+                "offline."
             ),
         )
         parser.add_argument(
@@ -236,7 +258,6 @@ class Command(BaseCommand):
         path = options["path"]
 
         self._warn_about_stale_window(options)
-        self._report_publication_source(path)
 
         # 1-3: reference data every later stage joins to.
         self.stage("Administrations", "generate_administrations_seeder")
@@ -257,6 +278,11 @@ class Command(BaseCommand):
         self.stage(
             "Response activities", "generate_activity_seeder", "--demo"
         )
+
+        # 6b BEFORE 7: the publication binds to the GeoNode asset for its
+        # month, so the catalogue has to be cached before it is asked.
+        self.geonode_cache_stage()
+        self._report_publication_source(path)
 
         # 7: publications. --repeat is doubled by that command, hence half.
         publication_args = [
@@ -284,10 +310,25 @@ class Command(BaseCommand):
             "Component rasters", "generate_rasters_seeder", *raster_args
         )
 
-        # 9 BEFORE 10: the weather seeder draws its values from the normals.
+        # 9 BEFORE 11: the weather seeder draws its values from the normals.
         self.stage("30-year normals", "extract_weather_normals")
+        # 10 BEFORE 11 too (D-7): with real satellite rain in the database the
+        # seeded station values are drawn around it rather than around the
+        # climatology, so the satellite-difference card compares two numbers
+        # that actually describe the same month.
+        self.chirps_stages(months)
+        # 11 BEFORE 12: the seeder backfills history onto the stations WIS2
+        # publishes and invents none, so the registry has to arrive first.
+        # There is no seeded-station fallback here on purpose — a station is a
+        # number the partner reads off the page and compares with the WIS2
+        # map, and "8 of 12 online" against a published "3 of 4" is not a
+        # demo, it is a contradiction (D-5).
+        self.network_stage(
+            "Weather registry and observations (WIS2)",
+            "fetch_weather_observations",
+        )
         self.stage(
-            "Weather stations and observations", "generate_weather_seeder",
+            "Weather history backfill", "generate_weather_seeder",
             "--months", options["weather_months"], "--seed", seed,
         )
         if not options["skip_users"]:
@@ -303,6 +344,146 @@ class Command(BaseCommand):
 
         self.summary()
 
+    def geonode_cache_stage(self):
+        """Populate the GeoNode catalogue cache, but only if it is empty.
+
+        seed_demo used to print "run sync_publication_geonodes first" and
+        carry on — an orchestrator naming its own prerequisite instead of
+        satisfying it. On a fresh volume that hint is easy to miss, and the
+        cost of missing it is not an empty page: `generate_publications_seeder`
+        falls back to a stand-in id per month, and when the real assets are
+        synced later every seeded month appears TWICE on the CDI publication
+        list, once as the stub the publication points at and once as the real
+        asset still offering "Start new publication" (D-2).
+
+        Only when empty, because this is ~25 catalogue requests across five
+        categories against a GeoNode that falls over under load — the reason
+        `--source path` exists. A cache that already has CDI rows is left
+        alone; refreshing it is still `sync_publication_geonodes` by hand.
+        """
+        if PublicationGeonode.objects.filter(
+            category=CDIGeonodeCategory.cdi
+        ).exists():
+            self.stdout.write(
+                self.style.MIGRATE_HEADING(
+                    "-> GeoNode cache already populated; not re-syncing. "
+                    "Run sync_publication_geonodes to refresh it."
+                )
+            )
+            return
+        if not getattr(settings, "GEONODE_BASE_URL", None):
+            self.stdout.write(
+                self.style.WARNING(
+                    "-> No GEONODE_BASE_URL; skipping the catalogue sync. "
+                    "Seeded publications will carry stand-in GeoNode ids."
+                )
+            )
+            return
+        self.network_stage(
+            "GeoNode catalogue cache", "sync_publication_geonodes"
+        )
+
+    def network_stage(self, label, command, *args):
+        """A stage that leaves the machine, skipped under the test runner.
+
+        `fetch_chirps_*` refuse to run there themselves, which `stage` would
+        then record as a broken stage; `fetch_weather_observations` does not
+        refuse, and would quietly reach WIS2 from a test run. One guard
+        covers both shapes.
+        """
+        if self.skip_network():
+            self.stdout.write(
+                self.style.WARNING(f"-> {label} skipped under the test runner")
+            )
+            return False
+        return self.stage(label, command, *args)
+
+    def chirps_stages(self, months):
+        """The two CHIRPS pulls, so neither has to be remembered separately.
+
+        `stage` already reports a failure without aborting — an offline box
+        gets two loud lines and a database that is complete except for the
+        satellite layers.
+
+        Both are cheap by construction rather than by flag: the raster command
+        skips a month it already has on disk, and the observation range is the
+        12-month explorer window rather than the full seeded history.
+        """
+        if self.skip_network():
+            self.stdout.write(
+                self.style.WARNING(
+                    "-> CHIRPS stages skipped under the test runner"
+                )
+            )
+            return
+
+        to_period = timezone.now().date().strftime("%Y-%m")
+        from_period = shift_period(
+            to_period, -(min(months, CHIRPS_OBSERVATION_MONTHS) - 1)
+        )
+        from_period = self._first_missing_month(from_period, to_period)
+        if from_period is None:
+            self.stdout.write(
+                self.style.MIGRATE_HEADING(
+                    "-> CHIRPS observations already cover the window."
+                )
+            )
+        else:
+            # Explicit range, never the command's default: that default starts
+            # at the earliest station reading, which the weather seeder has
+            # not written yet at this point in the chain.
+            self.network_stage(
+                "CHIRPS observations (per Inkhundla)",
+                "fetch_chirps_observations",
+                "--from", from_period, "--to", to_period,
+            )
+        # No month argument: its default IS the latest published month, which
+        # is the month the Precipitation tab opens on.
+        self.network_stage(
+            "CHIRPS raster (Precipitation tab)", "fetch_chirps_monthly"
+        )
+
+    def _first_missing_month(self, from_period, to_period):
+        """Narrow the download window to what is actually missing.
+
+        Re-seeding is routine, and every month is a ~4.5 MB download plus a
+        59-polygon extraction. Old months never change, so the gap is normally
+        a suffix — the current month always is one, because CHIRPS publishes
+        africa_monthly a few weeks after the month ends.
+
+        Returns None when nothing is missing.
+        """
+        wanted = [
+            month_start(period)
+            for period in month_range(from_period, to_period)
+        ]
+        stored = set(
+            AdministrationObservation.objects.filter(
+                parameter=WeatherParameter.precipitation,
+                year_month__gte=wanted[0],
+                year_month__lte=wanted[-1],
+            ).values_list("year_month", flat=True)
+        )
+        missing = [period for period in wanted if period not in stored]
+        if not missing:
+            return None
+        # From the EARLIEST gap, not each gap separately: the command takes a
+        # range, and re-fetching a month it already has is an upsert.
+        return min(missing).strftime("%Y-%m")
+
+    def skip_network(self) -> bool:
+        """True while the Django test runner is driving this process.
+
+        Imported lazily: `build_chirps_normals` pulls rasterio at module
+        scope, and seed_demo must stay importable on a box without the geo
+        stack (the same reason its raster stages are optional).
+        """
+        from api.v1.v1_weather.management.commands.build_chirps_normals import (  # noqa: E501
+            running_tests,
+        )
+
+        return running_tests()
+
     def _report_publication_source(self, path):
         """Say up front where publication values will come from.
 
@@ -315,9 +496,14 @@ class Command(BaseCommand):
         """
         if path:
             return
-        cached = PublicationGeonode.objects.filter(
-            geonode_id__lt=SEEDED_PUBLICATION_GEONODE_BASE
-        ).count()
+        # Subtraction, not `.exclude(raw__demo=True)`: a JSON key lookup on a
+        # row whose `raw` has no "demo" key evaluates to NULL, and NOT NULL is
+        # not true — so the exclude drops every real row it is meant to count
+        # (383 rows in, 1 out).
+        cached = (
+            PublicationGeonode.objects.count()
+            - PublicationGeonode.objects.filter(raw__demo=True).count()
+        )
         if cached:
             self.stdout.write(
                 self.style.MIGRATE_HEADING(
@@ -375,6 +561,10 @@ class Command(BaseCommand):
             ("Response activities", ResponseActivity.objects.count()),
             ("30-year normals", AdministrationNormal.objects.count()),
             ("Weather daily rows", StationDailyAggregate.objects.count()),
+            (
+                "CHIRPS observations",
+                AdministrationObservation.objects.count(),
+            ),
         ]
         self.stdout.write("")
         for label, count in rows:

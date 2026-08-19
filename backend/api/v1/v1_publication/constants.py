@@ -251,21 +251,18 @@ class RasterIndicatorTypes:
 # There is no mm / °C / m³/m³ anywhere in the CDI explorer.
 PCT_RANK_UNITS = "pct_rank"
 
-# Synthetic GeoNode resource ids for offline seeding.
+# Stand-in GeoNode resource ids, used ONLY when no real asset exists.
 #
-# Publication.cdi_geonode_id and PublicationRaster.geonode_id normally hold a
-# real GeoNode resource pk. The offline seeders have no GeoNode to ask, so they
-# synthesise one from these bases. That does two jobs at once:
-#   1. it cannot collide with a real pk — GeoNode pks here are 3-digit
-#      (4, 44, 106, 198...), and cdi_geonode_id is unique;
-#   2. it MARKS the row as seeded, so `seed_demo --clean` can find seeded data
-#      without adding a column to a production table.
+# Publication.cdi_geonode_id and PublicationRaster.geonode_id hold a real
+# GeoNode resource pk whenever `PublicationGeonode` has one cached for that
+# category and month — which is what ties a seeded publication to the asset
+# the CDI publication list renders. A synthetic month with no asset at all
+# still needs an id, and it comes from these bases: they cannot collide with a
+# real pk (GeoNode pks here are 3-digit: 4, 44, 106, 198...).
 #
-# ponytail: a convention rather than an is_seeded flag. The ceiling is a
-# GeoNode instance that issues a pk above 900000 (~900k resources); add a real
-# boolean column if that ever gets close.
-SEEDED_PUBLICATION_GEONODE_BASE = 900000
-SEEDED_RASTER_GEONODE_BASE = 950000
+# They are NOT a seeded-row marker. `Publication.is_seeded` is.
+DEMO_GEONODE_ID_BASE = 900000
+DEMO_RASTER_GEONODE_ID_BASE = 950000
 
 # Explorer window bounds. 12 = the Figma D-class strip; 120 caps a crafted
 # from/to so it cannot walk the whole publication history.

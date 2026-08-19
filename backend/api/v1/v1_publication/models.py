@@ -68,6 +68,11 @@ class Publication(SoftDeletes):
     narrative = models.TextField(null=True, blank=True)
     bulletin_url = models.URLField(max_length=255, null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
+    # Set by the demo seeders on every row THEY create, and by nothing else.
+    # `cdi_geonode_id` used to carry this meaning through a reserved id range,
+    # which forced seeded rows off the real GeoNode assets and left the CDI
+    # publication list unable to join them (DEMO-1 D-2).
+    is_seeded = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 
@@ -208,7 +213,7 @@ class PublicationGeonode(models.Model):
     geonode_id = models.IntegerField(unique=True)
     category = models.CharField(max_length=50)
     title = models.CharField(max_length=255)
-    # resource `date` stored as first-of-month
+    # resource `date`, normalised to first-of-month by save()
     year_month = models.DateField()
     subtype = models.CharField(max_length=20, default="raster")
     detail_url = models.URLField(max_length=512, null=True, blank=True)
@@ -223,6 +228,26 @@ class PublicationGeonode(models.Model):
     raw = models.JSONField(null=True, blank=True)
     # auto-updated on every cache write
     synced_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Every reader looks this row up by month — `cached_geonode_id`, which
+        # binds a publication to its asset, and `cached_component_resource`,
+        # which attaches the component rasters — and both ask for
+        # `year_month=<YYYY-MM>-01`. GeoNode's resource `date` is a full date,
+        # so a resource dated the 31st was stored as the 31st and no lookup
+        # ever found it: 2 of 317 cached CDI rows, silently unattachable.
+        # Normalising on the way in fixes all three writers at once (the
+        # pipeline push, sync_publication_geonodes, the seeder) instead of
+        # teaching every reader to match a range.
+        # to_python, not isinstance juggling: callers hand this field a date
+        # or an ISO string interchangeably, and the field already knows how to
+        # read both.
+        year_month = self._meta.get_field("year_month").to_python(
+            self.year_month
+        )
+        if year_month and year_month.day != 1:
+            self.year_month = year_month.replace(day=1)
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return f"PublicationGeonode:{self.geonode_id} ({self.year_month})"
