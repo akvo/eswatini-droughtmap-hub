@@ -346,9 +346,20 @@ const DroughtMapSection = ({
                 />
                 <MetricCard
                   label={activeStations.label || "Active stations"}
-                  value={`${activeStations.online ?? 0}/${activeStations.total ?? 0}`}
+                  // total null = no station covers this region. "0/0" with an
+                  // empty ring would read as "every station is down", which is
+                  // a different claim; the note carries the real one.
+                  value={
+                    activeStations.total
+                      ? `${activeStations.online ?? 0}/${activeStations.total}`
+                      : "—"
+                  }
                   note={activeStations.note || ""}
-                  percentage={activeStations.onlinePct ?? 0}
+                  percentage={
+                    activeStations.total
+                      ? (activeStations.onlinePct ?? 0)
+                      : null
+                  }
                 />
                 <MetricCard
                   label={fieldReports.label || "Field reports"}

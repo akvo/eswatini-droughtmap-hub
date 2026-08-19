@@ -9,7 +9,6 @@ import {
 } from "next/navigation";
 import {
   Alert,
-  Avatar,
   Button,
   Checkbox,
   Input,
@@ -20,11 +19,7 @@ import {
   Tooltip,
   message,
 } from "antd";
-import {
-  CalendarOutlined,
-  SearchOutlined,
-  LeftOutlined,
-} from "@ant-design/icons";
+import { CalendarOutlined, SearchOutlined } from "@ant-design/icons";
 import { Can, FeedbackSection, TabButtons } from "@/components";
 import { DroughtScore, MetricCard, ReviewerAvatar } from "@/components/DS";
 import { api } from "@/lib";
@@ -494,7 +489,7 @@ const ValidationDetailPage = () => {
               >
                 Reviewer panel
               </Button> */}
-              <Button type="link" className="edm-reviews-action">
+              <Button onClick={() => router.push("/methodology")}>
                 Methodology
               </Button>
               <Tooltip

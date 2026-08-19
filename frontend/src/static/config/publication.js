@@ -112,7 +112,7 @@ export const EXPORT_FORMAT_OPTIONS = [
 // Character ceiling for the National Overview description written in the
 // publish modal. Counted on the plain text, not the TinyMCE markup — a bold
 // tag is not something the reader sees.
-export const OVERVIEW_NARRATIVE_MAX_CHARS = 1000;
+export const OVERVIEW_NARRATIVE_MAX_CHARS = 550;
 
 export const DEFAULT_CDI_WEIGHTS = {
   lst: 0.3,

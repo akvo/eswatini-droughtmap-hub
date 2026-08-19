@@ -168,7 +168,13 @@ const ReviewQueue = ({
         actions={
           <>
             {/* ponytail: no methodology page exists yet — button is inert by decision. */}
-            <Button>Methodology</Button>
+            <Button
+              onClick={() => {
+                router.push("/methodology");
+              }}
+            >
+              Methodology
+            </Button>
             {!isCompleted && remaining === 0 && (
               <SubmitReviewButton review={review} onSubmitted={refreshAll} />
             )}

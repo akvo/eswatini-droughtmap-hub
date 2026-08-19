@@ -67,7 +67,7 @@ const BriefComponentPanel = () => {
       {/* Table header — fixed 70px in the design, not padding-derived. */}
       <div className="flex h-[70px] shrink-0 items-center border-b border-cardBorder p-4">
         <h2 className="mb-0 text-[20px] font-bold leading-[30px] text-neutral-800">
-          Priority score build-up selection
+          Inkhundla brief builder
         </h2>
       </div>
 
