@@ -7,6 +7,10 @@
 **Date**: 2026-08-05
 **Status**: Implemented
 
+> **Amended 2026-08-20.** Two changes to `generate_activity_seeder`:
+> **(1) Activation runs through `services.apply_transition`** instead of writing `status` straight into `update_or_create`. Seeded active rows now carry `activated_by`, `activated_at`, the version bump and an `ActivityHistory` row — previously the detail panel showed "-" for both activation fields on every seeded row, forever, because nothing else ever writes them. Rows already active are backfilled with a stamp, so existing databases are repaired rather than only fresh ones. Toggling `--demo` off clears the stamp again, since a draft was never activated.
+> **(2) Demo trigger formulas recalibrated** in `source/activity_library.csv`. Preparedness rows gate at `dclass 0` (they fire at any drought level, varied by IPC phase and exposure percentiles); severe-response rows keep `dclass 3/4` and deliberately read 0 until a drought month is published. Against the current no-drought map every sector now fires for a non-zero, varied count (12–59, union 59/59) instead of 0/59 everywhere.
+
 ---
 
 ## 0. As built

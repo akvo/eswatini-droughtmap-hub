@@ -1,10 +1,19 @@
 import csv
 
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
+from api.v1.v1_activity import services
 from api.v1.v1_activity.models import ResponseActivity
 from api.v1.v1_activity.constants import (
-    ActivityStatus, ActivitySector, ActivityResponseType, TriggerOperator)
+    ActivityStatus,
+    ActivitySector,
+    ActivityResponseType,
+    TriggerOperator,
+    ACTIVITY_TRANSITIONS,
+)
+from api.v1.v1_users.constants import UserRoleTypes
+from api.v1.v1_users.models import SystemUser
 
 # Reverse lookups from the human-readable CSV values to DB ints.
 _SECTOR_BY_CODE = {v: k for k, v in ActivitySector.Code.items()}
@@ -100,11 +109,48 @@ class Command(BaseCommand):
             ),
         )
 
+    def _set_status(self, activity, status, actor):
+        """Move a seeded row to its CSV status the way the app would.
+
+        Activation runs through the lifecycle service, so activated_by,
+        activated_at, the version bump and the history row all exist — a
+        seeded active row should be indistinguishable from one an admin
+        activated by hand. Already-there rows are left alone, which keeps
+        re-runs idempotent instead of re-stamping the date every time.
+        """
+        if activity.status == status:
+            # Backfill rows seeded before activation went through the
+            # service: active with no stamp renders as "-" in the detail
+            # panel forever, since nothing else ever writes these fields.
+            if status == ActivityStatus.active and not activity.activated_at:
+                activity.activated_by = actor
+                activity.activated_at = timezone.now()
+                activity.save()
+            return
+
+        if status in ACTIVITY_TRANSITIONS.get(activity.status, []):
+            services.apply_transition(activity, status, actor)
+            return
+
+        # Not a legal forward transition — this is the --demo toggle rolling
+        # active back to draft. Write it directly and drop the activation
+        # stamp, since a draft was never activated.
+        activity.status = status
+        activity.activated_by = None
+        activity.activated_at = None
+        activity.save()
+
     def handle(self, *args, **options):
         demo = options.get("demo", False)
 
         with open("./source/activity_library.csv", newline="") as fh:
             rows = list(csv.DictReader(fh))
+
+        # Whoever signs the activation. Nullable on both models, so a bare
+        # database (no admin seeded yet) degrades to an unattributed stamp
+        # rather than crashing the seeder.
+        actor = SystemUser.objects.filter(
+            role=UserRoleTypes.admin).order_by("id").first()
 
         activated = 0
         for row in rows:
@@ -121,14 +167,13 @@ class Command(BaseCommand):
                 )
                 activated += int(demo)
 
-            ResponseActivity.objects.update_or_create(
+            activity, _ = ResponseActivity.objects.update_or_create(
                 code=code,
                 defaults={
                     "title": row["title"].strip(),
                     "description": (
                         row.get("description") or "").strip() or None,
                     "sector": _SECTOR_BY_CODE[row["sector"].strip()],
-                    "status": status,
                     "owner": (row.get("owner") or "").strip() or None,
                     "coord_with": (row.get("coord_with") or "").strip() or None,
                     "response_type": _RESPONSE_BY_NAME.get(
@@ -137,6 +182,7 @@ class Command(BaseCommand):
                     "triggers": _compose_triggers(row),
                 },
             )
+            self._set_status(activity, status, actor)
 
         if not options.get("test"):
             suffix = (  # pragma: no cover
