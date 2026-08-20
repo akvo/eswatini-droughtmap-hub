@@ -13,4 +13,26 @@ describe("ActivityAddedModal Component", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /ok/i })).toBeInTheDocument();
   });
+
+  it("says updated, not added, in the edit flow", () => {
+    render(<ActivityAddedModal open={true} onClose={jest.fn()} isEdit />);
+
+    expect(screen.getByText("Response activity updated!")).toBeInTheDocument();
+    expect(
+      screen.getByText("Your changes have been saved."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/added/i)).not.toBeInTheDocument();
+  });
+
+  it("lets an explicit subtitle win over the default", () => {
+    render(
+      <ActivityAddedModal
+        open={true}
+        onClose={jest.fn()}
+        subtitle="Activity created as Draft."
+      />,
+    );
+
+    expect(screen.getByText("Activity created as Draft.")).toBeInTheDocument();
+  });
 });

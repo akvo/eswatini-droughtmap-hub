@@ -1,7 +1,19 @@
 import React from "react";
 import { Modal, Button } from "antd";
 
-export default function ActivityAddedModal({ open, onClose, subtitle }) {
+export default function ActivityAddedModal({
+  open,
+  onClose,
+  subtitle,
+  isEdit = false,
+}) {
+  const heading = isEdit
+    ? "Response activity updated!"
+    : "Response activity added!";
+  const defaultSubtitle = isEdit
+    ? "Your changes have been saved."
+    : "Your activity has been added to the system.";
+
   return (
     <Modal
       open={open}
@@ -33,10 +45,10 @@ export default function ActivityAddedModal({ open, onClose, subtitle }) {
 
         <div className="flex flex-col gap-2 z-10">
           <h4 className="text-xl font-medium text-neutral-800 m-0">
-            Response activity added!
+            {heading}
           </h4>
           <p className="text-sm text-neutral-600 leading-relaxed m-0">
-            {subtitle || "Your activity has been added to the system."}
+            {subtitle || defaultSubtitle}
           </p>
         </div>
 
