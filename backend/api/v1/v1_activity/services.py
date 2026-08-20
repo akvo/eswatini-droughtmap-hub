@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 from api.v1.v1_activity.models import ResponseActivity, ActivityHistory
 from api.v1.v1_activity.constants import (
+    ActivityResponseType,
     ActivityStatus,
     ActivitySector,
     TriggerOperator,
@@ -18,6 +19,51 @@ from api.v1.v1_activity.trigger_evaluation import (
 )
 
 _VERSION_RE = re.compile(r"^v(\d+)\.(\d+)$")
+
+
+def published_sector_ids():
+    """Sector ids with at least one ACTIVE PUBLIC activity.
+
+    These are exactly the sectors that render as cards on the National
+    Overview, and therefore exactly the ones the publish modal must collect
+    context for. Defined once so the modal, the overview and the publish
+    validation cannot disagree about the list.
+    """
+    return sorted(
+        set(
+            ResponseActivity.objects.filter(
+                status=ActivityStatus.active,
+                response_type=ActivityResponseType.public,
+            ).values_list("sector", flat=True)
+        )
+    )
+
+
+def triggered_sector_ids():
+    """Sector ids whose activities actually FIRE under the current map.
+
+    A subset of published_sector_ids(): a sector can hold active public
+    activities that trigger nowhere this month, because every one of them
+    gates on a drought class the map does not reach. Those sectors still
+    render a card (with 0 Tinkhundla), but their paragraph is not demanded
+    of the admin — there is nothing to describe.
+
+    Recomputed rather than stored: it depends on the published map, so it
+    changes the moment a new one goes out.
+    """
+    dataset = build_dataset()
+    triggered = set()
+    activities = ResponseActivity.objects.filter(
+        status=ActivityStatus.active,
+        response_type=ActivityResponseType.public,
+    ).exclude(triggers__isnull=True)
+    for act in activities:
+        if act.sector in triggered:
+            continue  # one firing activity is enough for the sector
+        if any(activity_passes(act.triggers, row)
+               for row in dataset.values()):
+            triggered.add(act.sector)
+    return sorted(triggered)
 
 
 def next_code(sector):

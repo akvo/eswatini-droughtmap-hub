@@ -10,6 +10,12 @@
 > `feature/173-track-1-decision-track-national-overview-backend-integration`.
 > Checkboxes below reflect what is actually shipped.
 
+> **Amended 2026-08-20** by [`../track-2/publication-sector-context.md`](../track-2/publication-sector-context.md), in three ways:
+> **(1)** the Response Activities sector cards are no longer the four hardcoded in `SECTOR_MAP` — that constant is deleted and the cards are derived from `ActivitySector`, so every sector holding an active public activity renders (today eight, not four).
+> **(2)** The summary line under-reported: it counted only the four mapped sectors, so it read "8 public response activities" when there were 14. It now counts every sector it renders.
+> **(3)** Each sector item gains an `id` (the `ActivitySector` id) and its `key` changes to the `ActivitySector.Code` slug — `water`→`wash`, `agriculture`→`food`, `environment`→`env` — which aligns the payload with `static/config/sectors.js`. The frontend resolves icons off `id` now, and its second hardcoded `SECTOR_ID` map is gone.
+> The card prose is authored at publish time when supplied, falling back to the previous derived sentence.
+
 ---
 
 ## 1. Context & Problem Statement

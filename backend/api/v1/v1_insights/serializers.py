@@ -112,6 +112,10 @@ class InsightsMetricsSerializer(serializers.Serializer):
 
 
 class InsightsSectorItemSerializer(serializers.Serializer):
+    # ActivitySector id. The frontend resolves icons and colours off this
+    # rather than re-deriving them from `key`, so adding a sector needs no
+    # frontend map (D-3).
+    id = serializers.IntegerField()
     key = serializers.CharField()
     label = serializers.CharField()
     activities = serializers.IntegerField()

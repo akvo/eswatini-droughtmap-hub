@@ -243,16 +243,67 @@ class InsightsAPITests(TestCase):
         self.assertEqual(data["fieldReports"]["count"], 0)
 
     def test_response_activities_endpoint(self):
+        """Sectors are derived from the library, not a hardcoded set.
+
+        The fixture creates one active public activity, in WASH — so exactly
+        one card is returned. The old assertion here expected 4 because
+        SECTOR_MAP hardcoded 4 of the 8 sectors and rendered them whether or
+        not they had activities (publication-sector-context.md D-3, Q1).
+        """
         response = self.client.get("/api/v1/insights/response-activities")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn("sectors", data)
-        self.assertEqual(len(data["sectors"]), 4)
-        wash_sector = next(
-            (s for s in data["sectors"] if s["key"] == "water"), None
-        )
-        self.assertIsNotNone(wash_sector)
+        self.assertEqual(len(data["sectors"]), 1)
+
+        wash_sector = data["sectors"][0]
+        self.assertEqual(wash_sector["id"], ActivitySector.wash)
+        self.assertEqual(wash_sector["key"], "wash")
         self.assertEqual(wash_sector["activities"], 1)
+        # The summary counts every activity it claims to count.
+        self.assertTrue(data["summary"].startswith("1 public response"))
+
+    def test_response_activities_counts_every_sector(self):
+        """A second sector appears as soon as it has an active activity."""
+        ResponseActivity.objects.create(
+            code="ACT-TRANS-9",  # `code` is unique; the fixture's is blank
+            title="Relief routes",
+            description="Keep relief routes passable.",
+            sector=ActivitySector.trans,
+            status=ActivityStatus.active,
+            response_type=ActivityResponseType.public,
+            triggers={"dclass": {"class": 0}},
+        )
+        data = self.client.get(
+            "/api/v1/insights/response-activities").json()
+        self.assertEqual(
+            sorted(s["id"] for s in data["sectors"]),
+            sorted([ActivitySector.wash, ActivitySector.trans]),
+        )
+        self.assertTrue(data["summary"].startswith("2 public response"))
+
+    def test_response_activities_prefers_authored_sector_context(self):
+        """Authored prose wins; a blank entry falls back to the derived
+        sentence (D-1, D-5)."""
+        pub = Publication.objects.filter(
+            status=PublicationStatus.published
+        ).order_by("-year_month", "-id").first()
+        pub.sector_context = {str(ActivitySector.wash): "Authored WASH copy."}
+        pub.save()
+
+        data = self.client.get(
+            "/api/v1/insights/response-activities").json()
+        self.assertEqual(
+            data["sectors"][0]["description"], "Authored WASH copy.")
+
+        pub.sector_context = {str(ActivitySector.wash): "   "}
+        pub.save()
+        data = self.client.get(
+            "/api/v1/insights/response-activities").json()
+        self.assertEqual(
+            data["sectors"][0]["description"],
+            "Water trucking and borehole rehabilitation.",
+        )
 
     def test_map_data_endpoint(self):
         response = self.client.get("/api/v1/insights/map-data")

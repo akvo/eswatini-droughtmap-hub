@@ -30,6 +30,7 @@ from api.v1.v1_activity.constants import (
     ActivityResponseType,
     ActivitySector,
 )
+from api.v1.v1_activity.services import published_sector_ids
 from api.v1.v1_activity.trigger_evaluation import (
     build_dataset,
     activity_passes,
@@ -51,12 +52,11 @@ def _latest_value(series):
     return None
 
 
-SECTOR_MAP = {
-    ActivitySector.wash: ("water", "Water and Sanitation"),
-    ActivitySector.food: ("agriculture", "Agriculture and Food security"),
-    ActivitySector.env: ("environment", "Environment and energy"),
-    ActivitySector.health: ("health", "Health and nutrition"),
-}
+# SECTOR_MAP used to live here, hardcoding 4 of the 8 sectors with their own
+# labels. It silently dropped Education, Coordination, Social Protection and
+# Transport & Logistics from the National Overview, and made the summary line
+# under-report. `ActivitySector` is the single source now — see
+# track-2/publication-sector-context.md D-3.
 
 
 def compute_linear_slope(series):
@@ -506,12 +506,24 @@ def get_response_activities_data():
 
     dataset = build_dataset()
 
-    sectors_list = []
-    total_triggered_activities = 0
+    # Whatever the admin wrote at publish time, keyed by sector id. JSON keys
+    # round-trip as strings, so every lookup below goes through str().
+    authored = (latest_pub.sector_context or {}) if latest_pub else {}
 
-    for sector_code, (sector_key, sector_label) in SECTOR_MAP.items():
-        sec_activities = active_public_activities.filter(sector=sector_code)
-        act_count = sec_activities.count()
+    sectors_list = []
+    total_activities = 0
+
+    # Every sector that HAS an active public activity — not a hardcoded
+    # subset. A sector with nothing active is omitted rather than rendered as
+    # an empty card (D-3, Q1). published_sector_ids() is the same list the
+    # publish modal collects text for and the publish validation enforces, so
+    # the three cannot drift apart.
+    for sector_code in published_sector_ids():
+        sector_label = ActivitySector.FieldStr[sector_code]
+        sec_activities = list(
+            active_public_activities.filter(sector=sector_code)
+        )
+        act_count = len(sec_activities)
 
         # Dynamically calculate triggered Tinkhundla count
         triggered_admin_ids = set()
@@ -526,23 +538,34 @@ def get_response_activities_data():
                         triggered_admin_ids.add(adm_id)
 
         tink_count = len(triggered_admin_ids)
-        total_triggered_activities += act_count
+        total_activities += act_count
 
+        # Authored prose wins. The derived join is the fallback for the rows
+        # published before sector_context existed (D-5) — it concatenates
+        # unrelated activity descriptions and reads like it, which is why the
+        # admin now writes this.
+        derived = (
+            " ".join(descriptions)
+            if descriptions
+            else f"Active response interventions for {sector_label}."
+        )
         sectors_list.append(
             {
-                "key": sector_key,
+                "id": sector_code,
+                "key": ActivitySector.Code[sector_code].lower(),
                 "label": sector_label,
                 "activities": act_count,
                 "tinkhundla": tink_count,
                 "description": (
-                    " ".join(descriptions)
-                    if descriptions
-                    else f"Active response interventions for {sector_label}."
-                ),
+                    authored.get(str(sector_code)) or ""
+                ).strip() or derived,
             }
         )
 
-    summary_str = f"{total_triggered_activities} public response activities currently active across Eswatini."  # noqa
+    summary_str = (
+        f"{total_activities} public response activities "
+        "currently active across Eswatini."
+    )
 
     return {
         "lastUpdated": last_updated_str,
