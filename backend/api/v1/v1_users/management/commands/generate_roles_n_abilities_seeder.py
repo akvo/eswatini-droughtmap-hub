@@ -83,13 +83,9 @@ class Command(BaseCommand):
                         "subject": "Review",
                         "conditions": {"owner": "true"},
                     },
+                    # Reviewers get the Activity Library read-only: they
+                    # consult SOPs while reviewing, they do not author them.
                     {"action": ActionEnum.READ.value, "subject": "Activity"},
-                    {"action": ActionEnum.CREATE.value, "subject": "Activity"},
-                    {
-                        "action": ActionEnum.UPDATE.value,
-                        "subject": "Activity",
-                        "conditions": {"sector": "$own"},
-                    },
                 ],
             },
         ]
@@ -104,14 +100,22 @@ class Command(BaseCommand):
                 }
             ]
         # Seed roles and abilities
+        seeded = []
         for role_data in default_data:
             for ability_data in role_data["abilities"]:
-                Ability.objects.update_or_create(
+                ability, _ = Ability.objects.update_or_create(
                     role=role_data["role"],
                     action=ability_data["action"],
                     subject=ability_data["subject"],
                     defaults={"conditions": ability_data.get("conditions")},
                 )
+                seeded.append(ability.pk)
+
+        # default_data is the whole truth, not a set of additions. Without
+        # this, an ability dropped from the list above lives on forever in
+        # every environment already seeded — a revoked permission that keeps
+        # working.
+        Ability.objects.exclude(pk__in=seeded).delete()
 
         if not settings.TEST_ENV:
             self.stdout.write(  # pragma: no cover
