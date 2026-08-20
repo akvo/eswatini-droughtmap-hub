@@ -97,10 +97,11 @@ class ResponseActivityViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        blocked = (ActivityStatus.active, ActivityStatus.archived)
-        if instance.status in blocked:
+        # Archived is the only frozen state — an active SOP still gets
+        # corrected in place; see track-3/activity-library-detail-edit.md.
+        if instance.status == ActivityStatus.archived:
             return Response(
-                {"message": "Cannot edit an active or archived activity."},
+                {"message": "Cannot edit an archived activity."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return super().update(request, *args, **kwargs)
@@ -171,13 +172,11 @@ class ActivitySourceFileAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def _can_write(self, user, activity):
-        if activity.status != ActivityStatus.draft:
-            return False
-        if user.role == UserRoleTypes.admin:
-            return True
+        # Same rule as ResponseActivityViewSet.update: admin only, and
+        # archived activities are frozen.
         return (
-            user.role == UserRoleTypes.reviewer
-            and user.activity_sector == activity.sector
+            user.role == UserRoleTypes.admin
+            and activity.status != ActivityStatus.archived
         )
 
     @extend_schema(

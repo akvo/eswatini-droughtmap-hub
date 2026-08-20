@@ -78,11 +78,12 @@ export const PUBLIC_MENU_ITEMS = [
     align: "right",
   },
   {
-    // Authenticated-only: hidden until a session is present.
+    // Authenticated-only: hidden until a session is present. Both staff roles
+    // see it — reviewers read SOPs, only admins get the write controls (the
+    // "update Activity" ability, which reviewers do not hold).
     url: "/activity-library",
     label: "Activity Library",
     authenticated: true,
-    is_admin: true,
     align: "right",
   },
   {

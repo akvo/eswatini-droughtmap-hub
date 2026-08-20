@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Spin, message, Modal } from "antd";
 import { api } from "@/lib/api";
-import { useUserContext } from "@/context/UserContextProvider";
-import { ACTIVITY_STATUS, USER_ROLES } from "@/static/config";
+import { ACTIVITY_STATUS } from "@/static/config";
 import Can from "@/components/Can";
 import ActivityDetailContent from "./ActivityDetailContent";
 
@@ -12,7 +11,6 @@ export default function ActivityDetailSlideIn({
   onEdit,
   onRefresh,
 }) {
-  const userContext = useUserContext();
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -116,18 +114,9 @@ export default function ActivityDetailSlideIn({
   const canArchive = allowedTransitions.includes(ACTIVITY_STATUS.archived);
   const canActivate = allowedTransitions.includes(ACTIVITY_STATUS.active);
   const isDraft = status === ACTIVITY_STATUS.draft;
-  const isNotArchived = status !== ACTIVITY_STATUS.archived;
-
-  // Reviewer abilities check (only let review edit drafts in their own sector, admin can do everything)
-  const isAdmin =
-    userContext?.role === "admin" || userContext?.role === USER_ROLES.admin;
-  const canEdit =
-    isDraft &&
-    (isAdmin ||
-      (userContext?.role === "reviewer" &&
-        userContext?.activity_sector === activity.sector));
-
-  if (!activityId) return null;
+  // Archived is the only frozen state — an active SOP still gets corrected in
+  // place. WHO may edit is the <Can> gate's job, not a role literal's.
+  const canEdit = status !== ACTIVITY_STATUS.archived;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -181,27 +170,31 @@ export default function ActivityDetailSlideIn({
 
             <div className="flex items-center gap-3">
               {canArchive && (
-                <Button
-                  onClick={handleArchive}
-                  loading={transitioning}
-                  className="font-medium hover:!border-red-200 hover:!text-red-600"
-                >
-                  Archive
-                </Button>
+                <Can I="update" a="Activity">
+                  <Button
+                    onClick={handleArchive}
+                    loading={transitioning}
+                    className="font-medium hover:!border-red-200 hover:!text-red-600"
+                  >
+                    Archive
+                  </Button>
+                </Can>
               )}
 
               {canActivate && (
-                <Button
-                  type="primary"
-                  onClick={handleActivate}
-                  loading={transitioning}
-                  className="font-medium"
-                >
-                  Set active
-                </Button>
+                <Can I="update" a="Activity">
+                  <Button
+                    type="primary"
+                    onClick={handleActivate}
+                    loading={transitioning}
+                    className="font-medium"
+                  >
+                    Set active
+                  </Button>
+                </Can>
               )}
 
-              {isDraft && canEdit && (
+              {isDraft && (
                 <Can I="update" a="Activity">
                   <Button
                     type="primary"

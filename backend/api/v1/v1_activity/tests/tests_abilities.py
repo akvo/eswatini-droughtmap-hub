@@ -11,6 +11,7 @@ class AbilitiesTestCase(TestCase):
             role=UserRoleTypes.admin, subject="Activity"
         ).values_list("action", flat=True))
         self.assertEqual(admin_actions, {"create", "read", "update", "delete"})
-        reviewer_update = Ability.objects.get(
-            role=UserRoleTypes.reviewer, subject="Activity", action="update")
-        self.assertEqual(reviewer_update.conditions, {"sector": "$own"})
+        reviewer_actions = set(Ability.objects.filter(
+            role=UserRoleTypes.reviewer, subject="Activity"
+        ).values_list("action", flat=True))
+        self.assertEqual(reviewer_actions, {"read"})

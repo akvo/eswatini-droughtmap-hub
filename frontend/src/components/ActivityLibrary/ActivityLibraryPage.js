@@ -40,13 +40,15 @@ export default function ActivityLibraryPage() {
   const [showSlideIn, setShowSlideIn] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successSubtitle, setSuccessSubtitle] = useState("");
+  // Latched at submit time: handleSuccess clears editActivity, so the modal
+  // cannot read it to tell "added" from "updated".
+  const [successIsEdit, setSuccessIsEdit] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // States for activity detail & edit views
   const [selectedActivityId, setSelectedActivityId] = useState(null);
   const [showDetailSlideIn, setShowDetailSlideIn] = useState(false);
   const [editActivity, setEditActivity] = useState(null);
-  const [showEditSlideIn, setShowEditSlideIn] = useState(false);
 
   // Filters state
   const [statusFilter, setStatusFilter] = useState("all");
@@ -75,6 +77,7 @@ export default function ActivityLibraryPage() {
 
   const handleSuccess = (subtitleText = "") => {
     setSuccessSubtitle(subtitleText || "");
+    setSuccessIsEdit(Boolean(editActivity));
     setShowSlideIn(false);
     setEditActivity(null);
     setShowSuccessModal(true);
@@ -250,6 +253,7 @@ export default function ActivityLibraryPage() {
         open={showSuccessModal}
         onClose={handleModalClose}
         subtitle={successSubtitle}
+        isEdit={successIsEdit}
       />
 
       {/* Detail Slide-In */}

@@ -230,7 +230,7 @@ const isNotArchived = activity.status !== ACTIVITY_STATUS.archived;
 
 Footer buttons (right-aligned):
 
-- `Edit` — visible when `isDraft` (and user possesses update ability checked via `<Can I="update" a="Activity">`); navigates to edit wizard
+- `Edit` — visible when the activity is **not archived** (and user possesses update ability checked via `<Can I="update" a="Activity">`); navigates to edit wizard
 - `Archive` — visible when `canArchive`; calls transition API (admin only check via backend)
 - `Save changes as draft` — visible when `isDraft` (and user possesses update ability); same action as Edit (opens wizard)
 
@@ -304,8 +304,8 @@ Footer buttons (right-aligned):
 ## 8. Security Considerations
 
 - [ ] Archive transition enforced server-side: `admin` role only (existing `ActivityTransitionAPI`).
-- [ ] Edit enforced via `CanManageActivity`: active/archived activities return 400 from backend.
-- [ ] Reviewer may only edit drafts in their own sector — enforced by backend; no frontend special-case needed.
+- [x] Edit enforced via `CanManageActivity`: **archived** activities return 400 from backend; active ones are editable in place.
+- [x] Reviewer gets the library **read-only** — `read` is their only Activity ability, and `CanManageActivity` denies every unsafe method to non-admins. All footer controls sit behind `<Can I="update" a="Activity">`, so a reviewer sees an empty footer.
 - [ ] Source file download: `IsAuthenticated` required (existing guard).
 - [ ] No new attack vectors — all mutation uses existing authenticated endpoints.
 
@@ -378,7 +378,8 @@ New tests:
 
 - [ ] **Q1**: Should "Save changes as draft" be a distinct action (e.g., allow editing Notes inline in the panel), or is it purely a redirect to the Edit wizard? Figma shows all three as footer buttons — lean toward **redirecting to wizard** to keep the surface simple and avoid duplicating form logic.
 - [ ] **Q2**: Inkhundla banner — should it compute live (API call on slide-in open) or store the count on the activity? The `/activities/trigger-preview` endpoint is already live. Accept the latency; do not add a new model field.
-- [ ] **Q3**: Show the "Edit" button to sector reviewers for active activities, then let the backend return 403? Or hide it in the UI? Recommendation: **hide for non-admin** on active/archived to reduce confusion.
+- [x] **Q4** — RESOLVED (2026-08-20): reviewers can now *reach* the library. The nav entry dropped `is_admin: true` so both staff roles see it, and `/activity-library` gained a middleware guard (staff only) so an observer typing the URL lands on `/unauthorized` — the same shape Brief Builder already used.
+- [x] **Q3** — RESOLVED (2026-08-20): reviewers do not edit at all. The Activity Library is authored by admins and read-only for reviewers, who consult SOPs while reviewing. The `Edit` button is hidden for them by the `<Can I="update" a="Activity">` gate rather than special-cased on status.
 
 ---
 

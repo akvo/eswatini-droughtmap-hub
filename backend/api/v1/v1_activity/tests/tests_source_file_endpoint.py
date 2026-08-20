@@ -63,10 +63,27 @@ class SourceFileTestCase(APITestCase):
             self._url(), {"source_file": bad}, format="multipart")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_replace_blocked_when_active(self):
+    def test_replace_allowed_when_active(self):
         self.client.force_authenticate(self.admin)
         self.activity.status = ActivityStatus.active
         self.activity.save()
+        resp = self.client.post(
+            self._url(), {"source_file": _png_upload()}, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_replace_blocked_when_archived(self):
+        self.client.force_authenticate(self.admin)
+        self.activity.status = ActivityStatus.archived
+        self.activity.save()
+        resp = self.client.post(
+            self._url(), {"source_file": _png_upload()}, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_reviewer_cannot_replace(self):
+        reviewer = SystemUser.objects.create(
+            email="lead@x.org", name="Lead", role=UserRoleTypes.reviewer,
+            activity_sector=ActivitySector.wash)
+        self.client.force_authenticate(reviewer)
         resp = self.client.post(
             self._url(), {"source_file": _png_upload()}, format="multipart")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)

@@ -5,6 +5,7 @@ import { HOME_PAGE, USER_ROLES } from "./static/config";
 // route prefix -> where anonymous visitors are sent.
 // observers sign in with an emailed magic link, not the password form.
 const protectedRoutes = {
+  "/activity-library": "/login",
   "/brief-builder": "/login",
   "/citizen-weather/admin": "/login",
   "/citizen-weather/observe": "/citizen-weather",
@@ -83,7 +84,9 @@ export default async function middleware(request) {
     }
 
     if (
-      (!isStaff && pathName.startsWith("/brief-builder")) ||
+      (!isStaff &&
+        (pathName.startsWith("/activity-library") ||
+          pathName.startsWith("/brief-builder"))) ||
       (role !== USER_ROLES.reviewer && pathName.startsWith("/reviews")) ||
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||

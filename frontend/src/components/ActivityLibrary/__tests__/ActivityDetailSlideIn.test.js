@@ -19,14 +19,23 @@ jest.mock("@/lib/api", () => ({
   getSourceFileBase64: jest.fn(),
 }));
 
+// Mutable so a single test can swap in the reviewer's read-only abilities.
+const ADMIN_CONTEXT = {
+  role: USER_ROLES.admin,
+  abilities: [
+    { action: "read", subject: "Activity" },
+    { action: "update", subject: "Activity" },
+    { action: "create", subject: "Activity" },
+  ],
+};
+const REVIEWER_CONTEXT = {
+  role: USER_ROLES.reviewer,
+  abilities: [{ action: "read", subject: "Activity" }],
+};
+let mockUserContext = ADMIN_CONTEXT;
+
 jest.mock("@/context/UserContextProvider", () => ({
-  useUserContext: () => ({
-    role: "admin",
-    abilities: [
-      { action: "update", subject: "Activity" },
-      { action: "create", subject: "Activity" },
-    ],
-  }),
+  useUserContext: () => mockUserContext,
 }));
 
 const mockActivity = {
@@ -75,6 +84,7 @@ beforeAll(() => {
 describe("ActivityDetailSlideIn Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUserContext = ADMIN_CONTEXT;
 
     // Set up robust, order-independent mock implementations
     api.mockImplementation((method, url) => {
@@ -255,16 +265,45 @@ describe("ActivityDetailSlideIn Component", () => {
     });
   });
 
-  it("does NOT render Edit or Save changes as draft buttons for Active activity", async () => {
+  const mockStatus = (status) =>
     api.mockImplementation((method, url) => {
       if (method === "GET" && url === "/activity/12") {
-        return Promise.resolve({
-          ...mockActivity,
-          status: ACTIVITY_STATUS.active,
-        });
+        return Promise.resolve({ ...mockActivity, status });
       }
       return Promise.resolve({});
     });
+
+  it("renders Edit but not Save changes as draft for Active activity", async () => {
+    mockStatus(ACTIVITY_STATUS.active);
+    const handleEdit = jest.fn();
+
+    render(
+      <ActivityDetailSlideIn
+        activityId={12}
+        onClose={jest.fn()}
+        onEdit={handleEdit}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      const footer = document.querySelector(".sticky.bottom-0");
+      expect(within(footer).getByText("Edit")).toBeInTheDocument();
+    });
+
+    const footer = document.querySelector(".sticky.bottom-0");
+    expect(
+      within(footer).queryByText("Save changes as draft"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(footer).getByText("Edit"));
+    expect(handleEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 12, status: ACTIVITY_STATUS.active }),
+    );
+  });
+
+  it("does NOT render Edit for Archived activity", async () => {
+    mockStatus(ACTIVITY_STATUS.archived);
 
     render(
       <ActivityDetailSlideIn
@@ -276,11 +315,37 @@ describe("ActivityDetailSlideIn Component", () => {
     );
 
     await waitFor(() => {
-      const footer = document.querySelector(".sticky.bottom-0");
-      expect(within(footer).queryByText("Edit")).not.toBeInTheDocument();
-      expect(
-        within(footer).queryByText("Save changes as draft"),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("Emergency Water Trucking")).toBeInTheDocument();
     });
+
+    const footer = document.querySelector(".sticky.bottom-0");
+    expect(within(footer).queryByText("Edit")).not.toBeInTheDocument();
+    expect(within(footer).queryByText("Archive")).not.toBeInTheDocument();
+    expect(within(footer).queryByText("Set active")).not.toBeInTheDocument();
+  });
+
+  it("gives a reviewer a read-only footer — no Edit, Archive or Set active", async () => {
+    mockUserContext = REVIEWER_CONTEXT;
+
+    render(
+      <ActivityDetailSlideIn
+        activityId={12}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Emergency Water Trucking")).toBeInTheDocument();
+    });
+
+    const footer = document.querySelector(".sticky.bottom-0");
+    expect(within(footer).queryByText("Edit")).not.toBeInTheDocument();
+    expect(within(footer).queryByText("Archive")).not.toBeInTheDocument();
+    expect(within(footer).queryByText("Set active")).not.toBeInTheDocument();
+    expect(
+      within(footer).queryByText("Save changes as draft"),
+    ).not.toBeInTheDocument();
   });
 });

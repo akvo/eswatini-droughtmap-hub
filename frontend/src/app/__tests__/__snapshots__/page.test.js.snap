@@ -80,6 +80,12 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
             </a>
             <a
               class="inline-flex items-center h-[69px] px-4 text-white font-semibold text-xs transition-colors duration-300 hover:bg-navHover"
+              href="/activity-library"
+            >
+              Activity Library
+            </a>
+            <a
+              class="inline-flex items-center h-[69px] px-4 text-white font-semibold text-xs transition-colors duration-300 hover:bg-navHover"
               href="/about"
             >
               About

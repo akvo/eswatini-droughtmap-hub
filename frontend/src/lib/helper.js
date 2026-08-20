@@ -160,6 +160,7 @@ export const getProfileDropdownItems = (user) => {
   const userName = user?.name || "User";
   const userEmail = user?.email || "";
   const isAdmin = user?.role === USER_ROLES.admin;
+  const isStaff = [USER_ROLES.admin, USER_ROLES.reviewer].includes(user?.role);
 
   const navItems = [
     isAdmin && {
@@ -177,7 +178,7 @@ export const getProfileDropdownItems = (user) => {
       label: isAdmin ? "Drought validation" : "Drought reviews",
       url: isAdmin ? "/validations" : "/reviews",
     },
-    isAdmin && {
+    isStaff && {
       key: "nav-activity",
       label: "Activity library",
       url: "/activity-library",

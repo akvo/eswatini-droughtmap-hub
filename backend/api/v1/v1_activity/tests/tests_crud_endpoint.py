@@ -28,7 +28,7 @@ class ActivityCrudTestCase(APITestCase):
             (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
 
     def test_create_forces_draft_and_generates_code(self):
-        self.client.force_authenticate(self.lead)
+        self.client.force_authenticate(self.admin)
         resp = self.client.post(self.list_url, {
             "sector": ActivitySector.wash, "title": "Tanker dispatch",
             "triggers": {"dclass": {"class": 3, "months": 4},
@@ -42,17 +42,44 @@ class ActivityCrudTestCase(APITestCase):
         self.assertEqual(resp.data["code"], "ACT-WASH-1")
         self.assertEqual(resp.data["status"], ActivityStatus.draft)
 
-    def test_lead_cannot_create_foreign_sector(self):
+    def test_reviewer_cannot_create(self):
         self.client.force_authenticate(self.lead)
         resp = self.client.post(self.list_url, {
-            "sector": ActivitySector.food, "title": "X"}, format="json")
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+            "sector": ActivitySector.wash, "title": "X"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_edit_blocked_when_active(self):
+    def test_reviewer_cannot_edit_own_sector_draft(self):
+        self.client.force_authenticate(self.lead)
+        activity = ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash)
+        resp = self.client.patch(
+            self._detail(activity.pk), {"title": "B"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_reviewer_may_read(self):
+        self.client.force_authenticate(self.lead)
+        ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash)
+        self.assertEqual(
+            self.client.get(self.list_url).status_code, status.HTTP_200_OK)
+
+    def test_admin_can_edit_active(self):
         self.client.force_authenticate(self.admin)
         activity = ResponseActivity.objects.create(
             code="ACT-WASH-1", title="A", sector=ActivitySector.wash,
             status=ActivityStatus.active)
+        resp = self.client.patch(
+            self._detail(activity.pk), {"title": "B"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        activity.refresh_from_db()
+        self.assertEqual(activity.title, "B")
+        self.assertEqual(activity.status, ActivityStatus.active)
+
+    def test_edit_blocked_when_archived(self):
+        self.client.force_authenticate(self.admin)
+        activity = ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash,
+            status=ActivityStatus.archived)
         resp = self.client.patch(
             self._detail(activity.pk), {"title": "B"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)

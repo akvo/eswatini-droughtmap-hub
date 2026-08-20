@@ -3,7 +3,7 @@ from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 
-from api.v1.v1_users.models import SystemUser, UserRoleTypes
+from api.v1.v1_users.models import SystemUser
 from api.v1.v1_activity.models import (
     ResponseActivity,
     ActivitySignOff,
@@ -187,19 +187,6 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         user = request.user
         upload = validated_data.pop("source_file", None)
         sector = validated_data["sector"]
-
-        # Sector leads (reviewers) may only author in their own sector.
-        if (
-            user.role == UserRoleTypes.reviewer
-            and user.activity_sector != sector
-        ):
-            raise serializers.ValidationError(
-                {
-                    "sector": (
-                        "You can only create activities in your own " "sector."
-                    )
-                }
-            )
 
         # Generate a unique code inside the insert; retry on the rare race.
         activity = None
