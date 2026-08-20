@@ -119,34 +119,41 @@ export const sectionsConfig = [
     key: "exposure-composition",
     title: "Exposure composition",
     description: [
-      "Exposure(i) is the arithmetic mean of four sub-indicators, each min-max normalised across the 59 Tinkhundla within the current cycle.",
-      "Until water demand methodology is agreed with DWA, the composite runs on the remaining three sub-indicators at 1/3 weight each. The Risk_expected sheet averages non-blank values, so this is automatic.",
+      "Exposure(i) is the arithmetic mean of four sub-indicators, each log-transformed and then min-max normalised across the 59 Tinkhundla within the current cycle.",
+      "The log step (log1p) is applied before scaling because these sub-indicators are heavily right-skewed — water demand alone spans roughly 6,600 to 414 million, a 62,000-fold range. Under plain min-max a single Inkhundla takes the value 1.00 and the median collapses to 0.004, which would make a real-but-low reading score lower than no reading at all.",
+      "The mean is taken over whichever sub-indicators are present. Cattle count has no source yet and is absent everywhere; water demand covers 45 of the 59 Tinkhundla, so the remaining 14 average two sub-indicators rather than three.",
     ],
     columns: [
-      { key: "indicator", label: "Sub-indicator", width: 320 },
-      { key: "weight", label: "Weight (all 4)", width: 190 },
+      { key: "indicator", label: "Sub-indicator", width: 300 },
+      { key: "weight", label: "Weight (all 4)", width: 150 },
+      { key: "coverage", label: "Coverage", width: 140 },
       { key: "method", label: "Normalisation method" },
     ],
     rows: [
       {
         indicator: "Land use — DVI-agri",
         weight: "0.25",
-        method: "Dynamic World reclass → agri-mask → zonal mean → min-max",
+        coverage: "59 / 59",
+        method:
+          "Dynamic World reclass → agri-mask → zonal mean → log1p → min-max",
       },
       {
         indicator: "Water demand",
         weight: "0.25",
-        method: "Min-max of Inkhundla water demand",
+        coverage: "45 / 59",
+        method: "log1p → min-max of Inkhundla water demand (DWA / JRBA)",
       },
       {
         indicator: "Population",
         weight: "0.25",
-        method: "Min-max of Inkhundla population count",
+        coverage: "59 / 59",
+        method: "log1p → min-max of Inkhundla population count",
       },
       {
         indicator: "Cattle count",
         weight: "0.25",
-        method: "Min-max of Inkhundla cattle count",
+        coverage: "0 / 59",
+        method: "log1p → min-max of Inkhundla cattle count — no source yet",
       },
     ],
   },
@@ -228,7 +235,7 @@ export const notesConfig = {
     {
       iconSrc: "/assets/icons/about/reviewing-maps.svg",
       title:
-        "Exposure currently runs on three sub-indicators — water demand is pending agreement with DWA.",
+        "Exposure runs on the sub-indicators available per Inkhundla — cattle count has no source, and water demand covers 45 of 59.",
     },
     {
       iconSrc: "/assets/icons/about/benchmarking.svg",

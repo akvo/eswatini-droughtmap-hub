@@ -12,6 +12,23 @@
 **Date**: 2026-07-24
 **Status**: Approved (2026-07-27)
 
+> **Amended 2026-08-20** — two changes to exposure, both driven by loading the DWA/JRBA water-demand snapshot:
+>
+> **(1) `water_demand` is no longer PENDING.** `generate_water_demand_seeder` loads the DWA/JRBA rollup onto `Indicator.water_demand`, covering **45 of 59** Tinkhundla. The remaining 14 stay NULL — a missing abstraction permit is not zero demand, and the exposure mean already skips nulls. The source is a DRAFT one-off export; JRBA cannot commit to refreshes until its MIS migration completes (end 2026), so treat it as a static snapshot. `cattle` remains the one sub-indicator with no source at all.
+>
+> **(2) Exposure normalisation is now `log1p` → min-max, not min-max alone.** §9.5 and the AC below say "min-max across the 59"; that step is now preceded by a log transform, applied to **every** exposure sub-indicator (two normalisation rules inside one arithmetic mean would not be comparable). The reason is that these inputs are heavily right-skewed: `water_demand` spans 6,622 to 413,734,091 — a 62,000× range — so plain min-max pinned one Inkhundla at 1.00 and collapsed the median to 0.004. Because exposure is the mean of the *available* sub-indicators, a real-but-low reading then scored **worse than no reading at all**: 10 of the 14 Tinkhundla with no water data ranked above the median of the 45 that had it.
+>
+> | | before | after |
+> |---|---|---|
+> | `water_demand` normalised median | 0.004 | **0.506** |
+> | values below 0.1 | 39 / 45 | **3 / 45** |
+> | no-data Tinkhundla above the median of those with data | 10 / 14 | **6 / 14** |
+> | risk_class on a drought month (Feb-2026 categories) | 58 Low, 1 Moderate | **51 Low, 8 Moderate** |
+>
+> The last row decided it: under plain min-max the public risk map read as almost entirely "Low" in a month averaging drought class 3. Implemented as `_norm_exposure()` in `v1_indicators/services.py`, used by both `score_all()` and `trigger_evaluation.build_dataset()`.
+>
+> **Residual, knowingly accepted**: the log fixes the skew but only reduces the mean-of-available asymmetry (10/14 → 6/14). Closing it needs full 59-Inkhundla coverage or explicit imputation. The published methodology page was updated to match.
+
 **Supersedes**: [`risk-level-backend-v1_indicators.md`](./risk-level-backend-v1_indicators.md) — that doc is marked IMPLEMENTED but was written against the superseded `priority_areas.csv` prototype. This revision realigns `v1_indicators` (and the `v1_activity` trigger seam) to the new **DIH Risk Dataset Handover** methodology.
 
 **New sources of truth** (authoritative over the old prototype):

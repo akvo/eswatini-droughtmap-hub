@@ -28,7 +28,7 @@ from api.v1.v1_indicators.constants import (
     EXPOSURE_SUBINDICATORS,
 )
 from api.v1.v1_indicators.services import (
-    _min_max_norm,
+    _norm_exposure,
     _apply_band,
     _DROUGHT_CATEGORY_TO_HAZARD_KEY,
 )
@@ -157,7 +157,7 @@ def build_dataset():
     normed_by_subind = {}
     for subind in EXPOSURE_SUBINDICATORS:
         raw_vals = [getattr(ind, subind, None) for ind in indicators]
-        normed_by_subind[subind] = _min_max_norm(raw_vals)
+        normed_by_subind[subind] = _norm_exposure(raw_vals)
 
     dataset = {}
     # Iterate over all Administrations so missing Indicator rows yield null

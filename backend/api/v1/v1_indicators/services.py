@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 from api.v1.v1_publication.models import Publication, PublicationStatus
 from api.v1.v1_publication.constants import DroughtCategory
 from api.v1.v1_indicators.models import Indicator
@@ -91,6 +93,35 @@ def _min_max_norm(values: list[float | int | None]) -> list[float | None]:
     return res
 
 
+def _log1p_or_none(value: float | int | None) -> float | None:
+    """log1p of a non-negative measurement. None (and any negative, which is
+    not a valid count or volume) drops out of the normalisation."""
+    if value is None or value < 0:
+        return None
+    return math.log(1.0 + float(value))
+
+
+def _norm_exposure(
+    values: list[float | int | None]
+) -> list[float | None]:
+    """Normalise one exposure sub-indicator: log first, then min-max.
+
+    Exposure inputs are heavily right-skewed. `water_demand` spans 6,622 to
+    413,734,091 — a 62,000x range — so plain min-max pins one Inkhundla at
+    1.0 and collapses the median to 0.004. Because `exposure` is the MEAN of
+    the available sub-indicators, that made a real-but-low reading score
+    worse than no reading at all: 10 of the 14 Tinkhundla with no water data
+    ranked above the median of the 45 that had it.
+
+    log1p compresses the range before scaling, so the spread survives
+    normalisation. Applied to every sub-indicator, not just water_demand —
+    two normalisation rules inside one mean would not be comparable.
+
+    See track-2/publication-sector-context.md Q3.
+    """
+    return _min_max_norm([_log1p_or_none(v) for v in values])
+
+
 def _round(value: float | None, digits: int = 4) -> float | None:
     return None if value is None else round(value, digits)
 
@@ -113,7 +144,7 @@ def score_all(cycle: str = "latest") -> list[dict]:
     normed_by_subind = {}
     for subind in EXPOSURE_SUBINDICATORS:
         raw_vals = [getattr(ind, subind, None) for ind in indicators]
-        normed_by_subind[subind] = _min_max_norm(raw_vals)
+        normed_by_subind[subind] = _norm_exposure(raw_vals)
 
     results = []
     for idx, ind in enumerate(indicators):
