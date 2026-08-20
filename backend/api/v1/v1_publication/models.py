@@ -66,6 +66,17 @@ class Publication(SoftDeletes):
         null=True,
     )
     narrative = models.TextField(null=True, blank=True)
+    # Authored in the publish modal: {"<sector_id>": "<paragraph>"}, one entry
+    # per rendered sector card. Nullable because every row published before
+    # this existed has none, and the read path falls back to the derived
+    # sentence. JSON rather than a column per sector — ActivitySector is not
+    # closed and nothing queries across sector prose. See
+    # track-2/publication-sector-context.md D-2.
+    #
+    # There is deliberately no `title` column: the National Overview headline
+    # stays templated from year_month ("Drought situation overview — May
+    # 2026"), per drought-validation-queue.md D-4.
+    sector_context = models.JSONField(null=True, blank=True)
     bulletin_url = models.URLField(max_length=255, null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
     # Set by the demo seeders on every row THEY create, and by nothing else.

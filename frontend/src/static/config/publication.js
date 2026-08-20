@@ -114,6 +114,11 @@ export const EXPORT_FORMAT_OPTIONS = [
 // tag is not something the reader sees.
 export const OVERVIEW_NARRATIVE_MAX_CHARS = 550;
 
+// Per-sector paragraph written in the publish modal, one per sector card on
+// the National Overview. Mirrors SECTOR_CONTEXT_MAX_CHARS in the backend
+// constants — the server rejects anything longer.
+export const OVERVIEW_SECTOR_CONTEXT_MAX_CHARS = 500;
+
 export const DEFAULT_CDI_WEIGHTS = {
   lst: 0.3,
   ndvi: 0.3,

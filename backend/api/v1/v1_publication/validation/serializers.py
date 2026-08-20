@@ -27,6 +27,10 @@ class ValidationMetaSerializer(serializers.Serializer):
     # cannot prefill is a field it wipes.
     narrative = serializers.CharField(allow_null=True, allow_blank=True)
     bulletin_url = serializers.CharField(allow_null=True, allow_blank=True)
+    # Same reason as the two above: the modal submits the whole sector map on
+    # every update, so without it here every box reopens empty and the admin
+    # is made to retype paragraphs that are already published.
+    sector_context = serializers.JSONField(allow_null=True)
     total = serializers.SerializerMethodField()
     reviewers_required = serializers.SerializerMethodField()
     can_publish = serializers.SerializerMethodField()

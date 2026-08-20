@@ -9,6 +9,8 @@
 
 > **Amended 2026-07-22** by [`drought-validation-decision.md`](drought-validation-decision.md) §12, after PR [#140](https://github.com/akvo/eswatini-droughtmap-hub/pull/140) shipped the Validation Decision page. Six changes, applied in place: **D-9 is superseded** (the row action opens the decision page, not `ValidationModal`), the last-write-wins hazard is **closed** rather than deferred (§8), queue filters move into the **URL** and rows order by **`Administration.name`** (§4, §6), `View` is **enabled** for validated rows (§6), and the consensus **band thresholds are now fixed** at 80/60/40 (§10).
 
+> **Amended 2026-08-20** by [`publication-sector-context.md`](publication-sector-context.md). **D-5 is reversed**: the publish modal now collects one authored paragraph per sector card, stored in the new `Publication.sector_context` JSON column, because the derived text was `" ".join()` over unrelated activity descriptions and read like it. The **counts stay derived** — only the prose is authored, so D-5's actual argument (a number that is true beats a paragraph that was true) is preserved. **D-4 stands unchanged**: the title remains templated from `year_month`, with no `title` column.
+
 ---
 
 ## 0. Prerequisites — how the existing data works

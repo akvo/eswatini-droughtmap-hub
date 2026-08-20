@@ -30,9 +30,12 @@ from api.v1.v1_publication.constants import (
     PublicationStatus,
     RasterIndicatorTypes,
     FilterStatus,
+    SECTOR_CONTEXT_MAX_CHARS,
     is_validated,
 )
 from api.v1.v1_publication.validation.utils import progress_reviews
+from api.v1.v1_activity.constants import ActivitySector
+from api.v1.v1_activity.services import triggered_sector_ids
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -81,6 +84,7 @@ class PublicationSerializer(serializers.ModelSerializer):
             "validated_values",
             "published_at",
             "narrative",
+            "sector_context",
             "bulletin_url",
             "created_at",
             "updated_at",
@@ -100,6 +104,37 @@ class PublicationSerializer(serializers.ModelSerializer):
         if request and request.method == "PUT":
             for field in self.fields:
                 self.fields[field].required = False
+
+    def validate_sector_context(self, value):
+        """A flat {sector_id: paragraph} map over known sectors.
+
+        Validated as a shape rather than left as free JSON: the column is
+        rendered on a public page, so it must not become arbitrary storage.
+        JSON object keys round-trip as strings, hence the str() comparison.
+        """
+        if value in (None, ""):
+            return value
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                "Expected an object keyed by sector id."
+            )
+        known = {str(code) for code in ActivitySector.FieldStr}
+        unknown = sorted(set(map(str, value)) - known)
+        if unknown:
+            raise serializers.ValidationError(
+                f"Unknown sector id(s): {', '.join(unknown)}."
+            )
+        for key, text in value.items():
+            if not isinstance(text, str):
+                raise serializers.ValidationError(
+                    f"Sector {key}: expected text."
+                )
+            if len(text) > SECTOR_CONTEXT_MAX_CHARS:
+                raise serializers.ValidationError(
+                    f"Sector {key}: must be "
+                    f"{SECTOR_CONTEXT_MAX_CHARS} characters or fewer."
+                )
+        return {str(k): v for k, v in value.items()}
 
     def validate(self, attrs):
         """A publication may not go out with unvalidated Tinkhundla.
@@ -136,6 +171,32 @@ class PublicationSerializer(serializers.ModelSerializer):
                 "status": (
                     f"Cannot publish: {missing} of {total} Tinkhundla "
                     "are not validated yet."
+                )
+            })
+
+        # The National Overview is written here, so the copy it needs has to
+        # exist before it goes out (D-6). Enforced on the transition only —
+        # a publication may sit in review with neither field set.
+        if not (after_write("narrative") or "").strip():
+            raise serializers.ValidationError({
+                "narrative": "A description is required to publish."
+            })
+
+        # Only the sectors actually firing under this map are demanded. A
+        # sector whose activities trigger nowhere still renders a card, but
+        # asking for a paragraph about a response that is not happening is
+        # busywork — it falls back to the derived sentence (D-8).
+        context = after_write("sector_context") or {}
+        blank = [
+            ActivitySector.FieldStr[code]
+            for code in triggered_sector_ids()
+            if not (context.get(str(code)) or "").strip()
+        ]
+        if blank:
+            raise serializers.ValidationError({
+                "sector_context": (
+                    "Sector context is required for: "
+                    f"{', '.join(blank)}."
                 )
             })
         return attrs

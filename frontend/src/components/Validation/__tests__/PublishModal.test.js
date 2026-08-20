@@ -1,8 +1,41 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import PublishModal, { overviewTitle } from "../PublishModal";
+import { api } from "@/lib/api";
 
 jest.setTimeout(30000);
+
+jest.mock("@/lib/api", () => ({ api: jest.fn() }));
+
+// Mirrors GET /insights/response-activities — the endpoint that also renders
+// the National Overview cards, so the modal cannot show a different list.
+const SECTORS = [
+  {
+    id: 3,
+    key: "wash",
+    label: "Water & Sanitation",
+    activities: 2,
+    tinkhundla: 27,
+  },
+  {
+    id: 1,
+    key: "food",
+    label: "Food & Agriculture",
+    activities: 2,
+    tinkhundla: 31,
+  },
+];
+
+beforeEach(() => {
+  api.mockReset();
+  api.mockResolvedValue({ sectors: SECTORS });
+});
 
 jest.mock("antd/lib/_util/responsiveObserver", () => {
   const mockObserver = {
@@ -33,6 +66,45 @@ const typeBulletin = (value) =>
 const publish = () =>
   fireEvent.click(screen.getByRole("button", { name: /^publish$/i }));
 
+const sectorHeader = (label) =>
+  screen.getByRole("button", { name: new RegExp(label) });
+
+/** A row renders its textarea only while expanded, so a sector must be opened
+ *  to be typed into — the same thing an admin does. Idempotent: one row is
+ *  expanded by default, and clicking that one would collapse it. */
+const openSector = (label) => {
+  const header = sectorHeader(label);
+  if (header.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(header);
+  }
+};
+
+// `selector` matters: antd labels the tab PANEL with the same text via
+// aria-labelledby, so an unscoped query matches the panel as well.
+const sectorBox = (label) =>
+  screen.getByLabelText(new RegExp(label), { selector: "textarea" });
+
+const typeSector = (label, value) =>
+  fireEvent.change(sectorBox(label), { target: { value } });
+
+/** Wait for the fetched tabs, then fill every sector. */
+const fillSectors = async () => {
+  await waitFor(() =>
+    expect(sectorHeader("Water & Sanitation")).toBeInTheDocument(),
+  );
+  for (const s of SECTORS) {
+    openSector(s.label);
+    // eslint-disable-next-line no-await-in-loop
+    await waitFor(() => expect(sectorBox(s.label)).toBeInTheDocument());
+    typeSector(s.label, `${s.label} copy.`);
+  }
+};
+
+const SECTOR_CONTEXT = {
+  3: "Water & Sanitation copy.",
+  1: "Food & Agriculture copy.",
+};
+
 describe("PublishModal", () => {
   it("generates the title from the publication month, read-only", () => {
     render(<PublishModal open yearMonth="2026-05" onPublish={jest.fn()} />);
@@ -43,23 +115,142 @@ describe("PublishModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the four sector cards as auto-generated, not editable", () => {
+  it("renders one collapsible row per sector the API returns", async () => {
     render(<PublishModal open yearMonth="2026-05" onPublish={jest.fn()} />);
-    [
-      "Water & Sanitation",
-      "Food & Agriculture",
-      "Health & Nutrition",
-      "Environment & Energy",
-    ].forEach((label) => {
-      expect(screen.getByText(label)).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(sectorHeader("Water & Sanitation")).toBeInTheDocument(),
+    );
+    SECTORS.forEach((s) => expect(sectorHeader(s.label)).toBeInTheDocument());
+    // The old hardcoded list named sectors that were never fetched.
+    expect(
+      screen.queryByRole("button", { name: /Health & Nutrition/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Auto-generated")).not.toBeInTheDocument();
+    // Counts stay derived — shown beside the box, not typed (D-1).
+    expect(
+      screen.getByText(/2 activities · 27 Tinkhundla/),
+    ).toBeInTheDocument();
+  });
+
+  it("seeds EVERY sector box, not just the first", async () => {
+    // The whole map has to arrive: the modal submits all of it on every
+    // update, so a sector it cannot prefill is one the admin must retype.
+    const { rerender } = render(
+      <PublishModal open={false} yearMonth="2026-05" onPublish={jest.fn()} />,
+    );
+    rerender(
+      <PublishModal
+        open
+        yearMonth="2026-05"
+        currentNarrative="Hello"
+        currentSectorContext={{ 3: "WASH copy.", 1: "Food copy." }}
+        published
+        onPublish={jest.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(sectorHeader("Water & Sanitation")).toBeInTheDocument(),
+    );
+    openSector("Water & Sanitation");
+    await waitFor(() =>
+      expect(sectorBox("Water & Sanitation")).toHaveValue("WASH copy."),
+    );
+    openSector("Food & Agriculture");
+    await waitFor(() =>
+      expect(sectorBox("Food & Agriculture")).toHaveValue("Food copy."),
+    );
+    // Both already written, so neither dot is red and publish is unblocked.
+    expect(screen.queryByText(/Sector information is required/)).toBeNull();
+  });
+
+  it("marks a sector with nothing triggered as optional", async () => {
+    api.mockResolvedValue({
+      sectors: [SECTORS[0], { ...SECTORS[1], tinkhundla: 0 }],
     });
-    expect(screen.getAllByText("Auto-generated")).toHaveLength(4);
+    const onPublish = jest.fn().mockResolvedValue(null);
+    render(<PublishModal open yearMonth="2026-05" onPublish={onPublish} />);
+
+    await waitFor(() =>
+      expect(sectorHeader("Water & Sanitation")).toBeInTheDocument(),
+    );
+    // Scoped to the header: the Bulletin URL label also reads "(optional)",
+    // and so does the legend.
+    expect(
+      within(sectorHeader("Food & Agriculture")).getByText("(optional)"),
+    ).toBeInTheDocument();
+
+    // Only the triggered sector is required, so this submits with one blank.
+    // WASH is required-and-empty, so the accordion opens it by default.
+    await waitFor(() =>
+      expect(sectorBox("Water & Sanitation")).toBeInTheDocument(),
+    );
+    typeSector("Water & Sanitation", "Boreholes restored.");
+    type("Conditions eased.");
+    publish();
+
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0][0].sectorContext).toEqual({
+      3: "Boreholes restored.",
+    });
+  });
+
+  it("requires every sector box before it will submit", async () => {
+    const onPublish = jest.fn().mockResolvedValue(null);
+    render(<PublishModal open yearMonth="2026-05" onPublish={onPublish} />);
+
+    await waitFor(() =>
+      expect(sectorBox("Water & Sanitation")).toBeInTheDocument(),
+    );
+    type("Conditions eased.");
+    typeSector("Water & Sanitation", "Boreholes restored.");
+    publish();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sector information is required for/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/Food & Agriculture/, { selector: ".ant-alert *" }),
+    ).toBeInTheDocument();
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it("seeds the sector boxes from an already-published map", async () => {
+    const { rerender } = render(
+      <PublishModal open={false} yearMonth="2026-05" onPublish={jest.fn()} />,
+    );
+    rerender(
+      <PublishModal
+        open
+        yearMonth="2026-05"
+        currentNarrative="Hello"
+        currentSectorContext={{ 3: "Existing WASH copy." }}
+        published
+        onPublish={jest.fn()}
+      />,
+    );
+
+    // WASH already has copy, so the first sector still needing some is the
+    // one that opens — open WASH to read what was seeded into it.
+    await waitFor(() =>
+      expect(sectorHeader("Water & Sanitation")).toBeInTheDocument(),
+    );
+    openSector("Water & Sanitation");
+    await waitFor(() =>
+      expect(sectorBox("Water & Sanitation")).toHaveValue(
+        "Existing WASH copy.",
+      ),
+    );
   });
 
   it("submits the description and the bulletin URL", async () => {
     const onPublish = jest.fn().mockResolvedValue(null);
     render(<PublishModal open yearMonth="2026-05" onPublish={onPublish} />);
 
+    await fillSectors();
     type("Conditions eased across the Lowveld.");
     typeBulletin("  https://ndma.org.sz/bulletin-2026-05.pdf  ");
     publish();
@@ -68,6 +259,7 @@ describe("PublishModal", () => {
     expect(onPublish).toHaveBeenCalledWith({
       narrative: "Conditions eased across the Lowveld.",
       bulletinUrl: "https://ndma.org.sz/bulletin-2026-05.pdf",
+      sectorContext: SECTOR_CONTEXT,
     });
   });
 
@@ -75,6 +267,7 @@ describe("PublishModal", () => {
     const onPublish = jest.fn().mockResolvedValue(null);
     render(<PublishModal open yearMonth="2026-05" onPublish={onPublish} />);
 
+    await fillSectors();
     type("No bulletin this month.");
     publish();
 
@@ -82,6 +275,7 @@ describe("PublishModal", () => {
     expect(onPublish).toHaveBeenCalledWith({
       narrative: "No bulletin this month.",
       bulletinUrl: "",
+      sectorContext: SECTOR_CONTEXT,
     });
   });
 
@@ -96,11 +290,15 @@ describe("PublishModal", () => {
         yearMonth="2026-05"
         currentNarrative="Hello world"
         currentBulletinUrl="https://ndma.org.sz/old.pdf"
+        currentSectorContext={SECTOR_CONTEXT}
         published
         onPublish={onPublish}
       />,
     );
 
+    await waitFor(() =>
+      expect(sectorHeader("Water & Sanitation")).toBeInTheDocument(),
+    );
     typeBulletin("");
     fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
 
@@ -108,6 +306,7 @@ describe("PublishModal", () => {
     expect(onPublish).toHaveBeenCalledWith({
       narrative: "Hello world",
       bulletinUrl: "",
+      sectorContext: SECTOR_CONTEXT,
     });
   });
 

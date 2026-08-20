@@ -707,15 +707,17 @@ const ValidationDetailPage = () => {
         yearMonth={meta?.year_month}
         currentNarrative={meta?.narrative}
         currentBulletinUrl={meta?.bulletin_url}
+        currentSectorContext={meta?.sector_context}
         published={!!publishedDate}
         onCancel={() => setPublishOpen(false)}
-        onPublish={async ({ narrative, bulletinUrl }) => {
+        onPublish={async ({ narrative, bulletinUrl, sectorContext }) => {
           // api() resolves on 4xx rather than rejecting, so a failed publish
           // has to be detected from the body — never from a catch block.
           const res = await api("PUT", `/admin/publication/${id}`, {
             status: PUBLICATION_STATUS.published,
             narrative,
             bulletin_url: bulletinUrl,
+            sector_context: sectorContext,
           });
           if (res?.status !== PUBLICATION_STATUS.published) {
             return firstError(res);

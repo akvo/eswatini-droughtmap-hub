@@ -322,3 +322,8 @@ AGRO_TOPOJSON_CRS = (
     "+proj=tmerc +lat_0=0 +lon_0=31 +k=1 +x_0=0 +y_0=0 "
     "+datum=WGS84 +units=m +no_defs"
 )
+
+
+# Per-sector paragraph the admin writes at publish time. Mirrored by
+# OVERVIEW_SECTOR_CONTEXT_MAX_CHARS in the frontend config.
+SECTOR_CONTEXT_MAX_CHARS = 500

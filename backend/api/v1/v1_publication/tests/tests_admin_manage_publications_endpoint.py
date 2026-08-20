@@ -72,6 +72,7 @@ class PublicationViewSetTestCase(APITestCase):
                     "validated_values",
                     "published_at",
                     "narrative",
+                    "sector_context",
                     "bulletin_url",
                     "created_at",
                     "updated_at",

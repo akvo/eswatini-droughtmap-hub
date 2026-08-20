@@ -196,7 +196,7 @@ class ValidationQueueAPIsTestCase(APITestCase):
             {
                 "publication_id", "year_month", "published_at", "total",
                 "reviewers_required", "can_publish", "pending_validation",
-                "narrative", "bulletin_url",
+                "narrative", "bulletin_url", "sector_context",
             },
         )
 
@@ -208,6 +208,20 @@ class ValidationQueueAPIsTestCase(APITestCase):
         self.publication.save()
         meta = self.client.get(self.stats_url).data["meta"]
         self.assertEqual(meta["narrative"], text)
+
+    def test_meta_carries_the_current_sector_context(self):
+        """Same trap again, one field wider: the modal submits the whole
+        sector map on every update, so without it here the admin reopens to
+        eight empty boxes and has to retype what is already published."""
+        context = {"1": "Seed distribution continues.", "3": "Boreholes."}
+        self.publication.sector_context = context
+        self.publication.save()
+        meta = self.client.get(self.stats_url).data["meta"]
+        self.assertEqual(meta["sector_context"], context)
+
+    def test_meta_sector_context_is_null_when_never_written(self):
+        meta = self.client.get(self.stats_url).data["meta"]
+        self.assertIsNone(meta["sector_context"])
 
     def test_meta_carries_the_current_bulletin_url(self):
         """Same trap as the narrative: the modal submits the bulletin URL on
