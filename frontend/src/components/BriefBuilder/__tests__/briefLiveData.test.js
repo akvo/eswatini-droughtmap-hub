@@ -20,20 +20,18 @@ const riskPayload = ({ exposure = [], vulnerability = 0.3, area = 450.8 }) => ({
   source: { is_placeholder: false },
 });
 
+// Mirrors what /risk-levels/{id} actually returns: the four scored exposure
+// sub-indicators and nothing else. It used to carry a fifth `rainfed_cropland`
+// row, which is why the Rain-fed tile's tests stayed green after the API
+// stopped sending it (D-9) — a fixture that outlives its endpoint hides the
+// very break it should catch.
 const FULL_EXPOSURE = [
   { key: "population", value: 6420, norm: 0.35 },
   { key: "land_use_dvi_agri", value: 0.02, norm: 0.02 },
-  // Null for all 59 Tinkhundla today — no DWA load, no cattle source.
+  // Null for all 59 Tinkhundla today — no cattle source; water demand covers
+  // 45 of 59 and this Inkhundla is not one of them.
   { key: "cattle", value: null, norm: null },
   { key: "water_demand", value: null, norm: null },
-  {
-    key: "rainfed_cropland",
-    value: 1037,
-    norm: null,
-    // Eligibility counts come from the prototype CSV, not the NDMA handover
-    // workbook that fills the scored risk inputs.
-    meta: { source: "prototype-illustrative" },
-  },
 ];
 
 describe("ExposureBars", () => {
@@ -73,18 +71,35 @@ describe("CoverBlock", () => {
     );
     expect(screen.getByText("450.8 km²")).toBeInTheDocument();
     expect(screen.getByText("6,420")).toBeInTheDocument();
-    expect(screen.getByText("1,037")).toBeInTheDocument();
   });
 
-  it("tags the two tiles by their own provenance, not one shared flag", () => {
-    // population is a scored handover input and source.is_placeholder is
-    // false here, so People exposed must NOT be tagged; rainfed_cropland
-    // carries its own prototype provenance, so it must be.
+  it("renders no Rain-fed land use tile", () => {
+    // Dropped with the exposure row that fed it (D-9). It was the only tile
+    // reading an eligibility count, and re-sourcing it would have meant an
+    // extra call to the IsAdmin-only /indicators/{id}.
     render(
       <CoverBlock {...props} risk={riskPayload({ exposure: FULL_EXPOSURE })} />,
     );
-    const tags = screen.getAllByText(/placeholder/i);
-    expect(tags).toHaveLength(1);
+    expect(screen.queryByText("Rain-fed land use")).not.toBeInTheDocument();
+    expect(screen.queryByText("hectares")).not.toBeInTheDocument();
+    expect(screen.queryByText("1,037")).not.toBeInTheDocument();
+  });
+
+  it("does not tag a curated figure as a placeholder", () => {
+    // `population` is a scored handover input and source.is_placeholder is
+    // false here. With the prototype-sourced tile gone, nothing on the cover
+    // carries the per-row provenance tag any more.
+    render(
+      <CoverBlock {...props} risk={riskPayload({ exposure: FULL_EXPOSURE })} />,
+    );
+    expect(screen.queryByText(/placeholder/i)).not.toBeInTheDocument();
+  });
+
+  it("tags People exposed when the risk row itself is seeded", () => {
+    const payload = riskPayload({ exposure: FULL_EXPOSURE });
+    payload.source.is_placeholder = true;
+    render(<CoverBlock {...props} risk={payload} />);
+    expect(screen.getAllByText(/placeholder/i)).toHaveLength(1);
   });
 
   it("renders no Total land tile", () => {
@@ -105,8 +120,15 @@ describe("CoverBlock", () => {
   });
 
   it("renders an em dash for every figure when there is no Indicator row", () => {
-    render(<CoverBlock {...props} risk={riskPayload({ exposure: [] })} />);
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+    // Both remaining tiles empty at once — counting dashes would only track
+    // how many tiles exist, which is not what this guards.
+    render(
+      <CoverBlock
+        {...props}
+        risk={riskPayload({ exposure: [], vulnerability: null })}
+      />,
+    );
+    expect(screen.getAllByText("—")).toHaveLength(2);
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 });

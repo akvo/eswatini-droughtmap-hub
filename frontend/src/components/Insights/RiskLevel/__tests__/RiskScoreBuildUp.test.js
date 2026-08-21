@@ -66,35 +66,12 @@ describe("RiskScoreBuildUp", () => {
           scored: true,
           meta: { unit_status: "assumed_pending_dwa" },
         },
-        {
-          key: "under_five",
-          value: 184,
-          unit: "children",
-          norm: null,
-          scored: false,
-        },
-        {
-          key: "rainfed_cropland",
-          value: 1069,
-          unit: "ha",
-          norm: null,
-          scored: false,
-        },
       ],
       unavailable: ["water_demand"],
     },
     vulnerability: {
       value: 0.6,
-      data: [
-        { key: "ipc_phase", value: 3, format: "ipc", scored: true },
-        {
-          key: "people_per_water_point",
-          value: 2239,
-          unit: "people/point",
-          scored: false,
-          meta: { basis: "population / (boreholes + taps)" },
-        },
-      ],
+      data: [{ key: "ipc_phase", value: 3, format: "ipc", scored: true }],
     },
     risk_score: {
       value: 0.2387,
@@ -152,28 +129,27 @@ describe("RiskScoreBuildUp", () => {
 
     expect(screen.getByText("8,956 people")).toBeInTheDocument();
     expect(screen.getByText("1,364 head")).toBeInTheDocument();
-    expect(screen.getByText("184 children")).toBeInTheDocument();
-    expect(screen.getByText("1,069 ha")).toBeInTheDocument();
     // water_demand is null -> N/A, and its m3 unit is never converted here.
     expect(screen.getByText("Water demand")).toBeInTheDocument();
     expect(screen.queryByText(/ L$/)).not.toBeInTheDocument();
   });
 
-  it("marks unscored rows as context so they cannot read as inputs", () => {
+  it("shows every row as a score input — nothing is CONTEXT any more", () => {
+    // The build-up lists what builds the number up: exposure is the four
+    // scored sub-indicators (D-9) and vulnerability is IPC alone (D-10).
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
-    // under_five, rainfed_cropland, people_per_water_point
-    expect(screen.getAllByText("CONTEXT")).toHaveLength(3);
+    expect(screen.queryByText("CONTEXT")).not.toBeInTheDocument();
+    expect(screen.queryByText("Under-5 children")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rain-fed cropland")).not.toBeInTheDocument();
+    expect(screen.queryByText("Water access pressure")).not.toBeInTheDocument();
   });
 
-  it("renders the IPC phase and the water-access context row", () => {
+  it("renders the IPC phase as the only vulnerability row", () => {
     render(<RiskScoreBuildUp riskData={mockRiskData} />);
 
     expect(screen.getByText("Susceptibility")).toBeInTheDocument();
     expect(screen.getByText("Phase 3: Crisis")).toBeInTheDocument();
-
-    expect(screen.getByText("Water access pressure")).toBeInTheDocument();
-    expect(screen.getByText("2,239 people/point")).toBeInTheDocument();
 
     // Dropped by the methodology (redesign D-7) — must not reappear.
     expect(screen.queryByText("Preparedness index")).not.toBeInTheDocument();

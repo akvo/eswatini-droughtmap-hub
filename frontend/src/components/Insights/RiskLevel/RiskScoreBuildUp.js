@@ -62,19 +62,12 @@ const ROW_COPY = {
   },
   cattle: { label: "Cattle count", subtitle: "Number of cattle exposed" },
   water_demand: { label: "Water demand", subtitle: "Estimated water demand" },
-  under_five: {
-    label: "Under-5 children",
-    subtitle: "Children under 5 exposed",
-  },
-  rainfed_cropland: {
-    label: "Rain-fed cropland",
-    subtitle: "Rain-fed agricultural land",
-  },
+  // under_five / rainfed_cropland used to appear here as CONTEXT rows under
+  // exposure. They are eligibility filters, not exposure inputs, and the API
+  // no longer sends them (D-9).
   ipc_phase: { label: "Susceptibility", subtitle: "IPC food security phase" },
-  people_per_water_point: {
-    label: "Water access pressure",
-    subtitle: "People per water point",
-  },
+  // people_per_water_point was a CONTEXT row under vulnerability. V is the
+  // IPC layer alone, so the API no longer sends it (D-10).
 };
 
 // The API sends the IPC phase itself (1-5), not a rescaled float.
