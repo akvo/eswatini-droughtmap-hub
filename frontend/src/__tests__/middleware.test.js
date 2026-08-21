@@ -81,11 +81,21 @@ describe("middleware", () => {
       ["/citizen-weather/observe/2026-05", "/citizen-weather"],
       ["/citizen-weather/admin", "/login"],
       ["/publications/create", "/login"],
+      // Only this tab of /detailed-insights is gated.
+      ["/detailed-insights/risk-level", "/login"],
     ])("%s -> %s", async (from, to) => {
       expect(await run(from)).toMatchObject({ type: "redirect", to });
     });
 
-    it.each(["/citizen-weather", "/login"])("%s stays public", async (path) => {
+    it.each([
+      "/citizen-weather",
+      "/login",
+      // The explorer itself is public — only the Risk Level tab is gated, and
+      // startsWith must match the subtree rather than the parent.
+      "/detailed-insights",
+      "/detailed-insights/weather",
+      "/detailed-insights/iks",
+    ])("%s stays public", async (path) => {
       expect((await run(path)).type).toBe("next");
     });
   });
@@ -114,6 +124,7 @@ describe("middleware", () => {
       ["/brief-builder", "/login"],
       ["/citizen-weather/admin", "/login"],
       ["/citizen-weather/observe", "/citizen-weather"],
+      ["/detailed-insights/risk-level", "/login"],
     ])("%s -> %s instead of rendering empty", async (from, to) => {
       const res = await run(from, { session: true });
       expect(res).toMatchObject({ type: "redirect", to });
@@ -126,7 +137,13 @@ describe("middleware", () => {
       );
     });
 
-    it.each(["/", "/about", "/methodology", "/detailed-insights"])(
+    it.each([
+      "/",
+      "/about",
+      "/methodology",
+      "/detailed-insights",
+      "/detailed-insights/iks",
+    ])(
       "%s still renders — a stale cookie is no reason to bounce a public page",
       async (path) => {
         expect((await run(path, { session: true })).type).toBe("next");

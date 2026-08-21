@@ -7,6 +7,9 @@ import { HOME_PAGE, USER_ROLES } from "./static/config";
 const protectedRoutes = {
   "/activity-library": "/login",
   "/brief-builder": "/login",
+  // Only this tab of /detailed-insights is gated; the explorer itself is
+  // public, and startsWith matches the subtree rather than the parent.
+  "/detailed-insights/risk-level": "/login",
   "/citizen-weather/admin": "/login",
   "/citizen-weather/observe": "/citizen-weather",
   "/profile": "/login",
