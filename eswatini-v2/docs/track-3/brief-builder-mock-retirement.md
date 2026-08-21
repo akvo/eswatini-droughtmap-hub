@@ -16,6 +16,11 @@
 > but not built** — the clause omits itself by design. *(Correction 2026-08-10: its source model
 > `AdministrationObservation` **does** now exist — WX-10 shipped. The clause stays dark because
 > the extraction command has not been run, not because the model is missing.)*
+>
+> **Rev. 4 — 2026-08-21.** **D-11**: the "Rain-fed land use" tile is removed, which leaves the
+> cover with two tiles and makes **D-9** moot. Its exposure row is no longer served — eligibility
+> counts are not exposure ([`risk-level-detail-buildup-api.md`](risk-level-detail-buildup-api.md)
+> D-9) — and re-sourcing it would have cost an authenticated fetch for an "illustrative" figure.
 
 ---
 
@@ -436,7 +441,9 @@ underlying indicator row is seeded", not "the frontend made this up".
 > cannot — the tiles have different sources, and D-9 replaces the shared flag with per-tile
 > provenance.
 
-### D-9: The two KPI tiles are tagged by their own provenance, not one shared flag
+### D-9: The two KPI tiles are tagged by their own provenance, not one shared flag — ⚠️ **moot since 2026-08-21 (D-11)**
+
+> **Superseded by D-11.** The "Rain-fed land use" tile is gone, so there is only one tagged tile left and no divergent provenance to reconcile. The reasoning below is kept because it explains why `source.is_placeholder` alone was never enough — the trap it describes returns the moment a second differently-sourced tile is added.
 
 > Added after review: the first cut drove both tiles off `source.is_placeholder`
 > and got one of them wrong.
@@ -462,6 +469,18 @@ People exposed *wrongly*, understating real handover data as invented.
 same two fields today, but it means "does not move the score", which is not the
 same claim as "came from the prototype CSV" — they coincide by construction and
 would silently diverge the moment a scored field gained a different source.
+
+---
+
+### D-11: The "Rain-fed land use" tile is dropped, not re-sourced
+
+**Decision** (2026-08-21): `CoverBlock` renders **two** tiles — People exposed and Susceptibility. The Rain-fed land use tile, `exposureRow("rainfed_cropland")`, the `rowSource()` helper and the prototype hint are all removed, and the tile grid drops from three columns to two.
+
+**Why now**: `/risk-levels/{id}` stopped returning eligibility counts in its exposure block — they are eligibility filters, not exposure ([`risk-level-detail-buildup-api.md`](risk-level-detail-buildup-api.md) D-9). The tile's source row simply ceased to exist, so it would have rendered `—` on every brief.
+
+**Rejected — re-sourcing it from `/indicators/{id}`**: that endpoint is `IsAdmin`-only, and the whole point of BB-3 was that every cover figure comes from the one `AllowAny` payload `useBriefData` already holds. Buying this tile back would mean a second fetch, an authenticated one, for a number that carried an "illustrative, not NDMA-curated" caveat for its entire life.
+
+**How it escaped review**: the CoverBlock tests hand-built a `FULL_EXPOSURE` fixture that still contained `rainfed_cropland`, so they passed against a payload the API had stopped sending. A fixture that outlives its endpoint hides the break it exists to catch. The fixture now mirrors the real four-row response, and a test asserts the tile is **absent**.
 
 **Impact**: the Rain-fed tooltip now names the actual dataset instead of
 repeating a generic seeded-row message. Two exit conditions, both data
@@ -546,11 +565,12 @@ Cover header and tiles:
 |---|---|---|
 | Header area | `administration` | `.area_km2` (new — D-1) |
 | People exposed | `exposure.data[population]` | `.value`; tagged from `source.is_placeholder` (D-9) |
-| Rain-fed land use | `exposure.data[rainfed_cropland]` | `.value` (unit already `"ha"`); tagged from `.meta.source` (D-9) |
+| ~~Rain-fed land use~~ | ~~`exposure.data[rainfed_cropland]`~~ | **removed (D-11)** — the row no longer exists |
 | Susceptibility | `vulnerability` | `.value` |
 
-New backend constant: `ELIGIBILITY_SOURCE = "prototype-illustrative"`, emitted as `meta.source`
-on every row in `ELIGIBILITY_EXPOSURE_FIELDS`.
+~~New backend constant: `ELIGIBILITY_SOURCE = "prototype-illustrative"`, emitted as `meta.source`
+on every row in `ELIGIBILITY_EXPOSURE_FIELDS`.~~ **Both constants were deleted with the rows they
+described (D-11); no row carries `meta.source` any more.**
 
 A `null` in any of these renders `—` for a tile, an unavailable state for a bar, and an omitted
 span for the header area. **Never `0`, never `0 %`** — a missing indicator row is not a zero

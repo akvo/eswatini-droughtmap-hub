@@ -64,10 +64,10 @@ Field-by-field against `risk_score.json` (25 leaf fields):
 | `drought.trend`, `trend_desc` | — | 🟡 computable from publication history (new) |
 | `drought.confidence`, `confidence_desc` | — | 🔴 not computable from `v1_weather` today — return `null` + reason (D-7, §1.2) |
 | `exposure.value` | `score_all()` exposure mean | ✅ served |
-| `exposure.data[]` absolutes | `Indicator.population / under_five / rainfed_cropland / cattle / water_demand` | 🟡 exist, admin-gated only |
+| `exposure.data[]` absolutes | `Indicator.land_use_dvi_agri / population / cattle / water_demand` | 🟡 exist, admin-gated only |
 | `vulnerability.value` | `IPC_RESCALE[ipc_phase]` | ✅ served |
 | `vulnerability.data.v_ipc` | `ipc_phase` | ✅ served (as phase + V) |
-| `vulnerability.data.v_water` | `population ÷ (boreholes + taps)` | ✅ served as a labelled CONTEXT row, `scored: false` (D-5) |
+| `vulnerability.data.v_water` | — | ❌ removed (D-10); `boreholes`/`taps` stay as eligibility columns |
 | `vulnerability.data.v_prep` | — | 🔴 column deleted by redesign D-7 (`0002_risk_model_v2`); no source |
 | `risk_score.value` | `hazard × exposure × vulnerability` | ✅ served, 0–1; ×10 at render (D-2) |
 | `risk_score.meta.band` | `BAND_MAP` in `v1_risk_level.constants` | ✅ served — `RISK_BANDS` wins over the Figma numbers (D-3) |
@@ -182,18 +182,14 @@ Cattle / WaterDemand sheets — the payload reports them as unavailable.
       { "key": "population",        "value": 8956,   "unit": "people", "norm": 0.8220, "scored": true },
       { "key": "cattle",            "value": null,   "unit": "head",   "norm": null,   "scored": true },
       { "key": "water_demand",      "value": null,   "unit": "m3",     "norm": null,   "scored": true,
-        "meta": { "unit_status": "assumed_pending_dwa" } },
-      { "key": "under_five",        "value": 184,    "unit": "children", "norm": null, "scored": false },
-      { "key": "rainfed_cropland",  "value": 1069,   "unit": "ha",     "norm": null,   "scored": false }
+        "meta": { "unit_status": "assumed_pending_dwa" } }
     ],
     "unavailable": ["cattle", "water_demand"]
   },
   "vulnerability": {
     "value": 0.6,
     "data": [
-      { "key": "ipc_phase", "value": 3, "format": "ipc", "scored": true },
-      { "key": "people_per_water_point", "value": 2239, "unit": "people/point", "scored": false,
-        "meta": { "basis": "population / (boreholes + taps)", "boreholes": 2, "taps": 2 } }
+      { "key": "ipc_phase", "value": 3, "format": "ipc", "scored": true }
     ]
   },
   "risk_score": {
@@ -293,7 +289,7 @@ Cattle / WaterDemand sheets — the payload reports them as unavailable.
 
 ---
 
-### D-5: IPC is the only scored vulnerability row; water access returns as labelled context; `v_prep` is dropped
+### D-5: IPC is the only scored vulnerability row; water access returns as labelled context; `v_prep` is dropped — ⚠️ **superseded in part by D-10**
 
 **Decision** (**confirmed 2026-08-04**): `vulnerability.value` is `IPC_RESCALE[ipc_phase]` and nothing else. `vulnerability.data` carries two rows:
 1. `ipc_phase` — `scored: true`, the only input to V.
@@ -304,6 +300,8 @@ Cattle / WaterDemand sheets — the payload reports them as unavailable.
 **Rationale**: the redesign's D-7 made vulnerability a single national IPC layer, so nothing but IPC may move the score — the `scored` flag is what keeps a context row from reading as a score input, and the frontend must render `scored: false` rows in a visually distinct "context" style. People-per-water-point is real arithmetic over two curated columns (`boreholes`, `taps` are eligibility filters under D-8 of the redesign), so it informs an operational reader without touching the methodology. `v_prep`, by contrast, has no column and no source — reintroducing that row means inventing a number the methodology deliberately removed.
 
 **Impact**: The vulnerability accordion keeps 2 of its 3 Figma rows; "Preparedness index" disappears. `boreholes + taps == 0` → `value: null` with `meta.reason: "no_water_points_recorded"` (never a divide-by-zero, never a 0 that reads as "no pressure").
+
+> **Superseded in part, 2026-08-21 (D-10)**: the `people_per_water_point` row is no longer returned. The first half of this decision stands and is now absolute — `vulnerability.value` is `IPC_RESCALE[ipc_phase]` and `vulnerability.data` carries the IPC row alone. `v_prep` remains dropped.
 
 ---
 
@@ -332,6 +330,26 @@ Cattle / WaterDemand sheets — the payload reports them as unavailable.
 
 ---
 
+### D-10: The build-up lists only what builds the score — the water-access context row goes too, **superseding half of D-5**
+
+**Decision** (2026-08-21): `vulnerability.data` carries `ipc_phase` and nothing else. `people_per_water_point` is not returned in any form; `_people_per_water_point()` and `NO_WATER_POINTS_REASON` are deleted. With no IPC phase the array is empty rather than carrying a lone context row.
+
+**Rationale**: the same argument as D-9, applied to the other accordion. D-5 admitted this row because it is honest arithmetic over curated columns — which it is — but honesty was never the issue. It sat under a heading named for what moves V, and V is the IPC layer alone, so the `CONTEXT` chip was the only thing preventing a misreading that the layout invited. Together with D-9 this removes the `scored: false` case entirely: every row now in the build-up is an input to the number above it, and the chip has nothing left to qualify.
+
+**Impact**: the vulnerability accordion drops to one row. No score changes — the row was never an input. `ROW_COPY` loses its `people_per_water_point` entry. The `Indicator.boreholes` / `taps` columns and `generate_eligibility_seeder` are untouched; that seeder's test no longer justifies itself through this row (it had imported the private function) and asserts its own columns directly instead. If water access is wanted back, it belongs on an operational panel of its own, not inside a score build-up.
+
+---
+
+### D-9: Exposure carries the four scored sub-indicators and nothing else — **narrows D-5's context-row idea**
+
+**Decision** (2026-08-21): `exposure.data[]` returns `land_use_dvi_agri`, `population`, `cattle`, `water_demand`. `under_five` and `rainfed_cropland` are no longer returned in any form. `ELIGIBILITY_EXPOSURE_FIELDS` and `ELIGIBILITY_SOURCE` are deleted.
+
+**Rationale**: they are eligibility filters, not exposure. Listing them under the exposure heading asked the reader to take six numbers as the build-up of a score that four of them produce, with a `CONTEXT` chip carrying the entire weight of the distinction. The accordion is titled by what it sums; a row inside it that does not sum is a footnote in the wrong place. This does **not** disturb D-5 — the water-access row stays under vulnerability, where the same chip has a narrower job to do and only one row to qualify.
+
+**Impact**: the exposure accordion goes from six rows to four, matching the stated build-up — drought (score, trend, confidence) → exposure (land use, population, cattle, water demand) → vulnerability (IPC). No score changes: these rows were never inputs, and `EXPOSURE_SUBINDICATORS` in `v1_indicators` was already the four. `ROW_COPY` in `RiskScoreBuildUp.js` loses the two labels. The `Indicator` columns are untouched — `generate_eligibility_seeder` still fills them, and the admin indicator endpoints still serve them.
+
+---
+
 ### D-8: `water_demand` is served in m³ with the unit declared by the API — the frontend never converts
 
 **Options Considered**:
@@ -353,7 +371,7 @@ Cattle / WaterDemand sheets — the payload reports them as unavailable.
 |----------|----------------|-------|
 | `drought.key` | `_hazard_to_dclass(hazard)` | `None/D0…D4`; label + colour from `config.js` |
 | `drought.value` | `HAZARD_RESCALE[d_class]` | 0.0–1.0 |
-| `exposure.data[].key` | `EXPOSURE_SUBINDICATORS` + eligibility fields | `scored: true` only for the four risk sub-indicators |
+| `exposure.data[].key` | `EXPOSURE_SUBINDICATORS` | four rows, all `scored: true` (D-9) |
 | `exposure.data[].norm` | `components.{land_use,pop,cattle,water_demand}_norm` | min-max across the 59, per request |
 | `vulnerability.data[0].value` | `Indicator.ipc_phase` (1–5) | V = `IPC_RESCALE[phase]` in `vulnerability.value` |
 | `risk_score.class` | `RISK_BANDS` | `Very High/High/Moderate/Low` |
@@ -392,7 +410,7 @@ Cattle / WaterDemand sheets — the payload reports them as unavailable.
 |-----------|----------|
 | **Unit — service** | Detail composition for a fully-populated Inkhundla matches `score_one()` on `hazard`/`exposure`/`vulnerability`/`risk_score` (no re-implementation drift). Unscored Inkhundla → all-null block, `unavailable` lists the missing inputs. Band + threshold emission matches `RISK_BANDS`/`BAND_MAP` at each edge (0.50, 0.30, 0.15, 0.0). |
 | **Unit — trend** | Falling D-class across two cycles → `worsening`; rising → `recovering`; equal → `stable`; single publication → `null`; run length counts consecutive same-direction cycles only. |
-| **Unit — context rows** | `people_per_water_point` = `population / (boreholes + taps)`; `boreholes + taps == 0` → `null` + `no_water_points_recorded` (no ZeroDivisionError, no 0); `scored: false` on every context row and `true` on every scored one. |
+| **Unit — build-up rows** | Exposure returns exactly the four `EXPOSURE_SUBINDICATORS`; vulnerability returns `ipc_phase` alone, and `[]` when the phase is null. `scored: true` on every row in both — there is no `scored: false` case left (D-9, D-10). |
 | **Unit — confidence** | `drought.confidence.value` is `null` with `meta.reason == "no_station_baseline"` for every Inkhundla — a regression guard so no mock leaks onto a public surface (D-7). |
 | **Integration — endpoint** | Anonymous `GET` → 200 with the full block shape. Unknown administration → 404. No published publication → empty/unscored state, not 500. `rank` matches the position the same Inkhundla holds in `/api/v1/risk-levels`. |
 | **Integration — data** | Against the seeded 59: every Inkhundla returns non-null `population`, `land_use_dvi_agri`, `ipc_phase`; `cattle`/`water_demand` null and listed in `unavailable`. |
