@@ -61,15 +61,23 @@ class EligibilitySeederTestCase(TestCase):
         self.assertEqual(nkwene.boreholes, 2)
         self.assertIsNotNone(nkwene.population)
 
-    def test_water_access_row_is_computable_after_seeding(self):
-        """The reason this seeder exists: people_per_water_point stops
-        reporting no_water_points_recorded."""
+    def test_fills_the_eligibility_columns_the_handover_has_no_sheet_for(self):
+        """Why this seeder exists.
+
+        It used to be justified through the risk build-up's water-access row,
+        which has since been removed — vulnerability is the IPC layer alone
+        (risk-level-detail-buildup-api.md D-10). The columns themselves are
+        still eligibility filters served by the indicator endpoints, so the
+        seeder is asserted directly rather than through a consumer that no
+        longer exists.
+        """
         call_command("generate_indicators_seeder", "--test", True)
         call_command("generate_eligibility_seeder", "--test", True)
 
-        from api.v1.v1_risk_level.service import _people_per_water_point
-
-        adm = Administration.objects.get(name="Nkwene")
-        row = _people_per_water_point(adm.indicator)
-        self.assertIsNotNone(row["value"])
-        self.assertNotIn("reason", row["meta"])
+        indicator = Administration.objects.get(name="Nkwene").indicator
+        for field in ("under_five", "rainfed_cropland", "boreholes", "taps"):
+            self.assertGreater(
+                getattr(indicator, field), 0, f"{field} was left at 0"
+            )
+        # The risk inputs the other seeder owns must survive alongside them.
+        self.assertIsNotNone(indicator.population)

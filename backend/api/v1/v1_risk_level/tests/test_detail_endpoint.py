@@ -13,7 +13,6 @@ from api.v1.v1_publication.models import (
 from api.v1.v1_indicators.models import Indicator
 from api.v1.v1_risk_level.constants import (
     NO_CONFIDENCE_REASON,
-    NO_WATER_POINTS_REASON,
 )
 
 
@@ -150,11 +149,18 @@ class RiskLevelDetailEndpointTestCase(APITestCase):
         self.assertTrue(rows["population"]["scored"])
         self.assertIsNotNone(rows["population"]["norm"])
 
-        # Eligibility counts ride along as context only.
-        self.assertEqual(rows["under_five"]["value"], 184)
-        self.assertFalse(rows["under_five"]["scored"])
-        self.assertIsNone(rows["under_five"]["norm"])
-        self.assertEqual(rows["rainfed_cropland"]["unit"], "ha")
+        # Exposure is the four scored sub-indicators and nothing else (D-9).
+        # under_five and rainfed_cropland are eligibility filters; they used
+        # to ride along as context rows here, which invited the reader to
+        # treat six numbers as the build-up of a score four of them produce.
+        self.assertEqual(
+            sorted(rows),
+            sorted(["land_use_dvi_agri", "population", "cattle",
+                    "water_demand"]),
+        )
+        self.assertTrue(all(row["scored"] for row in exposure["data"]))
+        self.assertNotIn("under_five", rows)
+        self.assertNotIn("rainfed_cropland", rows)
 
         # D-8: unit is declared by the API and flagged as an assumption.
         self.assertEqual(rows["water_demand"]["unit"], "m3")
@@ -164,26 +170,26 @@ class RiskLevelDetailEndpointTestCase(APITestCase):
         self.assertIsNone(rows["water_demand"]["value"])
         self.assertIn("water_demand", exposure["unavailable"])
 
-    def test_vulnerability_has_ipc_scored_and_water_context(self):
+    def test_vulnerability_is_ipc_alone(self):
+        """V is the IPC layer and nothing else (D-7, narrowed by D-10).
+
+        `people_per_water_point` used to ride along as a context row. It was
+        honest arithmetic, but it sat under a heading named for what moves V.
+        """
         rows = self.client.get(self.url).json()["vulnerability"]["data"]
         by_key = {row["key"]: row for row in rows}
-        self.assertEqual(set(by_key), {"ipc_phase", "people_per_water_point"})
+        self.assertEqual(set(by_key), {"ipc_phase"})
         self.assertTrue(by_key["ipc_phase"]["scored"])
         self.assertEqual(by_key["ipc_phase"]["value"], 3)
-        # 8956 people / (2 boreholes + 2 taps)
-        self.assertEqual(by_key["people_per_water_point"]["value"], 2239)
-        self.assertFalse(by_key["people_per_water_point"]["scored"])
+        self.assertTrue(all(row["scored"] for row in rows))
 
-    def test_no_water_points_reports_reason_not_zero(self):
-        self.indicator.boreholes = 0
-        self.indicator.taps = 0
+    def test_vulnerability_is_empty_without_an_ipc_phase(self):
+        """No IPC, no rows — never a placeholder standing in for a phase."""
+        self.indicator.ipc_phase = None
         self.indicator.save()
-        rows = self.client.get(self.url).json()["vulnerability"]["data"]
-        water = next(
-            r for r in rows if r["key"] == "people_per_water_point"
-        )
-        self.assertIsNone(water["value"])
-        self.assertEqual(water["meta"]["reason"], NO_WATER_POINTS_REASON)
+        payload = self.client.get(self.url).json()["vulnerability"]
+        self.assertEqual(payload["data"], [])
+        self.assertIsNone(payload["value"])
 
     def test_confidence_is_never_mocked(self):
         confidence = self.client.get(self.url).json()["drought"]["confidence"]
@@ -200,8 +206,9 @@ class RiskLevelDetailEndpointTestCase(APITestCase):
         self.assertIsNone(data["risk_score"]["meta"]["band"])
         self.assertIsNone(data["rank"])
         self.assertIn("ipc_phase", data["exposure"]["unavailable"])
-        # The context row survives — it does not depend on the score.
-        self.assertEqual(len(data["vulnerability"]["data"]), 1)
+        # No IPC means no vulnerability row at all now that the water-access
+        # context row is gone (D-10). Empty, not a 500 and not a placeholder.
+        self.assertEqual(data["vulnerability"]["data"], [])
 
     def test_no_publication_still_200(self):
         Publication.objects.all().delete()

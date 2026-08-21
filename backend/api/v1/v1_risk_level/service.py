@@ -9,11 +9,8 @@ from api.v1.v1_publication.models import Publication, PublicationStatus
 from api.v1.v1_risk_level.constants import (
     BAND_MAP,
     DCLASS_BY_CATEGORY,
-    ELIGIBILITY_EXPOSURE_FIELDS,
-    ELIGIBILITY_SOURCE,
     EXPOSURE_UNITS,
     NO_CONFIDENCE_REASON,
-    NO_WATER_POINTS_REASON,
     WATER_DEMAND_UNIT_STATUS,
 )
 from api.v1.v1_risk_level.utils import band_thresholds, drought_trend
@@ -120,9 +117,9 @@ def compute_risk_level_list(
 
 
 def _exposure_row(indicator, field: str, components: dict) -> dict:
-    """One exposure accordion row: the raw absolute plus, for the four scored
-    sub-indicators, the normalised value it contributed. Eligibility counts
-    carry scored=False so the UI cannot present them as score inputs."""
+    """One exposure accordion row: the raw absolute plus the normalised value
+    it contributed. Every row here is scored — exposure carries the four
+    sub-indicators and nothing else (D-9)."""
     row = {
         "key": field,
         "value": getattr(indicator, field, None) if indicator else None,
@@ -132,53 +129,28 @@ def _exposure_row(indicator, field: str, components: dict) -> dict:
     }
     if field == "water_demand":
         row["meta"] = {"unit_status": WATER_DEMAND_UNIT_STATUS}
-    if field in ELIGIBILITY_EXPOSURE_FIELDS:
-        row["meta"] = {"source": ELIGIBILITY_SOURCE}
-    return row
-
-
-def _people_per_water_point(indicator) -> dict:
-    """Water access pressure — CONTEXT only (RL-2 D-5). Never a vulnerability
-    input: V is the IPC layer alone."""
-    row = {
-        "key": "people_per_water_point",
-        "value": None,
-        "unit": "people/point",
-        "scored": False,
-        "meta": {"basis": "population / (boreholes + taps)"},
-    }
-    if indicator is None:
-        row["meta"]["reason"] = NO_WATER_POINTS_REASON
-        return row
-
-    points = (indicator.boreholes or 0) + (indicator.taps or 0)
-    row["meta"]["boreholes"] = indicator.boreholes
-    row["meta"]["taps"] = indicator.taps
-    # Zero water points is not zero pressure — it is unknown, and dividing
-    # would raise. Both gaps report the reason instead of a number.
-    if not points or indicator.population is None:
-        row["meta"]["reason"] = NO_WATER_POINTS_REASON
-        return row
-
-    row["value"] = round(indicator.population / points)
     return row
 
 
 def _vulnerability_rows(indicator) -> list:
-    """IPC is the only scored row (redesign D-7); water access rides along as
-    labelled context (RL-2 D-5)."""
-    rows = []
-    if indicator is not None and indicator.ipc_phase is not None:
-        rows.append(
-            {
-                "key": "ipc_phase",
-                "value": indicator.ipc_phase,
-                "format": "ipc",
-                "scored": True,
-            }
-        )
-    rows.append(_people_per_water_point(indicator))
-    return rows
+    """IPC and nothing else (redesign D-7, narrowed by D-10).
+
+    `people_per_water_point` used to ride along as a labelled context row.
+    It was real arithmetic over real columns, but it sat under a heading
+    named for what moves V — and V is the IPC layer alone. Removed for the
+    same reason the two eligibility counts left exposure (D-9): a build-up
+    accordion should list what builds the number up.
+    """
+    if indicator is None or indicator.ipc_phase is None:
+        return []
+    return [
+        {
+            "key": "ipc_phase",
+            "value": indicator.ipc_phase,
+            "format": "ipc",
+            "scored": True,
+        }
+    ]
 
 
 def compute_risk_level_detail(administration) -> dict:
@@ -234,9 +206,7 @@ def compute_risk_level_detail(administration) -> dict:
             "value": raw.get("exposure"),
             "data": [
                 _exposure_row(indicator, field, components)
-                for field in (
-                    EXPOSURE_SUBINDICATORS + ELIGIBILITY_EXPOSURE_FIELDS
-                )
+                for field in EXPOSURE_SUBINDICATORS
             ],
             "unavailable": raw.get("unavailable", []),
         },

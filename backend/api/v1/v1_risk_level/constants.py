@@ -22,33 +22,27 @@ BAND_MAP = {
 
 VALID_BANDS = {"urgent", "watch", "monitor"}
 
-# Exposure rows on the build-up accordion. The first four are the scored
-# sub-indicators (redesign D-8); the rest are eligibility counts shown for
-# context only — they never move the score.
+# Exposure rows on the build-up accordion — the four scored sub-indicators,
+# and only those (redesign D-8).
+#
+# `under_five` and `rainfed_cropland` used to ride along as `scored: false`
+# context rows. They are eligibility filters, not exposure: keeping them under
+# the exposure heading invited the reader to treat six numbers as the build-up
+# of a score that four of them produce, and the CONTEXT chip was doing all the
+# work of saying otherwise. Removed 2026-08-21 — see
+# track-3/risk-level-detail-buildup-api.md D-9.
 EXPOSURE_UNITS = {
     "land_use_dvi_agri": None,
     "population": "people",
     "cattle": "head",
     # RL-2 D-8: assumed unit, declared here so the frontend never converts.
     "water_demand": "m3",
-    "under_five": "children",
-    "rainfed_cropland": "ha",
 }
 
-# Shown under the exposure accordion for context. Eligibility filters
-# (redesign D-8), never inputs to the score.
-ELIGIBILITY_EXPOSURE_FIELDS = ["under_five", "rainfed_cropland"]
-
-# The eligibility counts come from ./source/priority_areas.csv via
-# generate_eligibility_seeder, NOT from the NDMA handover workbook that fills
-# the scored risk inputs. `Indicator.source` describes the risk inputs only —
-# its own seeder says so — so without this the row's provenance is invisible
-# and a consumer would read the wrong one off `source.is_placeholder`.
-ELIGIBILITY_SOURCE = "prototype-illustrative"
-
 # Empty-state reasons, same idiom as v1_weather ("no_station_data_for_period").
+# NO_WATER_POINTS_REASON went with the water-access row (D-10) — it had no
+# other caller.
 NO_CONFIDENCE_REASON = "no_station_baseline"
-NO_WATER_POINTS_REASON = "no_water_points_recorded"
 WATER_DEMAND_UNIT_STATUS = "assumed_pending_dwa"
 
 # Drought trend (RL-2 D-6). Six cycles is more than the copy ever needs
