@@ -36,16 +36,10 @@ export default async function middleware(request) {
   if (session) {
     const { token: authToken, role } = await auth.decrypt(session);
 
-    // A magic link always wins over the current session — the browser may
-    // already hold a different account's cookie, and only the page can
-    // exchange the token. Redirecting here would sign them in as the wrong
-    // user and silently drop the link.
-    const hasMagicLink = request.nextUrl.searchParams.has("token");
-    if (authRoutes.includes(pathName) && !hasMagicLink) {
-      return NextResponse.redirect(
-        new URL(HOME_PAGE[role] || "/profile", request.url),
-      );
-    }
+    // Validated BEFORE the sign-in-screen redirect below. The other order
+    // sent someone holding a dead cookie from /login to their home page,
+    // which then bounced them back to /login — two wasted hops that only
+    // terminated because the cookie had been cleared on the way past.
     const req = await fetch(
       `${process.env.WEBDOMAIN}/api/v1/users/me?format=json`,
       {
@@ -56,13 +50,42 @@ export default async function middleware(request) {
         },
       },
     );
+    // The session is dead — expired token, rotated SESSION_SECRET, deleted
+    // user. Clearing the cookie is not enough on its own: without the return
+    // below, THIS request still rendered the page, and every data fetch in it
+    // failed, so the visitor got an empty shell instead of a sign-in prompt.
+    //
+    // Only gated routes redirect. This middleware runs on public pages too,
+    // and bouncing someone off /about because of a stale cookie would be a
+    // worse bug than the one being fixed — there, clear it and carry on.
+    //
+    // `signInPath`, not /unauthorized: an expired session is not a permission
+    // failure. The role checks below still send genuinely forbidden users to
+    // /unauthorized, but they cannot speak for this case — `decrypt` returns
+    // {} for a bad cookie, so `role` is undefined and every one of them would
+    // fire for the wrong reason.
     if (!req.ok) {
-      response.cookies.set({
+      const expired = signInPath
+        ? NextResponse.redirect(new URL(signInPath, request.url))
+        : response;
+      expired.cookies.set({
         name: "currentUser",
         value: "",
         httpOnly: true,
         expires: new Date(0),
       });
+      return expired;
+    }
+
+    // A magic link always wins over the current session — the browser may
+    // already hold a different account's cookie, and only the page can
+    // exchange the token. Redirecting here would sign them in as the wrong
+    // user and silently drop the link.
+    const hasMagicLink = request.nextUrl.searchParams.has("token");
+    if (authRoutes.includes(pathName) && !hasMagicLink) {
+      return NextResponse.redirect(
+        new URL(HOME_PAGE[role] || "/profile", request.url),
+      );
     }
 
     // A TWG reviewer may VIEW one Inkhundla's validation decision — the page

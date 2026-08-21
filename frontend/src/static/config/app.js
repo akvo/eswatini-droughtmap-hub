@@ -61,7 +61,7 @@ export const PUBLIC_MENU_ITEMS = [
   },
   {
     url: "/validations",
-    label: "Data validation",
+    label: "Drought validation",
     authenticated: true,
     is_admin: true,
   },
@@ -101,7 +101,7 @@ export const FOOTER_LINK_COLUMNS = [
     links: [
       { label: "National overview", url: "/" },
       { label: "Drought review", url: "/reviews" },
-      { label: "Data validation", url: "/publications" },
+      { label: "Drought validation", url: "/publications" },
       { label: "Detailed insights", url: "/detailed-insights" },
       { label: "Activity library", url: "/activity-library" },
     ],

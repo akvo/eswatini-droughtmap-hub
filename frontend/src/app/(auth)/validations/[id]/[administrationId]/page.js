@@ -6,11 +6,13 @@ import { Alert, Avatar, Button, Input, Tag } from "antd";
 import { HomeOutlined, WarningFilled } from "@ant-design/icons";
 import { Can, FeedbackSection } from "@/components";
 import { api } from "@/lib";
+import { textOn } from "@/lib/helper";
 // From @/lib/helper, not @/lib: matches how the weather charts import their
 // period helpers, and keeps this out of the barrel that page tests stub.
 import { periodRange } from "@/lib/helper";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import {
+  DROUGHT_CATEGORY_ASSIGNABLE,
   DROUGHT_CATEGORY_CODE,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_LABEL,
@@ -38,19 +40,18 @@ const CONSENSUS_BAND = {
   none: { label: "No consensus", color: "#667085" },
 };
 
-// Labels come from config.js, which is generated from the backend enum and
-// already says "Normal" for 0. Two hand-written arrays in this file would
-// drift the moment a label changes — and "None" reads as "no data" to a
-// validator, which is exactly the confusion -9999 exists to avoid.
-const DCLASS_OPTIONS = [0, 1, 2, 3, 4, 5].map((value) => ({
-  value,
-  label: value === 0 ? "None" : DROUGHT_CATEGORY_CODE[value],
-}));
+/* ── The same chips the reviewer picks from: DROUGHT_CATEGORY_ASSIGNABLE is
+      the ramp minus `none` (-9999), so this picker can only produce values
+      the API accepts.
 
-const DClassChip = ({ value, selected, onClick }) => {
-  const bg =
-    value === 0 ? "#3E5EB9" : (DROUGHT_CATEGORY_COLOR?.[value] ?? "#f3f4f6");
-  const label = DCLASS_OPTIONS.find((o) => o.value === value)?.label ?? "—";
+      It used to build its own [0..5] array and label 0 "None" — while the
+      comment above it argued that "None" reads as "no data" to a validator,
+      which is the exact confusion -9999 exists to avoid. 0 is `normal`, wet
+      conditions; "No data" is -9999 and nobody assigns it by hand. The chip
+      also painted 0 indigo instead of the config colour, the same private
+      ramp the legend below already had to be fixed for. ── */
+const DClassChip = ({ category, selected, onClick }) => {
+  const bg = category.color ?? "#f3f4f6";
   return (
     <button
       type="button"
@@ -58,9 +59,9 @@ const DClassChip = ({ value, selected, onClick }) => {
       className={`inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium transition-all ${
         selected ? "rounded-lg" : "text-[#a4a4a4] hover:text-[#606060]"
       }`}
-      style={selected ? { backgroundColor: bg, color: "#ffffff" } : {}}
+      style={selected ? { backgroundColor: bg, color: textOn(bg) } : {}}
     >
-      {label}
+      {category.code}
     </button>
   );
 };
@@ -280,8 +281,16 @@ const ValidationDecisionPage = () => {
       // Initialise from the saved draft, NOT from the majority: a draft that
       // re-opened showing the majority chip and an empty textarea would look
       // like it had never been saved.
+      //
+      // `validated_category` is the last fallback, mirroring how the reviewer
+      // falls back to the CDI class: with no reviews submitted yet there is
+      // no majority, and leaving every chip unselected reads as "nothing has
+      // been decided" even where the map already carries a class.
       setSelectedCategory(
-        payload?.decision?.category ?? payload?.majority_category ?? null,
+        payload?.decision?.category ??
+          payload?.majority_category ??
+          payload?.validated_category ??
+          null,
       );
       setReasoning(
         payload?.decision?.reasoning ??
@@ -522,13 +531,13 @@ const ValidationDecisionPage = () => {
                       className="flex items-center bg-[#f2f4f7] p-1"
                       style={{ borderRadius: 10 }}
                     >
-                      {DCLASS_OPTIONS.map((opt) => (
+                      {DROUGHT_CATEGORY_ASSIGNABLE.map((category) => (
                         <DClassChip
-                          key={opt.value}
-                          value={opt.value}
-                          selected={selectedCategory === opt.value}
+                          key={category.value}
+                          category={category}
+                          selected={selectedCategory === category.value}
                           onClick={() =>
-                            canSubmit && setSelectedCategory(opt.value)
+                            canSubmit && setSelectedCategory(category.value)
                           }
                         />
                       ))}

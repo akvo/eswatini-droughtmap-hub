@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { api } from "@/lib";
+import { DROUGHT_CATEGORY_ASSIGNABLE } from "@/static/config";
 import ValidationDecisionPage, { composeDefaultReasoning } from "../page";
 
 jest.setTimeout(30000);
@@ -107,6 +108,12 @@ const respond = (payload, history = []) =>
     return Promise.resolve(payload);
   });
 
+/** jsdom normalises an inline hex colour to rgb(). */
+const hexToRgb = (hex) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+};
+
 const reasoningBox = () => screen.getByPlaceholderText("Add reviewer notes...");
 
 /** The textarea renders before the fetch resolves, so it is no proof of
@@ -153,6 +160,69 @@ describe("Validation decision page", () => {
         "Accepting the reviewer majority (3 of 4 chose D2).",
       ),
     );
+  });
+
+  it("offers only assignable classes — no None, no No data", async () => {
+    render(<ValidationDecisionPage />);
+    await loaded();
+
+    // 0 is `normal` (wet conditions). It used to render as "None", which a
+    // validator reads as "no data" — the exact confusion -9999 exists for.
+    expect(screen.getByRole("button", { name: "Normal" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "None" }),
+    ).not.toBeInTheDocument();
+    // -9999 is raster output, never a human's decision.
+    expect(
+      screen.queryByRole("button", { name: "No data" }),
+    ).not.toBeInTheDocument();
+
+    DROUGHT_CATEGORY_ASSIGNABLE.forEach((category) => {
+      expect(
+        screen.getByRole("button", { name: category.code }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("paints the chips from the shared ramp, matching the legend", async () => {
+    // The picker used to hardcode 0 as indigo (#3E5EB9) while the legend
+    // below it read DROUGHT_CATEGORY_COLOR — the same disagreement the
+    // legend itself was already fixed for. Selecting 0 proves the chip now
+    // takes its fill from the shared scale (green), not a private ramp.
+    const normal = DROUGHT_CATEGORY_ASSIGNABLE.find((c) => c.value === 0);
+    respond(PAYLOAD({ majority_category: 0 }));
+    render(<ValidationDecisionPage />);
+    await loaded();
+
+    const chip = screen.getByRole("button", { name: "Normal" });
+    expect(chip.style.backgroundColor).toBe(hexToRgb(normal.color));
+    expect(chip.style.backgroundColor).not.toBe(hexToRgb("#3E5EB9"));
+  });
+
+  it("falls back to the validated class when there is no majority", async () => {
+    // With nothing submitted there is no majority; leaving every chip blank
+    // reads as "nothing decided" even where the map already carries a class.
+    respond(
+      PAYLOAD({
+        majority_category: null,
+        validated_category: 4,
+        agreement: {
+          band: "none",
+          majority_count: 0,
+          total_submitted: 0,
+          is_tie: false,
+          tied_categories: [],
+          distribution: [],
+        },
+      }),
+    );
+    render(<ValidationDecisionPage />);
+    await loaded();
+
+    const chip = screen
+      .getAllByRole("button", { name: "D3" })
+      .find((c) => c.style.backgroundColor);
+    expect(chip).toBeTruthy();
   });
 
   it("re-opens a saved draft with its own selection and text", async () => {
