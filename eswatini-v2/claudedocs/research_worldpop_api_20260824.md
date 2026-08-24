@@ -1,7 +1,7 @@
 # Research: WorldPop programmatic access for the Inkhundla population indicator
 
-**Task ID**: PA-4-R (research delta) · **Date**: 2026-08-24 · **Status**: Findings, no implementation
-**Amends**: [`track-1/exposure-indicator-automation.md`](../docs/track-1/exposure-indicator-automation.md) (PA-4) — corrects **D-1**, **D-2**, **OQ-3**, **OQ-5**
+**Date**: 2026-08-24 · **Status**: Findings, no implementation · **Refer to this document as** `research_worldpop_api_20260824.md`
+**Amends**: [`exposure-indicator-automation.md`](../docs/track-1/exposure-indicator-automation.md) — corrects its decisions **D-1**, **D-2** and its open questions **OQ-3**, **OQ-5**
 **Method**: live calls to `hub.worldpop.org`, `api.stac.worldpop.org`, `data.worldpop.org` on 2026-08-24, plus a real zonal aggregation of 8 candidate rasters over `backend/source/eswatini.topojson` (59 Tinkhundla) compared against `risk_dataset__Exposure_Population.csv`.
 
 ---
@@ -10,10 +10,10 @@
 
 **GO** — automate the WorldPop pull. ~1 day of engineering, no new dependency, no credential, permissive licence.
 
-Two corrections to PA-4 that change what gets built:
+Two corrections to `exposure-indicator-automation.md` that change what gets built:
 
-1. **`wpgp` is the wrong product.** PA-4 assumed the manual CSV came from `wpgp` 2020 (unconstrained, 100 m). It does not: zonal-summing `swz_ppp_2020.tif` reproduces the manual numbers with a **22% median error** per Inkhundla. The **R2025A constrained 2015–2030** series matches to **~3%** median. Building against `wpgp` would have replaced the current indicator with a materially different one under the same column name — exactly the failure PA-4 warns about for DVI-agri.
-2. **The series is no longer static.** PA-4 **D-2** rests on *"the `wpgp` series ends at 2020 and does not change."* True of `wpgp`, false of the catalogue: R2025A was published **2025-09-01** and carries per-year rasters through **2030**. The "no release cadence" argument for skipping automation weakens — though the conclusion (not hourly, not monthly) still holds, for a different reason.
+1. **`wpgp` is the wrong product.** `exposure-indicator-automation.md` assumed the manual CSV came from `wpgp` 2020 (unconstrained, 100 m). It does not: zonal-summing `swz_ppp_2020.tif` reproduces the manual numbers with a **22% median error** per Inkhundla. The **R2025A constrained 2015–2030** series matches to **~3%** median. Building against `wpgp` would have replaced the current indicator with a materially different one under the same column name — exactly the failure `exposure-indicator-automation.md` warns about for DVI-agri.
+2. **The series is no longer static.** `exposure-indicator-automation.md` **D-2** rests on *"the `wpgp` series ends at 2020 and does not change."* True of `wpgp`, false of the catalogue: R2025A was published **2025-09-01** and carries per-year rasters through **2030**. The "no release cadence" argument for skipping automation weakens — though the conclusion (not hourly, not monthly) still holds, for a different reason.
 
 The STAC API is real and works; it is still not the route to use. `wopr` remains out.
 
@@ -25,9 +25,9 @@ The STAC API is real and works; it is still not the route to use. `wopr` remains
 |---|---|---|
 | **REST** `hub.worldpop.org/rest/data/...` | HTTP 200, JSON, unauthenticated. 18 top-level catalogues, 18 population sub-catalogues. Every record carries `files[]` with absolute GeoTIFF URLs, plus `license`, `citation`, `doi`, `popyear` | **USE THIS** |
 | **STAC** `api.stac.worldpop.org` | Real STAC 1.0.0 API, 19 conformance classes, `/search` with CQL. 248 collections — **one per country**, not per product. `SWZ` declares `license: "CC-BY-4.0"`, temporal extent 2015→2030 | Works, but **covers only R2025A** — no `wpgp`, no 2000–2020. Assets are the same `data.worldpop.org` URLs the REST API returns |
-| **`wopr`** | Unchanged from PA-4 | **Out** — R package, and returns point/polygon *estimates*, not the raster |
+| **`wopr`** | Unchanged from `exposure-indicator-automation.md` | **Out** — R package, and returns point/polygon *estimates*, not the raster |
 
-PA-4's D-1 reasoning ("STAC adds a catalogue-traversal layer whose value is discovery, and the URL pattern is deterministic") survives, but the stronger reason is now coverage: STAC cannot see the 2000–2020 archive at all, so it can only ever serve half the catalogue.
+`exposure-indicator-automation.md`'s D-1 reasoning ("STAC adds a catalogue-traversal layer whose value is discovery, and the URL pattern is deterministic") survives, but the stronger reason is now coverage: STAC cannot see the 2000–2020 archive at all, so it can only ever serve half the catalogue.
 
 **The one thing STAC gives that REST does not** is per-item raster metadata without downloading — `data:width/height`, `data:pixel_size`, `projection:epsg`, `stats:min/max/mean/std_dev`, `data:nodata_value`. Useful for a sanity assertion before a 4.7 MB download; not worth a second client.
 
@@ -51,7 +51,7 @@ Zonal sum, `all_touched=True`, over all 59 Tinkhundla from `eswatini.topojson`, 
 
 | Raster | Zonal total | Median rel. err | Max rel. err |
 |---|---:|---:|---:|
-| `swz_ppp_2020.tif` (**wpgp** — PA-4's assumed source) | 1,116,396 | **21.9%** | 50.0% |
+| `swz_ppp_2020.tif` (**wpgp** — `exposure-indicator-automation.md`'s assumed source) | 1,116,396 | **21.9%** | 50.0% |
 | `swz_ppp_2020_UNadj.tif` | 1,182,174 | 21.1% | 47.1% |
 | `swz_ppp_2020_constrained.tif` | 1,107,702 | 19.7% | 44.2% |
 | `swz_pop_2025_CN_100m_R2025A_v1.tif` | 1,265,103 | 4.2% | 15.8% |
@@ -74,7 +74,7 @@ worst: Sandleni  auto 9,035 vs manual 10,626 (15.0%)
 
 Two of 59 above 10% and both persistent across every year tested — worth one look at those polygons before the first write. `Shiselweni` is also a *region* name; a name/boundary collision in the topojson is the first hypothesis.
 
-**Sensitivity — `all_touched`:** turning it off moves the 2026 total by 1.3% (1,278,958 → 1,262,779) and worsens the median to 4.1%. **0 of 59 Tinkhundla go null under either setting.** PA-4 **D-3** is confirmed correct but for a milder reason than feared: at 100 m against Inkhundla-sized polygons, centre-masking does not produce the silent-null catastrophe it did against 0.25° CHIRPS. Keep `all_touched=True` — it is closer to the manual numbers and costs nothing.
+**Sensitivity — `all_touched`:** turning it off moves the 2026 total by 1.3% (1,278,958 → 1,262,779) and worsens the median to 4.1%. **0 of 59 Tinkhundla go null under either setting.** `exposure-indicator-automation.md` **D-3** is confirmed correct but for a milder reason than feared: at 100 m against Inkhundla-sized polygons, centre-masking does not produce the silent-null catastrophe it did against 0.25° CHIRPS. Keep `all_touched=True` — it is closer to the manual numbers and costs nothing.
 
 ---
 
@@ -94,7 +94,7 @@ Note this differs from the `wpgp` citation (WP00645, 2018) — another reason pr
 
 ## 4. Effort, and the pipeline question
 
-**~1 day**, unchanged from PA-4's estimate. Nothing found here makes it harder:
+**~1 day**, unchanged from `exposure-indicator-automation.md`'s estimate. Nothing found here makes it harder:
 
 | Piece | Note |
 |---|---|
@@ -104,11 +104,11 @@ Note this differs from the `wpgp` citation (WP00645, 2018) — another reason pr
 | Guard + tests | Mirror `build_chirps_normals.running_tests()` (`sys.argv`, not `TEST_ENV`), commit one clipped fixture GeoTIFF |
 | `--dry-run` | Prints the 59-value diff. §2 is that report, run by hand — the command just makes it repeatable |
 
-`IndicatorSource` needs **`WORLDPOP_R2025A_CN_100M`**, not PA-4's proposed `WORLDPOP_WPGP_2020`.
+`IndicatorSource` needs **`WORLDPOP_R2025A_CN_100M`**, not `exposure-indicator-automation.md`'s proposed `WORLDPOP_WPGP_2020`.
 
 ### On "runs automatically on each release"
 
-**Still no** — but PA-4's reason has expired and needs replacing. The dataset *does* now have releases (R2024A, R2024B, R2025A) and *does* extend to 2030. What it does not have is a monthly or hourly cadence: R2025A shipped once, in September 2025, with all 16 years at once. Hooking it to the hourly/monthly pipeline would re-download an identical file forever.
+**Still no** — but `exposure-indicator-automation.md`'s reason has expired and needs replacing. The dataset *does* now have releases (R2024A, R2024B, R2025A) and *does* extend to 2030. What it does not have is a monthly or hourly cadence: R2025A shipped once, in September 2025, with all 16 years at once. Hooking it to the hourly/monthly pipeline would re-download an identical file forever.
 
 The shape that fits: **one command, run on demand**, plus — if freshness matters — a cheap annual nudge that compares the REST catalogue's newest `Release`/`date` for SWZ against what's stored and *logs* a divergence rather than writing one. A release changes the methodology, not just the numbers; it deserves a human deciding to adopt it, the same way `build_chirps_normals` does.
 
@@ -121,7 +121,7 @@ The shape that fits: **one command, run on demand**, plus — if freshness matte
 1. `fetch_worldpop_population --year 2026` (default: current year, clamped to the catalogue's range), source `WORLDPOP_R2025A_CN_100M`, `as_of` from the record.
 2. Run `--dry-run` and eyeball **Sandleni** and **Shiselweni** before the first real write. Everything else lands within 5%.
 3. Do not wire it into the hourly/monthly pipeline (§4).
-4. Keep `generate_indicators_seeder.py` and the CSVs — PA-4 **D-6** stands, and it is now the only record of pre-automation values that came from an unidentified product.
+4. Keep `generate_indicators_seeder.py` and the CSVs — `exposure-indicator-automation.md` **D-6** stands, and it is now the only record of pre-automation values that came from an unidentified product.
 
 **Ask the indicator owner one question, in parallel, not as a blocker:** which R2025A *year* the delivered CSV used. The answer costs a message and settles §2; without it we choose 2026 on the merits (it is the current year and not a projection), and the switch will move the indicator by ~3% at the median.
 
@@ -152,7 +152,8 @@ Scripts: `zonal.py`, `zonal_nt.py`, `detail.py` in this session's scratchpad —
 
 ## 7. References
 
-- Amends: [`track-1/exposure-indicator-automation.md`](../docs/track-1/exposure-indicator-automation.md) (PA-4) — D-1, D-2, OQ-3, OQ-5
-- Related: [`track-1/dynamic-world-earth-engine-assessment.md`](../docs/track-1/dynamic-world-earth-engine-assessment.md) (PA-5) — the other half of PA-4, NO-GO
+- Amends: [`exposure-indicator-automation.md`](../docs/track-1/exposure-indicator-automation.md) — decisions D-1, D-2; open questions OQ-3, OQ-5
+- Related: [`dynamic-world-earth-engine-assessment.md`](../docs/track-1/dynamic-world-earth-engine-assessment.md) — the land-use half of `exposure-indicator-automation.md`, verdict NO-GO
+- Implementation plan derived from this report: [`worldpop-population-ingest.md`](../docs/track-3/worldpop-population-ingest.md)
 - Prior art: [`build_chirps_normals.py`](../../backend/api/v1/v1_weather/management/commands/build_chirps_normals.py) — fetch + zonal aggregate + `sys.argv` network guard
 - External: [WorldPop REST](https://hub.worldpop.org/rest/data) · [WorldPop STAC](https://api.stac.worldpop.org/) · [licence](https://hub.worldpop.org/data/licence.txt) · [R2025A release statement](https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf)
