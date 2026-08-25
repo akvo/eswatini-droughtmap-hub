@@ -114,10 +114,21 @@ class Command(BaseCommand):
 
         success_count = 0
         unmatched_admins = []
+        skipped_applied = []
         for norm_name, adm in administrations.items():
             adm_data = data.get(norm_name, {})
             if not adm_data:
                 unmatched_admins.append(adm.name)
+
+            # PA-6 D-14: never overwrite a value an operator has applied.
+            # Without this, any re-run — a deploy step, a demo reseed, a
+            # developer reproducing a bug — silently reverts uploaded
+            # figures to the 2026-07 handover numbers with nothing to show
+            # that it happened.
+            existing = Indicator.objects.filter(administration=adm).first()
+            if existing and not existing.is_placeholder:
+                skipped_applied.append(adm.name)
+                continue
 
             # Only the three CSV-backed fields are written. cattle,
             # water_demand and eligibility counts are left alone so the
@@ -133,6 +144,13 @@ class Command(BaseCommand):
             )
             if adm_data:
                 success_count += 1
+
+        if skipped_applied:
+            logger.info(
+                "Left %d operator-applied indicator(s) untouched: %s",
+                len(skipped_applied),
+                ", ".join(sorted(skipped_applied)),
+            )
 
         unused_csv_rows = sorted(set(data) - set(administrations))
         if unmatched_admins:

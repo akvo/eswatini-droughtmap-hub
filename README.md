@@ -43,6 +43,29 @@ Eswatini Droughtmap Hub
      - **Description [en]**: `CDI Raster Map`
    - Save the category.
 
+6. **Add the secondary-data categories** *(only if partner organisations will
+   publish their own spreadsheets — see
+   [Secondary data uploads](#secondary-data-uploads-datasetupload))*
+
+   Eleven more topic categories, one per dataset. The identifiers must match
+   **exactly**: routing is by category and nothing else, so a near-miss is a
+   category providers can publish into and the platform will never read.
+
+   ```
+   exposure-water-demand          exposure-cattle
+   exposure-population            exposure-land-use
+   vulnerability-ipc              eligibility-under-five
+   eligibility-elderly            eligibility-rainfed-cropland
+   eligibility-rangeland          eligibility-boreholes
+   eligibility-taps
+   ```
+
+   Check them from the Droughtmap Hub rather than by eye:
+
+   ```bash
+   docker compose exec backend python manage.py fetch_dataset_uploads --check
+   ```
+
 ---
 
 ## **Configure Eswatini Droughtmap Hub**
@@ -409,6 +432,7 @@ Notes:
 ./job.sh cdi                          # retry CDI extraction
 ./job.sh cs-reminders                 # citizen-science monthly reminders
 ./job.sh precipitation                # CHIRPS rainfall for the current month
+./job.sh dataset-uploads              # fetch provider files from GeoNode
 ```
 
 Every task in `job.sh` has a matching crontab entry in `backend/eswatini-cron`,
@@ -563,6 +587,129 @@ Expected output:
 ```bash
 Seeded 59/59 indicators from DIH Risk Dataset.
 ```
+
+### **Secondary data uploads: `DatasetUpload`**
+
+Some risk inputs have no API — water demand, cattle, IPC phase, the eligibility
+counts. They arrive as spreadsheets, and the seeders above are a **bootstrap
+floor**, not the way to keep them current: editing `backend/source/csv/` needs a
+commit and a deploy.
+
+Instead a named operator uploads a CSV in Django admin, reviews a per-Inkhundla
+before/after diff, and applies it. Design:
+[`eswatini-v2/docs/track-1/secondary-data-operator-updates.md`](eswatini-v2/docs/track-1/secondary-data-operator-updates.md).
+
+> ⚠️ **Uploading never changes a figure.** An upload parses, validates and
+> stores a diff at status **Validated**. The values move only when a person
+> runs the *Apply selected uploads* action and confirms. This is the step most
+> often mistaken for a bug.
+
+#### **Granting an operator access**
+
+`is_staff` is a real field (it used to return `is_superuser`), so the operator
+reaches this screen **without** being a superuser:
+
+1. **Admin** → **Users** → pick the account → tick **Staff status**.
+2. Add them to the **`Data operators`** group, created by migration
+   `v1_indicators.0004`. It grants add/view on `DatasetUpload` and nothing else.
+
+Do not hand out `is_superuser` for this: it also grants every user account and
+the stored Kobo adapter credentials.
+
+#### **The template**
+
+Generated on demand from the live `administrations` table — 59 Tinkhundla, all
+11 dataset columns, keys pre-filled:
+
+> **Dataset uploads** → **Download blank template**
+
+A committed copy would go stale the moment an Inkhundla is renamed and then
+fail at match time, so always download rather than reuse an old file. An
+illustrative copy lives at
+[`eswatini-v2/docs/track-1/examples/`](eswatini-v2/docs/track-1/examples/).
+
+Fill only the columns you have. Two rules do most of the work:
+
+- **Blank is not zero.** An empty cell leaves the existing figure alone; `0`
+  asserts a real zero. A false zero pulls that Inkhundla's risk score *down*,
+  so the error hides rather than announcing itself.
+- **One file, one source, one date.** `source_label` and `as_of` are entered
+  once per upload and stamped on every column in it, so only group columns that
+  came from the same export.
+
+The **column header names the dataset** (`water_demand`, `cattle`, …), so there
+is no dropdown to mis-pick and no filename convention. A column the platform
+does not recognise is reported, not imported — which is how a typo such as
+`under_5` surfaces.
+
+#### **Fetching provider files from GeoNode: `fetch_dataset_uploads`**
+
+DWA, JRBA and CSO hold much of this data and will never have platform accounts.
+GeoNode is their inbox: they publish a filled template into their category and
+this command collects it.
+
+> ⚠️ **Upload it as a document, not a dataset.** GeoNode's *dataset* form
+> treats a CSV as a map layer and rejects it with **"Not enough geometry
+> field"**. Use **Add resource → Upload document** (or
+> `/catalogue/#/upload/document`). This is not just a way round the error: the
+> poller filters `resource_type=document`, so a CSV forced in as a dataset
+> with invented lat/lon columns would upload fine and never be seen.
+
+On the resource, set **Category** to the dataset's identifier and set the
+**Date** — a resource with no date is skipped rather than given a guessed
+vintage.
+
+```bash
+# Which of the 11 categories exist? Run this FIRST — a missing category is
+# silently unreachable, and the poller would report nothing new forever.
+docker compose exec backend python manage.py fetch_dataset_uploads --check
+
+# Normal run (scheduled daily at midnight as ./job.sh dataset-uploads)
+docker compose exec backend python manage.py fetch_dataset_uploads
+
+# Look without touching anything
+docker compose exec backend python manage.py fetch_dataset_uploads --dry-run
+
+# One dataset only
+docker compose exec backend python manage.py fetch_dataset_uploads --dataset cattle
+```
+
+> ⚠️ **Publishing to GeoNode does not update the platform.** A fetched file
+> lands at **Validated** exactly like a hand-uploaded one and waits for the
+> operator to confirm. An external organisation must not write into the
+> national risk score unreviewed.
+
+The **daily midnight schedule is provisional** — no partner has told us how
+often they will publish. These datasets refresh a few times a year, so daily is
+generous and a run that finds nothing costs one catalogue read per category.
+Revisit once DWA/JRBA/CSO give an actual cadence.
+
+Behaviour worth knowing before you debug it:
+
+- **Dedupe is on file content**, not on the GeoNode resource id — a provider
+  can replace a document in place, and keying on the id would hide the
+  correction.
+- **A resource with no date is skipped**, and says so. `as_of` comes from the
+  provider's metadata, and guessing would stamp a fabricated vintage onto
+  published figures.
+- **One unreadable category does not abort the run.** The catalogue and the
+  file host fail independently.
+- **Operators are emailed** ("files are waiting for your review"). The
+  publisher's address is recorded in `report["published_by"]` but is
+  **never contacted automatically**.
+
+#### **Reverting**
+
+*Revert selected applied uploads* replays the stored `before` values and records
+a **new** row — history is append-only, so the current values are always the
+last applied upload.
+
+#### **Interaction with the seeders**
+
+`generate_indicators_seeder` now **skips any row an operator has applied**
+(`is_placeholder=False`). Without that guard a re-run — a deploy step, a demo
+reseed — would silently revert uploaded figures to the 2026-07 handover
+numbers.
 
 ### **Seed Eligibility Counts: `generate_eligibility_seeder`**
 

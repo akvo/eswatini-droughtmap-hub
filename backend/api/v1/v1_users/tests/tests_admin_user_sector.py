@@ -9,9 +9,13 @@ class SystemUserAdminExposureTestCase(TestCase):
     def test_edit_null_twg_user_saves_activity_sector(self):
         """A NULL-TWG reviewer can be assigned a sector via the admin edit
         form without being forced to pick a technical_working_group."""
+        # PA-6 D-13: is_staff is a real field now, deliberately NOT derived
+        # from is_superuser or from the app-level admin role, so a user built
+        # directly must opt into Django-admin access.
         superuser = SystemUser.objects.create(
             email="su@test.org", name="su",
-            role=UserRoleTypes.admin, is_superuser=True, email_verified=True,
+            role=UserRoleTypes.admin, is_superuser=True, is_staff=True,
+            email_verified=True,
         )
         superuser.set_password("Test1234")
         superuser.save()

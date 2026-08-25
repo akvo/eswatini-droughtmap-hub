@@ -24,6 +24,7 @@ class EmailTypes:
     cs_magic_link = "cs_magic_link"
     cs_reminder = "cs_reminder"
     brief_forward = "brief_forward"
+    dataset_upload_pending = "dataset_upload_pending"
 
     FieldStr = {
         verification_email: "verification_email",
@@ -36,6 +37,7 @@ class EmailTypes:
         cs_magic_link: "cs_magic_link",
         cs_reminder: "cs_reminder",
         brief_forward: "brief_forward",
+        dataset_upload_pending: "dataset_upload_pending",
     }
 
 
@@ -181,6 +183,39 @@ def email_context(context: dict, type: str):
                 ),
             }
         )
+    if type == EmailTypes.dataset_upload_pending:
+        pending = context.get("pending_count", 0)
+        rejected = context.get("rejected_count", 0)
+        context.update(
+            {
+                "subject": "{0} data file(s) waiting for your review".format(
+                    pending + rejected
+                ),
+                "body": """
+                {0} file(s) published to GeoNode have been checked and are
+                waiting for you in the admin. <b>Nothing has been applied</b>
+                — the figures change only after you review the before/after
+                list and confirm.
+                <br/><br/>
+                {1}
+                {2}
+                """.format(
+                    pending,
+                    "<br/>".join(context.get("lines", [])),
+                    (
+                        "<br/><br/>{0} file(s) were rejected and need the "
+                        "publisher to correct them.".format(rejected)
+                        if rejected
+                        else ""
+                    ),
+                ),
+                "cta_text": "Review the uploads",
+                "cta_url": "{0}/admin/v1_indicators/datasetupload/".format(
+                    WEBDOMAIN
+                ),
+            }
+        )
+
     if type == EmailTypes.cs_reminder:
         context.update(
             {
