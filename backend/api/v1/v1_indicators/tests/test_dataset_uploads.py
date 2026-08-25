@@ -1,7 +1,9 @@
 import io
 
+from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import Client, TestCase
 from rest_framework.exceptions import ValidationError
 
 from api.v1.v1_indicators import parsers, uploads
@@ -297,8 +299,6 @@ class UploadFlowTestCase(TestCase):
 
 class SeederGuardTestCase(TestCase):
     def test_seeder_leaves_applied_values_alone(self):
-        from django.core.management import call_command
-
         adm = Administration.objects.create(name="Hhukwini", region="H")
         Indicator.objects.create(
             administration=adm,
@@ -357,8 +357,6 @@ class OperatorPermissionsTestCase(TestCase):
     reaches nothing else."""
 
     def setUp(self):
-        from django.contrib.auth.models import Group
-
         self.group = Group.objects.get(name="Data operators")
         self.operator = SystemUser.objects.create(
             email="operator@example.org", name="Operator", is_staff=True
@@ -377,8 +375,6 @@ class OperatorPermissionsTestCase(TestCase):
         )
 
     def test_operator_can_reach_the_changelist(self):
-        from django.test import Client
-
         client = Client()
         client.force_login(self.operator)
         self.assertEqual(
@@ -386,24 +382,18 @@ class OperatorPermissionsTestCase(TestCase):
         )
 
     def test_operator_cannot_reach_user_admin(self):
-        from django.test import Client
-
         client = Client()
         client.force_login(self.operator)
         response = client.get("/admin/v1_users/systemuser/")
         self.assertIn(response.status_code, (302, 403))
 
     def test_staff_without_the_group_is_shut_out(self):
-        from django.test import Client
-
         client = Client()
         client.force_login(self.outsider)
         response = client.get("/admin/v1_indicators/datasetupload/")
         self.assertIn(response.status_code, (302, 403))
 
     def test_non_staff_cannot_reach_admin_at_all(self):
-        from django.test import Client
-
         plain = SystemUser.objects.create(
             email="plain@example.org", name="Plain"
         )

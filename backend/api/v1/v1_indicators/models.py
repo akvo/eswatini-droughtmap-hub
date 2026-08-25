@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_indicators.constants import UploadOrigin, UploadStatus
+from api.v1.v1_indicators.datasets import DATASETS
 
 
 class Indicator(models.Model):
@@ -126,8 +127,6 @@ class DatasetUpload(models.Model):
         Nullable on purpose: a registry entry can be removed while historical
         rows that used it remain, and the changelist must still render them.
         """
-        from api.v1.v1_indicators.datasets import DATASETS
-
         return DATASETS.get(self.dataset)
 
     @property

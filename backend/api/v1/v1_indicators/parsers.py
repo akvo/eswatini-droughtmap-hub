@@ -12,6 +12,7 @@ import logging
 import unicodedata
 from typing import Dict, List, Tuple
 
+from api.v1.v1_indicators.models import Indicator
 from api.v1.v1_indicators.datasets import (
     DatasetDef,
     GENERIC_VALUE_COLUMN,
@@ -213,8 +214,6 @@ def _current_values(field: str) -> Dict[int, object]:
     the real stored value — the diff is both what the operator confirms and
     the snapshot a revert replays (D-10).
     """
-    from api.v1.v1_indicators.models import Indicator
-
     return dict(
         Indicator.objects.values_list("administration_id", field)
     )

@@ -5,7 +5,7 @@
 **Task ID**: PA-6
 **Author**: Iwan Firmawan
 **Date**: 2026-08-18
-**Status**: Draft
+**Status**: Implemented — both paths built and verified against `cdie-geonode-prod` (2026-08-25)
 **Track**: 1 (Decision Track) — writes the exposure/vulnerability inputs consumed by Track 3 risk scoring and SOP eligibility
 **Siblings**:
 - [`exposure-indicator-automation.md`](./exposure-indicator-automation.md) (PA-4) — automates the two sub-indicators that *do* have a fetchable source
@@ -14,7 +14,7 @@
 
 > PA-4/PA-5 answer *"which of these can we fetch automatically?"*. This document answers the complement: **what happens to the ones that can never be fetched**, because a person receives them as a file.
 
-**Surface**: Django admin. No frontend work — see **D-1**.
+**Surface**: Django admin for the operator, a GeoNode category per dataset for providers. No frontend work — see **D-1**.
 
 ---
 
@@ -234,7 +234,7 @@ class DatasetUpload(models.Model):
     dataset = models.CharField(max_length=64, db_index=True)   # registry slug, D-5
     origin = models.CharField(max_length=16, default="upload")  # upload | geonode | revert
     file = models.FileField(upload_to="datasets/%Y/%m/")        # D-12
-    checksum = models.CharField(max_length=64)                  # sha256 of the bytes
+    checksum = models.CharField(max_length=64, db_index=True)   # sha256; groups siblings
     source_label = models.CharField(max_length=255)             # declared, D-4
     as_of = models.DateField()                                  # declared, D-4
     status = models.PositiveSmallIntegerField(
@@ -419,7 +419,7 @@ class DatasetUploadAdmin(admin.ModelAdmin):
         return False   # an upload is a record of an event, never edited
 ```
 
-**Add form** — three fields: the file, `source_label`, `as_of`. Extension and size are checked in `clean_file`, not in `save_model`: a DRF `ValidationError` escaping `save_model` renders a 500, which is the opposite of what **D-2** asks for — the operator must get the "save it as CSV" instruction back on the field. Its `help_text` carries the template-download links. `save_model` computes the checksum, parses the header to discover which datasets the file declares, validates each, and **creates one `DatasetUpload` row per recognised value column** — all sharing the same stored file, checksum, source and vintage. Each row gets its own report, its own diff, and its own `validated`/`rejected` status, so a census file whose `elderly` column is malformed still lets `under_five` through. **Nothing is written to `Indicator`** (**D-3**).
+**Add form** — three fields: the file, `source_label`, `as_of`. Extension and size are checked in `clean_file`, not in `save_model`: a DRF `ValidationError` escaping `save_model` renders a 500, which is the opposite of what **D-2** asks for — the operator must get the "save it as CSV" instruction back on the field. Its `help_text` carries the template-download links. `save_model` computes the checksum, parses the header to discover which datasets the file declares, validates each, and **creates one `DatasetUpload` row per recognised value column** — all sharing the same checksum, source and vintage. Each keeps its **own copy of the file** (`<slug>_<checksum[:12]>.csv`) rather than one shared row: at 2 KB the duplication is free, and it keeps a row self-contained if a sibling is deleted. Each row gets its own report, its own diff, and its own `validated`/`rejected` status, so a census file whose `elderly` column is malformed still lets `under_five` through. **Nothing is written to `Indicator`** (**D-3**).
 
 Sibling rows are grouped by `checksum` — same bytes, same upload — so the changelist can show them together without a `batch` column existing for the purpose.
 
@@ -435,11 +435,13 @@ A rejected upload saves anyway and lands on its change page with the row-numbere
 
 ```json
 {
+  "dataset": "water-demand",
+  "field": "water_demand",
+  "unit": "m3/year",
   "rows_read": 59,
   "matched": 46,
-  "unchanged": 4,
-  "changed": 42,
   "blank": 13,
+  "error_total": 2,
   "errors": [
     {"row": 34, "column": "water_demand", "code": "unknown_administration",
      "detail": "'Mbabane West' does not match any Inkhundla."},
@@ -511,9 +513,78 @@ Phase 1 has **no scheduled component at all** — no cron, no poller, no queue. 
 
 **Where the template comes from**: the admin-only route in §4.4 generates it on demand from the live `administrations` table, linked from the Add form's `help_text` and from a button on the changelist, since that is where the journey starts. Generating per request rather than committing a fixed file means a renamed or re-seeded Inkhundla appears in the next download; a stale copy fails at match time with no obvious cause. Providers cannot reach that route — see **OQ-12**.
 
-### 4.7 Break-glass CLI
+### 4.7 The GeoNode poller (phase 2, built)
 
-`python manage.py load_dataset_csv <slug> <path> --source "..." --as-of YYYY-MM-DD [--apply]` — ~30 lines over the same parser. Exists for CI fixtures, demo seeding, and the case where the admin is unreachable. Not the operator's route.
+`fetch_dataset_uploads` walks each dataset's category, downloads what it has
+not seen, validates it, and **stops at `validated`** — the operator still
+confirms the diff in Django admin.
+
+**The categories a GeoNode admin must create.** These are the identifiers the
+poller filters on, generated from `DatasetDef.geonode_category` — the routing
+is by category and nothing else, so an identifier that does not match exactly
+is a dataset nobody can publish to. Keep the resources **unpublished**, as the
+CDI datasets are.
+
+| GeoNode category identifier | Dataset | Writes | Unit |
+|---|---|---|---|
+| `exposure-water-demand` | Water demand | `water_demand` | m3/year |
+| `exposure-cattle` | Cattle count | `cattle` | head |
+| `exposure-population` | Population | `population` | people |
+| `exposure-land-use` | Land use DVI-agri | `land_use_dvi_agri` | ratio |
+| `vulnerability-ipc` | IPC phase | `ipc_phase` | phase |
+| `eligibility-under-five` | Children under five | `under_five` | people |
+| `eligibility-elderly` | Elderly population | `elderly` | people |
+| `eligibility-rainfed-cropland` | Rain-fed cropland | `rainfed_cropland` | ha |
+| `eligibility-rangeland` | Rangeland | `rangeland` | ha |
+| `eligibility-boreholes` | Boreholes | `boreholes` | count |
+| `eligibility-taps` | Taps | `taps` | count |
+
+None of the eleven existed on `cdie-geonode-prod` as of 2026-08-25;
+`fetch_dataset_uploads --check` reports the current state at any time.
+
+| Flag | Effect |
+|---|---|
+| `--check` | Report which of the 11 categories exist on GeoNode, and exit |
+| `--dry-run` | List what would be fetched; download and store nothing |
+| `--dataset <slug>` | Limit the walk to one registry slug |
+| `--no-email` | Skip the operator notification |
+
+Four behaviours worth stating, because each is a decision rather than an
+implementation detail:
+
+- **Dedupe is on file content, not on the GeoNode resource id.** A provider
+  can replace a document in place, so keying on the id would hide a
+  correction. Re-downloading a few KB per run is cheaper than reasoning about
+  GeoNode's timestamps — the ceiling is file size, and these are 59-row CSVs.
+- **A resource with no date is skipped, loudly.** `as_of` comes from the
+  provider's metadata rather than a human (**D-4** does not apply here), and
+  guessing would stamp a fabricated vintage onto published figures. The
+  operator sees the fetched `source_label` and `as_of` on the confirmation
+  page, which is the check on GeoNode metadata being whatever was typed.
+- **One unreadable category does not abort the run.** The 2026-08-11 incident
+  is the precedent: the catalogue and the file host fail independently, so a
+  timeout on one category says nothing about the others.
+- **The publisher's email is recorded in the report, never mailed.**
+  Notifying an external partner automatically is an outward-facing action
+  nobody has approved — see **OQ-14** below.
+
+**Scheduling.** A management command in the mould of `check_overdue_reviews`,
+not a Django-Q job — deviating from the sketch in **D-9**, which named a
+`JobTypes` entry. Django-Q buys retry and a `Jobs` row; this run is idempotent
+(content dedupe) and reports to stdout, so a cron entry is the smaller thing
+that works. Scheduled **daily at midnight** (`./job.sh dataset-uploads`) as a
+**provisional** default — no partner has stated a publishing cadence yet, and
+these datasets refresh a few times a year, so daily is generous. Revisit when
+DWA/JRBA/CSO say what they will actually do (**OQ-15**).
+
+### 4.8 Break-glass CLI
+
+**Not built.** The plan was `load_dataset_csv <slug> <path> --source "..."
+--as-of YYYY-MM-DD [--apply]` over the same parser, for CI fixtures, demo
+seeding and the case where the admin is unreachable. Nothing has needed it:
+the tests call `uploads.create_uploads` directly, `seed_demo` seeds no
+uploads, and the admin has not been unreachable. It stays written down rather
+than written — roughly 30 lines whenever a real caller appears.
 
 ### Consumers
 
@@ -576,7 +647,7 @@ datasets.
 A scheduled job walks
   GET {GEONODE_BASE_URL}/api/v2/resources
       ?filter{category.identifier}=exposure-water-demand
-      &filter{subtype}=document&sort[]=-date
+      &filter{resource_type}=document&sort[]=-date
 reusing geonode_auth() and the paginated-walk shape of
 find_component_resource; downloads any document whose checksum is not
 already a DatasetUpload; creates the row with origin="geonode" and
@@ -591,6 +662,7 @@ confirms the diff in Django admin.
 Two constraints on that phase worth writing down now:
 
 - **GeoNode cannot hold a CSV as a dataset.** A GeoNode *dataset* needs geometry; a 59-row table has none. It lands as a **document** — an opaque blob with a download URL. GeoNode contributes storage and cataloguing here, not structure or validation.
+  **Confirmed in practice 2026-08-25**: uploading the CSV through GeoNode's *dataset* form fails with *"Not enough geometry field"*. Published as a **document** it works — and the catalogue then reports `resource_type="document"` with `subtype="other"`, so the poller filters on `resource_type`. Filtering on `subtype` matches nothing.
 - **The catalogue's availability is a known incident source.** `find_component_resource` carries a comment about production 2026-08-11, when `/api/v2/resources` timed out while the file host stayed up, and every review row rendered without a confidence band. That is survivable for a *second* ingress; it would not be for the only one.
 
 Because parse/validate/apply take a file and a `DatasetDef` — never a request — the adapter is a fetch loop and a `JobTypes` entry, not a second pipeline.
@@ -892,6 +964,12 @@ A *contextual* figure — `households`, `clinics` — has no formula to change. 
 | Integration — downstream | risk score for an Inkhundla changes after applying a `water_demand` upload, and stays null-safe for Tinkhundla left blank |
 | E2E | download template → fill → upload → read diff → apply → value visible with the declared source on the risk build-up |
 
+**As built**: `tests/test_dataset_uploads.py` (40) and
+`tests/test_geonode_poller.py` (27), 1087 backend tests green overall. The
+poller's `CatalogueQueryTestCase` asserts the **query string** rather than
+mocking `list_documents`, because mocking that function is exactly what let a
+wrong catalogue filter ship — see the §11 implementation map.
+
 ---
 
 ## 10. Open Questions
@@ -915,16 +993,55 @@ Still open:
 
 **Opened by the 2026-08-25 correction to D-1** — GeoNode serves providers who hold no platform account. All three are blockers for phase 2, none for phase 1:
 
-- [ ] **OQ-12 — How does a provider obtain the blank template?** §4.4's route is `admin_view`-wrapped, so DWA cannot reach it. Candidates: publish the template as a document in the same GeoNode category and keep it current from the platform; an unauthenticated download route; or the operator emails it. The first keeps it self-service and in one place; the last is the fallback and quietly reintroduces the operator as a bottleneck. A committed static file is the wrong answer — it goes stale when an Inkhundla is renamed and then fails at match time (§4.4).
-- [ ] **OQ-13 — Do the providers have GeoNode accounts, and can each be confined to its own category?** The design routes by category, so a DWA account able to publish into `exposure-cattle` would mis-route rather than be rejected. Needs GeoNode's per-category permissions checked against real accounts, not assumed.
-- [ ] **OQ-14 — Where does a validation failure go?** The person who caused it cannot see Django admin. Options: email the GeoNode resource owner directly; notify only the operator, who then chases the provider; or both. This is the phase-2 equivalent of the immediate feedback that motivated **D-1**, and without it a provider publishes a broken file and hears nothing. It also forces **OQ-6** ("notify on apply? — not for now") to be reopened for phase 2: a fetched upload sits in `validated` with nobody watching, so the needed message is not "something was applied" but "a file you published is waiting for review".
-- [ ] **OQ-15 — How often does the poller run?** Unspecified. These datasets refresh at most a few times a year, so a daily poll is generous; the cadence question is really "how long may a published file sit unnoticed", which is bounded by **OQ-14**'s notification, not by the polling interval.
+- [ ] **OQ-12 — How does a provider obtain the blank template?** *Still open,
+  and now the only thing blocking provider self-service.* §4.4's route is
+  `admin_view`-wrapped, so DWA cannot reach it. Candidates: publish the
+  template as a document in each category and keep it current from the
+  platform; an unauthenticated download route; or the operator emails it. A
+  committed static file is the wrong answer — it goes stale when an Inkhundla
+  is renamed and then fails at match time.
+- [ ] **OQ-13 — Do the providers have GeoNode accounts, and can each be
+  confined to its own category?** *Half answered, 2026-08-25.* Custom
+  categories are how this deployment already works (`cdi-raster-map`,
+  `esi-raster-map`, …), but **none of the 11 dataset categories exist yet** —
+  verified against `cdie-geonode-prod` with `fetch_dataset_uploads --check`,
+  which reports all 11 MISSING. Creating them is a GeoNode admin task and a
+  deployment prerequisite. The per-account confinement question is untouched:
+  routing is by category, so an account able to publish into the wrong one
+  **mis-routes rather than fails**.
+- [x] ~~**OQ-14 — Where does a validation failure go?**~~ → **Operators only,
+  by mail; the publisher is recorded, not contacted.** `notifications.py`
+  mails the `Data operators` group (superusers as fallback, because silence is
+  the failure mode) saying *a file is waiting for your review* — never
+  "something was applied", since the poller applies nothing. The GeoNode
+  resource owner's address is stored in `report["published_by"]` so a human
+  can follow up. **Mailing partner organisations automatically is deliberately
+  not built**: it is outward-facing and needs sign-off, not a default.
+- [x] ~~**OQ-15 — How often does the poller run?**~~ → **Daily, by cron.**
+  These datasets refresh a few times a year, and how long a published file may
+  sit unnoticed is bounded by OQ-14's notification rather than by the
+  interval. The command is idempotent, so a missed run costs nothing.
 
 ---
 
 ## 11. References
 
 - Related tasks: [`exposure-indicator-automation.md`](./exposure-indicator-automation.md) (PA-4) · [`dynamic-world-earth-engine-assessment.md`](./dynamic-world-earth-engine-assessment.md) (PA-5) · [`national-overview-map-data-tabs.md`](./national-overview-map-data-tabs.md) (INS-3) · [`risk-level-v2-risk-scoring-redesign.md`](../track-3/risk-level-v2-risk-scoring-redesign.md)
+- **Implementation** (all under `backend/api/v1/v1_indicators/`):
+
+  | Module | Holds |
+  |---|---|
+  | `datasets.py` | the 11-dataset registry, header normalisation (**D-5**, **D-15**) |
+  | `parsers.py` | header discovery, Inkhundla matching, coercion, the diff |
+  | `uploads.py` | create / apply / revert, and the `.xlsx` refusal (**D-2**) |
+  | `admin.py` | changelist, add form, actions, template + download routes |
+  | `geonode.py` | read-only catalogue client (**D-1** phase 2) |
+  | `notifications.py` | operator mail for fetched uploads (**OQ-14**) |
+  | `management/commands/fetch_dataset_uploads.py` | the poller |
+  | `templates/admin/v1_indicators/datasetupload/` | confirmation page, download button |
+  | `migrations/0003`, `0004`; `v1_users/0009` | model, `Data operators` group, `is_staff` |
+  | `backend/job.sh` · `backend/eswatini-cron` | `dataset-uploads`, daily 00:00 |
+
 - Prior art in this repo:
   - `backend/api/v1/v1_iks/admin.py` — Django admin as an operator surface, with the credential-masking pattern
   - `backend/api/v1/v1_users/models.py:104` — the `is_staff` property that **D-13** replaces
@@ -1083,6 +1200,6 @@ The output is already in upload shape, so once the items above are settled it go
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Developer | Iwan Firmawan | 2026-08-18 | Draft |
+| Developer | Iwan Firmawan | 2026-08-25 | Implemented |
 | Tech Lead | | | |
 | Product | | | |
