@@ -1,0 +1,34 @@
+{% extends "admin/change_list.html" %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    /* Django admin ships addlink / changelink / deletelink but no download
+       icon, and `addlink`'s "+" reads as "this creates a record" — the
+       opposite of what this button does. Same geometry as .addlink (see
+       admin/css/base.css), with a download glyph so the button announces
+       that it hands back a file. Inlined rather than shipped as a static
+       asset: one icon, one template, no collectstatic step.
+
+       Authored directly in SVG's y-down space rather than borrowed from
+       Font Awesome 4, whose glyphs are y-up and therefore render mirrored —
+       which turns a download arrow into an upload one. Django's own
+       tooltag-add.svg hides that trap because a plus is symmetric.
+
+       Shaft y=3..11, arrowhead tip at y=16.5 (below it, so the arrow points
+       DOWN), tray at y=18..20 underneath. */
+    .object-tools a.downloadlink {
+      background-repeat: no-repeat;
+      background-position: right 7px center;
+      padding-right: 26px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffffff' d='M11 3h2v8h3.5L12 16.5 7.5 11H11z M4 18h16v2H4z'/%3E%3C/svg%3E");
+    }
+  </style>
+{% endblock %}
+
+{% block object-tools-items %}
+  <li>
+    <a href="template.csv" class="downloadlink">Download blank template</a>
+  </li>
+  {{ block.super }}
+{% endblock %}

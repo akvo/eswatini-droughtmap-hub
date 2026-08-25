@@ -32,6 +32,15 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
     )
     reset_password_code = models.UUIDField(default=None, null=True, blank=True)
     reset_password_code_expiry = models.DateTimeField(null=True, blank=True)
+    # PA-6 D-13: was a property returning is_superuser, which made
+    # `is_superuser` the only way into Django admin. The data operator needs
+    # the DatasetUpload screen and nothing else, so this is a real field and
+    # access is granted through a group. Backfilled from is_superuser by
+    # migration, so no existing admin user loses access.
+    is_staff = models.BooleanField(
+        default=False,
+        help_text="Can sign in to the Django admin site.",
+    )
     # Add Technical working group field from Enum class
     technical_working_group = models.IntegerField(
         choices=TechnicalWorkingGroup.FieldStr.items(),
@@ -100,10 +109,6 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
         if self.reset_password_code and self.reset_password_code_expiry:
             return timezone.now() < self.reset_password_code_expiry
         return False
-
-    @property
-    def is_staff(self):
-        return self.is_superuser
 
     class Meta:
         db_table = "system_user"

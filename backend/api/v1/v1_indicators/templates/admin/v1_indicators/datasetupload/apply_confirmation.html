@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls %}
+
+{% block content %}
+<p>
+  Review the changes below. <strong>Nothing has been saved yet.</strong>
+  These figures feed the drought risk score and SOP eligibility, so they are
+  written only after you confirm.
+</p>
+
+{% for item in uploads %}
+  <h2>{{ item.upload.dataset }} &mdash; {{ item.upload.source_label }}
+      ({{ item.upload.as_of|date:"Y-m" }})</h2>
+  <p>
+    Will be recorded as source
+    <code>{{ item.upload.indicator_source }}</code>.
+    Tinkhundla left blank in the file keep their current value.
+  </p>
+  {{ item.report }}
+{% endfor %}
+
+<form method="post">
+  {% csrf_token %}
+  {% for obj in queryset %}
+    <input type="hidden" name="{{ action_checkbox_name }}"
+           value="{{ obj.pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="apply_selected">
+  <input type="hidden" name="confirmed" value="yes">
+  <div class="submit-row">
+    <input type="submit" class="default" value="Yes, apply these changes">
+    <a href="{% url opts|admin_urlname:'changelist' %}" class="button
+       cancel-link">No, take me back</a>
+  </div>
+</form>
+{% endblock %}

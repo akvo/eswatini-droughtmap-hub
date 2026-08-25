@@ -114,8 +114,8 @@ flowchart TB
     ROLL["One-off rollup script<br/>developer, out of scope - D-11"]
     CSVFILE["Filled CSV<br/>keys + one column per dataset - D-15"]
     TPL["CSV template<br/>59 rows pre-keyed, value blank"]
-    UP["Django admin upload<br/>plus source_label and as_of - phase 1"]
-    GEO["GeoNode category poller<br/>private documents - phase 2, D-1"]
+    UP["Django admin upload<br/>by the OPERATOR - phase 1"]
+    GEO["GeoNode category<br/>published by the PROVIDER - phase 2"]
     STORE[("STORAGE_PATH volume<br/>the file, kept as evidence - D-12")]
     IND[("Indicator<br/>value + source + as_of<br/>is_placeholder = False")]
     CONS["Risk score, SOP eligibility,<br/>National overview map tabs"]
@@ -129,9 +129,10 @@ flowchart TB
     SHAPE -->|"Yes: up to 59 rows"| CSVFILE
     ROLL --> CSVFILE
     TPL -.->|downloaded first| CSVFILE
-    CSVFILE --> UP
+    CSVFILE -->|"operator holds the file"| UP
+    CSVFILE -.->|"provider has no platform account"| GEO
     UP --> PARSE
-    GEO -.-> PARSE
+    GEO -.->|"poller fetches, D-1"| PARSE
     REJ -.->|"fix the sheet,<br/>upload again"| CSVFILE
     REC --> STORE
     APPLY --> IND
@@ -418,7 +419,7 @@ class DatasetUploadAdmin(admin.ModelAdmin):
         return False   # an upload is a record of an event, never edited
 ```
 
-**Add form** — three fields: the file, `source_label`, `as_of`. Its `help_text` carries the template-download links. `save_model` computes the checksum, parses the header to discover which datasets the file declares, validates each, and **creates one `DatasetUpload` row per recognised value column** — all sharing the same stored file, checksum, source and vintage. Each row gets its own report, its own diff, and its own `validated`/`rejected` status, so a census file whose `elderly` column is malformed still lets `under_five` through. **Nothing is written to `Indicator`** (**D-3**).
+**Add form** — three fields: the file, `source_label`, `as_of`. Extension and size are checked in `clean_file`, not in `save_model`: a DRF `ValidationError` escaping `save_model` renders a 500, which is the opposite of what **D-2** asks for — the operator must get the "save it as CSV" instruction back on the field. Its `help_text` carries the template-download links. `save_model` computes the checksum, parses the header to discover which datasets the file declares, validates each, and **creates one `DatasetUpload` row per recognised value column** — all sharing the same stored file, checksum, source and vintage. Each row gets its own report, its own diff, and its own `validated`/`rejected` status, so a census file whose `elderly` column is malformed still lets `under_five` through. **Nothing is written to `Indicator`** (**D-3**).
 
 Sibling rows are grouped by `checksum` — same bytes, same upload — so the changelist can show them together without a `batch` column existing for the purpose.
 
@@ -492,7 +493,25 @@ Indicator.objects.update_or_create(
 
 Refuses if `status != validated`. Any previously `applied` upload for the same dataset flips to `superseded`. The stored `report["diff"]` `before` values are the rollback (**D-10**).
 
-### 4.6 Break-glass CLI
+### 4.6 Who triggers what
+
+"Upload" and "update" are easy to conflate, so, plainly:
+
+| | Phase 1 — operator | Phase 2 — provider |
+|---|---|---|
+| Who supplies the file | The operator, on the Add form | DWA / JRBA / CSO, published to a GeoNode category |
+| Parse + validate | In the upload request | In the poller job |
+| Resulting state | `validated` or `rejected` | `validated` or `rejected` |
+| **What makes the figures live** | **The operator confirms the diff** | **The operator confirms the diff** |
+| Scheduled components | **none** (**D-9**) | one poller, for the fetch only |
+
+**Publishing to GeoNode does not update the platform.** The fetched upload lands in the same `validated` state as a hand-attached one and waits for the same confirmation. That is deliberate: an external organisation must not write into the national risk score unreviewed, which makes the gate a governance property and not only a safety one (**D-3**).
+
+Phase 1 has **no scheduled component at all** — no cron, no poller, no queue. Parse and apply both run inside the operator's own request.
+
+**Where the template comes from**: the admin-only route in §4.4 generates it on demand from the live `administrations` table, linked from the Add form's `help_text` and from a button on the changelist, since that is where the journey starts. Generating per request rather than committing a fixed file means a renamed or re-seeded Inkhundla appears in the next download; a stale copy fails at match time with no obvious cause. Providers cannot reach that route — see **OQ-12**.
+
+### 4.7 Break-glass CLI
 
 `python manage.py load_dataset_csv <slug> <path> --source "..." --as-of YYYY-MM-DD [--apply]` — ~30 lines over the same parser. Exists for CI fixtures, demo seeding, and the case where the admin is unreachable. Not the operator's route.
 
@@ -529,7 +548,23 @@ Django admin also arrives with things the custom screen would have to be built: 
 
 **Impact**: The frontend is untouched. The backend gains an `admin.py`, a parser module, a registry, and one template. `OQ-1` is closed.
 
-**Phase 2 — GeoNode** (resolved: operator preference, and the resources stay unpublished, exactly as CDI datasets are treated):
+> **Corrected 2026-08-25 — GeoNode is not an alternative transport for the operator. It is the door for people who have no platform account.**
+>
+> The options above were weighed as if the admin form and GeoNode were two ways for the *same person* to submit the same file, which made GeoNode look redundant. It is not. The two serve different actors:
+>
+> | | Django admin | GeoNode |
+> |---|---|---|
+> | Who | The operator / PIC — one person, holds a platform account | DWA, JRBA, CSO — the data holders, who will never hold platform accounts |
+> | What they do | Review a diff and apply it | Publish a file |
+> | Why they cannot use the other | GeoNode has no diff, no apply, no `Indicator` | Giving every partner organisation a DIH admin account is not acceptable (**D-13**) |
+>
+> So the right description is **GeoNode is the providers' inbox; Django admin is the review-and-apply desk**, and both feed the one pipeline. Phase ordering is unchanged — the pipeline and the review surface are needed either way, and the operator has files of their own to upload, such as the §13 water-demand rollup — but phase 2's *purpose* is provider self-service, not operator convenience, which is a considerably stronger reason to build it and may raise its priority.
+>
+> The human gate survives this correction intact, and matters more under it: an external organisation publishing a file must not write into the national risk score unreviewed. The poller stops at `validated`; the operator still confirms. That is a governance property, not just a safety one.
+>
+> Three things this correction opens, none of them answered: **OQ-12** (how a provider without a platform account obtains the blank template — §4.4's route is staff-only, so it cannot be the answer), **OQ-13** (whether providers have GeoNode accounts today and can be confined to their own category), and **OQ-14** (where a validation failure is delivered, given the person who caused it cannot see the admin).
+
+**Phase 2 — GeoNode**, the provider ingress. Resources stay unpublished, exactly as CDI datasets are treated:
 
 ```
 One GeoNode category per dataset slug — DatasetDef.geonode_category —
@@ -595,7 +630,7 @@ Because parse/validate/apply take a file and a `DatasetDef` — never a request 
 
 This is the one place in this design where being lazier would be wrong: the cost is ~15 lines, and the alternative is a standing privilege escalation created for the convenience of a CSV upload.
 
-**Impact**: A migration on `SystemUser`. `UserRoleTypes.admin` (the DIH application role) stays **unrelated** to `is_staff` (the Django admin flag) — a DIH admin does not automatically get Django admin, and that separation is deliberate. Granting the operator access is a checkbox plus a group in the existing `SystemUserAdmin`. Closes **OQ-5**: no per-dataset ownership, no new role — one group, granted to whoever holds the job.
+**Impact**: A migration on `SystemUser`, plus a second creating the **`Data operators`** group (`add`/`view` on `DatasetUpload` and nothing else) — without a group to grant, least privilege is a hand-picked permission list, which is how "just tick superuser" happens. `UserManager.create_superuser` also sets `is_staff=True`, or `createsuperuser` would build a superuser locked out of the admin. `UserRoleTypes.admin` (the DIH application role) stays **unrelated** to `is_staff` (the Django admin flag) — a DIH admin does not automatically get Django admin, and that separation is deliberate. Granting the operator access is a checkbox plus a group in the existing `SystemUserAdmin`. Closes **OQ-5**: no per-dataset ownership, no new role — one group, granted to whoever holds the job.
 
 ---
 
@@ -868,7 +903,7 @@ A *contextual* figure — `households`, `clinics` — has no formula to change. 
 - ~~OQ-4 — should the seeder refuse to overwrite applied values?~~ → **Yes** (**D-14**).
 - ~~OQ-5 — who else holds this role?~~ → **The existing admin role only.** No per-dataset ownership; access is one Django group (**D-13**).
 - ~~OQ-6 — notify on apply?~~ → **Not for now.** No email.
-- ~~OQ-7 — phase-2 trigger?~~ → **Operator preference**, and GeoNode resources stay unpublished, treated the same as the CDI datasets (**D-1**, phase 2).
+- ~~OQ-7 — phase-2 trigger?~~ → **Corrected 2026-08-25: provider self-service, not operator preference.** GeoNode exists so DWA, JRBA and CSO can update data without platform accounts. Resources stay unpublished, treated the same as the CDI datasets (**D-1**, phase 2).
 
 Still open:
 
@@ -877,6 +912,13 @@ Still open:
 - [x] ~~**OQ-9 — Who runs the one-off water-demand rollup?**~~ → **Done, and smaller than D-11 assumed.** The `Aligned` sheet already carries an `Inkhundla` column, so 73.3% of demand rolls up by name with no GIS at all, filling 45 of 59 Tinkhundla. Script and analysis: **§13**. What remains is not developer time but three data decisions — see below.
 - [ ] **OQ-10 — Publish the 73% as a lower bound, or wait for the full rollup?** An Inkhundla whose permits are split between named rows and sub-catchment-only rows gets an **understated** total that renders like a complete one, which pushes its risk score down. Recommendation: wait. See U-1 in the rollup note.
 - [ ] **OQ-11 — Is `Shiselweni` one Inkhundla or two?** DWA lists `Shiselweni I` and `Shiselweni II`; `administrations` holds one `Shiselweni`. The rollup sums them, which is a guess — the alternative is that our boundary data is missing an Inkhundla.
+
+**Opened by the 2026-08-25 correction to D-1** — GeoNode serves providers who hold no platform account. All three are blockers for phase 2, none for phase 1:
+
+- [ ] **OQ-12 — How does a provider obtain the blank template?** §4.4's route is `admin_view`-wrapped, so DWA cannot reach it. Candidates: publish the template as a document in the same GeoNode category and keep it current from the platform; an unauthenticated download route; or the operator emails it. The first keeps it self-service and in one place; the last is the fallback and quietly reintroduces the operator as a bottleneck. A committed static file is the wrong answer — it goes stale when an Inkhundla is renamed and then fails at match time (§4.4).
+- [ ] **OQ-13 — Do the providers have GeoNode accounts, and can each be confined to its own category?** The design routes by category, so a DWA account able to publish into `exposure-cattle` would mis-route rather than be rejected. Needs GeoNode's per-category permissions checked against real accounts, not assumed.
+- [ ] **OQ-14 — Where does a validation failure go?** The person who caused it cannot see Django admin. Options: email the GeoNode resource owner directly; notify only the operator, who then chases the provider; or both. This is the phase-2 equivalent of the immediate feedback that motivated **D-1**, and without it a provider publishes a broken file and hears nothing. It also forces **OQ-6** ("notify on apply? — not for now") to be reopened for phase 2: a fetched upload sits in `validated` with nobody watching, so the needed message is not "something was applied" but "a file you published is waiting for review".
+- [ ] **OQ-15 — How often does the poller run?** Unspecified. These datasets refresh at most a few times a year, so a daily poll is generous; the cadence question is really "how long may a published file sit unnoticed", which is bounded by **OQ-14**'s notification, not by the polling interval.
 
 ---
 

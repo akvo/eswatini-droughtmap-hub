@@ -250,6 +250,13 @@ CSRF_TRUSTED_ORIGINS = environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
 # STORAGE CONFIG
 STORAGE_PATH = environ.get("STORAGE_PATH", "./storage")
 
+# PA-6 D-12: operator uploads land on the mounted storage volume, never in
+# backend/source/ (which Dockerfile.prod bakes into the image, so a runtime
+# write there is silently reverted on the next deploy).
+MEDIA_ROOT = STORAGE_PATH
+# MEDIA_URL is deliberately unset: uploaded files must never be web-reachable.
+# Retrieval goes through an admin_view-wrapped download route.
+
 # IKS CONFIG
 X_API_KEY_HEADER = "HTTP_X_API_KEY"
 X_API_KEY = environ.get("X_API_KEY", "default-secret-key")

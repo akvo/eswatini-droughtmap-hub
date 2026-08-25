@@ -21,6 +21,10 @@ class UserManager(BaseUserManager, SoftDeletesManager):
 
     def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault("is_superuser", True)
+        # PA-6 D-13: is_staff became a real field, so it no longer follows
+        # is_superuser automatically. Without this, `createsuperuser` (used
+        # by seeder.sh) would produce a superuser who cannot reach /admin.
+        extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("role", UserRoleTypes.admin)
 
         if extra_fields.get("role") is not UserRoleTypes.admin:
