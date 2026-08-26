@@ -23,14 +23,15 @@ const userReducer = (state, action) => {
       return initialValues;
     default:
       throw Error(
-        `Unknown action: ${action.type}. Action type must be CAPITAL text.`
+        `Unknown action: ${action.type}. Action type must be CAPITAL text.`,
       );
   }
 };
 
-const UserContextProvider = ({ children, abilities = [] }) => {
+const UserContextProvider = ({ children, abilities = [], ...sessionProps }) => {
   const [user, dispatch] = useReducer(userReducer, {
     ...initialValues,
+    ...sessionProps,
     abilities,
   });
 

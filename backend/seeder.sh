@@ -29,10 +29,23 @@ if [[ "${fake_user}" == 'y' || "${fake_user}" == 'Y' ]]; then
     python manage.py fake_users_seeder
 fi
 
-echo "Seed Fake Data? [y/n]"
-read -r seed_fake_data
-if [[ "${seed_fake_data}" == 'y' || "${seed_fake_data}" == 'Y' ]]; then
-    python manage.py fake_publications_seeder
+# Everything the National overview and the Detailed Insights tabs read, in
+# dependency order. Idempotent, so answering 'y' after the prompts above is
+# harmless — seed_demo re-runs those same seeders.
+echo "Seed Demo Data (National overview + Detailed insights)? [y/n]"
+read -r seed_demo
+if [[ "${seed_demo}" == 'y' || "${seed_demo}" == 'Y' ]]; then
+    echo "Path to a local CDI GeoTIFF archive for REAL values (optional)."
+    echo "e.g. ./storage/geotiffs — leave blank for GeoNode/synthetic:"
+    read -r geotiffs_path
+    if [[ "${geotiffs_path}" != '' ]]; then
+        python manage.py seed_demo --path "${geotiffs_path}"
+    else
+        python manage.py seed_demo
+    fi
 fi
 
 python manage.py generate_config
+# Reprojects the agro-ecological zones to WGS84 for the National Overview map
+# tab. Separate from generate_config because it needs the geo stack.
+python manage.py generate_agro_geojson

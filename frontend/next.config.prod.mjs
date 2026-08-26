@@ -38,7 +38,7 @@ const nextConfig = {
             to: path.join(__dirname, "public/assets/libs/tinymce/models"),
           },
         ],
-      })
+      }),
     );
     return config;
   },

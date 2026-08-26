@@ -14,6 +14,7 @@ from api.v1.v1_users.constants import (
     TechnicalWorkingGroup,
     ActionEnum,
 )
+from api.v1.v1_activity.constants import ActivitySector
 
 
 class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
@@ -31,11 +32,48 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
     )
     reset_password_code = models.UUIDField(default=None, null=True, blank=True)
     reset_password_code_expiry = models.DateTimeField(null=True, blank=True)
+    # PA-6 D-13: was a property returning is_superuser, which made
+    # `is_superuser` the only way into Django admin. The data operator needs
+    # the DatasetUpload screen and nothing else, so this is a real field and
+    # access is granted through a group. Backfilled from is_superuser by
+    # migration, so no existing admin user loses access.
+    is_staff = models.BooleanField(
+        default=False,
+        help_text="Can sign in to the Django admin site.",
+    )
     # Add Technical working group field from Enum class
     technical_working_group = models.IntegerField(
         choices=TechnicalWorkingGroup.FieldStr.items(),
         default=None,
         null=True,
+        blank=True,
+    )
+    # Marks a reviewer as a sector lead (create/edit own-sector drafts).
+    activity_sector = models.IntegerField(
+        choices=ActivitySector.FieldStr.items(),  # 1..8 sector leads
+        default=None,
+        null=True,
+        blank=True,
+    )
+    # Citizen-science observer fields (WX-6 D-2): the observer's Inkhundla and
+    # station display label. Same role-specific-nullable pattern as the two
+    # fields above; NULL for admins/reviewers.
+    administration = models.ForeignKey(
+        "v1_publication.Administration",
+        on_delete=models.PROTECT,
+        related_name="observers",
+        default=None,
+        null=True,
+        blank=True,
+    )
+    station_name = models.CharField(
+        max_length=120, default=None, null=True, blank=True
+    )
+    # Sensor keys from CS_SENSORS (mockup: "determines which fields the
+    # observer sees"); empty list = no record kept -> all fields shown.
+    station_sensors = models.JSONField(default=list, blank=True)
+    station_type = models.CharField(
+        max_length=60, default=None, null=True, blank=True
     )
 
     objects = UserManager()
@@ -72,12 +110,19 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
             return timezone.now() < self.reset_password_code_expiry
         return False
 
-    @property
-    def is_staff(self):
-        return self.is_superuser
-
     class Meta:
         db_table = "system_user"
+        constraints = [
+            # One active observer per Inkhundla => one reading stream per
+            # Inkhundla by construction (WX-6 D-2).
+            models.UniqueConstraint(
+                fields=["administration"],
+                condition=models.Q(
+                    role=UserRoleTypes.observer, deleted_at__isnull=True
+                ),
+                name="uniq_observer_per_administration",
+            )
+        ]
 
 
 class Ability(models.Model):

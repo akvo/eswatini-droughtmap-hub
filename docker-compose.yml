@@ -19,6 +19,7 @@ services:
     command: ["./start.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=eswatini
       - DB_USER=akvo
@@ -31,6 +32,8 @@ services:
       - GEONODE_ADMIN_PASSWORD
       - RUNDECK_API_URL
       - RUNDECK_API_TOKEN
+      - WIS2_BASE_URL
+      - WIS2_COLLECTION_ID
       - COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN:-}
       - EMAIL_HOST=$EMAIL_HOST
       - EMAIL_PORT=$EMAIL_PORT
@@ -40,6 +43,7 @@ services:
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
       - CSRF_TRUSTED_ORIGINS
+      - X_API_KEY
     depends_on:
       - db
   frontend:
@@ -61,6 +65,7 @@ services:
     command: ["./run_worker.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=eswatini
       - DB_USER=akvo
@@ -73,6 +78,8 @@ services:
       - GEONODE_ADMIN_PASSWORD
       - RUNDECK_API_URL
       - RUNDECK_API_TOKEN
+      - WIS2_BASE_URL
+      - WIS2_COLLECTION_ID
       - EMAIL_HOST=$EMAIL_HOST
       - EMAIL_PORT=$EMAIL_PORT
       - EMAIL_USE_TLS=$EMAIL_USE_TLS

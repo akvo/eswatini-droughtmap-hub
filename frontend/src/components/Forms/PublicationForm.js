@@ -19,8 +19,12 @@ import TinyEditor from "../TinyEditor";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
-import { CREATE_PUBLICATION_MAIL } from "@/static/config";
+import {
+  CREATE_PUBLICATION_MAIL,
+  MIN_TWGS_PER_PUBLICATION,
+} from "@/static/config";
 import { VerifiedIcon } from "../Icons";
+import ComponentRasterPreview from "../ComponentRasterPreview";
 
 const { Text } = Typography;
 const { useForm } = Form;
@@ -37,6 +41,8 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
   const [form] = useForm();
   const router = useRouter();
 
+  const yearMonth = Form.useWatch("year_month", form);
+
   const loadMoreReviewers =
     reviewer?.total_page > 1 && revPage < reviewer?.total_page;
 
@@ -48,7 +54,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         : `/admin/reviewers?page=${page}`;
       const { data: newReviewerList, current: currPage } = await api(
         "GET",
-        apiURL
+        apiURL,
       );
       const _reviewers = [
         ...form.getFieldValue("reviewers"),
@@ -110,7 +116,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
           _reviewers.map((r) => ({
             ...r,
             checked: checkItems.includes(r?.id),
-          }))
+          })),
         );
         setSearching(false);
       }, 300);
@@ -137,7 +143,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         ...geonode,
         reviewers: reviewerList,
         subject: `${CREATE_PUBLICATION_MAIL?.subject} ${dayjs(
-          geonode?.year_month
+          geonode?.year_month,
         ).format("YYYY-MM")}`,
         year_month: dayjs(geonode?.year_month),
         message: CREATE_PUBLICATION_MAIL?.message,
@@ -157,7 +163,26 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                     const selectedItems = values?.filter((v) => v?.checked);
                     if (!selectedItems?.length) {
                       return Promise.reject(
-                        new Error("Please select at least one reviewer.")
+                        new Error("Please select at least one reviewer."),
+                      );
+                    }
+                    // The unit is the Technical Working Group, not headcount:
+                    // three reviewers all from MoAg still leave one TWG, so
+                    // every Inkhundla would reach "ready" on one institution's
+                    // response and its consensus would be a single opinion.
+                    // Enforced server-side too; this is the courtesy copy.
+                    const twgs = new Set(
+                      selectedItems
+                        .map((v) => v?.technical_working_group)
+                        .filter((twg) => twg !== null && twg !== undefined),
+                    );
+                    if (twgs.size < MIN_TWGS_PER_PUBLICATION) {
+                      return Promise.reject(
+                        new Error(
+                          "Please select reviewers from at least " +
+                            `${MIN_TWGS_PER_PUBLICATION} different Technical ` +
+                            "Working Groups.",
+                        ),
                       );
                     }
                   },
@@ -206,7 +231,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                                   "reviewers",
                                   field.name,
                                   "id",
-                                ])
+                                ]),
                               )
                             }
                           />
@@ -273,6 +298,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                 picker="month"
               />
             </Form.Item>
+            <ComponentRasterPreview yearMonth={yearMonth} />
             <Form.Item
               label="Review Deadline"
               name="due_date"

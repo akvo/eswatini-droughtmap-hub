@@ -4,7 +4,7 @@ services:
     image: alpine:3.14
     command: ["tail", "-f", "/dev/null"]
   db:
-    image: postgres:14-alpine
+    image: postgres:13-alpine
     volumes:
       - ./database/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
       - pg-data:/var/lib/postgresql/data
@@ -40,6 +40,7 @@ services:
       - EMAIL_FROM=test@example.com
       - WEBDOMAIN=notset
       - CSRF_TRUSTED_ORIGINS=https://example.com
+      - X_API_KEY
     depends_on:
       - db
   frontend:

@@ -4,10 +4,14 @@ import Image from "next/image";
 const LogoSection = () => {
   return (
     <div
-      className="w-full min-h-36 bg-image-login bg-no-repeat bg-center bg-cover"
+      className="relative w-full min-h-36 bg-white print:hidden"
       id="edm-about"
     >
-      <div className="container w-full py-9 flex flex-col items-center justify-center gap-9">
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-dhi-pattern bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
+      />
+      <div className="relative container w-full py-9 flex flex-col items-center justify-center gap-9">
         <h2 className="text-xl xl:text-2xl text-primary font-bold">
           ABOUT EDM
         </h2>

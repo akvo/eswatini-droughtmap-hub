@@ -32,8 +32,8 @@ Currently:
   region, an indicator catalogue with counts, an Inkhundla x week submission
   heatmap, IKS-vs-satellite agreement) but nothing equivalent exists in the
   Next.js hub. The prototype reference data is data/prototype/iks_data.json.
-- The frontend has NO charting library (frontend/package.json: antd, leaflet,
-  react-leaflet, topojson-client only). Ant Design 5 ships no charts.
+- The frontend ships `akvo-charts` (^1.3.4) — an Akvo-maintained Apache ECharts
+  wrapper — as its charting library (Ant Design 5 itself has no charts).
 
 Goal:
 - Add an "IKS" sub-tab inside the Detailed Insights shell (INS-1) that
@@ -62,7 +62,7 @@ Goal:
 - [ ] The 4 region colours come from a **single shared region-colour constant** (Section 6) consumed by the trend chart, heatmap legend and table — no per-component colour literals.
 - [ ] The **heatmap renders non-blocking**: it must not freeze the tab while drawing (the prototype grid is ~59 Tinkhundla × ~13 weeks). Use deferred/async rendering (e.g. render after first paint, or a canvas/virtualised approach) so the rest of the tab is interactive immediately.
 - [ ] **Loading / empty / error** states use Ant Design (`Spin`, `Empty`, `Result`).
-- [ ] A charting library is added to `frontend/package.json` (Section 5) — Ant has no charts.
+- [ ] Charts use the already-installed **`akvo-charts`** (ECharts wrapper) — no new charting dependency (Section 5); Ant has no charts.
 - [ ] **Jest + RTL** tests cover: sub-tab renders, trend lines present (4 regions / 4 colours), catalogue table renders rows with counts + agreement, heatmap renders cells and a tooltip on hover, and loading/empty states.
 - [ ] No regression to the Detailed Insights shell (INS-1) or other sub-tabs.
 
@@ -160,19 +160,19 @@ endpoints** it consumes.
 
 **Impact**: Hard dependency on INS-1 (shell) and IKS-1 (aggregation endpoints). IKS-2 ships a `components/Insights/IksTab/` panel that INS-1 registers as a tab; no routing/middleware work in IKS-2.
 
-### D-7: Add a charting library — recommend Recharts
+### D-7: Charting library — use the installed `akvo-charts`
 
 **Options Considered**:
-1. **Recharts** — React-native SVG charts (line + custom cells), composable, plays well with React 18 / Next 14, small surface for a line chart + a custom-cell heatmap.
-2. **@ant-design/charts** (G2Plot) — matches Ant visually but is a heavier dependency and pulls in AntV/G2.
-3. **Chart.js + react-chartjs-2** — canvas-based; good for large heatmaps but a more imperative API.
+1. **`akvo-charts`** (^1.3.4, already a dependency) — Akvo-maintained Apache ECharts wrapper: `<Line>` for the net-signal trend and a `rawConfig` (raw ECharts `series`) escape hatch for the Inkhundla×week **heatmap** (ECharts has a native `heatmap` series).
+2. A new React SVG chart lib — rejected; would be a **new** dependency.
+3. **@ant-design/charts** (G2Plot) — matches Ant visually but heavier (AntV/G2).
 4. Hand-rolled SVG/canvas — no dependency but reinvents axes/legends/tooltips.
 
-**Decision**: Add **Recharts** for the net-signal trend (`LineChart`) and render the heatmap as a deferred **canvas** (or Recharts custom cells) layer.
+**Decision**: Use **`akvo-charts`** — `<Line>` for the net-signal trend, and the heatmap via `rawConfig` (ECharts `heatmap` series), rendered deferred/non-blocking (D-8).
 
-**Rationale**: Frontend currently has **no** charting library (confirmed against `frontend/package.json`: only `antd`, `leaflet`, `react-leaflet`, `topojson-client` — Ant Design 5 ships no charts). Recharts is the lightest fit for a single line chart with categorical colours and integrates with RTL for tests. The heatmap is rendered on canvas (or as deferred custom cells) to satisfy the non-blocking requirement for the ~59×13 grid.
+**Rationale**: The frontend already ships `akvo-charts` (confirmed in `frontend/package.json`; Ant Design 5 ships no charts). Reusing the installed, org-standard ECharts wrapper avoids a new dependency and keeps charts consistent with other Akvo apps; ECharts covers both the line and a real heatmap series (no custom-cell canvas needed, though the deferred render in D-8 still applies to the dense grid).
 
-**Impact**: One new dependency (`recharts`) added to `frontend/package.json`; bundle impact isolated to the IKS tab via dynamic import. **Confirm the chosen lib and version against `frontend/package.json` at implementation time** and align with any UI-1 token decisions.
+**Impact**: No new dependency. Charts live in `"use client"` modules (ECharts needs the DOM); bundle impact isolated to the IKS tab via dynamic import. Heatmap uses `rawConfig` for the ECharts `heatmap` series.
 
 ### D-8: Heatmap render is non-blocking
 
@@ -234,7 +234,7 @@ Serialized aggregate fields → table columns:
 
 ### Seeder/CLI Compatibility
 - [x] Existing seeders unchanged; IKS-2 adds none.
-- [x] New dependency: `recharts` added to `frontend/package.json` (D-7) — `yarn install` required at deploy; `yarn lint`, `yarn test`, `yarn build` must pass.
+- [x] No new charting dependency — `akvo-charts` is already in `frontend/package.json` (D-7); `yarn lint`, `yarn test`, `yarn build` must pass.
 
 ---
 
@@ -270,7 +270,7 @@ Resolved 2026-06-12 (decisions below).
 
 - [x] **INS-1 tab contract — RESOLVED:** INS-1 exposes a tab registry (INS-1 §10); IKS-2 registers `{ key:"iks", label:"IKS", component:<lazy> }` and mounts lazily without editing shell internals.
 - [x] **IKS-1 aggregation shapes + heatmap — RESOLVED, with one IKS-1 addition.** Trend + catalogue use IKS-1's `net-signal` (region×week) and `indicator-counts`. The **Inkhundla×week heatmap needs administration-level granularity that per-region `net-signal` doesn't provide**, so **IKS-1 adds `GET /api/v1/iks/aggregations/heatmap`** (administration × week net signal, DB-level) — a small IKS-1 scope addition (raise against IKS-1). Fallback if descoped: IKS-2 derives it client-side from a submissions list.
-- [x] **Charting library — DECIDED: Recharts** (consistent with INS-1/INS-2 — single chart lib across the insights surface; re-confirmed no chart dep in `frontend/package.json`).
+- [x] **Charting library — DECIDED: `akvo-charts`** (already installed; consistent with INS-1/INS-2/Track 1 — single ECharts-based chart lib across the insights surface).
 - [x] **`REGION_COLOR` — DECIDED: promote into the UI-1 token source**, re-exported from `static/config.js` for back-compat (matches notes.md — app-specific scales become UI-1 token additions).
 - [x] **Colour-accessibility — DECIDED: don't rely on colour alone.** Trend lines carry distinct markers/dash patterns; heatmap cells show the value on hover with a CVD-safe ramp — the 4 regions and the signal stay distinguishable for colour-vision-deficient users.
 

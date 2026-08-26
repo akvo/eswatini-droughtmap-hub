@@ -1,3 +1,5 @@
+const tokens = require("./src/static/tokens");
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -10,10 +12,39 @@ module.exports = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        primary: "#3e5eb9",
+        primary: tokens.brand.primary,
+        primaryHover: tokens.button.primaryHover,
+        brandDark: tokens.brand.dark,
+        brandMuted: tokens.brand.muted,
+        brandLight: tokens.brand.light,
+        brandTint: tokens.brand.tint,
+        navHover: tokens.nav.hover,
+        navActive: tokens.nav.active,
+        success: tokens.semantic.success,
+        successFg: tokens.semantic.successFg,
+        successBg: tokens.semantic.successBg,
+        textBody: tokens.text.body,
+        textSecondary: tokens.text.secondary,
+        textHint: tokens.text.hint,
+        textDisabled: tokens.text.disabled,
+        tableBorder: tokens.border.table,
+        tableHeaderBg: tokens.table.headerBg,
+        inputBorder: tokens.border.input,
+        cardBorder: tokens.border.card,
+        sectionBorder: tokens.border.section,
+        inputBorderActive: tokens.input.borderActive,
+        focusRing: tokens.select.focusRing,
+        sector: tokens.sector,
+        status: tokens.status,
+      },
+      borderRadius: {
+        // Additive only — DEFAULT left untouched so existing `rounded` usages
+        // are pixel-equivalent. Radius adoption is UI-1 pass 2.
+        md: `${tokens.radius.md}px`,
+        pill: `${tokens.radius.pill}px`,
       },
       backgroundImage: {
-        "image-login": "url('/images/bg-image-login.png')",
+        "dhi-pattern": "url('/images/dhi-pattern.svg')",
       },
       maxWidth: {
         "8xl": "90rem",

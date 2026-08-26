@@ -76,6 +76,8 @@ services:
     env_file: "./app.env"
     restart: unless-stopped
     working_dir: /app
+    volumes:
+      - app-storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -89,6 +91,8 @@ services:
     env_file: "./app.env"
     restart: unless-stopped
     working_dir: /app
+    volumes:
+      - app-storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -102,6 +106,8 @@ services:
     env_file: "./app.env"
     restart: unless-stopped
     working_dir: /app
+    volumes:
+      - app-storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -124,3 +130,4 @@ volumes:
   pg-data:
   rundeck_data:
   rundeck_etl:
+  app-storage:

@@ -1,0 +1,87 @@
+"use client";
+
+import {
+  DROUGHT_CATEGORY_CODE,
+  DROUGHT_CATEGORY_COLOR,
+  DROUGHT_CATEGORY_LABEL,
+  DROUGHT_CATEGORY_VALUE,
+} from "@/static/config";
+import { textOn } from "@/lib/helper";
+
+// Tint behind the D-code chip (Figma 4116:96303). Per-band derivations of
+// DROUGHT_CATEGORY_COLOR, which stays the owner of the palette.
+const BADGE_PARENT_BG = {
+  [DROUGHT_CATEGORY_VALUE.normal]: "#f0fdf4",
+  [DROUGHT_CATEGORY_VALUE.d0]: "#fefce8",
+  [DROUGHT_CATEGORY_VALUE.d1]: "#fef9c3",
+  [DROUGHT_CATEGORY_VALUE.d2]: "#ffedd5",
+  [DROUGHT_CATEGORY_VALUE.d3]: "#f7e7e7",
+  [DROUGHT_CATEGORY_VALUE.d4]: "#f7e7e7",
+  [DROUGHT_CATEGORY_VALUE.none]: "#f9fafb",
+};
+
+// Zone slugs are their own label: "upper_middleveld" -> "Upper Middleveld".
+// No lookup table needed, so this component stays independent of the zone list.
+const zoneLabel = (zone) =>
+  (zone || "")
+    .toLowerCase()
+    .trim()
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+/**
+ * Inkhundla name + region · zone + validated CDI drought chip. Shared by the
+ * Detailed insights tabs (Figma "Detailed insights selected inkhundla
+ * section", 4116:96388).
+ *
+ * `dclass` is the raw category from the latest published publication, or null
+ * when no published month covers this inkhundla — which renders as No data.
+ */
+const InkhundlaHeader = ({ name, region = "", zone = "", dclass = null }) => {
+  const category = dclass ?? DROUGHT_CATEGORY_VALUE.none;
+  const isNoData = category === DROUGHT_CATEGORY_VALUE.none;
+  // "No data" overflows the fixed-width chip, so it shortens to N/A.
+  const code = isNoData ? "N/A" : DROUGHT_CATEGORY_CODE[category];
+  // none's configured colour is white — invisible behind the white glyph.
+  const chipBg = isNoData ? "#3E5EB9" : DROUGHT_CATEGORY_COLOR[category];
+  const label = zoneLabel(zone);
+
+  return (
+    <div className="flex items-start justify-between border-b border-cardBorder px-4 py-6">
+      <div className="flex flex-col gap-[12px]">
+        <h2 className="text-2xl font-bold text-neutral-800 leading-[30px] mb-0">
+          {name} Inkhundla
+        </h2>
+        <p className="text-[20px] font-medium text-[#606060] leading-[30px] mb-0">
+          {region}
+          {label ? ` · ${label}` : ""}
+        </p>
+      </div>
+      <div
+        style={{ backgroundColor: BADGE_PARENT_BG[category] || "#f9fafb" }}
+        className="flex gap-[12px] items-center pl-[2px] pr-[12px] py-[2px] rounded-[6px]"
+      >
+        <div
+          style={{ backgroundColor: chipBg }}
+          className="flex items-center justify-center px-[6px] py-[2px] rounded-[4px] shrink-0"
+        >
+          <p
+            style={{ color: textOn(chipBg) }}
+            className="font-['Inter'] font-semibold leading-[18px] text-[14px] text-center whitespace-nowrap mb-0"
+          >
+            {code}
+          </p>
+        </div>
+        <div className="flex gap-[4px] items-center">
+          <span className="font-['Inter'] font-normal leading-[18px] text-[14px] text-[#333] whitespace-nowrap">
+            {DROUGHT_CATEGORY_LABEL[category]}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default InkhundlaHeader;

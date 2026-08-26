@@ -4,11 +4,19 @@ from enum import Enum
 class UserRoleTypes:
     admin = 1
     reviewer = 2
+    observer = 3
 
     FieldStr = {
         admin: "Admin",
         reviewer: "Reviewer",
+        observer: "Observer",
     }
+
+
+# Citizen-science magic link (WX-6 D-3): purpose-salted signed pk, framework
+# signing only — no token table. 7-day validity per the product brief.
+CS_LINK_SALT = "cs-magic-link"
+CS_LINK_MAX_AGE = 7 * 24 * 3600
 
 
 # Technical Working Group list
@@ -30,10 +38,10 @@ class TechnicalWorkingGroup:
 
 
 class ActionEnum(Enum):
-    CREATE = 'create'
-    READ = 'read'
-    UPDATE = 'update'
-    DELETE = 'delete'
+    CREATE = "create"
+    READ = "read"
+    UPDATE = "update"
+    DELETE = "delete"
 
     @classmethod
     def choices(cls):

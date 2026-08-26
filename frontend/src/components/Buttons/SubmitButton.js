@@ -3,7 +3,13 @@
 import { useState, useEffect } from "react";
 import { Button, Form } from "antd";
 
-const SubmitButton = ({ form, children, type = "primary", ...props }) => {
+const SubmitButton = ({
+  form,
+  children,
+  type = "primary",
+  size = "large",
+  ...props
+}) => {
   const [submittable, setSubmittable] = useState(false);
   // Watch all values
   const values = Form.useWatch([], form);
@@ -13,10 +19,21 @@ const SubmitButton = ({ form, children, type = "primary", ...props }) => {
         validateOnly: true,
       })
       .then(() => setSubmittable(true))
-      .catch(() => setSubmittable(false));
+      .catch((err) => {
+        if (err && err.outOfDate) {
+          return;
+        }
+        setSubmittable(false);
+      });
   }, [form, values]);
   return (
-    <Button type={type} htmlType="submit" disabled={!submittable} {...props}>
+    <Button
+      type={type}
+      size={size}
+      htmlType="submit"
+      {...props}
+      disabled={!submittable || props.disabled}
+    >
       {children}
     </Button>
   );

@@ -36,6 +36,10 @@ class MyProfileTestCase(TestCase, ProfileTestHelperMixin):
                 "email_verified",
                 "abilities",
                 "technical_working_group",
+                "administration",
+                "station_name",
+                "station_sensors",
+                "station_type",
             ]
         )
         self.assertFalse(res["email_verified"])

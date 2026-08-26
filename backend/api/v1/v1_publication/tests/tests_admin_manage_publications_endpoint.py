@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -20,9 +21,9 @@ class PublicationViewSetTestCase(APITestCase):
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 3)
         self.user = (
-            SystemUser.objects.filter(
-                role=UserRoleTypes.admin
-            ).order_by("?").first()
+            SystemUser.objects.filter(role=UserRoleTypes.admin)
+            .order_by("?")
+            .first()
         )
         self.client.force_authenticate(user=self.user)
 
@@ -71,6 +72,7 @@ class PublicationViewSetTestCase(APITestCase):
                     "validated_values",
                     "published_at",
                     "narrative",
+                    "sector_context",
                     "bulletin_url",
                     "created_at",
                     "updated_at",
@@ -92,13 +94,13 @@ class PublicationViewSetTestCase(APITestCase):
             ],
         )
         publication = Publication.objects.get(pk=data["id"])
-        self.assertEqual(
-            publication.reviews.count(),
-            2
-        )
+        self.assertEqual(publication.reviews.count(), 2)
 
     def test_publication_list(self):
-        call_command("fake_publications_seeder", "--test", True)
+        call_command(
+            "generate_publications_seeder",
+            "--test", True, "--with-reviews",
+        )
         url = reverse("publication-list", kwargs={"version": "v1"})
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -109,13 +111,17 @@ class PublicationViewSetTestCase(APITestCase):
         )
         self.assertCountEqual(
             sorted(list(data["data"][0])),
-            sorted([
-                "id",
-                "year_month",
-                "due_date",
-                "initial_values",
-                "status",
-            ])
+            sorted(
+                [
+                    "id",
+                    "year_month",
+                    "due_date",
+                    "initial_values",
+                    "status",
+                    "updated_at",
+                    "progress_reviews",
+                ]
+            ),
         )
 
     def test_publication_detail(self):
@@ -130,14 +136,11 @@ class PublicationViewSetTestCase(APITestCase):
         )
         url = reverse(
             "publication-details",
-            kwargs={"version": "v1", "pk": publication.id}
+            kwargs={"version": "v1", "pk": publication.id},
         )
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.json()["id"],
-            publication.id
-        )
+        self.assertEqual(response.json()["id"], publication.id)
 
     def test_update_publication(self):
         publication = Publication.objects.create(
@@ -151,7 +154,7 @@ class PublicationViewSetTestCase(APITestCase):
         )
         url = reverse(
             "publication-details",
-            kwargs={"version": "v1", "pk": publication.id}
+            kwargs={"version": "v1", "pk": publication.id},
         )
         data = {
             "validated_values": [
@@ -186,7 +189,7 @@ class PublicationViewSetTestCase(APITestCase):
         )
         url = reverse(
             "publication-details",
-            kwargs={"version": "v1", "pk": publication.id}
+            kwargs={"version": "v1", "pk": publication.id},
         )
         response = self.client.delete(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -222,7 +225,7 @@ class PublicationViewSetTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             response.json(),
-            {"reviewers": ["Please select at least one reviewer."]}
+            {"reviewers": ["Please select at least one reviewer."]},
         )
 
     @patch("django.utils.timezone.now")
@@ -253,6 +256,43 @@ class PublicationViewSetTestCase(APITestCase):
         response = self.client.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.json(),
-            {"due_date": ["The date must be today or later."]}
+            response.json(), {"due_date": ["The date must be today or later."]}
         )
+
+
+@override_settings(USE_TZ=False, TEST_ENV=True)
+class PublicationListOrderingTestCase(APITestCase):
+    """The list is ordered by month, newest first.
+
+    Ordering by -due_date put an older month on top, because publications
+    created together share a due date and tied rows come back in whatever
+    order the database picks — so this pins the column AND the tiebreak.
+    """
+
+    def setUp(self):
+        call_command("generate_administrations_seeder", "--test", True)
+        call_command("generate_admin_seeder", "--test", True)
+        self.admin = SystemUser.objects.filter(
+            role=UserRoleTypes.admin
+        ).first()
+        self.client.force_authenticate(user=self.admin)
+        # Deliberately inserted out of order, all sharing one due date.
+        self.months = ["2026-04", "2026-05", "2026-03"]
+        for index, month in enumerate(self.months):
+            Publication.objects.create(
+                cdi_geonode_id=7100 + index,
+                year_month=date(int(month[:4]), int(month[5:]), 1),
+                due_date=date(2026, 7, 31),
+                initial_values=[],
+            )
+
+    def test_list_is_newest_month_first(self):
+        response = self.client.get(
+            "/api/v1/admin/publications", follow=True
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        months = [
+            row["year_month"][:7] for row in response.json()["data"]
+        ]
+        self.assertEqual(months, sorted(months, reverse=True))
+        self.assertEqual(months[0], "2026-05")

@@ -7,20 +7,28 @@ import numpy as np
 # from rasterstats import zonal_stats
 from rasterio.mask import mask
 from time import sleep
-from datetime import datetime
+from django.core import signing
 from django.utils import timezone
 from django.conf import settings
 from django_q.tasks import async_task
 from api.v1.v1_jobs.models import Jobs
 from api.v1.v1_jobs.constants import JobStatus, JobTypes
-from api.v1.v1_publication.constants import GEONODE_SSL_VERIFY
+from api.v1.v1_publication.constants import (
+    GEONODE_SSL_VERIFY,
+    GEONODE_REQUEST_TIMEOUT,
+)
+from api.v1.v1_users.constants import CS_LINK_SALT
 from api.v1.v1_users.models import SystemUser
-from api.v1.v1_publication.models import Publication
+from api.v1.v1_publication.models import Publication, PublicationRaster
 from api.v1.v1_publication.serializers import (
     ReviewSerializer,
     PublicationSerializer,
 )
-from api.v1.v1_publication.utils import get_category
+from api.v1.v1_publication.utils import (
+    get_category,
+    attach_component_rasters,
+    publish_seeded_publication,
+)
 from utils.email_helper import send_email, EmailTypes
 
 # Set up logging
@@ -35,6 +43,22 @@ def demo_q_func(name: str):
 
 def demo_q_response_func(task):
     job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    if task.success:
+        job.status = JobStatus.done
+        job.available = timezone.now()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
+
+
+def job_done_hook(task):
+    # Generic completion hook: mark the linked Job done/failed.
+    job = Jobs.objects.filter(task_id=task.id).first()
+    if not job:
+        logger.warning(f"No Job found for task {task.id}")
+        return
     job.attempt = job.attempt + 1
     if task.success:
         job.status = JobStatus.done
@@ -69,6 +93,49 @@ def notify_reset_password(user: SystemUser, new_user: bool = False):
                 "reset_password_code": user.reset_password_code,
             },
         )
+
+
+def _cs_link_token(user: SystemUser) -> str:
+    return signing.dumps(user.pk, salt=CS_LINK_SALT)
+
+
+def notify_cs_magic_link(user_id: int):
+    """Welcome / fallback sign-in email for a citizen-science observer."""
+    user = SystemUser.objects.filter(pk=user_id).first()
+    if not user:
+        logger.warning(f"notify_cs_magic_link: no user {user_id}")
+        return False
+    if not settings.TEST_ENV:
+        send_email(
+            type=EmailTypes.cs_magic_link,
+            context={
+                "send_to": [user.email],
+                "name": user.name,
+                "station_name": user.station_name or "your station",
+                "token": _cs_link_token(user),
+            },
+        )
+    return {"email": user.email}
+
+
+def notify_cs_reminder(user_id: int, month_label: str):
+    """Monthly reading reminder for a citizen-science observer."""
+    user = SystemUser.objects.filter(pk=user_id).first()
+    if not user:
+        logger.warning(f"notify_cs_reminder: no user {user_id}")
+        return False
+    if not settings.TEST_ENV:
+        send_email(
+            type=EmailTypes.cs_reminder,
+            context={
+                "send_to": [user.email],
+                "name": user.name,
+                "station_name": user.station_name or "your station",
+                "month_label": month_label,
+                "token": _cs_link_token(user),
+            },
+        )
+    return {"email": user.email, "month": month_label}
 
 
 def notify_review_completed(
@@ -117,6 +184,36 @@ def notify_review_request(
     }
 
 
+def dispatch_review_request(publication, review, subject, message):
+    """Queue one reviewer's invitation email.
+
+    Extracted so a reviewer added to an existing publication gets exactly the
+    invitation the original panel got — same placeholders, same Jobs row, same
+    async task. A second email path here would drift from this one, and the
+    reviewer who received the drifted version is the one least able to notice.
+    """
+    job = Jobs.objects.create(
+        type=JobTypes.review_request,
+        status=JobStatus.on_progress,
+        result=ReviewSerializer(review).data,
+    )
+    body = message \
+        .replace("{{reviewer_name}}", review.user.name) \
+        .replace("{{year_month}}", publication.year_month.strftime("%Y-%m")) \
+        .replace("{{due_date}}", publication.due_date.strftime("%Y-%m-%d"))
+
+    job.task_id = async_task(
+        "api.v1.v1_jobs.job.notify_review_request",
+        review.user.email,
+        review.id,
+        subject,
+        body,
+        hook="api.v1.v1_jobs.job.email_notification_results",
+    )
+    job.save()
+    return job
+
+
 def notify_feedback_received(
     email: str,
     feedback: str
@@ -163,7 +260,15 @@ def download_geonode_dataset(
 
     # Download and store it in /tmp directory
     input_file = os.path.join(tmp_dir, filename)
-    response = requests.get(download_url, stream=True, verify=GEONODE_SSL_VERIFY)
+    # Timeout is not optional here: without one a GeoNode that accepts the
+    # connection and then stalls pins this worker forever, and django-q has
+    # no other way to reclaim it.
+    response = requests.get(
+        download_url,
+        stream=True,
+        verify=GEONODE_SSL_VERIFY,
+        timeout=GEONODE_REQUEST_TIMEOUT,
+    )
     if response.status_code == 200:
         with open(input_file, "wb") as f:
             # Write the response in chunks to handle large files
@@ -194,14 +299,26 @@ def download_geonode_dataset_results(task):
         job.status = JobStatus.done
         job.available = timezone.now()
 
-        # Create a job
-        job = Jobs.objects.create(
+        # `next_job`, not `job`: rebinding the name here meant the download
+        # job's own `status = done` above was never written (the save at the
+        # bottom hit the extraction job instead), so every successful download
+        # stayed on_progress forever. That reads as a job permanently in
+        # flight, which is exactly what has_active_cdi_download checks — one
+        # stuck row would block that publication's retry for good.
+        next_job = Jobs.objects.create(
             type=JobTypes.initial_cdi_values,
             status=JobStatus.on_progress,
             info={
                 "id": publication_id,
                 "subject": subject,
                 "message": message,
+                # Carried across the hop: the seeder sets is_seeder on the
+                # DOWNLOAD job, but it is read on the EXTRACTION job by
+                # generate_initial_cdi_values_results. Dropping it here left
+                # that branch permanently unreachable, which is why
+                # publications_seeder had to be run twice before
+                # validated_values appeared (design DEMO-1 D-10).
+                "is_seeder": job_info.get("is_seeder", False),
             },
         )
         hook = "api.v1.v1_jobs.job.generate_initial_cdi_values_results"
@@ -212,12 +329,51 @@ def download_geonode_dataset_results(task):
             hook=hook,
         )
         # Update the job with the task ID
-        job.task_id = task_id
-        job.save()
+        next_job.task_id = task_id
+        next_job.save()
     else:
         job.status = JobStatus.failed
     job.result = task.result
     job.save()
+
+
+def compute_zonal_values(input_file: str) -> list:
+    # Indicator-agnostic zonal stats: for each administration polygon, mask
+    # the raster to that geometry and reduce the valid, non-negative pixels
+    # to a single value via (min + mean) * 0.5. No category here — that is
+    # a CDI-specific concept layered on top by callers that need it.
+    topojson_file = "./source/eswatini.topojson"
+    gdf = gpd.read_file(topojson_file)
+    gdf.crs = "epsg:4326"
+    results = []
+    with rasterio.open(input_file) as src:
+        gdf_reprojected = gdf.to_crs(src.crs)
+        for _, row in gdf_reprojected.iterrows():
+            geom = row["geometry"]
+            admin_id = row["administration_id"]
+            if geom.is_empty:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            try:
+                masked_arr, _ = mask(dataset=src, shapes=[geom], crop=True,
+                                     nodata=src.nodata, filled=False)
+            except ValueError:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            masked_arr = masked_arr[0]
+            valid_data = masked_arr.compressed()
+            if valid_data.size == 0:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            positive_values = valid_data[np.where(valid_data >= 0)]
+            if positive_values.size == 0:
+                results.append({"administration_id": admin_id, "value": None})
+                continue
+            min_val = np.min(positive_values)
+            mean_val = np.mean(positive_values)
+            final_value = (min_val + mean_val) * 0.5
+            results.append({"administration_id": admin_id, "value": float(final_value)})
+    return results
 
 
 def generate_initial_cdi_values(
@@ -232,93 +388,81 @@ def generate_initial_cdi_values(
             f"Publication with ID {publication_id} does not exist."
         )
         return False
-    # Read the topojson file to load all Administrations
-    topojson_file = "./source/eswatini.topojson"
-    gdf = gpd.read_file(topojson_file)
 
-    gdf.crs = "epsg:4326"
-
-    # Ensure the CRS of the GeoDataFrame and the raster are the same
-    with rasterio.open(input_file) as src:
-        gdf = gdf.to_crs(src.crs)
-
-    # Custom zonal stats using rasterio and numpy
-    results = []
-
-    with rasterio.open(input_file) as src:
-        # Reproject GeoDataFrame to match raster CRS
-        gdf_reprojected = gdf.to_crs(src.crs)
-
-        for _, row in gdf_reprojected.iterrows():
-            geom = row["geometry"]
-            admin_id = row["administration_id"]
-
-            if geom.is_empty:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            try:
-                # Mask the raster using the geometry
-                masked_arr, _ = mask(
-                    dataset=src,
-                    shapes=[geom],
-                    crop=True,
-                    nodata=src.nodata,
-                    filled=False  # returns a masked array
-                )
-            except ValueError:
-                # Handle invalid geometry or no overlap
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            # Flatten and get valid (unmasked) data
-            masked_arr = masked_arr[0]  # first band
-            valid_data = masked_arr.compressed()  # Get only unmasked values
-
-            if valid_data.size == 0:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            # Use numpy.where to filter out missing data (-1 values)
-            positive_values = valid_data[np.where(valid_data >= 0)]
-
-            if positive_values.size == 0:
-                results.append({
-                    "administration_id": admin_id,
-                    "value": None,
-                    "category": None
-                })
-                continue
-
-            min_val = np.min(positive_values)
-            mean_val = np.mean(positive_values)
-
-            # Apply the formula (min + mean) * 0.5
-            final_value = (min_val + mean_val) * 0.5
-
-            category = get_category(final_value)
-
-            results.append({
-                "administration_id": admin_id,
-                "value": float(final_value),
-                "category": category
-            })
-
+    raw = compute_zonal_values(input_file)
+    results = [
+        {**item, "category": get_category(item["value"])
+                  if item["value"] is not None else None}
+        for item in raw
+    ]
     publication.initial_values = results
     publication.save()
     return PublicationSerializer(publication).data
+
+
+def generate_indicator_values(publication_raster_id: int, input_file: str):
+    raster = PublicationRaster.objects.filter(pk=publication_raster_id).first()
+    if not raster:
+        logger.error(f"PublicationRaster {publication_raster_id} does not exist.")
+        return False
+    raster.values = compute_zonal_values(input_file)
+    raster.extracted_at = timezone.now()
+    raster.save()
+    return {"id": raster.id, "indicator": raster.indicator}
+
+
+def attach_publication_rasters(publication_id: int):
+    # Component discovery walks the GeoNode catalogue up to four times, so it
+    # runs here in the worker rather than inline in the create request (D-6):
+    # a slow or unreachable GeoNode must never delay or fail publication
+    # creation, which only ever needed the CDI raster.
+    publication = Publication.objects.filter(pk=publication_id).first()
+    if not publication:
+        logger.error(f"Publication with ID {publication_id} does not exist.")
+        return False
+    attached = attach_component_rasters(publication)
+    return {"publication": publication_id, "attached": attached}
+
+
+def download_indicator_dataset_results(task):
+    job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    job_info = job.info
+    raster_id = job_info["publication_raster_id"]
+    filename = job_info["filename"]
+    input_file = os.path.join(tmp_dir, filename)
+    if task.success and os.path.exists(input_file):
+        job.status = JobStatus.done
+        job.available = timezone.now()
+        next_job = Jobs.objects.create(
+            type=JobTypes.indicator_values,
+            status=JobStatus.on_progress,
+            info={"publication_raster_id": raster_id},
+        )
+        task_id = async_task(
+            "api.v1.v1_jobs.job.generate_indicator_values",
+            raster_id,
+            input_file,
+            hook="api.v1.v1_jobs.job.generate_indicator_values_results",
+        )
+        next_job.task_id = task_id
+        next_job.save()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
+
+
+def generate_indicator_values_results(task):
+    job = Jobs.objects.get(task_id=task.id)
+    job.attempt = job.attempt + 1
+    if task.success:
+        job.status = JobStatus.done
+        job.available = timezone.now()
+    else:
+        job.status = JobStatus.failed
+    job.result = task.result
+    job.save()
 
 
 def generate_initial_cdi_values_results(task):
@@ -340,61 +484,17 @@ def generate_initial_cdi_values_results(task):
             job.result = task.result
             job.save()
 
-            if (
-                job_info.get("is_seeder", False) and
-                not publication.validated_values
-            ):
-                # If this is from the seeder and no validated values, set them
-                publication.validated_values = publication.initial_values
-                publication.narrative = ""
-                publication.published_at = timezone.make_aware(
-                    publication.due_date
-                ) if isinstance(publication.due_date, datetime) \
-                    else timezone.make_aware(
-                        datetime.combine(
-                            publication.due_date,
-                            datetime.min.time()
-                        )
-                    )
-                publication.save()
+            if job_info.get("is_seeder", False):
+                # Seeded publications publish themselves at the end of the
+                # extraction chain, so one seeder run is enough. Shared with
+                # publications_seeder's repair pass so the two cannot drift.
+                publish_seeded_publication(publication)
 
             # No subject or message provided, so no email to send
             return
         # Send email to all reviewers
         for review in publication.reviews.all():
-            # Create a job
-            job = Jobs.objects.create(
-                type=JobTypes.review_request,
-                status=JobStatus.on_progress,
-                result=ReviewSerializer(review).data,
-            )
-            # Replace placeholders in the message
-            body = message \
-                .replace(
-                    "{{reviewer_name}}",
-                    review.user.name
-                ) \
-                .replace(
-                    "{{year_month}}",
-                    publication.year_month.strftime("%Y-%m")
-                ) \
-                .replace(
-                    "{{due_date}}",
-                    publication.due_date.strftime("%Y-%m-%d")
-                )
-
-            # Dispatch the send email job for each reviewer
-            task_id = async_task(
-                "api.v1.v1_jobs.job.notify_review_request",
-                review.user.email,
-                review.id,
-                subject,
-                body,
-                hook="api.v1.v1_jobs.job.email_notification_results",
-            )
-            # Update the job with the task ID
-            job.task_id = task_id
-            job.save()
+            dispatch_review_request(publication, review, subject, message)
 
     else:
         job.status = JobStatus.failed

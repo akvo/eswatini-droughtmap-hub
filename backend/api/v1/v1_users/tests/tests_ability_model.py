@@ -75,4 +75,6 @@ class AbilityModelTestCase(TestCase):
         call_command(
             "generate_roles_n_abilities_seeder"
         )
-        self.assertEqual(Ability.objects.count(), 12)
+        # 22 minus the reviewer's create/update on Activity — the Activity
+        # Library is read-only for reviewers.
+        self.assertEqual(Ability.objects.count(), 20)

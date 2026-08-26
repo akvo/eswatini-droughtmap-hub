@@ -9,3 +9,12 @@ db.dbml
 **/app.env
 **/rundeck.env
 **/realm.properties
+
+.agent/
+agent_docs/
+.vscode
+task.md
+
+storage
+eswatini-v2/data/wis2_obs_cache.csv
+.qodo/

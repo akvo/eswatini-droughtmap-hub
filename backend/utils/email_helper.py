@@ -7,6 +7,12 @@ from utils.custom_serializer_fields import CustomChoiceField
 from eswatini.settings import EMAIL_FROM, WEBDOMAIN
 
 
+# WEBDOMAIN is the frontend origin, so this is a Next.js page route — the app
+# lives at /citizen-weather. Do not confuse it with the backend's
+# /api/v1/weather/citizen-science/* API prefix.
+CS_SIGN_IN_PATH = "/citizen-weather"
+
+
 class EmailTypes:
     verification_email = "verification_email"
     forgot_password = "forgot_password"
@@ -15,6 +21,10 @@ class EmailTypes:
     review_request = "review_request"
     new_user_password_setup = "new_user_password_setup"
     send_feedback = "send_feedback"
+    cs_magic_link = "cs_magic_link"
+    cs_reminder = "cs_reminder"
+    brief_forward = "brief_forward"
+    dataset_upload_pending = "dataset_upload_pending"
 
     FieldStr = {
         verification_email: "verification_email",
@@ -24,6 +34,10 @@ class EmailTypes:
         review_request: "review_request",
         new_user_password_setup: "new_user_password_setup",
         send_feedback: "send_feedback",
+        cs_magic_link: "cs_magic_link",
+        cs_reminder: "cs_reminder",
+        brief_forward: "brief_forward",
+        dataset_upload_pending: "dataset_upload_pending",
     }
 
 
@@ -149,6 +163,81 @@ def email_context(context: dict, type: str):
                 ),
             }
         )
+    if type == EmailTypes.cs_magic_link:
+        context.update(
+            {
+                "subject": "Sign in to Citizen Science Weather",
+                "body": """
+                Sanibonani {0},
+                Welcome to Citizen Science Weather!
+                Use the link below to open the monthly weather form for
+                <b>{1}</b>. The link works for 7 days — you can request a
+                fresh one anytime with just your email address.
+                """.format(
+                    context["name"],
+                    context["station_name"],
+                ),
+                "cta_text": "Open my weather form",
+                "cta_url": "{0}{1}?token={2}".format(
+                    WEBDOMAIN, CS_SIGN_IN_PATH, context["token"]
+                ),
+            }
+        )
+    if type == EmailTypes.dataset_upload_pending:
+        pending = context.get("pending_count", 0)
+        rejected = context.get("rejected_count", 0)
+        context.update(
+            {
+                "subject": "{0} data file(s) waiting for your review".format(
+                    pending + rejected
+                ),
+                "body": """
+                {0} file(s) published to GeoNode have been checked and are
+                waiting for you in the admin. <b>Nothing has been applied</b>
+                — the figures change only after you review the before/after
+                list and confirm.
+                <br/><br/>
+                {1}
+                {2}
+                """.format(
+                    pending,
+                    "<br/>".join(context.get("lines", [])),
+                    (
+                        "<br/><br/>{0} file(s) were rejected and need the "
+                        "publisher to correct them.".format(rejected)
+                        if rejected
+                        else ""
+                    ),
+                ),
+                "cta_text": "Review the uploads",
+                "cta_url": "{0}/admin/v1_indicators/datasetupload/".format(
+                    WEBDOMAIN
+                ),
+            }
+        )
+
+    if type == EmailTypes.cs_reminder:
+        context.update(
+            {
+                "subject": "Your {0} weather reading for {1} is due".format(
+                    context["station_name"],
+                    context["month_label"],
+                ),
+                "body": """
+                Sanibonani {0},
+                It's time to log last month's weather for <b>{1}</b>.
+                You don't have to fill every field — whatever your station
+                recorded is valuable. Siyabonga!
+                """.format(
+                    context["name"],
+                    context["station_name"],
+                ),
+                "cta_text": "Submit my weather reading",
+                "cta_url": "{0}{1}?token={2}".format(
+                    WEBDOMAIN, CS_SIGN_IN_PATH, context["token"]
+                ),
+            }
+        )
     if type == EmailTypes.send_feedback:
         context.update(
             {
@@ -164,6 +253,37 @@ def email_context(context: dict, type: str):
                         context["feedback"],
                     )
                 ),
+            }
+        )
+    if type == EmailTypes.brief_forward:
+        inkhundla = context.get("inkhundla_name", "")
+        sender = context.get("sender_name", "A TWG member")
+        note = context.get("note", "").strip()
+        contact_person = context.get("contact_person", "").strip()
+        contact_suffix = f" ({contact_person})" if contact_person else ""
+        note_block = (
+            f'<div style="margin: 16px 0;">'
+            f"<strong>Note from sender:</strong>"
+            f'<blockquote style="border-left: 3px solid #7747ff; padding-left: 12px; margin: 8px 0; color: #555;">{note}</blockquote>'  # noqa
+            f"</div>"
+            if note
+            else ""
+        )
+        context.update(
+            {
+                "subject": f"EDM — Inkhundla Brief: {inkhundla}",
+                "body": (
+                    f"Dear reader,<br><br>"
+                    f"I am forwarding to you the monthly drought information for <strong>{inkhundla}</strong>. "  # noqa
+                    f"In this document you will find a description of the current drought conditions and "  # noqa
+                    f"recommended response activities, as well as an understanding of the historical drought occurence.<br><br>"  # noqa
+                    f"If you have any questions about this drought brief, feel free to reach out to me or the NDRMA contact person{contact_suffix}.<br>"  # noqa
+                    f"{note_block}<br>"
+                    f"Greetings,<br>"
+                    f"<strong>{sender}</strong>"
+                ),
+                "cta_text": "View the brief",
+                "cta_url": context.get("brief_url", WEBDOMAIN),
             }
         )
     return context

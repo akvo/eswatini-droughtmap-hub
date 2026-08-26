@@ -1,0 +1,319 @@
+import React, { useState } from "react";
+import { Input, InputNumber, Button } from "antd";
+import {
+  DROUGHT_CATEGORY_ASSIGNABLE,
+  DROUGHT_CATEGORY_VALUE,
+  ACTIVITY_INDICATORS,
+} from "@/static/config";
+import { api } from "@/lib/api";
+import { textOn } from "@/lib/helper";
+
+// The gate the backend accepts is D0..D4 (VALID_DCLASS): `none` is raster
+// "No Data" and `normal` is not a drought threshold — "at least Normal" would
+// fire for every Inkhundla. Selecting nothing (null) disables the condition.
+const D_CLASSES = DROUGHT_CATEGORY_ASSIGNABLE.filter(
+  (c) => c.value !== DROUGHT_CATEGORY_VALUE.normal,
+);
+
+export default function Step2Trigger({ formData, setFormData }) {
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const res = await api("POST", "/activities/trigger-preview", {
+        triggers: formData.triggers,
+      });
+      setPreview(typeof res?.matched === "number" ? res : null);
+    } catch {
+      setPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Use the shared indicator configuration
+  const indicators = ACTIVITY_INDICATORS;
+
+  const handleDClassClick = (value) => {
+    setFormData({
+      ...formData,
+      triggers: {
+        ...formData.triggers,
+        dclass:
+          value !== null
+            ? { class: value, months: formData.triggers.dclass?.months || 1 }
+            : null,
+      },
+    });
+  };
+
+  const handleMonthsChange = (val) => {
+    if (!formData.triggers.dclass) return;
+    setFormData({
+      ...formData,
+      triggers: {
+        ...formData.triggers,
+        dclass: { ...formData.triggers.dclass, months: val || 1 },
+      },
+    });
+  };
+
+  const handleIndicatorOpChange = (ind, op) => {
+    if (ind.target === "vuln") {
+      setFormData({
+        ...formData,
+        triggers: {
+          ...formData.triggers,
+          vuln: { op, value: formData.triggers.vuln?.value || 1 },
+        },
+      });
+      return;
+    }
+    const existing = formData.triggers.exp.find((e) => e.indicator === ind.key);
+    const newExp = existing
+      ? formData.triggers.exp.map((e) =>
+          e.indicator === ind.key ? { ...e, op } : e,
+        )
+      : [...formData.triggers.exp, { indicator: ind.key, op, value: 1 }];
+    setFormData({
+      ...formData,
+      triggers: {
+        ...formData.triggers,
+        exp: newExp,
+      },
+    });
+  };
+
+  const handleIndicatorValChange = (ind, val) => {
+    // InputNumber passes a number, or null when the input is cleared;
+    // clearing removes the condition from the payload.
+    if (ind.target === "vuln") {
+      setFormData({
+        ...formData,
+        triggers: {
+          ...formData.triggers,
+          vuln:
+            val === null
+              ? null
+              : { op: formData.triggers.vuln?.op || 1, value: val },
+        },
+      });
+      return;
+    }
+    const existing = formData.triggers.exp.find((e) => e.indicator === ind.key);
+    let newExp;
+    if (val === null) {
+      newExp = formData.triggers.exp.filter((e) => e.indicator !== ind.key);
+    } else if (existing) {
+      newExp = formData.triggers.exp.map((e) =>
+        e.indicator === ind.key ? { ...e, value: val } : e,
+      );
+    } else {
+      newExp = [
+        ...formData.triggers.exp,
+        { indicator: ind.key, op: 1, value: val },
+      ];
+    }
+    setFormData({
+      ...formData,
+      triggers: {
+        ...formData.triggers,
+        exp: newExp,
+      },
+    });
+  };
+
+  const selectedClass = formData.triggers.dclass?.class ?? null;
+
+  return (
+    <div className="flex flex-col gap-6 w-full text-neutral-800">
+      <div className="flex flex-col gap-2">
+        <h4 className="text-xl font-medium text-textBody m-0 leading-normal">
+          Trigger condition
+        </h4>
+        <p className="text-base text-textSecondary m-0 leading-[24px]">
+          Define the conditions that make this Response activity fire for an
+          Inkhundla. The live preview below shows how many Tinkhundla it would
+          fire for if activated against current data.
+        </p>
+      </div>
+      <div className="h-px bg-[#e2e4e9] w-full" />
+
+      {/* D-Class Threshold segmented pill */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-0.5 flex-1">
+          <span className="text-sm text-textSecondary font-normal">
+            D-class threshold:
+          </span>
+          <p className="text-xs text-textHint italic m-0 leading-[18px]">
+            Validated drought class the Inkhundla must reach — None disables
+            this condition.
+          </p>
+        </div>
+        <div className="flex bg-brandTint p-0.5 rounded-[10px] w-max border border-neutral-100">
+          {[{ value: null, code: "None", color: null }, ...D_CLASSES].map(
+            (cls) => {
+              const isActive = selectedClass === cls.value;
+              return (
+                <button
+                  key={cls.code}
+                  type="button"
+                  onClick={() => handleDClassClick(cls.value)}
+                  style={
+                    isActive && cls.color
+                      ? {
+                          backgroundColor: cls.color,
+                          color: textOn(cls.color),
+                        }
+                      : undefined
+                  }
+                  className={`px-3 py-1 rounded-[8px] text-sm font-normal transition-all ${
+                    isActive
+                      ? `shadow-sm ${cls.color ? "" : "bg-primary text-white"}`
+                      : "text-textDisabled hover:text-neutral-700 bg-transparent"
+                  }`}
+                >
+                  {cls.code}
+                </button>
+              );
+            },
+          )}
+        </div>
+      </div>
+
+      {/* Months input */}
+      <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-col gap-0.5 flex-1 pb-2">
+          <span className="text-sm text-textSecondary font-normal">
+            for at least [N] consecutive months
+          </span>
+          <p className="text-xs text-textHint italic m-0 leading-[18px]">
+            Whole number of months in a row the D-class must hold, e.g. D2 for
+            at least 3 consecutive months.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5 w-[143px]">
+          <span className="text-xs text-textSecondary font-normal">Amount</span>
+          <InputNumber
+            precision={0}
+            min={1}
+            placeholder="e.g. 3"
+            value={formData.triggers.dclass?.months ?? null}
+            onChange={handleMonthsChange}
+            disabled={!formData.triggers.dclass}
+            className="w-full h-10 border-inputBorder rounded-[4px] text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Indicators Repeater List */}
+      <div className="flex flex-col gap-4">
+        {indicators.map((ind) => {
+          const matched =
+            ind.target === "vuln"
+              ? formData.triggers.vuln
+              : formData.triggers.exp.find((e) => e.indicator === ind.key);
+          const currentOp = matched?.op || 1; // 1 = >=, 2 = <=
+          const currentVal = matched?.value ?? null;
+
+          return (
+            <div
+              key={ind.key}
+              className="flex items-center justify-between gap-4"
+            >
+              <div className="flex flex-col gap-0.5 flex-1">
+                <span className="text-sm text-textSecondary font-normal">
+                  {ind.label}
+                </span>
+                <p className="text-xs text-textHint italic m-0 leading-[18px]">
+                  {ind.help}
+                </p>
+              </div>
+
+              {/* Operator Switch */}
+              <div className="flex bg-brandTint p-0.5 rounded-[10px] border border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => handleIndicatorOpChange(ind, 1)}
+                  className={`px-3 py-1 rounded-[8px] text-sm font-semibold transition-all ${
+                    currentOp === 1
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-textDisabled"
+                  }`}
+                >
+                  &ge;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleIndicatorOpChange(ind, 2)}
+                  className={`px-3 py-1 rounded-[8px] text-sm font-semibold transition-all ${
+                    currentOp === 2
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-textDisabled"
+                  }`}
+                >
+                  &le;
+                </button>
+              </div>
+
+              {/* Value Input */}
+              <div className="w-[143px]">
+                <InputNumber
+                  precision={0}
+                  min={ind.min}
+                  max={ind.max}
+                  placeholder={ind.placeholder}
+                  value={currentVal}
+                  onChange={(val) => handleIndicatorValChange(ind, val)}
+                  className="w-full h-10 border-inputBorder rounded-[4px] text-sm"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Other condition (free-form) */}
+      <div className="flex flex-col gap-2 w-full">
+        <div className="flex flex-col gap-0.5">
+          <label className="text-sm text-textSecondary font-normal">
+            Other condition (free-form)
+          </label>
+          <p className="text-xs text-textHint italic m-0 leading-[18px]">
+            Free-form note for reviewers — not evaluated automatically.
+          </p>
+        </div>
+        <Input.TextArea
+          placeholder="e.g. high IKS drought signal AND IKS valid this period"
+          value={formData.triggers.other || ""}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              triggers: {
+                ...formData.triggers,
+                other: e.target.value || null,
+              },
+            })
+          }
+          rows={4}
+          className="w-full border-cardBorder rounded-[8px] p-3 text-sm focus:border-inputBorderActive"
+        />
+      </div>
+
+      {/* Live Preview alert banner */}
+      <div className="bg-brandTint text-textBody rounded-[8px] px-3.5 py-2.5 text-sm flex items-center gap-2 font-medium w-full">
+        <span className="text-primary text-base">&#9888;</span>
+        <span className="flex-1">
+          {preview
+            ? `Would fire for ${preview.matched} of ${preview.total} Tinkhundla`
+            : "Preview how many Tinkhundla this trigger would fire for"}
+        </span>
+        <Button size="small" loading={previewLoading} onClick={handlePreview}>
+          Preview
+        </Button>
+      </div>
+    </div>
+  );
+}

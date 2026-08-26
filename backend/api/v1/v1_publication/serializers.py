@@ -6,6 +6,7 @@ from collections import defaultdict
 from .models import (
     Administration,
     Publication,
+    PublicationRaster,
     Review,
 )
 from utils.custom_serializer_fields import (
@@ -22,11 +23,19 @@ from utils.custom_serializer_fields import (
 from api.v1.v1_users.serializers import UserReviewerSerializer
 from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from api.v1.v1_publication.constants import (
+    MIN_TWGS_PER_PUBLICATION,
     DroughtCategory,
     ExportMapTypes,
     CDIGeonodeCategory,
     PublicationStatus,
+    RasterIndicatorTypes,
+    FilterStatus,
+    SECTOR_CONTEXT_MAX_CHARS,
+    is_validated,
 )
+from api.v1.v1_publication.validation.utils import progress_reviews
+from api.v1.v1_activity.constants import ActivitySector
+from api.v1.v1_activity.services import triggered_sector_ids
 
 
 class AdministrationSerializer(serializers.ModelSerializer):
@@ -49,9 +58,7 @@ class PublicationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_reviews(self, obj):
-        total_reviews = obj.reviews.count()
-        total_completed = obj.reviews.filter(is_completed=True).count()
-        return f"{total_completed}/{total_reviews}"
+        return progress_reviews(obj)
 
     @extend_schema_field(OpenApiTypes.ANY)
     def get_reviewers(self, obj):
@@ -77,6 +84,7 @@ class PublicationSerializer(serializers.ModelSerializer):
             "validated_values",
             "published_at",
             "narrative",
+            "sector_context",
             "bulletin_url",
             "created_at",
             "updated_at",
@@ -92,14 +100,115 @@ class PublicationSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super(PublicationSerializer, self).__init__(*args, **kwargs)
-        request = self.context.get('request')
-        if request and request.method == 'PUT':
+        request = self.context.get("request")
+        if request and request.method == "PUT":
             for field in self.fields:
                 self.fields[field].required = False
+
+    def validate_sector_context(self, value):
+        """A flat {sector_id: paragraph} map over known sectors.
+
+        Validated as a shape rather than left as free JSON: the column is
+        rendered on a public page, so it must not become arbitrary storage.
+        JSON object keys round-trip as strings, hence the str() comparison.
+        """
+        if value in (None, ""):
+            return value
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                "Expected an object keyed by sector id."
+            )
+        known = {str(code) for code in ActivitySector.FieldStr}
+        unknown = sorted(set(map(str, value)) - known)
+        if unknown:
+            raise serializers.ValidationError(
+                f"Unknown sector id(s): {', '.join(unknown)}."
+            )
+        for key, text in value.items():
+            if not isinstance(text, str):
+                raise serializers.ValidationError(
+                    f"Sector {key}: expected text."
+                )
+            if len(text) > SECTOR_CONTEXT_MAX_CHARS:
+                raise serializers.ValidationError(
+                    f"Sector {key}: must be "
+                    f"{SECTOR_CONTEXT_MAX_CHARS} characters or fewer."
+                )
+        return {str(k): v for k, v in value.items()}
+
+    def validate(self, attrs):
+        """A publication may not go out with unvalidated Tinkhundla.
+
+        This is the control; the disabled Publish button is a courtesy. It
+        guards every write path into `published`, including the legacy publish
+        page, which had no such check.
+
+        Object-level rather than `validate_status`, because the answer depends
+        on `validated_values`: a single PUT may set the categories *and*
+        publish in one request, so the check must run against the state this
+        write will leave behind, not the state before it.
+
+        `is_validated` rather than a bare `is not None` is what keeps -9999
+        ("No Data") off a published map: it is raster output from where the
+        CDI had no signal, never a decision an admin handed down. The same
+        predicate backs `can_publish`, so the button and the endpoint agree.
+        """
+        if attrs.get("status") != PublicationStatus.published:
+            return attrs
+
+        def after_write(field):
+            return attrs.get(field, getattr(self.instance, field, None))
+
+        validated = {
+            v["administration_id"]
+            for v in (after_write("validated_values") or [])
+            if is_validated(v.get("category"))
+        }
+        total = len(after_write("initial_values") or [])
+        missing = total - len(validated)
+        if missing > 0:
+            raise serializers.ValidationError({
+                "status": (
+                    f"Cannot publish: {missing} of {total} Tinkhundla "
+                    "are not validated yet."
+                )
+            })
+
+        # The National Overview is written here, so the copy it needs has to
+        # exist before it goes out (D-6). Enforced on the transition only —
+        # a publication may sit in review with neither field set.
+        if not (after_write("narrative") or "").strip():
+            raise serializers.ValidationError({
+                "narrative": "A description is required to publish."
+            })
+
+        # Only the sectors actually firing under this map are demanded. A
+        # sector whose activities trigger nowhere still renders a card, but
+        # asking for a paragraph about a response that is not happening is
+        # busywork — it falls back to the derived sentence (D-8).
+        context = after_write("sector_context") or {}
+        blank = [
+            ActivitySector.FieldStr[code]
+            for code in triggered_sector_ids()
+            if not (context.get(str(code)) or "").strip()
+        ]
+        if blank:
+            raise serializers.ValidationError({
+                "sector_context": (
+                    "Sector context is required for: "
+                    f"{', '.join(blank)}."
+                )
+            })
+        return attrs
 
 
 class PublicationInfoSerializer(serializers.ModelSerializer):
     year_month = serializers.DateField(format="%Y-%m")
+    progress_reviews = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_progress_reviews(self, obj):
+        return progress_reviews(obj)
 
     class Meta:
         model = Publication
@@ -109,6 +218,8 @@ class PublicationInfoSerializer(serializers.ModelSerializer):
             "due_date",
             "initial_values",
             "status",
+            "updated_at",
+            "progress_reviews",
         ]
 
 
@@ -137,7 +248,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             # Check if category is invalid when reviewed is True
             if reviewed:
                 if category is None or (category != 0 and not category):
-                    admin_id = suggestion.get('administration_id')
+                    admin_id = suggestion.get("administration_id")
                     raise serializers.ValidationError(
                         f"Category required when reviewed is True "
                         f"(item #{i+1}, administration_id: {admin_id})"
@@ -163,22 +274,21 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class ReviewListSerializer(serializers.ModelSerializer):
     year_month = serializers.DateField(
-        source="publication.year_month",
-        format="%Y-%m"
+        source="publication.year_month", format="%Y-%m"
     )
     due_date = serializers.DateField(
-        source="publication.due_date",
-        format="%Y-%m-%d"
+        source="publication.due_date", format="%Y-%m-%d"
     )
     progress_review = serializers.SerializerMethodField()
     publication_id = serializers.IntegerField(source="publication.id")
+    last_updated = serializers.SerializerMethodField()
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_progress_review(self, obj):
         # Filter for suggestion values where reviewed is True
         suggestion_values = obj.suggestion_values or []
         reviewed_count = sum(
-            1 for item in suggestion_values if item.get('reviewed') is True
+            1 for item in suggestion_values if item.get("reviewed") is True
         )
         # total = len(list(filter(
         #     lambda x: x["category"] != DroughtCategory.none,
@@ -186,6 +296,12 @@ class ReviewListSerializer(serializers.ModelSerializer):
         # )))
         total = len(obj.publication.initial_values)
         return f"{reviewed_count}/{total}"
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_last_updated(self, obj):
+        if obj.updated_at:
+            return obj.updated_at.strftime("%Y-%m-%d")
+        return obj.publication.created_at.strftime("%Y-%m-%d")
 
     class Meta:
         model = Review
@@ -197,6 +313,7 @@ class ReviewListSerializer(serializers.ModelSerializer):
             "completed_at",
             "is_completed",
             "progress_review",
+            "last_updated",
         ]
 
 
@@ -206,8 +323,13 @@ class CDIGeonodeFilterSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    # Numeric publication statuses plus the "not_yet_started" sentinel, which
+    # the CDI list uses for GeoNode resources that have no Publication yet.
     status = CustomChoiceField(
-        choices=list(PublicationStatus.FieldStr.keys()),
+        choices=(
+            list(PublicationStatus.FieldStr.keys())
+            + [FilterStatus.not_yet_started]
+        ),
         required=False,
         allow_null=False,
     )
@@ -218,12 +340,10 @@ class CDIGeonodeFilterSerializer(serializers.Serializer):
     sort = CustomCharField(
         required=False,
         allow_null=True,
-        help_text="Field to sort by: year_month, created, title, status"
+        help_text="Field to sort by: year_month, created, title, status",
     )
     sort_order = CustomCharField(
-        required=False,
-        allow_null=True,
-        help_text="Sort order: asc or desc"
+        required=False, allow_null=True, help_text="Sort order: asc or desc"
     )
 
     class Meta:
@@ -239,12 +359,10 @@ class CDIGeonodeListSerializer(serializers.Serializer):
     download_url = CustomURLField()
     created = CustomDateTimeField()
     year_month = CustomCharField()
-    publication_id = CustomIntegerField(
-        allow_null=True
-    )
-    status = CustomIntegerField(
-        allow_null=True
-    )
+    publication_id = CustomIntegerField(allow_null=True)
+    status = CustomIntegerField(allow_null=True)
+    file_size = CustomIntegerField(allow_null=True, required=False)
+    synced_at = CustomDateTimeField(allow_null=True, required=False)
 
     class Meta:
         fields = [
@@ -258,7 +376,63 @@ class CDIGeonodeListSerializer(serializers.Serializer):
             "year_month",
             "publication_id",
             "status",
+            "file_size",
+            "synced_at",
         ]
+
+
+class PushGeonodePublicationSerializer(serializers.Serializer):
+    geonode_id = serializers.IntegerField(min_value=1)
+    category = serializers.ChoiceField(
+        choices=list(CDIGeonodeCategory.FieldStr.keys())
+    )
+    title = serializers.CharField(max_length=255)
+    year_month = serializers.DateField()
+    detail_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    embed_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    thumbnail_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    download_url = serializers.URLField(
+        max_length=512, required=False, allow_null=True
+    )
+    file_size = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0
+    )
+
+
+class PushGeonodeRasterSerializer(serializers.Serializer):
+    indicator = serializers.ChoiceField(choices=RasterIndicatorTypes.choices())
+    geonode_id = serializers.IntegerField(min_value=1)
+    values = serializers.ListField(child=serializers.DictField())
+
+    def validate_values(self, value):
+        from .models import validate_json_values
+        from django.core.exceptions import (
+            ValidationError as DjangoValidationError,
+        )
+
+        try:
+            validate_json_values(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
+
+class PushGeonodePublicationResponseSerializer(serializers.Serializer):
+    geonode_id = serializers.IntegerField()
+    synced_at = serializers.DateTimeField()
+
+
+class PushGeonodeRasterResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    indicator = serializers.CharField()
+    geonode_id = serializers.IntegerField()
+    extracted_at = serializers.DateTimeField()
 
 
 class PublicationReviewsSerializer(serializers.ModelSerializer):
@@ -280,13 +454,15 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
         ]
         non_validated_ids = [
             v["administration_id"]
-            for v in list(filter(
-                lambda x: (
-                    x.get("category") is None
-                    or x["administration_id"] not in no_data_ids
-                ),
-                validated_values
-            ))
+            for v in list(
+                filter(
+                    lambda x: (
+                        x.get("category") is None
+                        or x["administration_id"] not in no_data_ids
+                    ),
+                    validated_values,
+                )
+            )
         ]
 
         reviews = [
@@ -312,11 +488,13 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
             reviews = filtered_reviews
 
         if non_validated and (
-            len(non_validated_ids) or
-            len(non_validated_ids) == 0 and len(obj.validated_values)
+            len(non_validated_ids)
+            or len(non_validated_ids) == 0
+            and len(obj.validated_values)
         ):
             reviews = [
-                r for r in reviews
+                r
+                for r in reviews
                 if r["administration_id"] in non_validated_ids
             ]
 
@@ -325,11 +503,7 @@ class PublicationReviewsSerializer(serializers.ModelSerializer):
     @extend_schema_field(OpenApiTypes.ANY)
     def get_users(self, obj):
         return UserReviewerSerializer(
-            instance=[
-                r.user
-                for r in obj.completed_reviews
-            ],
-            many=True
+            instance=[r.user for r in obj.completed_reviews], many=True
         ).data
 
     class Meta:
@@ -347,9 +521,7 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
     year_month = CustomDateField()
     due_date = CustomDateField()
     reviewers = CustomListField(
-        child=CustomPrimaryKeyRelatedField(
-            queryset=SystemUser.objects.none()
-        ),
+        child=CustomPrimaryKeyRelatedField(queryset=SystemUser.objects.none()),
         required=True,
     )
     subject = CustomCharField()
@@ -358,10 +530,9 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fields.get("reviewers").child.queryset = SystemUser.objects \
-            .filter(
-                role=UserRoleTypes.reviewer
-            ).all()
+        self.fields.get("reviewers").child.queryset = (
+            SystemUser.objects.filter(role=UserRoleTypes.reviewer).all()
+        )
 
     def validate_due_date(self, value):
         today = timezone.now().date()
@@ -375,6 +546,23 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
         if len(value) == 0:
             raise serializers.ValidationError(
                 "Please select at least one reviewer."
+            )
+        # The floor is on TWGs, not headcount. `reviewers_required` counts
+        # distinct Technical Working Groups, so three reviewers who all sit in
+        # MoAg still leave it at 1 — every Inkhundla would reach "ready" on one
+        # institution's response, and consensus would be a single opinion.
+        # Creation is the only place this can be prevented rather than merely
+        # detected afterwards (D-10).
+        twgs = {
+            user.technical_working_group
+            for user in value
+            if user.technical_working_group is not None
+        }
+        if len(twgs) < MIN_TWGS_PER_PUBLICATION:
+            raise serializers.ValidationError(
+                "Please select reviewers from at least "
+                f"{MIN_TWGS_PER_PUBLICATION} different Technical Working "
+                "Groups."
             )
         return value
 
@@ -421,9 +609,7 @@ class ExportMapSerializer(serializers.Serializer):
     )
 
     class Meta:
-        fields = [
-            "export_type"
-        ]
+        fields = ["export_type"]
 
 
 class PublishedMapSerializer(serializers.ModelSerializer):
@@ -448,7 +634,39 @@ class CompareMapSerializer(serializers.Serializer):
     right_date = CustomDateField(required=False)
 
     class Meta:
-        fields = [
-            "left_date",
-            "right_date"
-        ]
+        fields = ["left_date", "right_date"]
+
+
+class AttachRasterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PublicationRaster
+        fields = ["id", "indicator", "geonode_id", "values", "extracted_at"]
+        read_only_fields = ["id", "values", "extracted_at"]
+
+    def validate_geonode_id(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("geonode_id must be positive.")
+        return value
+
+
+class PublicationRasterItemSerializer(serializers.ModelSerializer):
+    key = serializers.CharField(source="indicator")
+    label = serializers.SerializerMethodField()
+    value = serializers.SerializerMethodField()
+    data = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_label(self, obj):
+        return RasterIndicatorTypes.FieldStr.get(obj.indicator, obj.indicator)
+
+    @extend_schema_field(OpenApiTypes.ANY)
+    def get_value(self, obj):
+        return {"geonode_id": obj.geonode_id, "extracted_at": obj.extracted_at}
+
+    @extend_schema_field(OpenApiTypes.ANY)
+    def get_data(self, obj):
+        return obj.values or []
+
+    class Meta:
+        model = PublicationRaster
+        fields = ["key", "label", "value", "data"]

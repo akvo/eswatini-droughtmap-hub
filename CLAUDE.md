@@ -82,6 +82,14 @@ docker compose -f docker-compose.test.yml run --rm --no-deps frontend sh test.sh
 - **Async tasks**: Django-Q worker (`run_worker.sh`) for background processing
 - **API docs**: DRF Spectacular at `/api/docs/` (Swagger UI), schema at `/api/schema/`
 
+#### Django Code Style
+
+Prefer Django/DRF built-in shortcuts over hand-rolled equivalents — the short version is the house style:
+
+- Object lookup + 404: `get_object_or_404(Model, pk=...)` (or `get_list_or_404`), never `Model.objects.filter(...).first()` followed by a manual `if not obj: return Response(..., 404)`.
+- Let DRF exception handling produce the error response (`raise_exception=True` on serializers, `Http404`, `PermissionDenied`) instead of building error `Response` objects by hand.
+- Reach for ORM/framework helpers (`update_or_create`, `get_or_create`, `exists()`, `values_list(..., flat=True)`) before writing multi-step equivalents.
+
 ### Frontend
 
 - **Next.js App Router**: `frontend/src/app/` with route groups
@@ -93,12 +101,47 @@ docker compose -f docker-compose.test.yml run --rm --no-deps frontend sh test.sh
 - **Middleware**: `frontend/src/middleware.js` — route protection by role (admin, reviewer)
 - **API proxy**: Next.js rewrites `/api/` and `/admin/` to backend on port 8000
 
+#### Frontend Mock Data Before Backend APIs Are Ready
+
+When implementing frontend features before the backend API is available, place mock responses under `frontend/src/static/mocks/` and treat them as backend response contracts, not UI-only fixtures.
+
+- Keep response shapes simple and serializer-friendly so they can be replicated in Django serializers later, especially `backend/api/v1/v1_publication/serializers.py`.
+- Prefer generic response keys such as `key`, `label`, `value`, `data`, `group`, `period`, and `meta`.
+- Do not include derived UI config in the mock response when it already exists in frontend config, e.g. drought legend labels/colors should come from `frontend/src/static/config.js`.
+- Avoid UI-specific names such as `donut`, `byClass`, `series`, or `class` when a generic shape will work. For chart-like nested data, prefer structures such as `breakdown: { group, data: [{ key, value }] }`.
+- Keep frontend components responsible for adapting this generic response shape into UI-specific props for charts/cards.
+
 ### Key Patterns
 
 - **Soft deletes**: Publications use logical deletion via `SoftDeletes` mixin (`deleted_at` field)
-- **Role-based access**: Two key roles — `admin` (manages publications/settings) and `reviewer` (reviews publications)
+- **Role-based access**: Three roles — `admin` (manages publications/settings), `reviewer` (reviews publications), and `observer` (citizen-science weather submitters; passwordless magic-link auth, see `eswatini-v2/docs/track-3/citizen-science-weather.md`)
 - **GeoNode integration**: Fetches CDI raster datasets from external GeoNode instance
 - **Email notifications**: SMTP-based notifications for review workflows and overdue checks
+
+## eswatini-v2 Redesign — Planning
+
+`eswatini-v2/docs/` holds the design/planning docs for the platform redesign. **Plan before you implement**: every new feature gets a design doc written from the template at [`eswatini-v2/docs/templates/FEATURE_DESIGN_TEMPLATE.md`](eswatini-v2/docs/templates/FEATURE_DESIGN_TEMPLATE.md), saved under the relevant track folder (`eswatini-v2/docs/track-{1,2,3}/`).
+
+The product is organized into **exactly 3 tracks** (see the sitemap):
+
+### Track 1 — Decision Track
+Public, anonymous decision-support surface off the Landing page.
+- **National overview** · About · Contact us
+- Docs: `eswatini-v2/docs/track-1/` — e.g. [`national-overview.md`](eswatini-v2/docs/track-1/national-overview.md)
+
+### Track 2 — Review and Validation
+Authenticated reviewer/validator workflow (behind Login).
+- My Reviews → Drought review → Individual review page
+- My Validation → Drought validation → Individual validation page
+- Docs: `eswatini-v2/docs/track-2/`
+
+### Track 3 — Operational response
+Analytical + operational tooling.
+- Detailed insights → CDI-E explorer · Weather station explorer · IKS explorer · Priority insights · Inkhundla Report
+- SOP library · Profile
+- Docs: `eswatini-v2/docs/track-3/`
+
+> `eswatini-v2/docs/specs/` holds the earlier task-ID specs (INS-*, PA-*, SOP-*, WX-*, IKS-*); they feed the tracks (Track 1 references them) but the **3 tracks above are the canonical top-level structure** — do not introduce a 4th track.
 
 ## Environment
 

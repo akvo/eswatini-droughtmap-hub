@@ -15,7 +15,7 @@ import { Flex, Spin } from "antd";
 import CDIMapLegend from "./CDIMapLegend";
 import GetCoordinates from "./GetCoordinates";
 
-const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
+const CDIGeoJSON = ({ geoData, onEachFeature, style, layerKey }) => {
   const map = useMap();
   const { refreshMap } = useAppContext();
 
@@ -29,7 +29,9 @@ const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
 
   return (
     <GeoJSON
-      key="geodata"
+      // react-leaflet styles the layers once on mount; changing layerKey
+      // remounts them so new feature colors actually apply.
+      key={layerKey}
       data={geoData}
       weight={1}
       onEachFeature={(feature, layer) => onEachFeature(feature, layer, map)}
@@ -43,28 +45,58 @@ const CDIMap = ({
   onFeature,
   onClick = () => {},
   style = {},
+  layerKey = "geodata",
+  wrapperClassName = "",
   ...props
 }) => {
   const appContext = useAppContext();
-  const geoData = appContext?.geoData || window?.topojson;
+  const geoData =
+    appContext?.geoData ||
+    (typeof window !== "undefined" ? window.topojson : undefined);
+
+  const getStyle = (feature) => {
+    const extraStyle =
+      typeof style === "function" ? style(feature) : style || {};
+    const custom = typeof onFeature === "function" ? onFeature(feature) : {};
+
+    const strokeColor =
+      custom?.color || extraStyle?.color || styleOptions?.color;
+    const strokeWeight =
+      custom?.weight ?? extraStyle?.weight ?? styleOptions?.weight;
+    const strokeOpacity =
+      custom?.opacity ?? extraStyle?.opacity ?? styleOptions?.opacity;
+    const fillColor =
+      custom?.fillColor ||
+      extraStyle?.fillColor ||
+      styleOptions?.fillColor ||
+      dotShapeOptions?.fillColor;
+    const fillOpacity =
+      custom?.fillOpacity ??
+      extraStyle?.fillOpacity ??
+      styleOptions?.fillOpacity ??
+      0.8;
+
+    return {
+      ...styleOptions,
+      ...extraStyle,
+      ...custom,
+      color: strokeColor,
+      weight: strokeWeight,
+      opacity: strokeOpacity,
+      fillColor: fillColor,
+      fillOpacity: fillOpacity,
+    };
+  };
 
   const onEachFeature = (feature, layer, currentMap) => {
-    const { fillColor, weight, color } =
-      typeof onFeature === "function" ? onFeature(feature) : {};
-    // const shape = new L.PatternCircle({
-    //   ...dotShapeOptions,
-    //   fillColor: fillColor || dotShapeOptions?.fillColor,
-    // });
-    // const pattern = new L.Pattern(patternOptions);
-    // pattern.addShape(shape);
-    // pattern.addTo(currentMap);
-    layer.setStyle({
-      ...styleOptions,
-      // fillPattern: pattern,
-      fillColor: fillColor || dotShapeOptions?.fillColor,
-      weight: weight || styleOptions?.weight,
-      color: color || styleOptions?.color,
-    });
+    const s = getStyle(feature);
+    layer.setStyle(s);
+    // Leaflet paints siblings in document order, so a thick border on a
+    // selected polygon is half overdrawn by whichever neighbours come after
+    // it. Raising it is what makes the outline read as a solid ring.
+    if (s.bringToFront) {
+      layer.bringToFront();
+    }
     layer.on({
       click: () => (typeof onClick === "function" ? onClick(feature) : null),
     });
@@ -75,7 +107,7 @@ const CDIMap = ({
   }
 
   return (
-    <div className="relative bg-neutral-100">
+    <div className={`relative bg-neutral-100 ${wrapperClassName}`}>
       {children}
       <Map
         center={DEFAULT_CENTER}
@@ -85,7 +117,12 @@ const CDIMap = ({
         scrollWheelZoom={false}
         {...props}
       >
-        {() => <CDIGeoJSON {...{ geoData, onEachFeature }} style={style} />}
+        {() => (
+          <CDIGeoJSON
+            {...{ geoData, onEachFeature, layerKey }}
+            style={getStyle}
+          />
+        )}
       </Map>
     </div>
   );

@@ -19,9 +19,9 @@ class PublicationReviewDetailsTestCase(APITestCase):
         call_command("generate_admin_seeder", "--test", True)
         call_command("fake_users_seeder", "--test", True, "--repeat", 3)
         self.user = (
-            SystemUser.objects.filter(
-                role=UserRoleTypes.admin
-            ).order_by("?").first()
+            SystemUser.objects.filter(role=UserRoleTypes.admin)
+            .order_by("?")
+            .first()
         )
         self.client.force_authenticate(user=self.user)
 
@@ -39,10 +39,13 @@ class PublicationReviewDetailsTestCase(APITestCase):
             ],
             due_date="2025-02-28",
         )
-        publication.reviews.set([
-            Review(publication=publication, user=reviewer)
-            for reviewer in self.reviewers
-        ], bulk=False)
+        publication.reviews.set(
+            [
+                Review(publication=publication, user=reviewer)
+                for reviewer in self.reviewers
+            ],
+            bulk=False,
+        )
         for reviewer in publication.reviews.all():
             reviewer.suggestion_values = [
                 {"administration_id": 1253002, "category": "d1"},
@@ -72,7 +75,7 @@ class PublicationReviewDetailsTestCase(APITestCase):
                 "created_at",
                 "updated_at",
                 "completed_at",
-            ]
+            ],
         )
         self.assertEqual(
             list(data["publication"]),
@@ -82,7 +85,9 @@ class PublicationReviewDetailsTestCase(APITestCase):
                 "due_date",
                 "initial_values",
                 "status",
-            ]
+                "updated_at",
+                "progress_reviews",
+            ],
         )
         self.assertEqual(
             list(data["user"]),
@@ -92,7 +97,7 @@ class PublicationReviewDetailsTestCase(APITestCase):
                 "email",
                 "email_verified",
                 "technical_working_group",
-            ]
+            ],
         )
 
     def test_error_get_review_not_found(self):

@@ -1,0 +1,59 @@
+{
+  "key": 4588078,
+  "label": "Hhukwini",
+  "group": "Hhohho",
+  "data": [
+    {
+      "key": "min_temperature",
+      "label": "Min temperature",
+      "value": 8.0,
+      "units": "\u00b0C"
+    },
+    {
+      "key": "max_temperature",
+      "label": "Max temperature",
+      "value": 19.0,
+      "units": "\u00b0C"
+    },
+    {
+      "key": "precipitation",
+      "label": "Precipitation (monthly)",
+      "value": 0.8,
+      "units": "mm"
+    },
+    {
+      "key": "air_temperature",
+      "label": "Air temperature",
+      "value": 13.0,
+      "units": "\u00b0C"
+    },
+    {
+      "key": "relative_humidity",
+      "label": "Relative humidity",
+      "value": 62.0,
+      "units": "%"
+    },
+    {
+      "key": "wind_speed",
+      "label": "Wind speed",
+      "value": 2.7,
+      "units": "m/s"
+    },
+    {
+      "key": "soil_temperature",
+      "label": "Soil temperature",
+      "value": null,
+      "units": "\u00b0C",
+      "meta": {
+        "reason": "pending_sensor"
+      }
+    }
+  ],
+  "meta": {
+    "station": "Mbabane",
+    "station_code": "68391",
+    "network": "MET",
+    "period": "2026-07",
+    "resolution": "region_station"
+  }
+}
