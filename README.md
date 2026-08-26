@@ -108,6 +108,105 @@ Eswatini Droughtmap Hub
 
 Use these Django management commands from the backend service when maintaining review workflows and operational response data.
 
+### **Setup commands vs demo seeders**
+
+Every command below is one of two kinds, and **they must never be mixed on an
+environment holding real data**:
+
+| Kind | Writes | Safe on production |
+|------|--------|--------------------|
+| **Setup** | reference data from `backend/source/`, or real data pulled from GeoNode / WIS2 / CHIRPS / Kobo | ✅ yes |
+| **Demo** | fabricated drought classifications, stations, submissions and accounts | ❌ never |
+
+**Setup — reference data shipped in the repo**
+
+| Command | Writes | Notes |
+|---------|--------|-------|
+| `generate_administrations_seeder` | 59 Tinkhundla | from the topojson; every other table joins to it |
+| `generate_roles_n_abilities_seeder` | roles + abilities | idempotent |
+| `assign_administration_zones` | `Administration.zone` | derived from the agro layer |
+| `generate_indicators_seeder` | population, land-use DVI, IPC | skips rows an operator has applied |
+| `generate_eligibility_seeder` | under-5s, cropland, rangeland, boreholes, taps | `is_placeholder=True` — illustrative, see below |
+| `generate_water_demand_seeder` | `Indicator.water_demand` | DRAFT DWA/JRBA export, 45/59 Tinkhundla |
+| `generate_activity_seeder` | the real response-activity library | **without** `--demo` |
+| `kobo_seeder` | Kobo adapter credentials | |
+| `generate_config`, `generate_agro_geojson` | generated frontend assets | re-run after any zone/boundary change |
+
+**Setup — real data pulled from an external system**
+
+`sync_publication_geonodes`, `fetch_dataset_uploads`, `attach_component_rasters`,
+`retry_cdi_extraction`, `sync_weather_stations`, `fetch_weather_observations`,
+`build_chirps_normals`, `extract_weather_normals`, `fetch_chirps_monthly`,
+`fetch_chirps_observations`, `download_iks_data`, `check_overdue_reviews`.
+
+All are idempotent and all are documented in their own sections below.
+
+**Demo — fabricated data, development only**
+
+| Command | Fabricates |
+|---------|-----------|
+| `seed_demo` | orchestrates every row below |
+| `generate_publications_seeder` | Publications + Reviews |
+| `generate_rasters_seeder` | PublicationRaster component values |
+| `generate_weather_seeder` | station daily aggregates |
+| `generate_iks_seeder` | Kobo IKS submissions + photos |
+| `fake_citizen_weather_seeder` | citizen-science readings + observer accounts |
+| `generate_admin_seeder`, `fake_users_seeder` | `admin1@mail.com` / `Changeme123`, fake reviewers |
+| `generate_activity_seeder --demo` | activates the `ACT-DEMO-*` catalogue |
+
+> ⚠️ **Only `seed_demo` refuses to run when `DEBUG=False`.** The individual
+> demo seeders above carry no such guard — running one by hand on production
+> writes fabricated data into real tables. Prefer `seed_demo` (which will stop
+> you) over calling its stages directly.
+
+### **Deploying a release: what to run**
+
+On an environment with real data, run **setup commands only**:
+
+```bash
+docker compose exec backend python manage.py migrate
+
+# reference data — safe to re-run, they update in place
+docker compose exec backend python manage.py generate_administrations_seeder
+docker compose exec backend python manage.py generate_roles_n_abilities_seeder
+docker compose exec backend python manage.py assign_administration_zones --write-seed
+docker compose exec backend python manage.py generate_indicators_seeder
+docker compose exec backend python manage.py generate_eligibility_seeder
+docker compose exec backend python manage.py generate_water_demand_seeder
+docker compose exec backend python manage.py generate_activity_seeder   # no --demo
+docker compose exec backend python manage.py generate_config
+docker compose exec backend python manage.py generate_agro_geojson
+
+# first real superuser (skip if the account already exists)
+docker compose exec backend python manage.py createsuperuser --email <you@org> --role 1
+```
+
+Then pull the real data in, once the credentials in `.env` are set. Each is
+also a scheduled `job.sh` task, so these are only to avoid waiting for the
+first cron tick:
+
+```bash
+docker compose exec backend python manage.py sync_publication_geonodes
+docker compose exec backend python manage.py fetch_dataset_uploads --check   # verify the 11 categories first
+docker compose exec backend python manage.py fetch_weather_observations
+docker compose exec backend python manage.py extract_weather_normals
+docker compose exec backend python manage.py fetch_chirps_monthly
+docker compose exec backend python manage.py download_iks_data
+```
+
+Do **not** run `seeder.sh` here — it prompts for fake users and demo data.
+Do **not** run `seed_demo`.
+
+Order matters in two places only: `generate_administrations_seeder` before
+anything that joins to an Inkhundla, and `assign_administration_zones` before
+`generate_config` (the browser caches the zone vocabulary).
+
+Two setup seeders write illustrative rather than curated figures — both mark
+their rows `is_placeholder=True` so an operator upload replaces them cleanly:
+`generate_eligibility_seeder` (prototype counts) and
+`generate_water_demand_seeder` (a draft DWA export). Skip them if you would
+rather those columns read "no data" until a real upload arrives.
+
 ---
 
 ## **Seeding a Demo / Dev Database**
@@ -183,7 +282,12 @@ the real UI with no GeoNode and no worker.
 ### **Individual seeders**
 
 `seed_demo` is an orchestrator; each stage is runnable on its own. One command
-owns each table:
+owns each table.
+
+> ⚠️ **These fabricate data and, unlike `seed_demo`, none of them checks
+> `DEBUG`.** Run them only on a development database. On an environment with
+> real data use the setup commands in
+> [Deploying a release](#deploying-a-release-what-to-run) instead.
 
 ```bash
 # Publication (+ Review) rows
@@ -199,6 +303,13 @@ docker compose exec backend python manage.py generate_weather_seeder --months 24
 
 # Kobo IKS submissions, indicators, values and photo attachments
 docker compose exec backend python manage.py generate_iks_seeder --months 24
+
+# Citizen-science readings + the observer accounts that submitted them
+docker compose exec backend python manage.py fake_citizen_weather_seeder
+
+# Fake accounts: admin{n}@mail.com / Changeme123, plus reviewers
+docker compose exec backend python manage.py generate_admin_seeder
+docker compose exec backend python manage.py fake_users_seeder
 ```
 
 Notes:
@@ -251,16 +362,21 @@ a database holding both real and seeded data cleans safely.
 `seeder.sh` is the interactive wrapper. Each prompt is independent and every
 stage is idempotent, so it is safe to re-run:
 
-| Prompt | Runs |
-|--------|------|
-| Seed Administration? | `generate_administrations_seeder` |
-| Seed Role and Abilities? | `generate_roles_n_abilities_seeder` |
-| Add New Super Admin? | `createsuperuser` with the email you type |
-| Seed Fake User? | `generate_admin_seeder`, `fake_users_seeder` |
-| **Seed Demo Data?** | **`seed_demo`**, optionally with a GeoTIFF archive path |
+| Prompt | Runs | Kind |
+|--------|------|------|
+| Seed Administration? | `generate_administrations_seeder` | setup |
+| Seed Role and Abilities? | `generate_roles_n_abilities_seeder` | setup |
+| Add New Super Admin? | `createsuperuser` with the email you type | setup |
+| Seed Fake User? | `generate_admin_seeder`, `fake_users_seeder` | **fake** |
+| **Seed Demo Data?** | **`seed_demo`**, optionally with a GeoTIFF archive path | **fake** |
 
-It always finishes with `generate_config` so the browser picks up the current
-zone vocabulary and topojson.
+It always finishes with `generate_config` and `generate_agro_geojson` so the
+browser picks up the current zone vocabulary, topojson and agro layer.
+
+Answering `n` to the last two prompts leaves the script setup-only, but on an
+environment with real data prefer the explicit list in
+[Deploying a release](#deploying-a-release-what-to-run) — one mistyped `y` here
+writes fabricated publications.
 
 ---
 
@@ -335,10 +451,11 @@ docker compose exec backend python manage.py generate_activity_seeder
 `seed_demo` passes `--demo` automatically.
 
 Why they exist: the real library's WASH and FOOD rows trigger on `cattle` and
-`water_demand`, which have **no data source** — they are null for all 59
-Tinkhundla, and a missing value fails its condition. Those activities can
-therefore never fire, so three of the four National overview sector cards read
-`0 Activities / 0 Tinkhundla`. The demo rows gate only on fields that are
+`water_demand`, and a missing value fails its condition rather than passing it.
+`cattle` still has **no data source** and is null for all 59 Tinkhundla;
+`water_demand` is loaded by `generate_water_demand_seeder` but covers only
+45 of 59. Without the demo rows, three of the four National overview sector
+cards read `0 Activities / 0 Tinkhundla`. The demo rows gate only on fields that are
 actually populated (`dclass`, `ipc_phase`, `population`, `cropland`,
 `land_use_dvi_agri`).
 
