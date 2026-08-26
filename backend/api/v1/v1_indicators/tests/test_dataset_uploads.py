@@ -1,3 +1,4 @@
+import csv
 import io
 
 from django.contrib.auth.models import Group
@@ -401,3 +402,154 @@ class OperatorPermissionsTestCase(TestCase):
         client.force_login(plain)
         response = client.get("/admin/v1_indicators/datasetupload/")
         self.assertIn(response.status_code, (302, 403))
+
+
+class LocaleFormatTestCase(TestCase):
+    """Excel writes the LOCALE list separator, not a comma.
+
+    A machine set to a European/Indonesian locale re-saves the comma template
+    as semicolons AND decimal commas, together. Both come from one setting,
+    so one sniff decides both.
+    """
+
+    def setUp(self):
+        self.a = Administration.objects.create(name="Hhukwini", region="H")
+        self.b = Administration.objects.create(name="Lobamba", region="H")
+        self.admins = [self.a, self.b]
+
+    def parse(self, text):
+        return parsers.parse(io.BytesIO(text.encode("utf-8")), self.admins)
+
+    def test_sniffs_the_delimiter_from_the_header(self):
+        self.assertEqual(parsers.sniff_delimiter("a;b;c"), ";")
+        self.assertEqual(parsers.sniff_delimiter("a,b,c"), ",")
+        self.assertEqual(parsers.sniff_delimiter("a\tb\tc"), "\t")
+        self.assertEqual(parsers.sniff_delimiter("single"), ",")
+
+    def test_semicolon_file_is_read(self):
+        reports = self.parse(
+            "administration_id;inkhundla_name;cattle\n"
+            f"{self.a.id};Hhukwini;120\n"
+        )
+        self.assertEqual(list(reports), ["cattle"])
+        self.assertEqual(reports["cattle"]["delimiter"], ";")
+
+    def test_decimal_comma_is_not_a_thousands_separator(self):
+        """The 100x bug: 12202861,56 must not become 1220286156.
+
+        water_demand has no maximum, so a wrong reading here is accepted in
+        silence — worse than being rejected.
+        """
+        report = self.parse(
+            "administration_id;water_demand\n"
+            f"{self.a.id};12202861,56\n"
+        )["water_demand"]
+        self.assertEqual(report["diff"][0]["after"], 12202861.56)
+
+    def test_dot_groups_thousands_under_a_semicolon_delimiter(self):
+        report = self.parse(
+            "administration_id;water_demand\n"
+            f"{self.a.id};1.234.567,89\n"
+        )["water_demand"]
+        self.assertEqual(report["diff"][0]["after"], 1234567.89)
+
+    def test_comma_still_groups_thousands_in_a_comma_file(self):
+        report = self.parse(
+            'administration_id,water_demand\n'
+            f'{self.a.id},"1,234"\n'
+        )["water_demand"]
+        self.assertEqual(report["diff"][0]["after"], 1234.0)
+
+    def test_ratio_with_a_decimal_comma_stays_in_range(self):
+        report = self.parse(
+            "administration_id;land_use_dvi_agri\n"
+            f"{self.a.id};0,631936103\n"
+        )["land_use_dvi_agri"]
+        self.assertEqual(report["error_total"], 0)
+        self.assertAlmostEqual(report["diff"][0]["after"], 0.631936103)
+
+    def test_the_locale_reading_is_reported(self):
+        report = self.parse(
+            "administration_id;cattle\n" f"{self.a.id};12\n"
+        )["cattle"]
+        codes = [w["code"] for w in report["warnings"]]
+        self.assertIn("locale_format", codes)
+
+    def test_fractional_counts_are_rounded_not_rejected(self):
+        """WorldPop emits fractional population; the handover CSV carries
+        13992.45154882247 and the seeder has always done int(float(raw))."""
+        report = self.parse(
+            "administration_id;population\n"
+            f"{self.a.id};39843,09561\n"
+        )["population"]
+        self.assertEqual(report["error_total"], 0)
+        self.assertEqual(report["diff"][0]["after"], 39843)
+        codes = [w["code"] for w in report["warnings"]]
+        self.assertIn("rounded_to_whole", codes)
+
+    def test_rounding_does_not_mask_a_range_error(self):
+        report = self.parse(
+            "administration_id;ipc_phase\n" f"{self.a.id};9,4\n"
+        )["ipc_phase"]
+        self.assertEqual(report["errors"][0]["code"], "out_of_range")
+
+
+class TemplateColumnsTestCase(TestCase):
+    """The template offers fewer columns than the registry accepts.
+
+    The six eligibility counts were dropped from the blank template, but the
+    parser must keep recognising their headers — otherwise a file that still
+    carries one would be silently ignored rather than imported.
+    """
+
+    EXCLUDED = [
+        "under_five", "elderly", "rainfed_cropland",
+        "rangeland", "boreholes", "taps",
+    ]
+
+    def setUp(self):
+        self.a = Administration.objects.create(name="Hhukwini", region="H")
+        self.user = SystemUser.objects.create(
+            email="tpl@example.org", name="Tpl",
+            is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.user)
+
+    def header(self):
+        response = self.client.get(
+            "/admin/v1_indicators/datasetupload/template.csv"
+        )
+        self.assertEqual(response.status_code, 200)
+        rows = list(csv.reader(io.StringIO(response.content.decode())))
+        return rows[0], rows[1:]
+
+    def test_template_omits_the_eligibility_columns(self):
+        header, _ = self.header()
+        for field in self.EXCLUDED:
+            self.assertNotIn(field, header)
+
+    def test_template_keeps_the_scored_inputs_and_keys(self):
+        header, rows = self.header()
+        self.assertEqual(
+            header,
+            ["administration_id", "inkhundla_name", "region",
+             "water_demand", "cattle", "population",
+             "land_use_dvi_agri", "ipc_phase"],
+        )
+        self.assertEqual(len(rows), 1)  # one Administration in this test
+
+    def test_excluded_datasets_are_still_importable(self):
+        """Dropped from the template, not from the registry."""
+        reports = parsers.parse(
+            io.BytesIO(
+                f"administration_id,boreholes\n{self.a.id},4\n".encode()
+            ),
+            [self.a],
+        )
+        self.assertEqual(list(reports), ["boreholes"])
+        self.assertEqual(reports["boreholes"]["diff"][0]["after"], 4)
+
+    def test_registry_still_holds_every_dataset(self):
+        self.assertEqual(len(DATASETS), 11)
+        excluded = [d.slug for d in DATASETS.values() if not d.in_template]
+        self.assertEqual(len(excluded), 6)

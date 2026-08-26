@@ -38,6 +38,11 @@ class DatasetDef:
     maximum: Optional[float]
     unit: str
     geonode_category: str  # phase 2; unused until the poller lands
+    # Whether the blank template offers a column for it. False keeps the
+    # dataset fully importable — the parser still recognises the header, so a
+    # file that carries the column is accepted — while keeping the template to
+    # what operators are actually expected to fill.
+    in_template: bool = True
     notes: str = ""
 
 
@@ -68,26 +73,32 @@ DATASETS: Dict[str, DatasetDef] = {
         DatasetDef(
             "under-five", "Children under five", "under_five",
             int, 0, None, "people", "eligibility-under-five",
+            in_template=False,
         ),
         DatasetDef(
             "elderly", "Elderly population", "elderly",
             int, 0, None, "people", "eligibility-elderly",
+            in_template=False,
         ),
         DatasetDef(
             "rainfed-cropland", "Rain-fed cropland", "rainfed_cropland",
             int, 0, None, "ha", "eligibility-rainfed-cropland",
+            in_template=False,
         ),
         DatasetDef(
             "rangeland", "Rangeland", "rangeland",
             int, 0, None, "ha", "eligibility-rangeland",
+            in_template=False,
         ),
         DatasetDef(
             "boreholes", "Boreholes", "boreholes",
             int, 0, None, "count", "eligibility-boreholes",
+            in_template=False,
         ),
         DatasetDef(
             "taps", "Taps", "taps",
             int, 0, None, "count", "eligibility-taps",
+            in_template=False,
         ),
     ]
 }

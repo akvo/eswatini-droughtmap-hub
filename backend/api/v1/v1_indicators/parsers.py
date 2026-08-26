@@ -68,30 +68,77 @@ def _decode(handle) -> str:
     raise ParseError("File is not readable as text.")
 
 
-def _coerce(raw, definition: DatasetDef):
-    """Return (value, error). A blank cell is (None, None) — skip, not zero."""
+# Excel writes the LOCALE list separator, not a comma. On a machine set to a
+# European/Indonesian locale, re-saving our comma template produces
+# semicolons — and, in the same breath, decimal commas.
+DELIMITERS = (",", ";", "\t")
+
+
+def sniff_delimiter(header_line: str) -> str:
+    """The delimiter that actually separates this file's columns.
+
+    Decided from the header alone: it is the one line guaranteed to contain
+    only separators and field names, so a decimal comma in the data cannot
+    outvote a semicolon separator.
+    """
+    counts = {d: header_line.count(d) for d in DELIMITERS}
+    best = max(counts, key=counts.get)
+    return best if counts[best] else ","
+
+
+def _to_number(text: str, decimal_comma: bool):
+    """Parse a numeric cell under this file's locale convention.
+
+    THE DANGEROUS CASE: with a semicolon delimiter, "12202861,56" is
+    12,202,861.56. Stripping the comma as a thousands separator would read it
+    as 1220286156 — a hundred times too large, and `water_demand` has no
+    maximum to catch it. Wrong by 100x and silently accepted is far worse
+    than rejected.
+    """
+    if decimal_comma:
+        # `;`-separated: comma is the decimal point, dot groups thousands.
+        return float(text.replace(".", "").replace(",", "."))
+    # `,`-separated: an unquoted comma cannot appear inside a number, so any
+    # comma that survived the reader groups thousands.
+    return float(text.replace(",", ""))
+
+
+def _coerce(raw, definition: DatasetDef, decimal_comma: bool = False):
+    """Return (value, error, rounded).
+
+    A blank cell is (None, None, False) — skip, not zero (D-7).
+    """
     if raw is None:
-        return None, None
-    text = str(raw).strip().replace(",", "")
+        return None, None, False
+    text = str(raw).strip()
     if text == "":
-        return None, None
+        return None, None, False
     try:
-        number = float(text)
+        number = _to_number(text, decimal_comma)
     except ValueError:
-        return None, f"{raw!r} is not a number."
+        return None, f"{raw!r} is not a number.", False
+    rounded = False
     if definition.dtype is int and number != int(number):
-        return None, f"{raw!r} must be a whole number ({definition.unit})."
+        # WorldPop and similar models emit fractional counts — the handover
+        # CSV carries 13992.45154882247 for population, and
+        # generate_indicators_seeder has always done int(float(raw)).
+        # Rejecting would make the platform's own reference data unloadable.
+        # Rounded rather than truncated, and counted in a warning so the
+        # operator sees it happened.
+        number = round(number)
+        rounded = True
     if definition.minimum is not None and number < definition.minimum:
         return None, (
             f"{raw!r} is below the minimum {definition.minimum:g} "
             f"for {definition.label} ({definition.unit})."
-        )
+        ), False
     if definition.maximum is not None and number > definition.maximum:
         return None, (
             f"{raw!r} is above the maximum {definition.maximum:g} "
             f"for {definition.label} ({definition.unit})."
-        )
-    return (int(number) if definition.dtype is int else number), None
+        ), False
+    value = int(number) if definition.dtype is int else number
+    return value, None, rounded
 
 
 def _resolve_header(fieldnames) -> Tuple[Dict[str, str], List[str], List[str]]:
@@ -169,7 +216,11 @@ def parse(handle, administrations) -> Dict[str, dict]:
     valid names — also how an operator discovers what the platform accepts.
     """
     text = _decode(handle)
-    reader = csv.DictReader(io.StringIO(text))
+    delimiter = sniff_delimiter(text.splitlines()[0] if text else "")
+    # `;` and decimal comma travel together: both come from the same Excel
+    # locale setting, so one sniff decides both.
+    decimal_comma = delimiter == ";"
+    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
     keys, value_headers, ignored = _resolve_header(reader.fieldnames)
 
     if not keys.get("administration_id") and not keys.get("inkhundla_name"):
@@ -203,6 +254,8 @@ def parse(handle, administrations) -> Dict[str, dict]:
             by_name,
             ignored,
             _current_values(definition.field),
+            delimiter,
+            decimal_comma,
         )
     return reports
 
@@ -220,12 +273,14 @@ def _current_values(field: str) -> Dict[int, object]:
 
 
 def _build_report(
-    rows, header, definition, keys, by_id, by_name, ignored, current
+    rows, header, definition, keys, by_id, by_name, ignored, current,
+    delimiter=",", decimal_comma=False,
 ) -> dict:
     diff = []
     errors: List[dict] = []
     error_total = 0
     blank = 0
+    rounded_count = 0
     seen = set()
 
     for offset, row in enumerate(rows):
@@ -257,7 +312,11 @@ def _build_report(
             continue
         seen.add(administration.id)
 
-        value, problem = _coerce(row.get(header), definition)
+        value, problem, was_rounded = _coerce(
+            row.get(header), definition, decimal_comma
+        )
+        if was_rounded:
+            rounded_count += 1
         if problem:
             error_total += 1
             if len(errors) < MAX_ERRORS:
@@ -303,10 +362,31 @@ def _build_report(
             ),
         })
 
+    if rounded_count:
+        warnings.append({
+            "code": "rounded_to_whole",
+            "count": rounded_count,
+            "detail": (
+                f"{rounded_count} {definition.label} value(s) had decimals "
+                f"and were rounded to whole {definition.unit}."
+            ),
+        })
+
+    if decimal_comma:
+        warnings.append({
+            "code": "locale_format",
+            "detail": (
+                "Read as a semicolon-separated file with decimal commas "
+                "(e.g. 1234,56 = 1234.56). Check a value or two in the "
+                "before/after list below."
+            ),
+        })
+
     return {
         "dataset": definition.slug,
         "field": definition.field,
         "unit": definition.unit,
+        "delimiter": delimiter,
         "rows_read": len(rows),
         "matched": len(seen),
         "blank": blank,

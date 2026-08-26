@@ -174,7 +174,12 @@ class DatasetUploadAdmin(admin.ModelAdmin):
             'attachment; filename="dih_data_template.csv"'
         )
         writer = csv.writer(response)
-        columns = [d.field for d in DATASETS.values()]
+        # Registry order, minus anything flagged out of the template.
+        # The parser still accepts those headers, so a file that
+        # carries one is imported rather than ignored.
+        columns = [
+            d.field for d in DATASETS.values() if d.in_template
+        ]
         writer.writerow(list(KEY_COLUMNS) + columns)
         rows = Administration.objects.order_by("region", "name").values_list(
             "id", "name", "region"

@@ -735,10 +735,15 @@ the stored Kobo adapter credentials.
 
 #### **The template**
 
-Generated on demand from the live `administrations` table — 59 Tinkhundla, all
-11 dataset columns, keys pre-filled:
+Generated on demand from the live `administrations` table — 59 Tinkhundla, the
+five scored risk inputs, keys pre-filled:
 
 > **Dataset uploads** → **Download blank template**
+
+The six eligibility counts (`under_five`, `elderly`, `rainfed_cropland`,
+`rangeland`, `boreholes`, `taps`) are **not** in the template — they come from
+different providers on a different cadence. They are still **importable**: the
+parser recognises those headers, so a file that carries one is read normally.
 
 A committed copy would go stale the moment an Inkhundla is renamed and then
 fail at match time, so always download rather than reuse an old file. An

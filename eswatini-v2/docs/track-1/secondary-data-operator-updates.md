@@ -364,7 +364,7 @@ There is **no REST API**. The contract is the Django admin surface, the CSV form
 
 ### 4.1 The CSV contract
 
-Key columns, then **one column per dataset, named after its target field**. There is **one template for everything**, carrying all 11 value columns — the operator fills the ones they have and leaves the rest empty. A worked copy is committed at [`examples/template_all-datasets.csv`](./examples/README.md), generated from the live 59 `administrations` rows.
+Key columns, then **one column per dataset, named after its target field**. There is **one template**, carrying the value columns operators are expected to fill — the five scored risk inputs — and the operator fills the ones they have. The six eligibility counts are flagged `in_template=False` in the registry: dropped from the template because they come from different providers on a different cadence, but still recognised on parse, so a file that carries one is imported rather than ignored. A worked copy is committed at [`examples/template_all-datasets.csv`](./examples/README.md), generated from the live 59 `administrations` rows.
 
 ```csv
 administration_id,inkhundla_name,region,water_demand
@@ -472,7 +472,7 @@ Two entries in `ModelAdmin.get_urls()`, both wrapped in `self.admin_site.admin_v
 
 | Route | Purpose |
 |---|---|
-| `…/datasetupload/template.csv` | Generates **the** template: `administration_id`, `inkhundla_name`, `region` filled for all 59 Tinkhundla, plus one empty column per registry dataset. No slug, no parameters — the operator fills what they have (**D-15**) |
+| `…/datasetupload/template.csv` | Generates **the** template: `administration_id`, `inkhundla_name`, `region` filled for all 59 Tinkhundla, plus one empty column per registry dataset with `in_template=True`. No slug, no parameters — the operator fills what they have (**D-15**) |
 | `…/datasetupload/<pk>/download/` | Streams the stored original file back |
 
 The template route is the highest-leverage piece of this whole feature: it means the operator never types a key, never guesses a header, and never has to be told the format.
