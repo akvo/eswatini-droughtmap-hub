@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rest_framework.test import APITestCase
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_publication.models import Administration
@@ -48,3 +50,13 @@ class BaseIKSTestCase(APITestCase):
         ValueError if `when` has aged out of the window entirely.
         """
         return payload["weeks"].index(when.strftime("%b %Y"))
+
+    def week_idx(self, payload, when):
+        """Position of `when`'s week on a trend response's rolling axis.
+
+        The axis ends on the current ISO week, so a literal index would only
+        be right in the week the test was written. Raises ValueError if
+        `when` has aged out of the window.
+        """
+        start = when - timedelta(days=when.weekday())
+        return payload["weeks"].index(start.strftime("%b %d"))
