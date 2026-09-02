@@ -172,7 +172,9 @@ const CDIColumn = ({ cdi }) => {
                 CDI-E in the last 12 months
               </h4>
             </div>
-            <div className="text-xs text-[#606060] mb-2">mm / month</div>
+            {/* Composite CDI-E, a 0-1 percentile-rank score. There is no mm
+                anywhere in the CDI — all four components are pct_rank. */}
+            <div className="text-xs text-[#606060] mb-2">index (0–1)</div>
             <svg viewBox="0 0 500 180" className="w-full h-auto">
               {/* Reference line (average) */}
               <line
@@ -286,7 +288,14 @@ const StationBlock = ({ title, subTitle, stationCode, rows, footnote }) => (
       science per-Inkhundla exact match, no fallback (WX-6) ── */
 const WeatherColumn = ({ weather, citizenScience }) => {
   const region = weather?.meta?.resolution === "region_station";
-  const spiRow = weather?.data?.find((r) => r.key === "precipitation");
+  // The station's MONTHLY RAINFALL TOTAL, in mm — not an SPI value. The hub
+  // holds no station SPI: `confidence.py` derives one at read time for the
+  // agreement score and never stores it. Gated on `region` alongside the block
+  // below, so a nearest-station fallback cannot leak a distant station's number
+  // above a "no data available" panel (D-9).
+  const rainRow = region
+    ? weather?.data?.find((r) => r.key === "precipitation")
+    : null;
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2 pb-4 border-b border-cardBorder">
@@ -301,13 +310,18 @@ const WeatherColumn = ({ weather, citizenScience }) => {
         </h3>
       </div>
 
-      {/* SPI headline */}
+      {/* Monthly rainfall headline */}
       <div>
         <div className="text-3xl font-bold text-[#333333]">
-          SPI · {spiRow?.value ?? "—"}
+          {rainRow?.value ?? "—"}
+          {rainRow?.value != null && rainRow.units && (
+            <span className="text-base font-normal text-[#a4a4a4] ml-1">
+              {rainRow.units}
+            </span>
+          )}
         </div>
         <div className="text-sm text-[#606060] mt-1">
-          Derived from the weather station (1 per inkhundla)
+          Monthly rainfall total, from the MET station serving this region
         </div>
       </div>
 

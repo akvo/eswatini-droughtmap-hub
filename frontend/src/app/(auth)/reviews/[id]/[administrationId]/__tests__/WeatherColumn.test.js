@@ -48,8 +48,9 @@ describe("WeatherColumn (MET + citizen-science blocks)", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Big Bend Community")).toBeInTheDocument();
     expect(screen.getByText("55")).toBeInTheDocument();
-    // null readings (soil temperature, soil moisture) render as "—"
-    expect(screen.getAllByText("—")).toHaveLength(2);
+    // null readings (soil temperature, soil moisture) render as "—", plus the
+    // rainfall headline: this fixture carries no precipitation row.
+    expect(screen.getAllByText("—")).toHaveLength(3);
     expect(
       screen.getByText("Observer notes: gauge overflowed on the 14th"),
     ).toBeInTheDocument();
@@ -81,6 +82,46 @@ describe("WeatherColumn (MET + citizen-science blocks)", () => {
       screen.getByText("Citizen science weather station"),
     ).toBeInTheDocument();
     expect(screen.getByText("Big Bend Community")).toBeInTheDocument();
+  });
+
+  it("headlines the monthly rainfall total in mm, never an SPI value", () => {
+    const withRain = {
+      ...metWeather,
+      data: [
+        ...metWeather.data,
+        {
+          key: "precipitation",
+          label: "Precipitation (monthly)",
+          value: 52.3,
+          units: "mm",
+        },
+      ],
+    };
+    render(<WeatherColumn weather={withRain} citizenScience={null} />);
+    // Once in the headline, once in the MET station card below it.
+    expect(screen.getAllByText("52.3")).toHaveLength(2);
+    expect(screen.getByText(/Monthly rainfall total/)).toBeInTheDocument();
+    expect(screen.queryByText(/SPI/)).not.toBeInTheDocument();
+  });
+
+  it("does not leak a fallback station's rainfall into the headline", () => {
+    const fallback = {
+      ...metWeather,
+      data: [
+        {
+          key: "precipitation",
+          label: "Precipitation (monthly)",
+          value: 52.3,
+          units: "mm",
+        },
+      ],
+      meta: { ...metWeather.meta, resolution: "nearest_station_fallback" },
+    };
+    render(<WeatherColumn weather={fallback} citizenScience={null} />);
+    expect(
+      screen.getByText(/No data available — no weather station/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("52.3")).not.toBeInTheDocument();
   });
 
   it("handles a failed CS fetch (null) as the empty state", () => {
