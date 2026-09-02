@@ -102,12 +102,15 @@ const IksTab = ({
         setLoading(true);
         setError(null);
 
-        const [netSignal, soilTrend, indicatorCounts, agreement, heatmap] =
+        // /aggregations/agreement is deliberately not fetched: its response
+        // was never rendered, and its satellite side is a fixed placeholder
+        // rather than a reading. Restore the call once the IKS-vs-CDI
+        // agreement metric has a partner-agreed definition.
+        const [netSignal, soilTrend, indicatorCounts, heatmap] =
           await Promise.all([
             api("GET", "/iks/aggregations/net-signal"),
             api("GET", "/iks/aggregations/soil-trend"),
             api("GET", "/iks/aggregations/indicator-counts"),
-            api("GET", "/iks/aggregations/agreement"),
             api("GET", "/iks/aggregations/heatmap"),
           ]);
 

@@ -29,11 +29,12 @@ from api.v1.v1_iks.utils import (
     latest_validated_d_class,
     label_soil_moisture,
     label_vegetation,
+    rolling_weeks,
+    submission_dates,
 )
 from utils.custom_permissions import HasApiKey
 from api.v1.v1_iks.constants import (
     REGIONS,
-    HEATMAP_WEEKS,
     IMAGE_EXTENSIONS,
     SOIL_MOISTURE_INDICATOR,
     VEGETATION_GREENNESS_INDICATOR,
@@ -414,35 +415,24 @@ class IKSNetSignalAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        weeks = HEATMAP_WEEKS
+        weeks, week_of = rolling_weeks()
         regions = REGIONS
 
         # No submissions in a region-week means zero, not a prototype
         # figure. The aggregation below fills only what data supports.
         trend_data = {r: [0.0] * len(weeks) for r in regions}
 
-        if active_values().exists():
-            actual_trend = {r: [0.0] * len(weeks) for r in regions}
-            values = (
-                active_values()
-                .select_related("administration", "iks_indicator")
-                .all()
-            )
-            for val in values:
-                region = val.administration.region
-                if region not in actual_trend:
-                    continue
-                created_date = localtime(val.created).date()
-                week_idx = 0
-                if created_date.month == 5:
-                    week_idx = min(created_date.day // 7, 4)
-                elif created_date.month == 6:
-                    week_idx = 5 + min(created_date.day // 8, 3)
-                elif created_date.month >= 7:
-                    week_idx = 9 + min(created_date.day // 8, 3)
-
-                actual_trend[region][week_idx] += 1.0
-            trend_data = actual_trend
+        rows = list(
+            active_values()
+            .select_related("administration")
+            .values_list("administration__region", "kobo_id")
+        )
+        dates = submission_dates({kobo_id for _, kobo_id in rows})
+        for region, kobo_id in rows:
+            week_idx = week_of(dates.get(kobo_id))
+            if week_idx is None or region not in trend_data:
+                continue
+            trend_data[region][week_idx] += 1.0
 
         response_data = {"weeks": weeks, "trend": trend_data}
         serializer = IKSNetSignalAggregationSerializer(response_data)
@@ -589,26 +579,36 @@ class IKSHeatmapAggregationView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, version):
-        weeks = HEATMAP_WEEKS
+        weeks, week_of = rolling_weeks()
         constituencies = list(
-            Administration.objects.values_list("name", flat=True).distinct()[
-                :20
-            ]
+            Administration.objects.order_by("name")
+            .values_list("name", flat=True)
+            .distinct()[:20]
         )
+        row_of = {name: idx for idx, name in enumerate(constituencies)}
 
         # Zero, not 1 — an unsubmitted constituency-week must not read as a
         # submission.
         heatmap_matrix = [[0] * len(weeks) for _ in constituencies]
 
-        if active_values().exists():
-            for c_idx, c_name in enumerate(constituencies):
-                for w_idx in range(len(weeks)):
-                    count = (
-                        active_values()
-                        .filter(administration__name=c_name, value="observed")
-                        .count()
-                    )
-                    heatmap_matrix[c_idx][w_idx] = count
+        # Distinct submissions per cell, because the chart's tooltip says
+        # "Submissions": one Kobo report selecting five indicators writes five
+        # IKSValue rows and is still one submission. Two queries in total —
+        # the previous loop ran an identical count per cell, which both cost
+        # 20x13 queries and wrote the same total into every week.
+        rows = set(
+            active_values()
+            .filter(
+                value="observed", administration__name__in=constituencies
+            )
+            .values_list("administration__name", "kobo_id")
+        )
+        dates = submission_dates({kobo_id for _, kobo_id in rows})
+        for name, kobo_id in rows:
+            week_idx = week_of(dates.get(kobo_id))
+            if week_idx is None:
+                continue
+            heatmap_matrix[row_of[name]][week_idx] += 1
 
         response_data = {
             "constituencies": constituencies,

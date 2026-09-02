@@ -4,9 +4,17 @@ Query scoping (the ``active_*`` readers), the published-CDI lookup, the
 Section-D label mappers and the X-API-Key permission live here so the views
 module holds request handling only.
 """
+from datetime import timedelta
+
+from django.utils import timezone
+
 from api.v1.v1_publication.models import Publication
 from api.v1.v1_publication.constants import PublicationStatus
 from api.v1.v1_iks.models import KoboData, IKSIndicator, IKSValue
+
+# Weeks on the net-signal and heatmap axes. Thirteen keeps the quarter the
+# charts were designed around without pinning them to one calendar quarter.
+TREND_WEEKS = 13
 
 
 # Every IKS endpoint reads through these three helpers so that the KoboForm
@@ -60,6 +68,50 @@ def latest_validated_d_class(administration_id):
 # on the siSwati term (or the English word), never the numeric prefix — same
 # rule the soil-trend aggregation uses. These labels ARE the observer's data,
 # not UI config, so they are resolved on the backend.
+def rolling_weeks(count=TREND_WEEKS, end=None):
+    """A real trailing week axis: labels plus a date -> bucket index lookup.
+
+    Replaces the hardcoded "May 01".."Jul 24" axis, which silently folded
+    Jan-Apr submissions into the first column and Aug-Dec into the last, so a
+    chart drawn in November described a summer that had not happened.
+
+    Buckets are ISO weeks (Monday-start) ending with the week containing
+    ``end``, so a bucket is a real seven-day period rather than a slice of a
+    month. ``index_for`` returns None outside the window — the caller drops
+    that submission instead of clamping it into an edge column.
+    """
+    today = end or timezone.localdate()
+    current_start = today - timedelta(days=today.weekday())
+    starts = [
+        current_start - timedelta(weeks=offset)
+        for offset in range(count - 1, -1, -1)
+    ]
+    first = starts[0]
+    last = current_start + timedelta(days=6)
+
+    def index_for(day):
+        if day is None or day < first or day > last:
+            return None
+        return (day - first).days // 7
+
+    return [start.strftime("%b %d") for start in starts], index_for
+
+
+def submission_dates(kobo_ids):
+    """kobo_id -> submission date, from KoboData.
+
+    IKSValue.created is the row's insert time — a full sync or a reseed
+    stamps every row with today, which would pile the whole history into the
+    current week. The observation date only exists on KoboData.
+    """
+    return {
+        kobo_id: timezone.localtime(submitted).date()
+        for kobo_id, submitted in active_kobo_data()
+        .filter(kobo_id__in=list(kobo_ids))
+        .values_list("kobo_id", "submission_time")
+    }
+
+
 def label_soil_moisture(raw):
     v = (raw or "").lower()
     if "womile" in v or ("dry" in v and "moist" not in v):

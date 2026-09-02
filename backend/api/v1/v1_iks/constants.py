@@ -1,21 +1,16 @@
 """Shared constants for the v1_iks views.
 
-Centralised so the repeated literals (region list, the fixed week axis, image
-extensions, Section-D indicator names) and the synthetic placeholder figures
-live in one place instead of being scattered across the view methods.
+Centralised so the repeated literals (region list, image extensions,
+Section-D indicator names) and the synthetic placeholder figures live in one
+place instead of being scattered across the view methods.
+
+The trend/heatmap week axis is NOT here any more: it is computed per request
+by `utils.rolling_weeks`, because a fixed "May 01".."Jul 24" list described a
+quarter that had nothing to do with when the data was collected.
 """
 
 # Region names — match Administration.region; used across the aggregations.
 REGIONS = ["Hhohho", "Manzini", "Lubombo", "Shiselweni"]
-
-# Fixed 13-week axis used by the prototype aggregations (net-signal, heatmap).
-# NOTE: this is a hardcoded May–Jul window — see the heatmap/soil-trend caveats
-# about submissions outside that range.
-HEATMAP_WEEKS = [
-    "May 01", "May 08", "May 15", "May 22", "May 29",
-    "Jun 05", "Jun 12", "Jun 19", "Jun 26",
-    "Jul 03", "Jul 10", "Jul 17", "Jul 24",
-]
 
 # Image attachment extensions served through the photo proxy.
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp")
