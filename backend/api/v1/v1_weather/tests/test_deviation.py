@@ -21,8 +21,14 @@ from utils.periods import shift_period
 
 class DeviationTestCase(TestCase):
     def setUp(self):
-        self.today = timezone.now().date()
-        self.period = self.today.strftime("%Y-%m")
+        # Anchored to the last day of the LAST complete month, not to today.
+        # `_observe` counts backwards from the anchor, so an anchor of "today"
+        # walks into the previous month on the 1st and 2nd — those days bucket
+        # into a different period and quietly shrink the precipitation SUM
+        # below into a partial total (2 x 10mm, not 3). The test then failed
+        # two days a month and passed the other twenty-eight.
+        self.anchor = timezone.now().date().replace(day=1) - timedelta(days=1)
+        self.period = self.anchor.strftime("%Y-%m")
         self.source = WeatherSource.objects.create(
             base_url="https://example.invalid", collection_id="c"
         )
@@ -42,7 +48,7 @@ class DeviationTestCase(TestCase):
         for offset in range(days):
             StationDailyAggregate.objects.create(
                 station=self.station,
-                date=self.today - timedelta(days=offset),
+                date=self.anchor - timedelta(days=offset),
                 parameter=parameter,
                 value=value,
                 readings_count=24,
@@ -52,7 +58,7 @@ class DeviationTestCase(TestCase):
     def _normal(self, parameter, value):
         AdministrationNormal.objects.create(
             administration=self.administration,
-            month=self.today.month,
+            month=self.anchor.month,
             parameter=parameter,
             value=value,
             dataset="test",
@@ -124,7 +130,7 @@ class DeviationTestCase(TestCase):
         self._normal(WeatherParameter.tmean, 18.0)
         AdministrationNormal.objects.create(
             administration=other,
-            month=self.today.month,
+            month=self.anchor.month,
             parameter=WeatherParameter.tmean,
             value=22.0,
             dataset="test",
