@@ -27,7 +27,7 @@ from .validation.view import (
     ValidationDecisionAPI,
     ValidationHistoryAPI,
 )
-from .twg.view import ReviewerAssignmentAPI
+from .twg.view import ReviewerAssignmentAPI, ReviewerRemovalAPI
 from .insights.view import CDIExplorerStatsAPI, CDIExplorerSeriesAPI
 from .brief.view import BriefForwardView, BriefSituationView
 
@@ -123,7 +123,7 @@ urlpatterns = [
     re_path(
         r"^(?P<version>(v1))/admin/publication-reviewers/(?P<pk>[0-9]+)"
         r"/(?P<user_id>[0-9]+)$",
-        ReviewerAssignmentAPI.as_view(),
+        ReviewerRemovalAPI.as_view(),
         name="publication-reviewer-detail",
     ),
     re_path(

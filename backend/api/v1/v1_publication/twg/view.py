@@ -11,6 +11,14 @@ and ``REMOVABLE_STATUSES``.
 
 Mounted at /admin/publication-reviewers/, NOT under /admin/publication/{pk} —
 that prefix has no trailing `$` and would swallow these routes (D-12).
+
+Add and remove are two view classes rather than one class on two routes.
+A single class put both handlers on both URLs: the schema then advertised
+POST /{pk}/{user_id} and DELETE /{pk}, neither of which can run — the
+handler signatures differ, so DRF passes the wrong kwargs and the request
+dies with a TypeError (500, not 405). It also collided the operationIds,
+which is why Swagger showed `publication_reviewers_add_2`. One class per
+route keeps the documented surface and the callable surface identical.
 """
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -32,6 +40,8 @@ from utils.default_serializers import DefaultResponseSerializer
 
 
 class ReviewerAssignmentAPI(APIView):
+    """POST /admin/publication-reviewers/{pk} — add reviewers."""
+
     permission_classes = [IsAuthenticated, IsAdmin]
 
     @extend_schema(
@@ -75,6 +85,12 @@ class ReviewerAssignmentAPI(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ReviewerRemovalAPI(APIView):
+    """DELETE /admin/publication-reviewers/{pk}/{user_id} — remove one."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     @extend_schema(
         operation_id="publication_reviewers_remove",

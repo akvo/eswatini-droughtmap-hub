@@ -172,6 +172,12 @@ export const TWG_LOGOS = [
     alt: "MET (Meteorological Office) 2",
     url: "https://www.uneswa.sz/",
   },
+  {
+    id: 6,
+    image: "/images/logo-uneswa.svg",
+    alt: "UNESWA (University of Eswatini)",
+    url: "https://www.uneswa.ac.sz/",
+  },
 ];
 
 export const ALLOWED_EXTENSIONS = [
