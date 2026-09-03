@@ -17,6 +17,18 @@ from .situation import build_situation
 class BriefForwardView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Forward a generated brief to a list of recipients",
+        description=(
+            "Requires TWG membership. Accepts a list of recipients, the "
+            "Inkhundla ID and name, the components included in the brief, "
+            "the URL of the brief, and an optional note. Queues an email "
+            "task to send the brief to the recipients. Returns 202 with the "
+            "number of recipients queued."
+        ),
+        responses={202: {"queued": True, "recipient_count": 0}},
+        tags=["Brief Builder"],
+    )
     def post(self, request, *args, **kwargs):
         if request.user.technical_working_group is None:
             return Response(
