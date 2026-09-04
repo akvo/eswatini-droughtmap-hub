@@ -1,6 +1,6 @@
 "use client";
 
-import { WarningOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import { DROUGHT_CATEGORY } from "@/static/config";
 
@@ -24,6 +24,23 @@ const ProvisionalBadge = ({ note }) => (
     >
       <WarningOutlined aria-hidden />
       Provisional
+    </span>
+  </Tooltip>
+);
+
+// What the tab is showing, in the reader's terms. Sits beside the scale
+// rather than on the tab button: the colours and the sentence explaining them
+// are one thought, and the tab bar is already the layer switcher.
+const LayerInfo = ({ description }) => (
+  <Tooltip title={description} styles={{ root: { maxWidth: 340 } }}>
+    <span
+      data-testid="layer-info"
+      role="button"
+      tabIndex={0}
+      aria-label={description}
+      className="flex shrink-0 items-center text-neutral-400 hover:text-neutral-600 cursor-help text-base"
+    >
+      <InfoCircleOutlined aria-hidden />
     </span>
   </Tooltip>
 );
@@ -76,7 +93,13 @@ const MapLayerLegend = ({ layer }) => {
   // takes up height, so the whole row is dropped instead.
   const hasScale = legend?.continuous && legend?.colors?.length;
   const hasCategories = legend?.categories?.length;
-  if (!isDrought && !hasScale && !hasCategories && !meta.provisional) {
+  if (
+    !isDrought &&
+    !hasScale &&
+    !hasCategories &&
+    !meta.provisional &&
+    !meta.description
+  ) {
     return null;
   }
 
@@ -96,6 +119,7 @@ const MapLayerLegend = ({ layer }) => {
       ) : hasCategories ? (
         <CategorySwatches categories={legend.categories} />
       ) : null}
+      {meta.description && <LayerInfo description={meta.description} />}
       {meta.provisional && <ProvisionalBadge note={meta.note} />}
       {meta.attribution && (
         <span className="text-[11px] text-neutral-400 shrink-0 ml-auto">

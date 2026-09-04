@@ -8,6 +8,7 @@ from api.v1.v1_insights.views import (
     InsightsMapDataView,
     InsightsMapLayerView,
     InsightsAgroEcoGeoView,
+    InsightsRegionGeoView,
 )
 
 urlpatterns = [
@@ -45,5 +46,10 @@ urlpatterns = [
         r"^(?P<version>(v1))/insights/geo/agro-eco$",
         InsightsAgroEcoGeoView.as_view(),
         name="insights-geo-agro-eco",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/insights/geo/regions$",
+        InsightsRegionGeoView.as_view(),
+        name="insights-geo-regions",
     ),
 ]

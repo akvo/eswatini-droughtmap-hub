@@ -30,6 +30,7 @@ from api.v1.v1_indicators.models import Indicator
 from api.v1.v1_insights.chirps_extract import read_sidecar
 from api.v1.v1_insights.constants import (
     BUILDABLE,
+    DESCRIPTIONS,
     CHIRPS_MONTHLY_DIR,
     CHIRPS_MONTHLY_FILE,
     LAYER_LABELS,
@@ -38,6 +39,7 @@ from api.v1.v1_insights.constants import (
     RAMP_LAND_USE,
     RAMP_POPULATION,
     RAMP_PRECIPITATION,
+    REGION_PROPERTY,
 )
 from api.v1.v1_insights.drought_aggregation import grouped_drought
 from api.v1.v1_publication.constants import (
@@ -123,7 +125,11 @@ def build_population() -> dict:
     data, provisional, sources = _indicator_rows("population")
     if not data:
         return empty_layer("population", "No population data seeded.")
-    meta = {"source": ", ".join(sources) or None, "asOf": None}
+    meta = {
+        "source": ", ".join(sources) or None,
+        "asOf": None,
+        "description": DESCRIPTIONS["population"],
+    }
     if provisional:
         meta["provisional"] = True
         meta["note"] = (
@@ -146,7 +152,11 @@ def build_land_use() -> dict:
     data, provisional, sources = _indicator_rows("land_use_dvi_agri")
     if not data:
         return empty_layer("land-use", "No land-use data seeded.")
-    meta = {"source": ", ".join(sources) or None, "asOf": None}
+    meta = {
+        "source": ", ".join(sources) or None,
+        "asOf": None,
+        "description": DESCRIPTIONS["land-use"],
+    }
     if provisional:
         meta["provisional"] = True
         # Two different warnings. The badge says "provisional"; this says the
@@ -220,6 +230,7 @@ def build_esi(year_month: str = None) -> dict:
         "meta": {
             "source": "era5_esi_1mn (CDI component raster)",
             "asOf": raster.publication.year_month.strftime("%Y-%m-%d"),
+            "description": DESCRIPTIONS["esi"],
         },
     }
 
@@ -227,10 +238,11 @@ def build_esi(year_month: str = None) -> dict:
 def build_regions(year_month: str = None) -> dict:
     """Drought class aggregated to the four administrative regions.
 
-    This card is the Drought Map: every tab answers "where is the drought",
-    and Regions answers it at a coarser resolution than the default Inkhundla
-    view. Colouring the boundaries by region name instead would show only
-    where the borders are, which the map already makes obvious.
+    Drawn on the real region polygons, the same way agro-eco is. It used to
+    paint the verdict onto all 59 Tinkhundla instead: a region read as one
+    colour, but the boundaries on screen were still Inkhundla boundaries, so
+    the Regions tab and the default tab drew the same map in different
+    palettes. The region outlines were nowhere on it.
     """
     rows = list(
         Administration.objects.filter(region__isnull=False)
@@ -253,18 +265,19 @@ def build_regions(year_month: str = None) -> dict:
     return {
         "key": "regions",
         "label": LAYER_LABELS["regions"],
-        "type": "choropleth",
-        # Every Inkhundla carries its region's verdict, so a region reads as
-        # one block. `group` and `confidence` ride along for the tooltip.
+        "type": "vector",
+        "url": "/api/v1/insights/geo/regions",
+        "property": REGION_PROPERTY,
+        # Keyed by the geometry's own `region` property, so the join never
+        # depends on the file's feature order.
         "data": [
             {
-                "administration_id": adm_id,
-                "value": drought[region][0],
-                "group": region,
-                "confidence": drought[region][1],
+                "key": region,
+                "label": region,
+                "value": value,
+                "confidence": confidence,
             }
-            for adm_id, region in rows
-            if region in drought
+            for region, (value, confidence) in sorted(drought.items())
         ],
         # No colours: the D-class palette lives in the frontend config and
         # must have exactly one definition (CLAUDE.md).

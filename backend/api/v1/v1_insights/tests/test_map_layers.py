@@ -4,6 +4,7 @@ import os
 import tempfile
 from datetime import date
 
+from django.conf import settings
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework import status
@@ -17,7 +18,13 @@ from api.v1.v1_insights.chirps_extract import (
     sidecar_path,
     write_sidecar,
 )
-from api.v1.v1_insights.constants import BUILDABLE, LAYERS
+from api.v1.v1_insights.constants import (
+    BUILDABLE,
+    DESCRIPTIONS,
+    LAYERS,
+    REGION_PROPERTY,
+    REGION_TOPOJSON,
+)
 from api.v1.v1_insights.map_layers import continuous_legend
 from api.v1.v1_publication.constants import (
     AdministrationZones,
@@ -214,10 +221,12 @@ class MapLayerContractTests(TestCase):
         self.pub.validated_values = values
         self.pub.save()
 
-    def test_regions_paints_the_drought_class_not_the_region_name(self):
-        """This card is the Drought Map: a boundary tab still shows drought.
+    def test_regions_draws_region_polygons_not_tinkhundla(self):
+        """The tab used to paint the region verdict onto all 59 Tinkhundla.
 
-        Both Lubombo Tinkhundla read D2, so the whole region does.
+        A region read as one colour, but the boundaries on screen were still
+        Inkhundla boundaries — so Regions and the default tab drew the same
+        map in different palettes, and no region outline appeared anywhere.
         """
         third = Administration.objects.create(name="Sithobela",
                                               region="Lubombo")
@@ -227,18 +236,47 @@ class MapLayerContractTests(TestCase):
             {"administration_id": self.other.id, "category": 1},
         ])
         payload = self.client.get(self.url("regions")).json()
-        self.assertEqual(payload["type"], "choropleth")
+
+        self.assertEqual(payload["type"], "vector")
+        self.assertEqual(payload["url"], "/api/v1/insights/geo/regions")
+        # Joined on the geometry's own property, never on feature order.
+        self.assertEqual(payload["property"], REGION_PROPERTY)
+        # One row per region, not one per Inkhundla.
+        self.assertEqual(len(payload["data"]), 2)
         # No hex: the D-class palette has one definition, in the frontend.
         self.assertEqual(payload["legend"], {"scheme": "drought"})
         self.assertNotIn("colors", payload["legend"])
 
-        by_admin = {r["administration_id"]: r for r in payload["data"]}
-        self.assertEqual(by_admin[self.admin.id]["value"], 3)
-        self.assertEqual(by_admin[third.id]["value"], 3)
-        self.assertEqual(by_admin[self.admin.id]["group"], "Lubombo")
-        self.assertEqual(by_admin[self.admin.id]["confidence"], 100)
+        by_region = {r["key"]: r for r in payload["data"]}
+        self.assertEqual(by_region["Lubombo"]["value"], 3)
+        self.assertEqual(by_region["Lubombo"]["label"], "Lubombo")
+        self.assertEqual(by_region["Lubombo"]["confidence"], 100)
         # A different region keeps its own verdict.
-        self.assertEqual(by_admin[self.other.id]["value"], 1)
+        self.assertEqual(by_region["Hhohho"]["value"], 1)
+
+    def test_region_rows_key_on_the_geometry_property(self):
+        """The join fails silently if these drift: every region paints grey.
+
+        `region` is what the topojson carries and what Administration.region
+        holds, so the two are asserted against each other here.
+        """
+        self._publish_categories(
+            [{"administration_id": self.admin.id, "category": 3}]
+        )
+        payload = self.client.get(self.url("regions")).json()
+
+        geometry = json.loads(
+            open(
+                os.path.join(settings.BASE_DIR, REGION_TOPOJSON)
+            ).read()
+        )
+        available = {
+            g["properties"][REGION_PROPERTY]
+            for obj in geometry["objects"].values()
+            for g in obj["geometries"]
+        }
+        for row in payload["data"]:
+            self.assertIn(row["key"], available)
 
     def test_region_confidence_is_a_share_of_the_whole_region(self):
         """One of two Tinkhundla reporting is 50% agreement, not 100%."""
@@ -247,11 +285,59 @@ class MapLayerContractTests(TestCase):
             [{"administration_id": self.admin.id, "category": 3}]
         )
         payload = self.client.get(self.url("regions")).json()
-        row = next(
-            r for r in payload["data"]
-            if r["administration_id"] == self.admin.id
-        )
+        row = next(r for r in payload["data"] if r["key"] == "Lubombo")
         self.assertEqual(row["confidence"], 50)
+
+    def test_geometry_endpoints_serve_committed_files(self):
+        """Both used to depend on a deploy step; agro's no longer does.
+
+        `generate_agro_geojson` wrote a gitignored artefact, so forgetting it
+        left the tab 404ing with nothing in the repo to explain why. Both
+        geometries are committed now, and this fails if either is removed.
+        """
+        for name in ("regions", "agro-eco"):
+            response = self.client.get(f"/api/v1/insights/geo/{name}")
+            self.assertEqual(
+                response.status_code, status.HTTP_200_OK, msg=name
+            )
+            body = json.loads(b"".join(response.streaming_content))
+            # Served as TopoJSON, which the frontend decodes itself.
+            self.assertEqual(body["type"], "Topology", msg=name)
+            # Degrees, not the source's Transverse Mercator metres — served
+            # unprojected, Leaflet draws Eswatini off the African coast.
+            lon, lat = body["transform"]["translate"]
+            self.assertTrue(30 < lon < 33, msg=f"{name} lon {lon}")
+            self.assertTrue(-28 < lat < -25, msg=f"{name} lat {lat}")
+
+    def test_described_layers_cite_their_upstream_dataset(self):
+        """The tooltip must name the dataset, not the upload label.
+
+        `Indicator.source` is free text typed at upload time and currently
+        reads "JRBA (2026-08)" for both exposure layers, while the handover
+        CSVs record WorldPop and Dynamic World. Citing the stored label would
+        publish an attribution we know to be wrong.
+        """
+        Indicator.objects.create(
+            administration=self.admin,
+            population=1000,
+            land_use_dvi_agri=0.5,
+            source="JRBA (2026-08)",
+            is_placeholder=False,
+        )
+        expected = {
+            "land-use": "Dynamic World",
+            "population": "WorldPop",
+        }
+        for key, upstream in expected.items():
+            meta = self.client.get(self.url(key)).json()["meta"]
+            self.assertIn(upstream, meta["description"], msg=key)
+            self.assertNotIn("JRBA", meta["description"], msg=key)
+
+    def test_esi_description_does_not_claim_a_temperature(self):
+        """The tab was labelled Temperature once; the raster is a rank."""
+        description = DESCRIPTIONS["esi"]
+        self.assertIn("percentile rank", description)
+        self.assertIn("not degrees", description)
 
     def test_regions_without_a_published_map_is_empty(self):
         payload = self.client.get(self.url("regions")).json()
@@ -281,13 +367,15 @@ class MapLayerContractTests(TestCase):
 
         current = self.client.get(self.url("regions")).json()
         self.assertEqual(current["meta"]["asOf"], "2026-05-01")
-        self.assertEqual(current["data"][0]["value"], 4)
+        by_region = {r["key"]: r for r in current["data"]}
+        self.assertEqual(by_region["Lubombo"]["value"], 4)
 
         past = self.client.get(
             self.url("regions", "?year_month=2025-11")
         ).json()
         self.assertEqual(past["meta"]["asOf"], "2025-11-01")
-        self.assertEqual(past["data"][0]["value"], 1)
+        by_region = {r["key"]: r for r in past["data"]}
+        self.assertEqual(by_region["Lubombo"]["value"], 1)
         self.assertEqual(older.year_month.strftime("%Y-%m"), "2025-11")
 
     def test_agro_eco_follows_the_selected_month(self):

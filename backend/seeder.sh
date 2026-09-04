@@ -46,6 +46,3 @@ if [[ "${seed_demo}" == 'y' || "${seed_demo}" == 'Y' ]]; then
 fi
 
 python manage.py generate_config
-# Reprojects the agro-ecological zones to WGS84 for the National Overview map
-# tab. Separate from generate_config because it needs the geo stack.
-python manage.py generate_agro_geojson

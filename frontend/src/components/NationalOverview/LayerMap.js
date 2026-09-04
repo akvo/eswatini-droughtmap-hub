@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ReactCompareSlider } from "react-compare-slider";
+import { feature } from "topojson-client";
 import {
   DEFAULT_CENTER,
   DROUGHT_CATEGORY_COLOR,
@@ -206,6 +207,19 @@ const ChoroplethLayer = ({ layer, onInkhundlaSelect, selectedId }) => {
   );
 };
 
+// Geometry arrives as GeoJSON or TopoJSON depending on the layer: agro-eco is
+// reprojected at deploy time and lands as GeoJSON, while the region polygons
+// are already in degrees and are served straight from source. Decoding here
+// rather than converting on the backend keeps a build step — and a tab that
+// 404s when someone forgets to run it — out of the picture.
+const asFeatureCollection = (data) => {
+  if (data?.type !== "Topology") {
+    return data;
+  }
+  const objectKey = Object.keys(data.objects || {})[0];
+  return objectKey ? feature(data, data.objects[objectKey]) : null;
+};
+
 const VectorLayer = ({ layer }) => {
   const [geoData, setGeoData] = useState(null);
   const [failed, setFailed] = useState(false);
@@ -218,7 +232,7 @@ const VectorLayer = ({ layer }) => {
     setFailed(false);
     fetch(layer.url)
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then((data) => active && setGeoData(data))
+      .then((data) => active && setGeoData(asFeatureCollection(data)))
       .catch(() => active && setFailed(true));
     return () => {
       active = false;

@@ -1,4 +1,1 @@
 config.min.js
-# Written by `generate_agro_geojson` at deploy time (seeder.sh), same as
-# config.min.js above — a reprojection of a source file already in the repo.
-agro-eco.geojson
