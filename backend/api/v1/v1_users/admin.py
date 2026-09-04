@@ -49,12 +49,16 @@ class SystemUserAdmin(UserAdmin):
         "email_verified",
         "activity_sector",
         "technical_working_group",
+        "manages_citizen_science",
     )
     list_filter = (
         "role",
         "email_verified",
         "activity_sector",
         "technical_working_group",
+        # CS-DEL-1: makes "who holds this grant?" answerable from the
+        # changelist rather than by querying the database.
+        "manages_citizen_science",
     )
     fieldsets = (
         (None, {"fields": ("email", "name", "password")}),
@@ -66,6 +70,11 @@ class SystemUserAdmin(UserAdmin):
                     "email_verified",
                     "activity_sector",
                     "technical_working_group",
+                    # CS-DEL-1. Sits with the other grants, NOT in the
+                    # "Citizen science (observer role only)" group below —
+                    # those are an observer's own station fields, not a
+                    # permission.
+                    "manages_citizen_science",
                 )
             },
         ),

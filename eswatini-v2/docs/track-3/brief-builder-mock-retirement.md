@@ -375,8 +375,8 @@ Rev. 1 asked "per-bar marker or section-level note?" for `water_demand`'s
 null for all 59 Tinkhundla** (§1b), so the bar renders unavailable regardless of any marker.
 
 The source now exists — [`eswatini-v2/data/water_demand/`](../../data/water_demand/) holds
-`all_water_demand_aligned.xlsx`, 945 rows from DWA (Spencer Green-Thompson) and JRBA (Welile
-Sangweni), joined to sub-catchments and rolled up to Inkhundla.
+`all_water_demand_aligned.xlsx`, 945 rows from DWA and JRBA, joined to sub-catchments and
+rolled up to Inkhundla.
 
 **Decision**: loading it is **its own task, not BB-3**. BB-3 renders whatever `norm` it is given
 and renders unavailable when that is null.

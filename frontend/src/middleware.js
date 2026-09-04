@@ -37,7 +37,7 @@ export default async function middleware(request) {
     return NextResponse.redirect(new URL(signInPath, request.url));
   }
   if (session) {
-    const { token: authToken, role } = await auth.decrypt(session);
+    const { token: authToken, role, abilities } = await auth.decrypt(session);
 
     // Validated BEFORE the sign-in-screen redirect below. The other order
     // sent someone holding a dead cookie from /login to their home page,
@@ -102,6 +102,14 @@ export default async function middleware(request) {
     // so a fourth role added later is denied by default.
     const isStaff = [USER_ROLES.admin, USER_ROLES.reviewer].includes(role);
 
+    // CS-DEL-1: the citizen-science admin page is the one admin surface a
+    // non-admin can be delegated. Read off abilities rather than a separate
+    // session flag, so the client has ONE authority to consult — the same
+    // list the page's own <Can> guards already use.
+    const managesCitizenScience = (abilities || []).some(
+      (a) => a?.subject === "CitizenScience",
+    );
+
     if (
       role !== USER_ROLES.observer &&
       pathName.startsWith("/citizen-weather/observe")
@@ -117,8 +125,11 @@ export default async function middleware(request) {
       (role !== USER_ROLES.admin &&
         (pathName.startsWith("/publications") ||
           pathName.startsWith("/settings") ||
-          pathName.startsWith("/citizen-weather/admin") ||
-          (pathName.startsWith("/validations") && !isDecisionPage)))
+          (pathName.startsWith("/validations") && !isDecisionPage))) ||
+      // Left the admin-only list above: an admin OR a delegated coordinator.
+      (role !== USER_ROLES.admin &&
+        !managesCitizenScience &&
+        pathName.startsWith("/citizen-weather/admin"))
     ) {
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }

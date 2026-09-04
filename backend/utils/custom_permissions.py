@@ -18,6 +18,23 @@ class IsAdmin(BasePermission):
         return False
 
 
+class IsCitizenScienceManager(BasePermission):
+    """Admin, or a user delegated the citizen-science network (CS-DEL-1).
+
+    Deliberately NOT a widening of IsAdmin: that class also guards
+    publications, settings and the WIS2 source config, so relaxing it there
+    would hand all of those over too. Only the four citizen-science views
+    swap to this one.
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+        return (
+            user.role == UserRoleTypes.admin
+            or user.manages_citizen_science
+        )
+
+
 class IsObserver(BasePermission):
     """Citizen-science observer: must have the role AND a bound Inkhundla —
     every observer endpoint scopes by request.user.administration."""
