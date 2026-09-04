@@ -13,6 +13,7 @@ import { FeedbackSection } from "@/components";
 import { DroughtScore, ConfidenceBadge } from "@/components/DS";
 import { api } from "@/lib";
 import { textOn } from "@/lib/helper";
+import { queueHref } from "@/lib/query";
 import { useAppContext } from "@/context/AppContextProvider";
 import {
   DROUGHT_CATEGORY_ASSIGNABLE,
@@ -501,7 +502,10 @@ const IndividualReview = ({
   const prevId = idx > 0 ? orderedIds[idx - 1] : null;
   const nextId =
     idx >= 0 && idx < orderedIds.length - 1 ? orderedIds[idx + 1] : null;
+  // Prev/Next carry the filters only — each destination derives its own page.
   const qs = queueQuery ? `?${queueQuery}` : "";
+  // Back / after-submit return to the page the reviewer was on, not page 1.
+  const backHref = queueHref(reviewId, queueQuery, idx);
 
   const areaKm2 = useMemo(() => {
     const feature = geoData?.features?.find(
@@ -537,7 +541,7 @@ const IndividualReview = ({
         : [...base, entry];
       await api("PUT", `/reviewer/review/${reviewId}`, { suggestion_values });
       message.success(reviewed ? "Decision submitted" : "Draft saved");
-      if (reviewed) router.push(`/reviews/${reviewId}${qs}`);
+      if (reviewed) router.push(backHref);
       else router.refresh();
     } catch (e) {
       message.error("Could not save. Please try again.");
@@ -556,7 +560,7 @@ const IndividualReview = ({
             <button
               type="button"
               className="text-[#606060] hover:text-[#3E5EB9]"
-              onClick={() => router.push(`/reviews/${reviewId}${qs}`)}
+              onClick={() => router.push(backHref)}
             >
               Drought Review
             </button>
