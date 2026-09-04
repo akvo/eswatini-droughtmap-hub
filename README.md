@@ -117,6 +117,7 @@ environment holding real data**:
 |------|--------|--------------------|
 | **Setup** | reference data from `backend/source/`, or real data pulled from GeoNode / WIS2 / CHIRPS / Kobo | ✅ yes |
 | **Demo** | fabricated drought classifications, stations, submissions and accounts | ❌ never |
+| **Maintenance** | repairs a live record — currently only `backfill_publications` | ⚠️ deliberately, with a raster `--source` |
 
 **Setup — reference data shipped in the repo**
 
@@ -130,7 +131,7 @@ environment holding real data**:
 | `generate_water_demand_seeder` | `Indicator.water_demand` | DRAFT DWA/JRBA export, 45/59 Tinkhundla |
 | `generate_activity_seeder` | the real response-activity library | **without** `--demo` |
 | `kobo_seeder` | Kobo adapter credentials | |
-| `generate_config`, `generate_agro_geojson` | generated frontend assets | re-run after any zone/boundary change |
+| `generate_config` | generated frontend assets | re-run after any zone/boundary change |
 
 **Setup — real data pulled from an external system**
 
@@ -146,7 +147,7 @@ All are idempotent and all are documented in their own sections below.
 | Command | Fabricates |
 |---------|-----------|
 | `seed_demo` | orchestrates every row below |
-| `generate_publications_seeder` | Publications + Reviews |
+| `generate_publications_seeder` | Publications + Reviews — for production gaps use [`backfill_publications`](#backfilling-published-months-backfill_publications) instead |
 | `generate_rasters_seeder` | PublicationRaster component values |
 | `generate_weather_seeder` | station daily aggregates |
 | `generate_iks_seeder` | Kobo IKS submissions + photos |
@@ -175,7 +176,6 @@ docker compose exec backend python manage.py generate_eligibility_seeder
 docker compose exec backend python manage.py generate_water_demand_seeder
 docker compose exec backend python manage.py generate_activity_seeder   # no --demo
 docker compose exec backend python manage.py generate_config
-docker compose exec backend python manage.py generate_agro_geojson
 
 # first real superuser (skip if the account already exists)
 docker compose exec backend python manage.py createsuperuser --email <you@org> --role 1
@@ -206,6 +206,109 @@ their rows `is_placeholder=True` so an operator upload replaces them cleanly:
 `generate_eligibility_seeder` (prototype counts) and
 `generate_water_demand_seeder` (a draft DWA export). Skip them if you would
 rather those columns read "no data" until a real upload arrives.
+
+---
+
+## **Backfilling published months: `backfill_publications`**
+
+A month with no publication renders as an empty cell on the CDI-E D-class strip
+and is absent from `/api/v1/dates`. That is correct — the strip is anchored on
+the current month, so a publication pause shows as gaps on the right — but a
+long pause leaves a page that reads as missing data.
+
+`backfill_publications` fills **named** gaps in a live record. It is the only
+command in this README that writes publications and is meant to be run on
+production, and it is a different job from the seeder:
+
+| | `generate_publications_seeder` | `backfill_publications` |
+|---|---|---|
+| Purpose | build a believable dev database | fill named gaps in a live record |
+| Months | `--repeat N`, counted back from today | `--from` / `--to`, named explicitly |
+| Writes by default | **yes** | **no** — reports; `--apply` writes |
+| Existing publications | may publish or mutate them | never touched; skipped, with status |
+| Statuses produced | a ladder — in_review → in_validation → published | published only |
+| Can delete | `--reset` **hard-deletes every publication** | nothing |
+| Invented values | `--source synthetic`, and the `auto` fallback | `--source synthetic` only; never a fallback |
+| Safe on production | ❌ never | ⚠️ with a raster `--source` |
+
+Both create rows through the same helpers (`create_seeded_publication`,
+`seed_values`, `publish_seeded`), so they cannot drift on what a seeded
+publication looks like or on the value range behind it.
+
+### **Running it**
+
+**`--source` is the only place values come from**, and it takes one of two
+things: a directory of CDI rasters, or the word `synthetic`. The seeder splits
+this across `--source` and `--path` because it has four sources and only one of
+them is a directory — here there are two, and one of them *is* a directory, so
+a second flag would add nothing but a pair to get wrong.
+
+The seeder's other sources cannot apply: `cache` and `geonode` queue an async
+download chain that finishes later via a worker, while a backfill must be done
+when the command exits. There is no `auto` either — it would quietly invent
+values for whichever months the archive happens to be missing, which is the one
+thing this command must not do silently.
+
+```bash
+# 1. Report. Writes nothing — always start here.
+docker compose exec backend python manage.py backfill_publications \
+    --from 2025-10 --to 2026-05 --source ./storage/geotiffs
+
+# 2. Backfill from real CDI rasters. Months the archive does not cover stay
+#    gaps — publishing what you have does not require consenting to invent
+#    the rest.
+docker compose exec backend python manage.py backfill_publications \
+    --from 2025-10 --to 2026-05 --source ./storage/geotiffs --apply
+```
+
+The report names every month and what would happen to it:
+
+```
+Range 2025-10 to 2026-05 — 8 month(s), source rasters
+  2025-10  create — raster
+  2025-11  skip — no raster in the archive
+  2025-12  skip — already Published
+  2026-01  skip — already In Review
+  ...
+2 existing, 1 to create, 1 left as gaps (no raster).
+```
+
+Read that before running with `--apply`. **A month marked `In Review` is
+somebody's unfinished work, not a gap** — the command skips it rather than
+creating a second row for the same month.
+
+### **`--source synthetic`**
+
+A month with no raster can only be filled with invented values —
+`rng.uniform(0.02, 0.4)`, classified as if measured. That takes naming
+`synthetic` as the source; a raster directory leaves those months as gaps and
+says so in the report.
+
+```bash
+docker compose exec backend python manage.py backfill_publications \
+    --from 2025-10 --to 2026-05 --source synthetic --apply
+```
+
+> ⚠️ On a public national page those numbers are indistinguishable from
+> validated output. Confirm with the partner that a *fabricated* classification
+> is acceptable for those months — agreeing to a backfill is not the same
+> agreement — or pass the raster directory and leave the rest as gaps.
+
+`--source` is a directory unless it is exactly `synthetic`, so a folder of that
+name would be read as the keyword — pass `./synthetic` if you ever have one.
+
+Backfilled rows carry `is_seeded=True`, so `seed_demo --clean=publications`
+removes them and the CDI publication list can tell them apart. Their hero
+description is derived from the classes being published rather than invented
+prose:
+
+```
+Validated drought classification for March 2026, covering 59 Tinkhundla:
+47 wet/normal conditions, 9 D0 abnormally dry, 3 D1 moderate drought.
+```
+
+Re-running is a no-op: every month it created is now an existing publication
+and is skipped.
 
 ---
 
@@ -290,7 +393,9 @@ owns each table.
 > [Deploying a release](#deploying-a-release-what-to-run) instead.
 
 ```bash
-# Publication (+ Review) rows
+# Publication (+ Review) rows. This counts months back from today and writes
+# immediately — to fill named gaps on an environment with real data, use
+# `backfill_publications` instead.
 docker compose exec backend python manage.py generate_publications_seeder \
     --source path --path ./storage/geotiffs --with-reviews
 
@@ -370,8 +475,9 @@ stage is idempotent, so it is safe to re-run:
 | Seed Fake User? | `generate_admin_seeder`, `fake_users_seeder` | **fake** |
 | **Seed Demo Data?** | **`seed_demo`**, optionally with a GeoTIFF archive path | **fake** |
 
-It always finishes with `generate_config` and `generate_agro_geojson` so the
-browser picks up the current zone vocabulary, topojson and agro layer.
+It always finishes with `generate_config` so the browser picks up the current
+zone vocabulary and topojson. The agro layer is no longer generated — it is
+committed as `backend/source/eswatini-ecological_regions-wgs84.topojson`.
 
 Answering `n` to the last two prompts leaves the script setup-only, but on an
 environment with real data prefer the explicit list in
@@ -563,18 +669,18 @@ Cron example (daily at midnight):
 0 0 * * * cd /backend && ./job.sh weather >> /home/user/logs/weather_ingest.log 2>&1
 ```
 
-### **National Overview map tabs: `fetch_chirps_monthly` & `generate_agro_geojson`**
+### **National Overview map tabs: `fetch_chirps_monthly`**
 
-The Drought Map card on the National overview has seven tabs. Five read data
-already in the database and need no setup. Two need a command run once:
+The Drought Map card on the National overview has seven tabs. Six read data
+already in the database or a committed source file and need no setup. One needs
+a command run once:
 
 | Tab | Source | Setup |
 |-----|--------|-------|
-| Drought class, Evaporative Stress Index, Regions, Agro-ecological zones, Land use, Population map | database | none |
+| Drought class, Evaporative Stress Index, Regions, Agro-ecological zones, Land use, Population map | database + committed topojson | none |
 | **Precipitation** | CHIRPS rasters | `fetch_chirps_monthly` |
-| **Agro-ecological zones** *(geometry)* | reprojected topojson | `generate_agro_geojson` |
 
-Until they are run, those tabs render an explicit empty state naming what is
+Until it is run, that tab renders an explicit empty state naming what is
 missing — never a blank map.
 
 #### **`fetch_chirps_monthly`**
@@ -624,24 +730,21 @@ Notes:
 - A month fetched before the tab became a choropleth has a raster but no
   extract. Re-run with `--force` — the API says so explicitly.
 
-#### **`generate_agro_geojson`**
+#### **Agro-ecological zone geometry — nothing to run**
 
 `source/eswatini-ecological_regions.topojson` carries **no CRS** and its
 coordinates are metres in a Transverse Mercator projection. Handed straight to
-Leaflet it would place Eswatini off the coast of Africa, so it is reprojected
-to WGS84 once at deploy time:
+Leaflet it would place Eswatini off the coast of Africa.
 
-```bash
-docker compose exec backend python manage.py generate_agro_geojson
-```
+That reprojection is a constant, so it is done once and committed as
+`source/eswatini-ecological_regions-wgs84.topojson` (173 KB) rather than
+regenerated on every deploy. The `generate_agro_geojson` command that used to
+write a gitignored `agro-eco.geojson` is gone, and with it a tab that 404'd
+whenever the step was skipped. Nothing to run, and nothing to remember after a
+boundary change beyond regenerating that file if the source ever moves.
 
-```bash
-Wrote /app/./source/config/agro-eco.geojson — 6 zones, bounds 30.79,-27.31 to 32.14,-25.71
-```
-
-`backend/seeder.sh` runs it automatically beside `generate_config`. Like
-`config.min.js`, the output is generated and gitignored — regenerate it after
-any change to the agro layer.
+The original TM-metres source stays in the tree: `assign_administration_zones`
+needs a metric CRS for its overlap weighting.
 
 #### **Keeping Precipitation current**
 

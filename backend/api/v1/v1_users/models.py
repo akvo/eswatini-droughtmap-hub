@@ -41,6 +41,18 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
         default=False,
         help_text="Can sign in to the Django admin site.",
     )
+    # CS-DEL-1: a delegated grant, not a role. The citizen-science network is
+    # coordinated from outside NDMA, and `admin` would also hand over
+    # publications, settings and validation. Orthogonal to `role` on purpose —
+    # the holder keeps their reviewer seat, which a fourth role could not do
+    # because `role` is single-valued.
+    manages_citizen_science = models.BooleanField(
+        default=False,
+        help_text=(
+            "Can manage citizen-science stations and observers, without "
+            "being an admin."
+        ),
+    )
     # Add Technical working group field from Enum class
     technical_working_group = models.IntegerField(
         choices=TechnicalWorkingGroup.FieldStr.items(),

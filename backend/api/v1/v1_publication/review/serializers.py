@@ -18,7 +18,12 @@ class ReviewQueueFilterSerializer(serializers.Serializer):
     confidence = serializers.ChoiceField(
         choices=BANDS, required=False, allow_null=True
     )
-    reviewed = serializers.BooleanField(required=False, default=False)
+    # Tri-state, not a flag: absent = every row, true = "Review completed",
+    # false = "Awaiting review". A default of False would collapse the last
+    # two, which is why `filters()` below must not coerce it away either.
+    reviewed = serializers.BooleanField(
+        required=False, default=None, allow_null=True
+    )
     region = serializers.CharField(required=False, allow_blank=True)
     zone = serializers.ChoiceField(
         choices=AdministrationZones.values(),
@@ -27,12 +32,17 @@ class ReviewQueueFilterSerializer(serializers.Serializer):
     )
 
     def filters(self):
-        """Cleaned kwargs for utils.filter_rows (drop empty values)."""
+        """Cleaned kwargs for utils.filter_rows.
+
+        Empty strings become None ("no filter"); `reviewed` passes through
+        untouched, because False is a filter here and not an empty value.
+        """
         data = self.validated_data
         return {
             "search": data.get("search") or None,
             "confidence": data.get("confidence") or None,
-            "reviewed": data.get("reviewed") or None,
+            # `or None` here would turn "Awaiting review" back into "All".
+            "reviewed": data.get("reviewed"),
             "region": data.get("region") or None,
             "zone": data.get("zone") or None,
         }

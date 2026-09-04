@@ -11,7 +11,17 @@ from api.v1.v1_publication.constants import PublicationStatus
 from api.v1.v1_publication.models import Publication
 from api.v1.v1_weather.citizen_science import shift_month
 from api.v1.v1_weather.constants import WeatherParameter
-from api.v1.v1_weather.models import StationDailyAggregate
+from api.v1.v1_weather.constants import (
+    COMPLETENESS_WINDOW_MONTHS,
+    MIN_STATION_DAYS_PER_MONTH,
+    PRECIP_WINDOW_MONTHS,
+)
+from api.v1.v1_weather.models import (
+    AdministrationObservation,
+    StationDailyAggregate,
+)
+from api.v1.v1_weather.services import _period_label
+from utils.periods import month_start, shift_period
 from api.v1.v1_weather.tests.mixins import (
     HHUKWINI_ADM,
     KWALUSENI_ADM,
@@ -42,23 +52,174 @@ class ExplorerStatsTests(ExplorerDataMixin, APITestCase):
             ],
         )
 
-    def test_last_month_and_12m_cards(self):
-        cards = {
+    def _window(self):
+        """The card's fixed window: 12 months ending at the last COMPLETE
+        month, independent of the charts' range picker (KPI-1 FR-13)."""
+        to_period = shift_period(self.today.strftime("%Y-%m"), -1)
+        from_period = shift_period(to_period, -(PRECIP_WINDOW_MONTHS - 1))
+        return from_period, to_period
+
+    def _seed_chirps(self, mm=10.0):
+        """Satellite observations across the whole window, so the series
+        spans it and the headline total is reported."""
+        from_period, to_period = self._window()
+        for offset in range(PRECIP_WINDOW_MONTHS):
+            AdministrationObservation.objects.create(
+                administration_id=HHUKWINI_ADM,
+                year_month=month_start(shift_period(from_period, offset)),
+                parameter=WeatherParameter.precipitation,
+                value=mm,
+                dataset="chirps-test",
+            )
+        return from_period, to_period
+
+    def _stats_cards(self):
+        return {
             card["key"]: card
             for card in self.get_administration("stats", HHUKWINI_ADM).json()[
                 "data"
             ]
         }
-        last_month = cards["precipitation_last_month"]
+
+    def test_12m_card_headlines_the_satellite_total(self):
+        from_period, to_period = self._seed_chirps(mm=10.0)
+
+        card = self._stats_cards()["precipitation_12m"]
+
+        self.assertEqual(card["value"], 120.0)  # 12 x 10mm
+        self.assertEqual(card["meta"]["source"], "chirps")
+        self.assertEqual(card["meta"]["from"], from_period)
+        self.assertEqual(card["meta"]["to"], to_period)
+        self.assertEqual(card["meta"]["months_covered"], PRECIP_WINDOW_MONTHS)
+        self.assertEqual(card["meta"]["lag_months"], 0)
+
+    def test_12m_card_withholds_a_gauge_that_starts_mid_window(self):
+        """The fixture gauge is 10 days old. Its total is a real sum over a
+        real period — but under a 12-month label, beside a full satellite
+        figure, it reads as "almost no rain fell here" (KPI-1 D-8)."""
+        self._seed_chirps()
+
+        station = self._stats_cards()["precipitation_12m"]["meta"]["station"]
+
+        self.assertIsNone(station["value"])
+        self.assertEqual(station["reason"], "record_starts_mid_window")
+        self.assertEqual(station["name"], "MBABANE")
+        # Suppressed figure, but never the fact that a gauge exists — the
+        # chart below always plots its series.
         self.assertEqual(
-            last_month["meta"]["period"], self.today.strftime("%Y-%m")
-        )
-        self.assertGreater(last_month["value"], 0)
-        self.assertEqual(cards["precipitation_12m"]["value"], 16.0)  # 8x2mm
-        self.assertEqual(
-            cards["precipitation_12m"]["meta"]["from"],
+            station["first_record"],
             (self.today - timedelta(days=9)).isoformat(),
         )
+
+    def test_total_precipitation_names_the_reviewed_month(self):
+        """It reported whichever month this Inkhundla's gauge last produced a
+        row for — a different month per Inkhundla, and none of them the month
+        under review (KPI-1 FR-1/FR-2)."""
+        _, to_period = self._window()
+        reviewed = shift_period(to_period, -3)
+        self.publish(reviewed)
+        AdministrationObservation.objects.create(
+            administration_id=HHUKWINI_ADM,
+            year_month=month_start(reviewed),
+            parameter=WeatherParameter.precipitation,
+            value=88.0,
+            dataset="chirps-test",
+        )
+
+        card = self._stats_cards()["precipitation_last_month"]
+
+        self.assertEqual(card["label"], "Total precipitation")
+        self.assertEqual(card["meta"]["period"], reviewed)
+        self.assertEqual(card["value"], 88.0)
+        self.assertEqual(card["meta"]["source"], "chirps")
+
+    def test_total_precipitation_withholds_a_part_month_gauge(self):
+        """The gauge covered a handful of days, not the month. Presenting that
+        sum as a monthly total is the partial-month artefact (KPI-1 FR-6)."""
+        _, to_period = self._window()
+        reviewed = shift_period(to_period, -3)
+        self.publish(reviewed)
+        AdministrationObservation.objects.create(
+            administration_id=HHUKWINI_ADM,
+            year_month=month_start(reviewed),
+            parameter=WeatherParameter.precipitation,
+            value=50.0,
+            dataset="chirps-test",
+        )
+
+        station = self._stats_cards()["precipitation_last_month"]["meta"][
+            "station"
+        ]
+
+        self.assertIsNone(station["value"])
+        self.assertEqual(station["reason"], "incomplete_station_month")
+        self.assertLess(station["days_reported"], MIN_STATION_DAYS_PER_MONTH)
+
+    def test_total_precipitation_without_a_published_month(self):
+        """Nothing published means no month to report against — inventing one
+        would put the card back on a period the map cannot show."""
+        card = self._stats_cards()["precipitation_last_month"]
+
+        self.assertIsNone(card["meta"]["period"])
+        self.assertIsNone(card["value"])
+        self.assertEqual(card["meta"]["reason"], "no_published_month")
+
+    def test_window_ends_at_the_reviewed_month(self):
+        """All four cards describe one period (KPI-1 D-13)."""
+        _, to_period = self._window()
+        reviewed = shift_period(to_period, -3)
+        self.publish(reviewed)
+        self._seed_chirps()  # spans the nominal window and beyond
+
+        cards = self._stats_cards()
+
+        self.assertEqual(cards["precipitation_12m"]["meta"]["to"], reviewed)
+        self.assertEqual(
+            cards["precipitation_last_month"]["meta"]["period"], reviewed
+        )
+
+    def test_window_starts_no_earlier_than_the_satellite_archive(self):
+        """A window reaching past the archive claims months no dataset can
+        fill — and D-8 would then withhold a series that is complete over
+        every month it covers (KPI-1 D-13)."""
+        _, to_period = self._window()
+        self.publish(to_period)
+        # Archive begins 4 months before the window ends, well inside the
+        # nominal 12.
+        archive_from = shift_period(to_period, -3)
+        for offset in range(4):
+            AdministrationObservation.objects.create(
+                administration_id=HHUKWINI_ADM,
+                year_month=month_start(shift_period(archive_from, offset)),
+                parameter=WeatherParameter.precipitation,
+                value=10.0,
+                dataset="chirps-test",
+            )
+
+        card = self._stats_cards()["precipitation_12m"]
+
+        self.assertEqual(card["meta"]["from"], archive_from)
+        self.assertEqual(card["meta"]["window_months"], 4)
+        self.assertEqual(card["meta"]["target_window_months"], 12)
+        # Shortened, not withheld: the total covers every month it names.
+        self.assertEqual(card["value"], 40.0)
+        self.assertEqual(card["meta"]["months_covered"], 4)
+        self.assertIn(_period_label(archive_from), card["label"])
+
+    def test_completeness_window_ends_at_the_reviewed_month(self):
+        """Denominator stays 12 (D-1); only the window's end moved."""
+        _, to_period = self._window()
+        reviewed = shift_period(to_period, -3)
+        self.publish(reviewed)
+
+        completeness = self._completeness()
+
+        self.assertEqual(completeness["meta"]["to"], reviewed)
+        self.assertEqual(
+            completeness["meta"]["from"],
+            shift_period(reviewed, -(COMPLETENESS_WINDOW_MONTHS - 1)),
+        )
+        self.assertEqual(completeness["meta"]["window_months"], 12)
 
     def test_completeness_locked_for_anonymous(self):
         cards = {
@@ -119,10 +280,28 @@ class ExplorerStatsTests(ExplorerDataMixin, APITestCase):
         )
         self.assertEqual(after["value"], round(before["value"] + 3 / 12, 3))
 
+    def _seed_period(self, period):
+        """One precipitation reading in the given 'YYYY-MM'."""
+        StationDailyAggregate.objects.create(
+            station=self.mbabane,
+            date=month_start(period),
+            parameter=WeatherParameter.precipitation,
+            value=1.0,
+            readings_count=24,
+        )
+
     def test_months_outside_the_window_do_not_count(self):
+        # "Outside" is measured from the window's end, which is the reviewed
+        # month — not from today (KPI-1 D-13). Publishing it pins the window
+        # so the boundary does not drift with the run date.
+        _, to_period = self._window()
+        self.publish(to_period)
         before = self._completeness()
-        self._seed_month(12)  # exactly 12 months back = just outside
-        self._seed_month(14)
+        # One month before the window opens, and two further back.
+        self._seed_period(shift_period(to_period, -COMPLETENESS_WINDOW_MONTHS))
+        self._seed_period(
+            shift_period(to_period, -(COMPLETENESS_WINDOW_MONTHS + 2))
+        )
         after = self._completeness()
         self.assertEqual(after["value"], before["value"])
         self.assertEqual(
@@ -185,6 +364,7 @@ class SatelliteDifferenceCardTests(ExplorerDataMixin, APITestCase):
     """WX-10: Station-vs-Satellite difference card in /stats endpoint."""
 
     def test_satellite_not_published_when_no_observation(self):
+        self.publish(self.today.strftime("%Y-%m"))
         cards = {
             card["key"]: card
             for card in self.get_administration("stats", HHUKWINI_ADM).json()[
@@ -202,6 +382,7 @@ class SatelliteDifferenceCardTests(ExplorerDataMixin, APITestCase):
         # (fixture only has 8 reporting days)
 
         month_date = self.today.replace(day=1)
+        self.publish(self.today.strftime("%Y-%m"))
         AdministrationObservation.objects.create(
             administration_id=HHUKWINI_ADM,
             year_month=month_date,
@@ -227,6 +408,7 @@ class SatelliteDifferenceCardTests(ExplorerDataMixin, APITestCase):
         # Pick a fixed past month date (e.g. 2026-05)
         # so all daily aggregates fall in the same month
         month_date = date(2026, 5, 1)
+        self.publish("2026-05")
         for day_num in range(1, 22):
             StationDailyAggregate.objects.create(
                 station=self.mbabane,
@@ -264,6 +446,7 @@ class SatelliteDifferenceCardTests(ExplorerDataMixin, APITestCase):
         from api.v1.v1_weather.models import AdministrationObservation
 
         month_date = date(2026, 5, 1)
+        self.publish("2026-05")
         for day_num in range(1, 22):
             StationDailyAggregate.objects.create(
                 station=self.mbabane,

@@ -100,6 +100,57 @@ describe("middleware", () => {
     });
   });
 
+  describe("delegated citizen-science management (CS-DEL-1)", () => {
+    const CS_ABILITY = { action: "read", subject: "CitizenScience" };
+
+    it("admits a delegated reviewer to the citizen-science admin page", async () => {
+      auth.decrypt.mockResolvedValue({
+        token: "t",
+        role: ROLES.reviewer,
+        abilities: [CS_ABILITY],
+      });
+      expect(
+        (await run("/citizen-weather/admin", { session: true })).type,
+      ).toBe("next");
+    });
+
+    it("still bounces a reviewer who was never delegated", async () => {
+      // The control: same role, no ability. Without this the test above
+      // could be passing because reviewers were always allowed.
+      auth.decrypt.mockResolvedValue({
+        token: "t",
+        role: ROLES.reviewer,
+        abilities: [{ action: "read", subject: "Publication" }],
+      });
+      expect(
+        await run("/citizen-weather/admin", { session: true }),
+      ).toMatchObject({ type: "redirect", to: "/unauthorized" });
+    });
+
+    it.each(["/publications", "/settings", "/validations"])(
+      "does not open %s to a delegated reviewer",
+      async (path) => {
+        // The grant is one surface. Everything else stays admin-only.
+        auth.decrypt.mockResolvedValue({
+          token: "t",
+          role: ROLES.reviewer,
+          abilities: [CS_ABILITY],
+        });
+        expect(await run(path, { session: true })).toMatchObject({
+          type: "redirect",
+          to: "/unauthorized",
+        });
+      },
+    );
+
+    it("leaves an admin's access to the page unchanged", async () => {
+      auth.decrypt.mockResolvedValue({ token: "t", role: ROLES.admin });
+      expect(
+        (await run("/citizen-weather/admin", { session: true })).type,
+      ).toBe("next");
+    });
+  });
+
   describe("a session cookie that no longer validates", () => {
     // decrypt() swallows a bad cookie and returns {}, so `role` is undefined.
     // Most gated routes only escaped by accident, because some role check

@@ -161,14 +161,25 @@ export const getProfileDropdownItems = (user) => {
   const userEmail = user?.email || "";
   const isAdmin = user?.role === USER_ROLES.admin;
   const isStaff = [USER_ROLES.admin, USER_ROLES.reviewer].includes(user?.role);
+  // CS-DEL-1: a delegated coordinator sees the Citizen Weather entry without
+  // being an admin. Read off abilities, the same signal the route guard and
+  // the page's own <Can> checks use.
+  const managesCitizenScience = (user?.abilities || []).some(
+    (a) => a?.subject === "CitizenScience",
+  );
 
   const navItems = [
+    isAdmin && {
+      key: "nav-admin",
+      label: "Admin dashboard",
+      url: "/admin",
+    },
     isAdmin && {
       key: "nav-publications",
       label: "CDI publications",
       url: "/publications",
     },
-    isAdmin && {
+    (isAdmin || managesCitizenScience) && {
       key: "nav-citizen-weather",
       label: "Citizen Weather",
       url: "/citizen-weather/admin",

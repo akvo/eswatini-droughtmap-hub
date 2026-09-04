@@ -397,6 +397,94 @@ class ReviewQueueAPIsTestCase(APITestCase):
             stats.data["summary"]["tinkhundla_reviewed"]["value"],
         )
 
+    def test_table_awaiting_filter_is_the_complement_of_completed(self):
+        """"Awaiting review" is every row "Review completed" leaves out.
+
+        `reviewed` is tri-state: absent = all, true = done, false = to do. It
+        used to default to False and be coerced with `or None`, which made
+        `reviewed=false` a synonym for "All" — the whole table, including rows
+        the reviewer had already finished.
+        """
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        my_review, their_review = self._split_reviews()
+        for adm_id in adm_ids[:3]:
+            self._submit(my_review, adm_id, DroughtCategory.d2)
+        # another reviewer's work must not count as mine
+        if their_review:
+            self._submit(their_review, adm_ids[3], DroughtCategory.d1)
+
+        def ids(query):
+            res = self.client.get(f"{self.table_url}?{query}page_size=100")
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            return {r["administration_id"] for r in res.data["data"]}
+
+        every = ids("")
+        done = ids("reviewed=true&")
+        awaiting = ids("reviewed=false&")
+
+        self.assertEqual(done, set(adm_ids[:3]))
+        self.assertTrue(awaiting)                      # not an empty table
+        self.assertEqual(done | awaiting, every)       # together: everything
+        self.assertFalse(done & awaiting)              # apart: no overlap
+        if their_review:
+            # theirs is submitted, but not by me, so it is still mine to do
+            self.assertIn(adm_ids[3], awaiting)
+
+    def test_table_page_past_the_end_serves_the_last_page(self):
+        """A page that ran off the end is a stale bookmark, not a bad request.
+
+        The reviewer is returned to the page they came from, but "Awaiting
+        review" drops a row on every submission — so 6 pages becomes 5 while
+        they are inside an Inkhundla. DRF's default 404 ("Invalid page.")
+        rejected the fetch and took the whole queue render down with it.
+        """
+        rows = self.client.get(f"{self.table_url}?page_size=100").data["total"]
+        self.assertGreater(rows, 10)          # needs >1 page to be meaningful
+        last_page = -(-rows // 10)            # ceil
+
+        res = self.client.get(f"{self.table_url}?page={last_page + 3}")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["current"], last_page)
+        self.assertTrue(res.data["data"])
+        self.assertEqual(res.data["total"], rows)
+
+    def test_table_page_past_the_end_of_an_empty_queue(self):
+        """An emptied queue clamps to page 1 and returns no rows, never 404."""
+        my_review, _ = self._split_reviews()
+        for value in self.publication.initial_values:
+            self._submit(
+                my_review, value["administration_id"], DroughtCategory.d2
+            )
+        # nothing is awaiting any more
+        res = self.client.get(f"{self.table_url}?reviewed=false&page=6")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["current"], 1)
+        self.assertEqual(res.data["data"], [])
+        self.assertEqual(res.data["total"], 0)
+
+    def test_map_awaiting_filter_matches_the_table(self):
+        """The map takes the same chip, so Prev/Next walks the same rows."""
+        adm_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        my_review, _ = self._split_reviews()
+        self._submit(my_review, adm_ids[0], DroughtCategory.d2)
+
+        table = self.client.get(
+            f"{self.table_url}?reviewed=false&page_size=100"
+        )
+        map_res = self.client.get(f"{self.map_url}?reviewed=false")
+        self.assertEqual(
+            {r["administration_id"] for r in table.data["data"]},
+            {r["administration_id"] for r in map_res.data["data"]},
+        )
+        self.assertNotIn(
+            adm_ids[0],
+            {r["administration_id"] for r in map_res.data["data"]},
+        )
+
     def test_table_carries_my_own_suggestion(self):
         # D-Class shows the reviewer's own class; assigned_score is the
         # validated one and stays empty until a validator signs the month off.

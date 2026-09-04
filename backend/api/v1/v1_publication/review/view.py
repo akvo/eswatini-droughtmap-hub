@@ -44,7 +44,7 @@ from api.v1.v1_publication.constants import (
     BANDS,
 )
 from utils.custom_permissions import IsReviewer
-from utils.custom_pagination import Pagination
+from utils.custom_pagination import ClampedPagination
 from utils.default_serializers import DefaultResponseSerializer
 
 _COMMON_FILTER_PARAMS = [
@@ -144,7 +144,9 @@ class ReviewAdministrationsAPI(APIView):
     def get(self, request, version, pk):
         publication = get_object_or_404(Publication, pk=pk)
         rows = _filtered_rows(publication, request)
-        paginator = Pagination()
+        # Clamped, not plain: the queue shrinks under "Awaiting review", so a
+        # page the reviewer was legitimately on can fall past the end.
+        paginator = ClampedPagination()
         page = paginator.paginate_queryset(rows, request)
         return paginator.get_paginated_response(page)
 

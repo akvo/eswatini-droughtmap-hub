@@ -284,10 +284,12 @@ def filter_rows(rows, search=None, confidence=None,
                 reviewed=None, region=None, zone=None):
     """Apply the review-queue table / map filters over pre-built rows.
 
-    ``reviewed`` (the "Review completed" chip) is **scoped to the requesting
-    reviewer**: it keeps the Tinkhundla *they* have submitted a suggestion for
-    (``my_suggestion.reviewed``), which is the same signal as the
-    ``tinkhundla_reviewed`` / ``pending_review`` cards.
+    ``reviewed`` is **scoped to the requesting reviewer** and tri-state:
+    ``None`` keeps every row, ``True`` is the "Review completed" chip, ``False``
+    is "Awaiting review". Both chips read the same signal — whether *this*
+    reviewer has submitted a suggestion (``my_suggestion.reviewed``) — so they
+    partition the queue exactly, and match the ``tinkhundla_reviewed`` /
+    ``pending_review`` cards respectively.
 
     Two earlier readings were wrong for different reasons: ``!= not_started``
     made the chip identical to "All" as soon as one reviewer worked the queue,
@@ -300,7 +302,7 @@ def filter_rows(rows, search=None, confidence=None,
             return False
         if confidence and row["confidence"]["band"] != confidence:
             return False
-        if reviewed and not is_mine_reviewed(row):
+        if reviewed is not None and is_mine_reviewed(row) != reviewed:
             return False
         if region and row["region"] != region:
             return False

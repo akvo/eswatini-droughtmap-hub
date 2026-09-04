@@ -1,7 +1,12 @@
 import json
 import logging
+import re
 import time
+from calendar import monthrange
+from collections import Counter
 from datetime import datetime, timedelta
+
+from dateutil.relativedelta import relativedelta
 
 import requests
 from django.conf import settings
@@ -10,13 +15,16 @@ from django_q.tasks import async_task
 
 from api.v1.v1_jobs.models import Jobs, JobStatus, JobTypes
 from .constants import (
+    DEMO_GEONODE_ID_BASE,
     DroughtCategory,
     CDIGeonodeCategory,
     GEONODE_SSL_VERIFY,
     GEONODE_REQUEST_TIMEOUT,
+    NARRATIVE_MAX_CHARS,
     PublicationStatus,
+    is_validated,
 )
-from .models import PublicationGeonode, PublicationRaster
+from .models import Publication, PublicationGeonode, PublicationRaster
 
 logger = logging.getLogger(__name__)
 
@@ -423,21 +431,74 @@ def topojson_administration_ids(path: str = TOPOJSON_PATH) -> list:
     ]
 
 
-def generate_narrative(fake) -> str:
-    title = fake.sentence(nb_words=6)
-    author = fake.name()
-    date = fake.date()
-    content = "\n".join(
-        f"<p>{fake.paragraph(nb_sentences=5)}</p>" for _ in range(15)
-    )
-    return f"""
-    <narrative>
-        <h1>{title}</h1>
-        <p><strong>Author:</strong> {author}</p>
-        <p><strong>Date:</strong> {date}</p>
-        {content}
-    </narrative>
+def _class_phrase(category) -> str:
+    """"D0 Abnormally Dry" -> "D0 abnormally dry".
+
+    Lower-cased to sit inside a sentence, but the D-code is re-capitalised:
+    a flat `.lower()` renders it "d0", which is not what the scale is called
+    anywhere else in the product.
     """
+    label = DroughtCategory.FieldStr[category].lower()
+    return re.sub(r"^d(\d)", lambda m: f"D{m.group(1)}", label)
+
+
+def generate_narrative(publication) -> str:
+    """The hero description for a seeded publication, from its own values.
+
+    Plain text, one paragraph, comfortably under NARRATIVE_MAX_CHARS.
+
+    Every one of those constraints is load-bearing, because HeroSection does
+    `summary.slice(0, OVERVIEW_NARRATIVE_MAX_CHARS)` and hands the result to
+    `dangerouslySetInnerHTML`:
+
+      - markup would be cut mid-tag at the slice and injected broken;
+      - anything over the ceiling is truncated mid-sentence;
+      - and the previous version opened with a Faker `name()` under an
+        "Author:" heading, which put a fabricated person on a public national
+        page — the first thing a reader saw.
+
+    Derived rather than invented: the counts describe the D-classes actually
+    being published, so a backfilled month reads as what it is instead of as
+    lorem ipsum.
+    """
+    values = publication.validated_values or publication.initial_values or []
+    counted = Counter(
+        row.get("category")
+        for row in values
+        if is_validated(row.get("category"))
+    )
+    month = as_target_month(publication.year_month)
+    month_label = datetime.strptime(month, "%Y-%m").strftime("%B %Y")
+
+    if not counted:
+        return (
+            f"Validated drought classification for {month_label}. "
+            "No Inkhundla carries a classification for this month."
+        )
+
+    total = sum(counted.values())
+    parts = [
+        f"{count} {_class_phrase(category)}"
+        for category, count in sorted(counted.items())
+    ]
+    summary = (
+        f"Validated drought classification for {month_label}, covering "
+        f"{total} Tinkhundla: {', '.join(parts)}."
+    )
+    return squish(summary, NARRATIVE_MAX_CHARS)
+
+
+def squish(text: str, limit: int) -> str:
+    """Collapse whitespace and cut to `limit` on a word boundary.
+
+    The cut is deliberate rather than left to the frontend's slice: cutting
+    here can stop at a space, while a slice on the way to the DOM lands
+    wherever the character count falls.
+    """
+    text = re.sub(r"\s+", " ", (text or "")).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:") + "\u2026"
 
 
 def seed_values(administration_ids, rng) -> list:
@@ -461,7 +522,67 @@ def _as_datetime(value):
     return datetime.combine(value, datetime.min.time())
 
 
-def publish_seeded(publication, fake, rng):
+def geonode_id_for_period(period, category=CDIGeonodeCategory.cdi) -> int:
+    """The GeoNode asset id a seeded month belongs to.
+
+    Real cached asset when there is one. Otherwise a stand-in derived from the
+    month itself — never from a loop index, which re-points an existing stub at
+    a different month as soon as a run covers a different range — plus the
+    `PublicationGeonode` row that makes it resolvable.
+
+    Shared by generate_publications_seeder and backfill_publications so the two
+    cannot derive different ids for the same month.
+    """
+    geonode_id = cached_geonode_id(category, period)
+    if geonode_id:
+        return geonode_id
+
+    year, month = (int(part) for part in period.split("-"))
+    geonode_id = DEMO_GEONODE_ID_BASE + (year - 2000) * 12 + (month - 1)
+    PublicationGeonode.objects.update_or_create(
+        geonode_id=geonode_id,
+        defaults={
+            "category": category,
+            "title": f"demo_cdi_pct_rank_eswatini_{year}{month:02d}",
+            "year_month": f"{period}-01",
+            # The marker for a stand-in row, so --clean can drop it without
+            # touching a real synced resource.
+            "raw": {"demo": True},
+        },
+    )
+    return geonode_id
+
+
+def create_seeded_publication(period, values, status, due_date=None):
+    """Get-or-create the seeded Publication for one month.
+
+    The single definition of what a seeded row looks like, so
+    generate_publications_seeder and backfill_publications cannot drift on the
+    field set — the divergence the seeder's own docstring records as the cause
+    of the "every map is Wet/normal" bug.
+
+    `due_date` defaults to the end of the month AFTER the period, which is
+    when that month's review is due.
+    """
+    year, month = (int(part) for part in period.split("-"))
+    if due_date is None:
+        due_date = datetime(
+            year, month, monthrange(year, month)[1]
+        ) + relativedelta(months=1)
+
+    return Publication.objects.get_or_create(
+        cdi_geonode_id=geonode_id_for_period(period),
+        defaults={
+            "year_month": f"{period}-01",
+            "initial_values": values,
+            "status": status,
+            "due_date": due_date,
+            "is_seeded": True,
+        },
+    )
+
+
+def publish_seeded(publication, rng):
     """Promote a seeded publication to published, with a narrative.
 
     Distinct from publish_seeded_publication above, which mirrors extracted
@@ -471,7 +592,6 @@ def publish_seeded(publication, fake, rng):
     publication.published_at = timezone.make_aware(
         _as_datetime(publication.due_date) + timedelta(days=rng.randint(1, 7))
     )
-    publication.narrative = generate_narrative(fake)
     publication.bulletin_url = BULLETIN_URL
     publication.validated_values = [
         {
@@ -481,6 +601,10 @@ def publish_seeded(publication, fake, rng):
         }
         for v in publication.initial_values
     ]
+    # After validated_values, not before: the narrative counts the classes
+    # being published. It only read the right numbers previously because it
+    # falls back to initial_values, which happen to carry the same ones.
+    publication.narrative = generate_narrative(publication)
     publication.save()
     return publication
 

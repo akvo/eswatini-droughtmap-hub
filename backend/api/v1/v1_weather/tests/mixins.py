@@ -4,7 +4,8 @@ from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
 
-from api.v1.v1_publication.models import Administration
+from api.v1.v1_publication.constants import PublicationStatus
+from api.v1.v1_publication.models import Administration, Publication
 from api.v1.v1_users.models import SystemUser as User
 from api.v1.v1_weather.constants import WeatherParameter
 from api.v1.v1_weather.models import (
@@ -12,6 +13,7 @@ from api.v1.v1_weather.models import (
     WeatherSource,
     WeatherStation,
 )
+from utils.periods import month_end, month_start
 
 MBABANE = "0-20000-0-68391"
 HHUKWINI_ADM = 4588078  # Hhohho
@@ -69,6 +71,23 @@ class ExplorerDataMixin:
                     value=value,
                     readings_count=24,
                 )
+
+    def publish(self, period):
+        """Publish a month so the explorer cards have an anchor.
+
+        Every stat card reports against the latest published publication, so
+        a fixture with observations but nothing published has no period to
+        describe and every card is its empty state (KPI-1 FR-1).
+        """
+        return Publication.objects.create(
+            cdi_geonode_id=int(period.replace("-", "")),
+            year_month=month_start(period),
+            due_date=month_end(period),
+            status=PublicationStatus.published,
+            published_at=timezone.now(),
+            initial_values=[],
+            validated_values=[],
+        )
 
     def get_administration(self, endpoint, administration_id, **params):
         return self.client.get(

@@ -55,7 +55,11 @@ from api.v1.v1_weather.services import (
     resolve_administration_latest,
     station_health,
 )
-from utils.custom_permissions import IsAdmin, IsObserver
+from utils.custom_permissions import (
+    IsAdmin,
+    IsCitizenScienceManager,
+    IsObserver,
+)
 
 PERIOD_RE = r"^\d{4}-(0[1-9]|1[0-2])$"
 
@@ -353,7 +357,7 @@ class CitizenScienceStationListAPI(APIView):
     """Admin network table + overview stats, and the unified add
     station + observer registration (brief §6.3–6.4)."""
 
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsCitizenScienceManager]
 
     @extend_schema(
         tags=["Citizen Science"],
@@ -417,7 +421,7 @@ class CitizenScienceStationDetailAPI(APIView):
     """WX-7: edit (PATCH), reassign (POST) and archive (DELETE) one
     station. The station IS its active observer row (WX-6 D-2)."""
 
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsCitizenScienceManager]
 
     def get_observer(self, administration_id):
         return get_object_or_404(
@@ -510,7 +514,7 @@ class CitizenScienceStationDetailAPI(APIView):
 class CitizenScienceReminderAPI(APIView):
     """Trigger reminder emails: all-due, or a nudge via user_ids."""
 
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsCitizenScienceManager]
 
     @extend_schema(
         tags=["Citizen Science"],
@@ -527,7 +531,7 @@ class CitizenScienceReminderAPI(APIView):
 class CitizenScienceExportAPI(APIView):
     """Full dataset CSV download for admins."""
 
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsCitizenScienceManager]
 
     @extend_schema(
         tags=["Citizen Science"],

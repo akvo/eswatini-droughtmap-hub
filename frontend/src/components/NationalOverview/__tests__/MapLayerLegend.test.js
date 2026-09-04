@@ -82,4 +82,32 @@ describe("MapLayerLegend", () => {
     const { container } = render(<MapLayerLegend layer={{ meta: {} }} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("explains what the layer shows, from the API", () => {
+    render(
+      <MapLayerLegend
+        layer={{
+          legend: { continuous: true, min: 0, max: 1, colors: ["#fff"] },
+          meta: { description: "Percentile rank, not degrees." },
+        }}
+      />,
+    );
+    // The sentence is the accessible name, so it reaches a screen reader
+    // without a hover the pointer-less cannot perform.
+    expect(
+      screen.getByLabelText("Percentile rank, not degrees."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no info affordance for a layer the API does not describe", () => {
+    render(
+      <MapLayerLegend
+        layer={{
+          legend: { continuous: true, min: 0, max: 1, colors: ["#fff"] },
+          meta: {},
+        }}
+      />,
+    );
+    expect(screen.queryByTestId("layer-info")).not.toBeInTheDocument();
+  });
 });

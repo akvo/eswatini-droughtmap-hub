@@ -1,4 +1,5 @@
 import re
+from django.db.models import Q
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from drf_spectacular.types import OpenApiTypes
@@ -29,9 +30,17 @@ class UserSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(AbilitySerializer(many=True))
     def get_abilities(self, instance):
-        _abilities = Ability.objects.filter(
-            role=instance.role
-        ).all()
+        query = Q(role=instance.role)
+        if instance.manages_citizen_science:
+            # CS-DEL-1 D-5: the per-user flag decides, abilities express the
+            # result — so the frontend keeps ONE authority to read. The rows
+            # are borrowed from the admin role rather than redefined here,
+            # which keeps generate_roles_n_abilities_seeder the single
+            # definition of what CitizenScience permits.
+            query |= Q(
+                role=UserRoleTypes.admin, subject="CitizenScience"
+            )
+        _abilities = Ability.objects.filter(query).distinct()
         return AbilitySerializer(_abilities, many=True).data
 
     class Meta:

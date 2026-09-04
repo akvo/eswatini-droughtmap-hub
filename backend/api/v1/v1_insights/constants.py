@@ -4,8 +4,7 @@ Paths, palettes and the map-tab inventory live here so the modules that use
 them stay about behaviour. Two pairs in particular were previously declared
 twice, a file apart, and had to agree:
 
-  - the agro-eco GeoJSON path, written by `generate_agro_geojson` and read by
-    the view that serves it
+  - the agro-eco geometry path, read by the view that serves it
   - the CHIRPS bbox, which must match `build_chirps_normals.BBOX` or a monthly
     raster would not line up with the 30-year normals it is read against
 """
@@ -25,11 +24,27 @@ CHIRPS_BBOX = (30.75, -27.5, 32.25, -25.0)
 
 # --- Agro-ecological zone geometry -----------------------------------------
 
+# The analysis source, in Transverse Mercator METRES (AGRO_TOPOJSON_CRS).
+# `assign_administration_zones` overlays Tinkhundla against it, where a metric
+# CRS is what makes the area weighting meaningful.
 AGRO_TOPOJSON = "./source/eswatini-ecological_regions.topojson"
-# WGS84 GeoJSON written by `generate_agro_geojson`. NOT the topojson above:
-# that one is in Transverse Mercator metres and Leaflet would draw it off the
-# map entirely.
-AGRO_GEOJSON = "./storage/agro-eco.geojson"
+# The display copy: the same six polygons reprojected to WGS84 once and
+# committed, because the reprojection is a constant. It used to be recomputed
+# on every deploy into a gitignored 1.4 MB GeoJSON — a step that, when
+# skipped, 404'd the tab. As quantized TopoJSON it is 173 KB and the frontend
+# decodes it the same way it decodes eswatini.topojson.
+AGRO_WGS84_TOPOJSON = "./source/eswatini-ecological_regions-wgs84.topojson"
+
+# --- Administrative region geometry ----------------------------------------
+
+# Already in degrees, so unlike the agro source it needs no reprojection at
+# all — it is both the analysis source and the display copy.
+REGION_TOPOJSON = "./source/eswatini-region.topojson"
+# Joined on the file's own `region` property, added to carry exactly the
+# values Administration.region holds: Hhohho, Lubombo, Manzini, Shiselweni.
+# NAME_1 matches today, but `region` is the stated contract and the one to
+# keep in step if either side is renamed.
+REGION_PROPERTY = "region"
 
 # --- Map data tabs ---------------------------------------------------------
 
@@ -61,6 +76,40 @@ LAYERS = [
 ]
 
 LAYER_LABELS = {layer["key"]: layer["label"] for layer in LAYERS}
+
+# What each tab is actually showing, in the reader's terms. Backend-side
+# because it is provenance, not styling: it names the dataset the builder
+# beside it reads, and the two have to move together.
+#
+# The upstream dataset is cited, NOT `Indicator.source`. That column is free
+# text typed at upload time and currently reads "JRBA (2026-08)" for both
+# exposure layers, while the handover CSVs record WorldPop and Dynamic World.
+# Repeating the stored label on a public map would publish an attribution we
+# know to be wrong; the column itself is being corrected separately.
+#
+# `land_use_dvi_agri` is deliberately not expanded or defined here — nothing
+# in the repo records what DVI-agri measures, and a public definition is not
+# the place to guess.
+DESCRIPTIONS = {
+    "land-use": (
+        "Land-use index (DVI-agri) per Inkhundla, on a 0–1 scale. Derived "
+        "from Google Dynamic World satellite land cover, 22 July 2026. A "
+        "static snapshot — it does not change from month to month."
+    ),
+    "population": (
+        "Estimated residents per Inkhundla, from WorldPop gridded population "
+        "summed inside each boundary. A modelled estimate rather than a "
+        "census count, and a static snapshot — it does not change from month "
+        "to month."
+    ),
+    "esi": (
+        "Evaporative Stress Index for the reviewed month, as a percentile "
+        "rank from 0 to 1 against the same Inkhundla's own history — darker "
+        "means a higher rank. One of the four components the CDI is built "
+        "from. These are ranks, not degrees: this tab was once labelled "
+        "Temperature, and it does not show one."
+    ),
+}
 
 # Layers `map_layers` can build. drought-class is absent on purpose: it
 # already renders through Publication.validated_values with an interactive

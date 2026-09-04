@@ -52,14 +52,14 @@ from api.v1.v1_publication.constants import (
     GEONODE_SSL_VERIFY,
     GEONODE_REQUEST_TIMEOUT,
     CDIGeonodeCategory,
-    DEMO_GEONODE_ID_BASE,
     PublicationStatus,
 )
 from api.v1.v1_publication.models import Publication, PublicationGeonode
 from api.v1.v1_publication.raster_archive import scan_raster_archive
 from api.v1.v1_publication.utils import (
     attach_component_rasters,
-    cached_geonode_id,
+    create_seeded_publication,
+    geonode_id_for_period,
     geonode_auth,
     get_category,
     has_active_cdi_download,
@@ -243,37 +243,9 @@ class Command(BaseCommand):
             return PublicationStatus.in_validation
         return status
 
-    def _geonode_id_for(self, period, category=CDIGeonodeCategory.cdi):
-        """The GeoNode asset id this month's publication belongs to.
-
-        Real cached asset when there is one. Otherwise a stand-in id derived
-        from the month itself — never from a loop index, which re-points an
-        existing stub at a different month as soon as a run covers a
-        different range — plus the `PublicationGeonode` row that makes it
-        resolvable.
-        """
-        geonode_id = cached_geonode_id(category, period)
-        if geonode_id:
-            return geonode_id
-
-        year, month = (int(part) for part in period.split("-"))
-        geonode_id = DEMO_GEONODE_ID_BASE + (year - 2000) * 12 + (month - 1)
-        PublicationGeonode.objects.update_or_create(
-            geonode_id=geonode_id,
-            defaults={
-                "category": category,
-                "title": f"demo_cdi_pct_rank_eswatini_{year}{month:02d}",
-                "year_month": f"{period}-01",
-                # The marker for a stand-in row, so --clean can drop it
-                # without touching a real synced resource.
-                "raw": {"demo": True},
-            },
-        )
-        return geonode_id
-
     def _finalise(self, publication, start_date):
         if publication.status == PublicationStatus.published:
-            publish_seeded(publication, self.fake, self.rng)
+            publish_seeded(publication, self.rng)
         if self.with_reviews:
             seed_reviews(publication, start_date, self.fake, self.rng)
 
@@ -300,19 +272,19 @@ class Command(BaseCommand):
             geonode_id = (
                 TEST_GEONODE_IDS[index]
                 if kwargs["test"]
-                else self._geonode_id_for(period)
+                else geonode_id_for_period(period)
             )
             publication = Publication.objects.filter(
                 cdi_geonode_id=geonode_id
             ).first()
             if not publication:
-                publication = Publication.objects.create(
-                    cdi_geonode_id=geonode_id,
-                    year_month=f"{period}-01",
-                    initial_values=seed_values(administration_ids, self.rng),
-                    status=self._status_for(index, status, repeat, period),
+                publication, _ = create_seeded_publication(
+                    period,
+                    seed_values(administration_ids, self.rng),
+                    self._status_for(index, status, repeat, period),
+                    # Offline fixture mode pins the id, so the shared helper's
+                    # geonode_id_for_period lookup is bypassed above.
                     due_date=due_date,
-                    is_seeded=True,
                 )
             self._finalise(publication, start_date)
 
@@ -358,17 +330,11 @@ class Command(BaseCommand):
                 for item in compute_zonal_values(archive[("cdi", period)])
             ]
 
-            publication, _ = Publication.objects.get_or_create(
-                cdi_geonode_id=self._geonode_id_for(period),
-                defaults={
-                    "year_month": f"{period}-01",
-                    "initial_values": values,
-                    "status": self._status_for(
-                        index, status, repeat, period
-                    ),
-                    "due_date": due_date,
-                    "is_seeded": True,
-                },
+            publication, _ = create_seeded_publication(
+                period,
+                values,
+                self._status_for(index, status, repeat, period),
+                due_date=due_date,
             )
             self._finalise(publication, start_date)
             self.stdout.write(f"{period}: {len(values)} value(s)")

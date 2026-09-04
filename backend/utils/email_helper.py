@@ -167,12 +167,23 @@ def email_context(context: dict, type: str):
         context.update(
             {
                 "subject": "Sign in to Citizen Science Weather",
+                # Copy folded in from the retired
+                # templates/email/citizen_weather_welcome.html, which was
+                # never wired to anything. Only variables this job actually
+                # passes are used — the template also referenced
+                # `station_region`, which no caller supplies.
                 "body": """
                 Sanibonani {0},
-                Welcome to Citizen Science Weather!
-                Use the link below to open the monthly weather form for
-                <b>{1}</b>. The link works for 7 days — you can request a
-                fresh one anytime with just your email address.
+                Welcome to Citizen Science Weather! You have been registered
+                as the weather observer for <b>{1}</b>.
+                <br/><br/>
+                On the 1st of every month you will receive an email asking
+                you to submit your readings. Each email contains a sign-in
+                link — one click and you are in, no password needed.
+                <br/><br/>
+                Use the link below to open the form now. It works for 7 days,
+                and you can request a fresh one anytime with just your email
+                address.
                 """.format(
                     context["name"],
                     context["station_name"],
@@ -223,14 +234,23 @@ def email_context(context: dict, type: str):
                     context["station_name"],
                     context["month_label"],
                 ),
+                # Copy folded in from the retired
+                # templates/email/citizen_weather_reminder.html and
+                # ..._nudge.html. Both rendered this same email — an admin's
+                # row-level nudge is `dispatch_cs_reminders(user_ids=...)`,
+                # not a third type — so their copy belongs here.
                 "body": """
                 Sanibonani {0},
-                It's time to log last month's weather for <b>{1}</b>.
-                You don't have to fill every field — whatever your station
-                recorded is valuable. Siyabonga!
+                It's the first of the month — time to share what <b>{1}</b>
+                observed in {2}.
+                <br/><br/>
+                You don't have to fill every field; whatever your station
+                recorded is valuable. One click, no password to remember —
+                the link below is valid for 7 days. Siyabonga!
                 """.format(
                     context["name"],
                     context["station_name"],
+                    context["month_label"],
                 ),
                 "cta_text": "Submit my weather reading",
                 "cta_url": "{0}{1}?token={2}".format(
@@ -297,11 +317,15 @@ def send_email(
     send=True,
 ):
     context = email_context(context=context, type=type)
+    # The template's logos are served by the frontend, and an email has no
+    # origin to resolve a relative path against — every src must be absolute
+    # or the partner strip renders as broken images.
+    context.setdefault("webdomain", WEBDOMAIN)
     try:
 
         email_html_message = render_to_string("email/main.html", context)
         msg = EmailMultiAlternatives(
-            "EDM - {0}".format(context.get("subject")),
+            "DIH - {0}".format(context.get("subject")),
             "Email plain text",
             EMAIL_FROM,
             context.get("send_to"),

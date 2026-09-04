@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework import status
@@ -24,6 +24,10 @@ from api.v1.v1_insights.services import compute_linear_slope
 class InsightsAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        # Field reports are counted within the anchor month — the published
+        # publication's month, 2026-05 below — so fixtures dated "now" would
+        # land outside the window and count zero.
+        self.anchor_dt = timezone.make_aware(datetime(2026, 5, 15, 12, 0))
         self.admin = Administration.objects.create(
             name="Mhlume",
             region="Lubombo",
@@ -134,7 +138,7 @@ class InsightsAPITests(TestCase):
         KoboData.objects.create(
             form=form,
             kobo_id=123456,
-            submission_time=timezone.now(),
+            submission_time=self.anchor_dt,
             raw_data={
                 "A3_Name_of_chiefdom_odzi_lokubikwa_ngaso": "TestChiefdom"
             },
@@ -175,7 +179,7 @@ class InsightsAPITests(TestCase):
             KoboData.objects.create(
                 form=form,
                 kobo_id=kobo_id,
-                submission_time=timezone.now(),
+                submission_time=self.anchor_dt,
                 raw_data={},
             )
 
@@ -207,7 +211,7 @@ class InsightsAPITests(TestCase):
             KoboData.objects.create(
                 form=form,
                 kobo_id=kobo_id,
-                submission_time=timezone.now(),
+                submission_time=self.anchor_dt,
                 raw_data={},
             )
             IKSValue.objects.create(
@@ -236,7 +240,7 @@ class InsightsAPITests(TestCase):
         KoboData.objects.create(
             form=form,
             kobo_id=3001,
-            submission_time=timezone.now(),
+            submission_time=self.anchor_dt,
             raw_data={},
         )
         data = self.client.get("/api/v1/insights/metrics").json()
@@ -409,3 +413,84 @@ class InsightsAPITests(TestCase):
         self.assertTrue(len(breakdowns) > 0)
         first_breakdown_point = breakdowns[0]["data"][0]
         self.assertIn("names", first_breakdown_point)
+
+
+class MetricsAnchorTests(TestCase):
+    """The KPI cards describe the reviewed month, not the current one.
+
+    Four cards each deriving their own period from `timezone.now()` put a
+    3-day rainfall figure, a live station count and a rolling 30-day report
+    tally side by side under a May map (KPI-1 FR-1/FR-2).
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        for year_month in (date(2026, 4, 1), date(2026, 5, 1)):
+            Publication.objects.create(
+                cdi_geonode_id=int(year_month.strftime("%Y%m")),
+                year_month=year_month,
+                due_date=year_month,
+                status=PublicationStatus.published,
+                published_at=timezone.now(),
+                initial_values=[],
+                validated_values=[],
+            )
+
+    def test_defaults_to_the_latest_published_month(self):
+        data = self.client.get("/api/v1/insights/metrics").json()
+        self.assertEqual(data["period"], "2026-05")
+        self.assertEqual(data["periodLabel"], "May 2026")
+
+    def test_every_card_names_the_same_month(self):
+        data = self.client.get("/api/v1/insights/metrics").json()
+        for key in ("rainfall", "temperature", "fieldReports"):
+            self.assertIn("May 2026", data[key]["note"], msg=key)
+        self.assertIn("2026-05", data["activeStations"]["asOf"])
+
+    def test_no_card_names_the_current_calendar_month(self):
+        """The defect in one assertion: a note built from `now` under a value
+        read from a published month (KPI-1 AC-5)."""
+        this_month = timezone.now().strftime("%B %Y")
+        if this_month == "May 2026":
+            self.skipTest("current month coincides with the fixture anchor")
+        data = self.client.get("/api/v1/insights/metrics").json()
+        for key in ("rainfall", "temperature", "fieldReports"):
+            self.assertNotIn(this_month, data[key]["note"], msg=key)
+
+    def test_an_explicit_month_moves_every_card(self):
+        data = self.client.get(
+            "/api/v1/insights/metrics?year_month=2026-04"
+        ).json()
+        self.assertEqual(data["period"], "2026-04")
+        self.assertIn("April 2026", data["rainfall"]["note"])
+        self.assertIn("April 2026", data["fieldReports"]["note"])
+
+    def test_history_ends_at_the_anchor_not_today(self):
+        data = self.client.get(
+            "/api/v1/insights/metrics?year_month=2026-04"
+        ).json()
+        self.assertEqual(data["rainfall"]["history"][-1]["key"], "2026-04")
+
+    def test_an_unpublished_month_is_rejected(self):
+        """Serving it would let the cards describe a period the map cannot
+        render — the original defect wearing a different hat (KPI-1 FR-1a)."""
+        response = self.client.get(
+            "/api/v1/insights/metrics?year_month=2026-07"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("year_month", response.json())
+
+    def test_a_malformed_month_is_rejected(self):
+        response = self.client.get(
+            "/api/v1/insights/metrics?year_month=May-2026"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_month_and_inkhundla_compose(self):
+        admin = Administration.objects.create(name="Mhlume", region="Lubombo")
+        data = self.client.get(
+            f"/api/v1/insights/metrics?year_month=2026-04"
+            f"&inkhundla_id={admin.id}"
+        ).json()
+        self.assertEqual(data["period"], "2026-04")
+        self.assertIn(admin.name, data["fieldReports"]["label"])

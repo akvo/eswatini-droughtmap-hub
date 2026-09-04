@@ -163,14 +163,14 @@ export const TWG_LOGOS = [
   {
     id: 4,
     image: "/images/logo-met-1.png",
-    alt: "MET (Meteorological Office) 1",
-    url: "https://www.swazimet.gov.sz/",
+    alt: "Ministry of Tourism and Environmental Affairs",
+    url: "https://www.gov.sz/index.php/ministries-departments/ministry-of-tourims-environments-a-communications",
   },
   {
     id: 5,
     image: "/images/logo-met-2.jpg",
     alt: "MET (Meteorological Office) 2",
-    url: "https://www.uneswa.sz/",
+    url: "https://www.swazimet.gov.sz/",
   },
   {
     id: 6,
