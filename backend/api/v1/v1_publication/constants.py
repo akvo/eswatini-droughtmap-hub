@@ -327,3 +327,10 @@ AGRO_TOPOJSON_CRS = (
 # Per-sector paragraph the admin writes at publish time. Mirrored by
 # OVERVIEW_SECTOR_CONTEXT_MAX_CHARS in the frontend config.
 SECTOR_CONTEXT_MAX_CHARS = 500
+
+# The National Overview hero description. Mirrors OVERVIEW_NARRATIVE_MAX_CHARS
+# in the frontend config, which is a hard cut, not a hint: HeroSection slices
+# the narrative to this length and injects the result with
+# dangerouslySetInnerHTML. Anything longer is truncated wherever the count
+# lands — mid-word, or mid-tag if the text carries markup.
+NARRATIVE_MAX_CHARS = 550

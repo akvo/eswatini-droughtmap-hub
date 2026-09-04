@@ -117,6 +117,7 @@ environment holding real data**:
 |------|--------|--------------------|
 | **Setup** | reference data from `backend/source/`, or real data pulled from GeoNode / WIS2 / CHIRPS / Kobo | ✅ yes |
 | **Demo** | fabricated drought classifications, stations, submissions and accounts | ❌ never |
+| **Maintenance** | repairs a live record — currently only `backfill_publications` | ⚠️ deliberately, with a raster `--source` |
 
 **Setup — reference data shipped in the repo**
 
@@ -146,7 +147,7 @@ All are idempotent and all are documented in their own sections below.
 | Command | Fabricates |
 |---------|-----------|
 | `seed_demo` | orchestrates every row below |
-| `generate_publications_seeder` | Publications + Reviews |
+| `generate_publications_seeder` | Publications + Reviews — for production gaps use [`backfill_publications`](#backfilling-published-months-backfill_publications) instead |
 | `generate_rasters_seeder` | PublicationRaster component values |
 | `generate_weather_seeder` | station daily aggregates |
 | `generate_iks_seeder` | Kobo IKS submissions + photos |
@@ -206,6 +207,109 @@ their rows `is_placeholder=True` so an operator upload replaces them cleanly:
 `generate_eligibility_seeder` (prototype counts) and
 `generate_water_demand_seeder` (a draft DWA export). Skip them if you would
 rather those columns read "no data" until a real upload arrives.
+
+---
+
+## **Backfilling published months: `backfill_publications`**
+
+A month with no publication renders as an empty cell on the CDI-E D-class strip
+and is absent from `/api/v1/dates`. That is correct — the strip is anchored on
+the current month, so a publication pause shows as gaps on the right — but a
+long pause leaves a page that reads as missing data.
+
+`backfill_publications` fills **named** gaps in a live record. It is the only
+command in this README that writes publications and is meant to be run on
+production, and it is a different job from the seeder:
+
+| | `generate_publications_seeder` | `backfill_publications` |
+|---|---|---|
+| Purpose | build a believable dev database | fill named gaps in a live record |
+| Months | `--repeat N`, counted back from today | `--from` / `--to`, named explicitly |
+| Writes by default | **yes** | **no** — reports; `--apply` writes |
+| Existing publications | may publish or mutate them | never touched; skipped, with status |
+| Statuses produced | a ladder — in_review → in_validation → published | published only |
+| Can delete | `--reset` **hard-deletes every publication** | nothing |
+| Invented values | `--source synthetic`, and the `auto` fallback | `--source synthetic` only; never a fallback |
+| Safe on production | ❌ never | ⚠️ with a raster `--source` |
+
+Both create rows through the same helpers (`create_seeded_publication`,
+`seed_values`, `publish_seeded`), so they cannot drift on what a seeded
+publication looks like or on the value range behind it.
+
+### **Running it**
+
+**`--source` is the only place values come from**, and it takes one of two
+things: a directory of CDI rasters, or the word `synthetic`. The seeder splits
+this across `--source` and `--path` because it has four sources and only one of
+them is a directory — here there are two, and one of them *is* a directory, so
+a second flag would add nothing but a pair to get wrong.
+
+The seeder's other sources cannot apply: `cache` and `geonode` queue an async
+download chain that finishes later via a worker, while a backfill must be done
+when the command exits. There is no `auto` either — it would quietly invent
+values for whichever months the archive happens to be missing, which is the one
+thing this command must not do silently.
+
+```bash
+# 1. Report. Writes nothing — always start here.
+docker compose exec backend python manage.py backfill_publications \
+    --from 2025-10 --to 2026-05 --source ./storage/geotiffs
+
+# 2. Backfill from real CDI rasters. Months the archive does not cover stay
+#    gaps — publishing what you have does not require consenting to invent
+#    the rest.
+docker compose exec backend python manage.py backfill_publications \
+    --from 2025-10 --to 2026-05 --source ./storage/geotiffs --apply
+```
+
+The report names every month and what would happen to it:
+
+```
+Range 2025-10 to 2026-05 — 8 month(s), source rasters
+  2025-10  create — raster
+  2025-11  skip — no raster in the archive
+  2025-12  skip — already Published
+  2026-01  skip — already In Review
+  ...
+2 existing, 1 to create, 1 left as gaps (no raster).
+```
+
+Read that before running with `--apply`. **A month marked `In Review` is
+somebody's unfinished work, not a gap** — the command skips it rather than
+creating a second row for the same month.
+
+### **`--source synthetic`**
+
+A month with no raster can only be filled with invented values —
+`rng.uniform(0.02, 0.4)`, classified as if measured. That takes naming
+`synthetic` as the source; a raster directory leaves those months as gaps and
+says so in the report.
+
+```bash
+docker compose exec backend python manage.py backfill_publications \
+    --from 2025-10 --to 2026-05 --source synthetic --apply
+```
+
+> ⚠️ On a public national page those numbers are indistinguishable from
+> validated output. Confirm with the partner that a *fabricated* classification
+> is acceptable for those months — agreeing to a backfill is not the same
+> agreement — or pass the raster directory and leave the rest as gaps.
+
+`--source` is a directory unless it is exactly `synthetic`, so a folder of that
+name would be read as the keyword — pass `./synthetic` if you ever have one.
+
+Backfilled rows carry `is_seeded=True`, so `seed_demo --clean=publications`
+removes them and the CDI publication list can tell them apart. Their hero
+description is derived from the classes being published rather than invented
+prose:
+
+```
+Validated drought classification for March 2026, covering 59 Tinkhundla:
+47 wet/normal conditions, 9 D0 abnormally dry, 3 D1 moderate drought.
+```
+
+Re-running is a no-op: every month it created is now an existing publication
+and is skipped.
 
 ---
 
@@ -290,7 +394,9 @@ owns each table.
 > [Deploying a release](#deploying-a-release-what-to-run) instead.
 
 ```bash
-# Publication (+ Review) rows
+# Publication (+ Review) rows. This counts months back from today and writes
+# immediately — to fill named gaps on an environment with real data, use
+# `backfill_publications` instead.
 docker compose exec backend python manage.py generate_publications_seeder \
     --source path --path ./storage/geotiffs --with-reviews
 
