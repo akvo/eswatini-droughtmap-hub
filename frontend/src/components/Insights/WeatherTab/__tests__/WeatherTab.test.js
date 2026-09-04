@@ -189,6 +189,8 @@ describe("WeatherTab", () => {
                   window_months: 12,
                   months_with_data: 10,
                   definition: "months_with_data / window_months",
+                  from: "2025-06",
+                  to: "2026-05",
                 },
               }
             : d,
@@ -200,10 +202,10 @@ describe("WeatherTab", () => {
     await waitFor(() => {
       expect(screen.getByText("83%")).toBeInTheDocument();
     });
+    // The window is named on the card, not left to a tooltip: a low share
+    // must read as "the network is young", not "this station is unreliable".
     expect(
-      screen.getByText(
-        "Share of the last 12 months the station reported data.",
-      ),
+      screen.getByText("10 of 12 months ending May 2026"),
     ).toBeInTheDocument();
   });
 

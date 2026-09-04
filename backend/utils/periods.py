@@ -6,12 +6,21 @@ so a missing month reads as a gap instead of shifting the axis. `month_range`
 started in v1_weather; v1_publication needs the same thing, and calendar
 arithmetic belongs to neither app.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 def month_start(period: str) -> date:
     """'YYYY-MM' -> the first of that month, for ORM date filters."""
     return datetime.strptime(f"{period}-01", "%Y-%m-%d").date()
+
+
+def month_end(period: str) -> date:
+    """'YYYY-MM' -> the last day of that month, for inclusive date filters.
+
+    A day back from the next month's first, so February and leap years need
+    no table.
+    """
+    return month_start(shift_period(period, 1)) - timedelta(days=1)
 
 
 def shift_period(period: str, months: int) -> str:

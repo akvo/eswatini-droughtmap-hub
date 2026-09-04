@@ -9,7 +9,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from api.v1.v1_insights.services import get_metrics_data
-from api.v1.v1_publication.models import Administration
+from api.v1.v1_publication.constants import PublicationStatus
+from api.v1.v1_publication.models import Administration, Publication
 from api.v1.v1_weather.constants import WeatherParameter
 from api.v1.v1_weather.models import (
     StationDailyAggregate,
@@ -22,6 +23,19 @@ class ActiveStationsCardTestCase(TestCase):
     def setUp(self):
         self.source = WeatherSource.objects.create(
             base_url="https://example.invalid", collection_id="c"
+        )
+        # The card is anchored to a published month; with none published
+        # there is no period to report and every card is its empty state.
+        # This month, so the station fixtures below (dated relative to today)
+        # fall inside the window they are describing.
+        today = timezone.now().date()
+        Publication.objects.create(
+            cdi_geonode_id=990001,
+            year_month=today.replace(day=1),
+            initial_values=[],
+            due_date=today,
+            status=PublicationStatus.published,
+            published_at=timezone.now(),
         )
         self.covered = Administration.objects.create(
             name="Lomahasha", region="Lubombo"
@@ -77,3 +91,78 @@ class ActiveStationsCardTestCase(TestCase):
         card = get_metrics_data()["activeStations"]
         self.assertEqual(card["reason"], "no_stations")
         self.assertIsNone(card["total"])
+
+
+class IngestionLagTestCase(TestCase):
+    """OFFLINE_AFTER_DAYS is 2 — shorter than a single missed ingestion run.
+
+    Every station stale at the SAME date is one pipeline behind, not N
+    independent failures, and the public card must not report a national
+    outage that did not happen (KPI-1 D-7).
+    """
+
+    def setUp(self):
+        self.source = WeatherSource.objects.create(
+            base_url="https://example.invalid", collection_id="c"
+        )
+        self.today = timezone.now().date()
+        Publication.objects.create(
+            cdi_geonode_id=990003,
+            year_month=self.today.replace(day=1),
+            initial_values=[],
+            due_date=self.today,
+            status=PublicationStatus.published,
+            published_at=timezone.now(),
+        )
+
+    def _station(self, wigos_id, last_reading):
+        station = WeatherStation.objects.create(
+            source=self.source,
+            wigos_id=wigos_id,
+            name=wigos_id,
+            region="Lubombo",
+            latitude=-26.8,
+            longitude=31.9,
+        )
+        StationDailyAggregate.objects.create(
+            station=station,
+            date=last_reading,
+            parameter=WeatherParameter.precipitation,
+            value=1.0,
+            readings_count=24,
+            expected_count=24,
+        )
+
+    def test_a_uniformly_stale_network_reads_as_ingestion_lag(self):
+        stopped = self.today - timezone.timedelta(days=4)
+        self._station("0-999-0-1001", stopped)
+        self._station("0-999-0-1002", stopped)
+
+        card = get_metrics_data()["activeStations"]
+
+        self.assertEqual(card["reason"], "ingestion_lag")
+        self.assertIn("no data ingested since", card["note"])
+        # The stations are still counted: the network exists, the data is late.
+        self.assertEqual(card["total"], 2)
+
+    def test_one_silent_station_is_not_a_lag(self):
+        self._station("0-999-0-1003", self.today)
+        self._station("0-999-0-1004", self.today - timezone.timedelta(days=4))
+
+        card = get_metrics_data()["activeStations"]
+
+        self.assertNotIn("reason", card)
+        self.assertEqual((card["online"], card["total"]), (1, 2))
+
+    def test_a_station_installed_later_is_not_counted_offline(self):
+        """It could not have failed in a month it did not exist in."""
+        self._station("0-999-0-1005", self.today)
+        self._station(
+            "0-999-0-1006", self.today + timezone.timedelta(days=400)
+        )
+
+        card = get_metrics_data()["activeStations"]
+
+        self.assertEqual(card["notYetInstalled"], 1)
+        self.assertEqual(card["total"], 1)
+        self.assertEqual(card["online"], 1)

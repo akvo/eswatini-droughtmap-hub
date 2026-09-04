@@ -26,6 +26,7 @@ from api.v1.v1_insights.services import (
     get_metrics_data,
     get_response_activities_data,
     get_map_data_config,
+    published_months,
 )
 
 
@@ -90,6 +91,15 @@ class InsightsMetricsView(APIView):
         summary="Get National Overview KPI metric cards data",
         parameters=[
             OpenApiParameter(
+                "year_month",
+                OpenApiTypes.STR,
+                description=(
+                    "Anchor month as YYYY-MM. Must be a published "
+                    "publication month; defaults to the latest one."
+                ),
+                required=False,
+            ),
+            OpenApiParameter(
                 "inkhundla_id",
                 OpenApiTypes.INT,
                 description="Optional Tinkhundla administration ID filter",
@@ -99,6 +109,19 @@ class InsightsMetricsView(APIView):
         responses={200: InsightsMetricsSerializer},
     )
     def get(self, request, version=None):
+        # Shape first, then membership: a well-formed month that was never
+        # published would let the cards describe a period the map cannot
+        # render, which is the defect this endpoint exists to fix (KPI-1 D-2).
+        year_month = validated_year_month(request)
+        if year_month and year_month not in published_months():
+            raise ValidationError(
+                {
+                    "year_month": (
+                        f"No publication has been published for {year_month}."
+                    )
+                }
+            )
+
         inkhundla_id_raw = request.query_params.get("inkhundla_id")
         inkhundla_id = None
         if inkhundla_id_raw:
@@ -107,7 +130,9 @@ class InsightsMetricsView(APIView):
             except ValueError:
                 inkhundla_id = None
 
-        data = get_metrics_data(inkhundla_id=inkhundla_id)
+        data = get_metrics_data(
+            year_month=year_month, inkhundla_id=inkhundla_id
+        )
         serializer = InsightsMetricsSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

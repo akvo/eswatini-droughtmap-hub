@@ -75,11 +75,16 @@ class InsightsZonesSerializer(serializers.Serializer):
 
 class InsightsHistoryPointSerializer(serializers.Serializer):
     key = serializers.CharField()
-    value = serializers.FloatField()
+    # Months with no observation carry null, so the sparkline shows a gap
+    # rather than a fabricated zero (KPI-1 NFR-1).
+    value = serializers.FloatField(allow_null=True)
 
 
 class InsightsMetricItemSerializer(serializers.Serializer):
-    value = serializers.FloatField()
+    # Nullable: an anchor month with no observation renders the em dash. The
+    # value is that month's own deviation or nothing — never a neighbouring
+    # month's number under this month's label (KPI-1 FR-5).
+    value = serializers.FloatField(allow_null=True)
     unit = serializers.CharField()
     note = serializers.CharField()
     label = serializers.CharField()
@@ -94,7 +99,12 @@ class InsightsActiveStationsSerializer(serializers.Serializer):
     onlinePct = serializers.IntegerField(allow_null=True)
     label = serializers.CharField()
     note = serializers.CharField()
-    reason = serializers.CharField(required=False)
+    reason = serializers.CharField(required=False, allow_null=True)
+    # The clock station_health was given: the anchor month's last day.
+    asOf = serializers.CharField(required=False, allow_null=True)
+    # Stations with no record by the anchor — not installed yet, so excluded
+    # from `total` rather than counted offline (KPI-1 D-6).
+    notYetInstalled = serializers.IntegerField(required=False)
 
 
 class InsightsFieldReportsSerializer(serializers.Serializer):
@@ -105,6 +115,9 @@ class InsightsFieldReportsSerializer(serializers.Serializer):
 
 
 class InsightsMetricsSerializer(serializers.Serializer):
+    # The single anchor every card below describes (KPI-1 FR-2).
+    period = serializers.CharField(allow_null=True)
+    periodLabel = serializers.CharField(allow_null=True)
     rainfall = InsightsMetricItemSerializer()
     temperature = InsightsMetricItemSerializer()
     activeStations = InsightsActiveStationsSerializer()

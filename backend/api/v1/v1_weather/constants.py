@@ -84,6 +84,10 @@ COMPLETENESS_WINDOW_DAYS = 30
 # denominator — "share of the last 12 months the station reported data".
 COMPLETENESS_WINDOW_MONTHS = 12
 
+# Explorer precipitation-total card (KPI-1 FR-13): a fixed 12-month window
+# ending at the last COMPLETE month, independent of the charts' range picker.
+PRECIP_WINDOW_MONTHS = 12
+
 # Ingestion-lag alert threshold (design D-6)
 INGESTION_LAG_ALERT_DAYS = 30
 

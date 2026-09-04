@@ -40,6 +40,18 @@ class MetricsDeviationTestCase(TestCase):
             latitude=-26.3,
             longitude=31.1,
         )
+        # Anchored to the latest PUBLISHED month. Last month, not this one:
+        # a month still running has no complete observation, so the deviation
+        # cards would correctly report null (KPI-1 FR-6).
+        last_month_start = self.today.replace(day=1) - timedelta(days=1)
+        Publication.objects.create(
+            cdi_geonode_id=990002,
+            year_month=last_month_start.replace(day=1),
+            initial_values=[],
+            due_date=self.today,
+            status=PublicationStatus.published,
+            published_at=timezone.now(),
+        )
         # A year of observations and matching normals.
         for offset in range(360):
             day = self.today - timedelta(days=offset)

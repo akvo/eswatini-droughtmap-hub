@@ -11,6 +11,7 @@ from api.v1.v1_weather.constants import (
     EXPECTED_READINGS_PER_DAY,
     MIN_STATION_DAYS_PER_MONTH,
     NETWORK,
+    PRECIP_WINDOW_MONTHS,
     NORMALS_DEFINITION,
     NORMALS_RASTERS,
     NORMALS_UNAVAILABLE,
@@ -40,8 +41,17 @@ from api.v1.v1_weather.topo import (
 # Insights tab renders the same chip, so the rule has one definition, beside
 # the model it reads. No cycle — v1_publication never imports v1_weather.
 from api.v1.v1_publication.models import Administration
-from api.v1.v1_publication.insights.utils import current_dclass
-from utils.periods import month_range, month_start, shift_period
+from api.v1.v1_publication.insights.utils import (
+    current_dclass,
+    latest_published_month,
+)
+from utils.periods import (
+    month_end,
+    month_range,
+    month_start,
+    period_span,
+    shift_period,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -112,10 +122,21 @@ def station_health(station, today=None) -> dict:
 
     Day-granular thresholds because ingestion is daily (D-1)."""
     today = today or timezone.now().date()
-    rows = list(
-        station.daily_values.values("date", "readings_count", "expected_count")
-    )
+    # Clipped to `today`, not just filtered by it: asked about a past month,
+    # an unbounded read answers with rows from after it — `last_reading` lands
+    # in the future, the offline gap goes negative, and the network can only
+    # ever look healthier than it was (KPI-1 D-5).
+    rows = [
+        row
+        for row in station.daily_values.values(
+            "date", "readings_count", "expected_count"
+        )
+        if row["date"] <= today
+    ]
     if not rows:
+        # No record by `today`. Live, that is a station that has never
+        # reported; historically it is one not yet installed — the caller
+        # tells the two apart, this function only reports the absence.
         return {
             "status": StationStatus.offline,
             "last_reading": None,
@@ -372,6 +393,93 @@ def _resolution_meta(station, resolution, distance_km) -> dict:
     return meta
 
 
+def _anchor_precipitation_card(administration, station, period) -> dict:
+    """Total precipitation for the reviewed month (KPI-1 FR-1).
+
+    Satellite-sourced for the same reason the 12-month card is: CHIRPS covers
+    the whole month everywhere, while the gauge network reaches back only to
+    2026-05 and covers a published month partially or not at all. A six-day
+    gauge sum presented as a monthly total is the partial-month artefact this
+    work exists to remove, so the gauge rides underneath with its own coverage
+    stated (KPI-1 D-8).
+    """
+    if not period:
+        return {
+            "key": "precipitation_last_month",
+            "label": "Total precipitation",
+            "value": None,
+            "units": "mm",
+            "meta": {"period": None, "reason": "no_published_month"},
+        }
+
+    series = _chirps_monthly_series(administration, period, period)
+    value = series[0]["value"] if series else None
+
+    gauge = monthly_series(
+        station, WeatherParameter.precipitation, period, period
+    )
+    gauge_value = gauge[0]["value"] if gauge else None
+    days_reported = (
+        station.daily_values.filter(
+            parameter=WeatherParameter.precipitation,
+            value__isnull=False,
+            date__range=(month_start(period), month_end(period)),
+        )
+        .values("date")
+        .distinct()
+        .count()
+    )
+    # Enough days to stand as a monthly total? The same threshold the
+    # satellite-difference card uses, so the two cannot disagree about
+    # whether a month's gauge record is usable.
+    gauge_complete = days_reported >= MIN_STATION_DAYS_PER_MONTH
+
+    return {
+        "key": "precipitation_last_month",
+        "label": "Total precipitation",
+        "value": value,
+        "units": "mm",
+        "meta": {
+            "period": period,
+            "source": "chirps",
+            "reason": None if value is not None else "satellite_not_published",
+            "station": {
+                "value": gauge_value if gauge_complete else None,
+                "reason": (
+                    None if gauge_complete else "incomplete_station_month"
+                ),
+                "days_reported": days_reported,
+                "name": station.name,
+                "region": station.region,
+            },
+        },
+    }
+
+
+def _period_label(period: str) -> str:
+    """'2025-09' -> 'Sep 2025', for windows stated on a card."""
+    return month_start(period).strftime("%b %Y")
+
+
+def _chirps_first_month(administration) -> str:
+    """Earliest month CHIRPS covers for this Inkhundla, or None.
+
+    The satellite archive has a start date; a window reaching back past it is
+    claiming months no dataset can fill (KPI-1 D-13).
+    """
+    earliest = (
+        AdministrationObservation.objects.filter(
+            administration=administration,
+            parameter=WeatherParameter.precipitation,
+            value__isnull=False,
+        )
+        .order_by("year_month")
+        .values_list("year_month", flat=True)
+        .first()
+    )
+    return earliest.strftime("%Y-%m") if earliest else None
+
+
 def administration_stats(administration, include_completeness=False) -> dict:
     """Explorer stat cards (WX-4): last-month rain, 12-month rain,
     completeness. Completeness is TWG-gated (product AC) — anonymous
@@ -388,28 +496,43 @@ def administration_stats(administration, include_completeness=False) -> dict:
         return base
 
     today = timezone.now().date()
+    # Every window on this tab ends at the REVIEWED month, so the four cards
+    # describe one period (KPI-1 FR-13, re-anchored by D-13). Falling back to
+    # the last complete month keeps the tab useful before anything is
+    # published, rather than blanking every card at once.
+    anchor_period = latest_published_month()
+    window_to = anchor_period or shift_period(today.strftime("%Y-%m"), -1)
+    nominal_from = shift_period(window_to, -(PRECIP_WINDOW_MONTHS - 1))
+
+    # …and starts no earlier than CHIRPS actually reaches. The archive begins
+    # 2025-09, so a nominal 12-month window anchored to May 2026 would start
+    # three months before any satellite data exists — and D-8 would then
+    # withhold the headline for a series that is complete over every month it
+    # claims. Shortening the window keeps D-8 intact and lets the label state
+    # the real span instead (KPI-1 D-13).
+    window_from = max(nominal_from, _chirps_first_month(administration) or "")
+    window_start = month_start(window_from)
+    window_end = month_end(window_to)
+
     first_record = (
         station.daily_values.filter(value__isnull=False)
         .order_by("date")
         .values_list("date", flat=True)
         .first()
     )
-    window_start = max(first_record, today - timezone.timedelta(days=365))
 
-    # Completeness = share of the last 12 calendar months in which the
-    # station reported anything. Unlike the precipitation window above this
-    # one is NOT clipped to the station's first record: the denominator is
-    # always 12, so a station three months old reads 3/12 rather than 100 %
-    # of a three-month window (D-1, revised 2026-08-05).
-    completeness_start = month_start(
-        shift_period(
-            today.strftime("%Y-%m"), -(COMPLETENESS_WINDOW_MONTHS - 1)
-        )
+    # Completeness = share of the 12 months ending at the anchor in which the
+    # station reported anything. The denominator stays 12 and is NOT clipped to
+    # the station's first record: a station three months old reads 3/12 rather
+    # than 100 % of a three-month window (D-1, revised 2026-08-05). Only the
+    # window's end moved.
+    completeness_from = shift_period(
+        window_to, -(COMPLETENESS_WINDOW_MONTHS - 1)
     )
     months_with_data = station.daily_values.filter(
         value__isnull=False,
-        date__gte=completeness_start,
-        date__lte=today,
+        date__gte=month_start(completeness_from),
+        date__lte=window_end,
     ).dates("date", "month")
     completeness = round(len(months_with_data) / COMPLETENESS_WINDOW_MONTHS, 3)
 
@@ -418,30 +541,52 @@ def administration_stats(administration, include_completeness=False) -> dict:
             parameter=WeatherParameter.precipitation,
             value__isnull=False,
             date__gte=window_start,
+            date__lte=window_end,
         ).values_list("date", "value")
     )
-    precip_total = round(sum(v for _, v in precip_window), 1)
-    months_covered = len({d.strftime("%Y-%m") for d, _ in precip_window})
+    gauge_total = round(sum(v for _, v in precip_window), 1)
+    gauge_months = len({d.strftime("%Y-%m") for d, _ in precip_window})
+    gauge_first = min((d for d, _ in precip_window), default=first_record)
 
-    # "Total rain last month" = the latest calendar month with precip data
-    last_month_value = last_month_period = None
-    last_precip_date = (
-        station.daily_values.filter(
-            parameter=WeatherParameter.precipitation, value__isnull=False
-        )
-        .order_by("-date")
-        .values_list("date", flat=True)
-        .first()
+    # A total is reported when its series SPANS the window, and withheld when
+    # the record begins inside it — a 5-month sum under a 12-month label is a
+    # different quantity, and beside a full satellite total it reads as "almost
+    # no rain fell here" rather than "the gauge is new" (KPI-1 D-8).
+    #
+    # Keyed on where the gap is, not how big: missing at the front means the
+    # series did not exist yet, missing at the back is publication lag. A plain
+    # coverage threshold would suppress CHIRPS too and empty the card.
+    gauge_spans_window = bool(gauge_first) and gauge_first <= window_start
+    station_card = {
+        "value": gauge_total if gauge_spans_window else None,
+        "reason": None if gauge_spans_window else "record_starts_mid_window",
+        "months_covered": gauge_months,
+        "first_record": gauge_first.isoformat() if gauge_first else None,
+        "name": station.name,
+        "region": station.region,
+        "resolution": resolution,
+    }
+
+    # CHIRPS is the headline: it spans the whole window where the gauge network
+    # does not, and it is the series the chart below the card is dominated by.
+    # Same function the chart calls, so the two cannot drift (KPI-1 AC-6).
+    chirps_series = _chirps_monthly_series(
+        administration, window_from, window_to
     )
-    if last_precip_date:
-        last_month_period = last_precip_date.strftime("%Y-%m")
-        series = monthly_series(
-            station,
-            WeatherParameter.precipitation,
-            last_month_period,
-            last_month_period,
-        )
-        last_month_value = series[0]["value"] if series else None
+    chirps_points = [
+        item["value"] for item in chirps_series if item["value"] is not None
+    ]
+    chirps_total = round(sum(chirps_points), 1) if chirps_points else None
+    chirps_months = len(chirps_points)
+
+    # "Total precipitation" reports the REVIEWED month — the latest published
+    # publication's — so this card, the map and the National Overview KPIs all
+    # describe one period. It used to report whichever month the gauge last
+    # produced a row for, which is a different month per Inkhundla and none of
+    # them the one under review (KPI-1 FR-1/FR-2).
+    anchor_card = _anchor_precipitation_card(
+        administration, station, anchor_period
+    )
 
     if include_completeness:
         completeness_card = {
@@ -452,6 +597,12 @@ def administration_stats(administration, include_completeness=False) -> dict:
                 "window_months": COMPLETENESS_WINDOW_MONTHS,
                 "months_with_data": len(months_with_data),
                 "definition": "months_with_data / window_months",
+                # The window is named so a low share reads as "the network is
+                # young" rather than "this station is unreliable" — with
+                # gauges installed in May 2026, an anchor of May 2026 is
+                # 1 of 12 by construction (KPI-1 D-13).
+                "from": completeness_from,
+                "to": window_to,
             },
         }
     else:  # anonymous -> the UI renders its locked sign-in placeholder
@@ -463,21 +614,32 @@ def administration_stats(administration, include_completeness=False) -> dict:
         }
 
     base["data"] = [
-        {
-            "key": "precipitation_last_month",
-            "label": "Total precipitation last month",
-            "value": last_month_value,
-            "units": "mm",
-            "meta": {"period": last_month_period},
-        },
+        anchor_card,
         {
             "key": "precipitation_12m",
-            "label": "12-month total precipitation",
-            "value": precip_total,
+            # The window is stated rather than asserted as "12-month": it ends
+            # at the reviewed month and starts no earlier than CHIRPS reaches,
+            # so its span is a fact about the data, not a promise the card
+            # cannot keep (KPI-1 A-1, D-13).
+            "label": (
+                f"Precipitation · {_period_label(window_from)} – "
+                f"{_period_label(window_to)}"
+            ),
+            "value": chirps_total,
             "units": "mm",
             "meta": {
-                "from": first_record.isoformat(),
-                "months_covered": months_covered,
+                "source": "chirps",
+                "from": window_from,
+                "to": window_to,
+                # How many months the window actually spans, which is 12 only
+                # once the archive reaches back that far.
+                "window_months": period_span(window_from, window_to),
+                "target_window_months": PRECIP_WINDOW_MONTHS,
+                "months_covered": chirps_months,
+                "lag_months": (
+                    period_span(window_from, window_to) - chirps_months
+                ),
+                "station": station_card,
             },
         },
         completeness_card,
@@ -488,8 +650,12 @@ def administration_stats(administration, include_completeness=False) -> dict:
 
 
 def _satellite_difference_card(administration, station) -> dict:
-    """
-    station - CHIRPS mm for the latest month where both sides exist (WX-10).
+    """station - CHIRPS mm for the REVIEWED month (WX-10, re-anchored KPI-1).
+
+    It used to walk back to the latest month where both sides happened to
+    exist, which is a different month per Inkhundla and none of them the month
+    under review. A card whose period is discovered from the data cannot stay
+    in step with the three beside it.
     """
     # D-5 anchor: find Inkhundla in the station's region closest to the gauge
 
@@ -512,44 +678,43 @@ def _satellite_difference_card(administration, station) -> dict:
             ),
         )
 
-    latest_obs = (
-        AdministrationObservation.objects.filter(
-            administration=gauge_admin,
-            parameter=WeatherParameter.precipitation,
-        )
-        .order_by("-year_month")
-        .first()
-    )
-    if not latest_obs:
+    def card(value, **meta):
         return {
             "key": CARD_SATELLITE_DIFFERENCE,
             "label": "Difference between station and satellite",
-            "value": None,
+            "value": value,
             "units": "mm",
-            "meta": {"reason": REASON_SATELLITE_NOT_PUBLISHED},
+            "meta": meta,
         }
 
-    period_str = latest_obs.year_month.strftime("%Y-%m")
+    period_str = latest_published_month()
+    if not period_str:
+        return card(None, period=None, reason="no_published_month")
+
+    observation = AdministrationObservation.objects.filter(
+        administration=gauge_admin,
+        parameter=WeatherParameter.precipitation,
+        year_month=month_start(period_str),
+    ).first()
+    if not observation:
+        return card(
+            None, period=period_str, reason=REASON_SATELLITE_NOT_PUBLISHED
+        )
 
     # D-6 guard: station reporting days in that period >= MIN_STATION_DAYS
     days_count = StationDailyAggregate.objects.filter(
         station=station,
         parameter=WeatherParameter.precipitation,
-        date__year=latest_obs.year_month.year,
-        date__month=latest_obs.year_month.month,
+        date__range=(month_start(period_str), month_end(period_str)),
         value__isnull=False,
     ).count()
     if days_count < MIN_STATION_DAYS_PER_MONTH:
-        return {
-            "key": CARD_SATELLITE_DIFFERENCE,
-            "label": "Difference between station and satellite",
-            "value": None,
-            "units": "mm",
-            "meta": {
-                "reason": REASON_INCOMPLETE_STATION,
-                "period": period_str,
-            },
-        }
+        return card(
+            None,
+            period=period_str,
+            reason=REASON_INCOMPLETE_STATION,
+            days_reported=days_count,
+        )
 
     station_series = monthly_series(
         station,
@@ -559,32 +724,23 @@ def _satellite_difference_card(administration, station) -> dict:
     )
     station_mm = station_series[0]["value"] if station_series else None
     if station_mm is None:
-        return {
-            "key": CARD_SATELLITE_DIFFERENCE,
-            "label": "Difference between station and satellite",
-            "value": None,
-            "units": "mm",
-            "meta": {
-                "reason": REASON_INCOMPLETE_STATION,
-                "period": period_str,
-            },
-        }
+        return card(
+            None,
+            period=period_str,
+            reason=REASON_INCOMPLETE_STATION,
+            days_reported=days_count,
+        )
 
-    diff = round(station_mm - latest_obs.value, 1)
-    return {
-        "key": CARD_SATELLITE_DIFFERENCE,
-        "label": "Difference between station and satellite",
-        "value": diff,
-        "units": "mm",
-        "meta": {
-            "period": period_str,
-            "comparator": "CHIRPS",
-            "dataset": latest_obs.dataset,
-            "station_value": round(station_mm, 1),
-            "satellite_value": round(latest_obs.value, 1),
-            "anchor_inkhundla": gauge_admin.name,
-        },
-    }
+    diff = round(station_mm - observation.value, 1)
+    return card(
+        diff,
+        period=period_str,
+        comparator="CHIRPS",
+        dataset=observation.dataset,
+        station_value=round(station_mm, 1),
+        satellite_value=round(observation.value, 1),
+        anchor_inkhundla=gauge_admin.name,
+    )
 
 
 def administration_normals(administration) -> dict:

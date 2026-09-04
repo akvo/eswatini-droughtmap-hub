@@ -34,6 +34,27 @@ def current_period() -> str:
     return as_target_month(timezone.now().date())
 
 
+def latest_published_month() -> str:
+    """'YYYY-MM' of the most recent published publication, or None.
+
+    The anchor every public surface reports against, so the KPI cards, the
+    map and the explorer tabs all describe the same reviewed month rather
+    than each deriving its own period from the wall clock (KPI-1 FR-1).
+
+    Lives here rather than in v1_insights because v1_weather needs it too and
+    v1_insights already imports v1_weather — the dependency only runs one way.
+    """
+    year_month = (
+        Publication.objects.filter(
+            status=PublicationStatus.published, published_at__isnull=False
+        )
+        .order_by("-year_month")
+        .values_list("year_month", flat=True)
+        .first()
+    )
+    return year_month.strftime("%Y-%m") if year_month else None
+
+
 def resolve_window(from_month: str = None, to_month: str = None):
     """(from_period, to_period) — always a real window.
 

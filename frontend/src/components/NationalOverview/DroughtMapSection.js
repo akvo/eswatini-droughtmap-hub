@@ -82,12 +82,38 @@ const DroughtMapSection = ({
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
   const [isMapLoading, setIsMapLoading] = useState(false);
 
-  // Sync metricsState when parent metrics prop updates
+  // Month and Inkhundla are two inputs to ONE query, so they share one effect.
+  // Two fetch paths — a prop sync here and a raw fetch in the click handler —
+  // is how the map and the cards came to describe different months.
   useEffect(() => {
-    if (!selectedInkhundlaId) {
+    // The server already rendered the latest published month unfiltered, so
+    // the default selection needs no request and no flash of changed numbers.
+    if (currentID === mapId && !selectedInkhundlaId) {
       setMetricsState(metrics);
+      return undefined;
     }
-  }, [metrics, selectedInkhundlaId]);
+    let active = true;
+    const params = new URLSearchParams();
+    const yearMonth = monthOf(dates, currentID);
+    if (yearMonth) {
+      params.set("year_month", yearMonth);
+    }
+    if (selectedInkhundlaId) {
+      params.set("inkhundla_id", selectedInkhundlaId);
+    }
+    setIsMetricsLoading(true);
+    api("GET", `/insights/metrics?${params}`)
+      .then((res) => {
+        if (active) {
+          setMetricsState(res);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch metrics:", err))
+      .finally(() => active && setIsMetricsLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [currentID, selectedInkhundlaId, dates, mapId, metrics]);
 
   // Sync values state when validatedValues prop updates
   useEffect(() => {
@@ -243,38 +269,24 @@ const DroughtMapSection = ({
   }, [printMode, reportReady, dates, currentID, layers]);
 
   const handleInkhundlaSelect = useCallback(
-    async (adminId, adminName) => {
+    (adminId, adminName) => {
       if (!adminId || selectedInkhundlaId === adminId) {
         setSelectedInkhundlaId(null);
         setSelectedInkhundlaName("");
-        setMetricsState(metrics);
         return;
       }
       setSelectedInkhundlaId(adminId);
       setSelectedInkhundlaName(adminName || `Inkhundla #${adminId}`);
-      setIsMetricsLoading(true);
-
-      try {
-        const res = await fetch(
-          `/api/v1/insights/metrics?inkhundla_id=${adminId}`,
-        );
-        if (res.ok) {
-          const newMetrics = await res.json();
-          setMetricsState(newMetrics);
-        }
-      } catch (err) {
-        console.error("Failed to fetch per-Inkhundla metrics:", err);
-      } finally {
-        setIsMetricsLoading(false);
-      }
     },
-    [selectedInkhundlaId, metrics],
+    [selectedInkhundlaId],
   );
 
+  // Clearing restores the national figures for the SELECTED month, not the
+  // `metrics` prop — that prop is always the latest published month, which is
+  // the wrong one whenever the visitor has moved the selector.
   const clearInkhundlaFilter = () => {
     setSelectedInkhundlaId(null);
     setSelectedInkhundlaName("");
-    setMetricsState(metrics);
   };
 
   const currentMetrics = metricsState || metrics || {};
@@ -330,17 +342,22 @@ const DroughtMapSection = ({
               </>
             ) : (
               <>
+                {/* An absent deviation is an em dash, never 0: "bang on the
+                    30-year normal" is a real reading and must stay
+                    distinguishable from "this month has no observation". */}
                 <MetricCard
                   label={rainfall.label || "Precipitation vs 30-yr normal"}
-                  value={rainfall.value ?? 0}
-                  unit={rainfall.unit || "mm"}
+                  value={rainfall.value ?? "—"}
+                  unit={rainfall.value == null ? "" : rainfall.unit || "mm"}
                   note={rainfall.note || ""}
                   history={rainfall.history || []}
                 />
                 <MetricCard
                   label={temperature.label || "Temperature vs 30 yr Normal"}
-                  value={temperature.value ?? 0}
-                  unit={temperature.unit || "°C"}
+                  value={temperature.value ?? "—"}
+                  unit={
+                    temperature.value == null ? "" : temperature.unit || "°C"
+                  }
                   note={temperature.note || ""}
                   history={temperature.history || []}
                 />
@@ -364,7 +381,7 @@ const DroughtMapSection = ({
                 <MetricCard
                   label={fieldReports.label || "Field reports"}
                   value={fieldReports.count ?? 0}
-                  note="In last 30 days"
+                  note={fieldReports.note || ""}
                   accentValue={
                     fieldReports.verifiedPct != null
                       ? `${fieldReports.verifiedPct}%`
