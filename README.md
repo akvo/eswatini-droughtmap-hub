@@ -131,7 +131,7 @@ environment holding real data**:
 | `generate_water_demand_seeder` | `Indicator.water_demand` | DRAFT DWA/JRBA export, 45/59 Tinkhundla |
 | `generate_activity_seeder` | the real response-activity library | **without** `--demo` |
 | `kobo_seeder` | Kobo adapter credentials | |
-| `generate_config`, `generate_agro_geojson` | generated frontend assets | re-run after any zone/boundary change |
+| `generate_config` | generated frontend assets | re-run after any zone/boundary change |
 
 **Setup — real data pulled from an external system**
 
@@ -176,7 +176,6 @@ docker compose exec backend python manage.py generate_eligibility_seeder
 docker compose exec backend python manage.py generate_water_demand_seeder
 docker compose exec backend python manage.py generate_activity_seeder   # no --demo
 docker compose exec backend python manage.py generate_config
-docker compose exec backend python manage.py generate_agro_geojson
 
 # first real superuser (skip if the account already exists)
 docker compose exec backend python manage.py createsuperuser --email <you@org> --role 1
@@ -476,8 +475,9 @@ stage is idempotent, so it is safe to re-run:
 | Seed Fake User? | `generate_admin_seeder`, `fake_users_seeder` | **fake** |
 | **Seed Demo Data?** | **`seed_demo`**, optionally with a GeoTIFF archive path | **fake** |
 
-It always finishes with `generate_config` and `generate_agro_geojson` so the
-browser picks up the current zone vocabulary, topojson and agro layer.
+It always finishes with `generate_config` so the browser picks up the current
+zone vocabulary and topojson. The agro layer is no longer generated — it is
+committed as `backend/source/eswatini-ecological_regions-wgs84.topojson`.
 
 Answering `n` to the last two prompts leaves the script setup-only, but on an
 environment with real data prefer the explicit list in
@@ -669,18 +669,18 @@ Cron example (daily at midnight):
 0 0 * * * cd /backend && ./job.sh weather >> /home/user/logs/weather_ingest.log 2>&1
 ```
 
-### **National Overview map tabs: `fetch_chirps_monthly` & `generate_agro_geojson`**
+### **National Overview map tabs: `fetch_chirps_monthly`**
 
-The Drought Map card on the National overview has seven tabs. Five read data
-already in the database and need no setup. Two need a command run once:
+The Drought Map card on the National overview has seven tabs. Six read data
+already in the database or a committed source file and need no setup. One needs
+a command run once:
 
 | Tab | Source | Setup |
 |-----|--------|-------|
-| Drought class, Evaporative Stress Index, Regions, Agro-ecological zones, Land use, Population map | database | none |
+| Drought class, Evaporative Stress Index, Regions, Agro-ecological zones, Land use, Population map | database + committed topojson | none |
 | **Precipitation** | CHIRPS rasters | `fetch_chirps_monthly` |
-| **Agro-ecological zones** *(geometry)* | reprojected topojson | `generate_agro_geojson` |
 
-Until they are run, those tabs render an explicit empty state naming what is
+Until it is run, that tab renders an explicit empty state naming what is
 missing — never a blank map.
 
 #### **`fetch_chirps_monthly`**
@@ -730,24 +730,21 @@ Notes:
 - A month fetched before the tab became a choropleth has a raster but no
   extract. Re-run with `--force` — the API says so explicitly.
 
-#### **`generate_agro_geojson`**
+#### **Agro-ecological zone geometry — nothing to run**
 
 `source/eswatini-ecological_regions.topojson` carries **no CRS** and its
 coordinates are metres in a Transverse Mercator projection. Handed straight to
-Leaflet it would place Eswatini off the coast of Africa, so it is reprojected
-to WGS84 once at deploy time:
+Leaflet it would place Eswatini off the coast of Africa.
 
-```bash
-docker compose exec backend python manage.py generate_agro_geojson
-```
+That reprojection is a constant, so it is done once and committed as
+`source/eswatini-ecological_regions-wgs84.topojson` (173 KB) rather than
+regenerated on every deploy. The `generate_agro_geojson` command that used to
+write a gitignored `agro-eco.geojson` is gone, and with it a tab that 404'd
+whenever the step was skipped. Nothing to run, and nothing to remember after a
+boundary change beyond regenerating that file if the source ever moves.
 
-```bash
-Wrote /app/./source/config/agro-eco.geojson — 6 zones, bounds 30.79,-27.31 to 32.14,-25.71
-```
-
-`backend/seeder.sh` runs it automatically beside `generate_config`. Like
-`config.min.js`, the output is generated and gitignored — regenerate it after
-any change to the agro layer.
+The original TM-metres source stays in the tree: `assign_administration_zones`
+needs a metric CRS for its overlap weighting.
 
 #### **Keeping Precipitation current**
 
