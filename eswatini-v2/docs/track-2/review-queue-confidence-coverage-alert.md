@@ -6,6 +6,7 @@
 **Author**: Iwan Firmawan
 **Date**: 2026-09-02
 **Status**: Implemented (2026-09-02, verified manually against publication 25)
+**Follow-on**: §12 — show the ESI value instead of a permanent dash (Approved 2026-09-02, in progress)
 
 ---
 
@@ -439,6 +440,225 @@ Backend 1158 tests, frontend 388 tests (55 suites), `next lint` clean.
 - Read path: `build_rows` / `build_stats` in `backend/api/v1/v1_publication/review/utils.py`
 - Render: `frontend/src/components/Review/ReviewQueue.js`, `frontend/src/components/Map/ReviewerMap.js`, `frontend/src/components/DS/ConfidenceBadge.js`
 - Reason strings: `CONFIDENCE_REASON` in `frontend/src/static/config/review.js`
+
+
+---
+
+## 12. Follow-on design: show the ESI value instead of a permanent dash
+
+**Status**: Approved 2026-09-02 — **A in the row, C in the hover popover**.
+**Raised**: 2026-09-02, from the observation that the second row of the
+"Stations vs Satellite" column is hardcoded `None` and renders `—` forever.
+
+### 12.1 Problem
+
+`_stations_vs_satellite` hardcodes the second row to null:
+
+```python
+"esi": None,
+"esi_reason": CONFIDENCE_NO_SATELLITE_TEMPERATURE,
+```
+
+But ESI is **not** missing. `PublicationRaster(indicator="esi")` holds a real
+per-Inkhundla percentile rank for every publication — measured on pub 25
+(2026-07): 59 values, 0.321–0.879, all distinct, extracted from the real
+GeoNode asset 709 (`STEP_0303_ESI_pct_rank_Eswatini_202607`).
+
+Discarding it has two costs:
+
+1. A real satellite signal the reviewer paid for is thrown away at render time.
+2. A row that is blank in every month of every publication trains reviewers to
+   stop reading it — so when it *does* carry meaning, nobody looks.
+
+### 12.2 The constraint that shapes every option
+
+The column header is **"Stations vs Satellite"** and the SPI row is a
+**delta** — satellite z minus station z. ESI cannot be a delta: no weather
+station measures evaporative stress, so there is no second side to subtract.
+
+Putting a bare `0.608` under that header, directly beneath `+0.19`, invites the
+reading *"ESI differs by 0.608"* — which would be a fabricated comparison, the
+same class of error as flooring confidence to 1 (§1). **Any option that shows
+the value must also make unmistakably clear that it is not a difference.**
+
+### 12.3 What is actually available (verified 2026-09-02)
+
+| Input | Source | Rows (local) | Status |
+|---|---|---|---|
+| ESI percentile rank | `PublicationRaster(indicator="esi")` | 59 per publication | Real |
+| Station mean temperature | `StationDailyAggregate(parameter="tmean")` | 301 daily | Real |
+| 30-yr temperature normal | `AdministrationNormal(parameter="tmean")` | 708 (59×12), AgERA5 1990–2020 | Real |
+| Satellite temperature (°C) | — | — | **Does not exist** |
+
+So the framework's temperature half cannot be *differenced*, but **both of its
+halves can be shown**. Worked sample, pub 25 (2026-07):
+
+```
+Inkhundla         region      ESI rank   ESI z   stn tmean   normal   anomaly
+Hhukwini          Hhohho         0.526    0.06        13.4     14.5      -1.1
+Madlangempisi     Hhohho         0.609    0.28        13.4     17.5      -4.1
+Mayiwane          Hhohho         0.707    0.54        13.4     17.1      -3.7
+Mbabane East      Hhohho         0.608    0.27        13.4     13.4      +0.0
+```
+
+Note the station mean is identical across Hhohho — one MET station serves the
+whole region — while the **normal varies per Inkhundla**, so the anomaly still
+carries per-Inkhundla signal. That must be labelled as regional, not local.
+
+### 12.4 Options
+
+**A — Raw ESI rank in the existing row.** Replace `None` with the rank;
+render unsigned and muted so it does not mimic the signed SPI delta.
+*Cheapest. Restores the value but leaves the row semantically odd: one delta
+and one absolute number under a "vs" header.*
+
+**B — ESI as a z-value.** Invert the rank through `NormalDist().inv_cdf`, the
+same transform `satellite_spi()` already applies to the SPI rank, and show
+`+0.28`. *Puts both rows in the same unit family and reads as an anomaly. But
+a signed number next to a signed delta is MORE confusable, not less.*
+
+**C — Two parallel readings, explicitly not differenced.** Show the satellite
+ESI rank AND the station temperature anomaly side by side, with no subtraction:
+`ESI 0.61 sat · −4.1 °C stn`. *This is the actual "LST replacement": the
+framework's temperature half was satellite-LST vs station-temperature, and this
+restores both halves without inventing the comparison between them.*
+
+**D — Status quo.** Keep the dash, keep the tooltip.
+
+### 12.5 Decision (2026-09-02)
+
+**A in the table row, C in a hover popover on that row.**
+
+The row shows the bare ESI rank (A) so the table stays scannable at a glance.
+Hovering opens the full two-sided view (C): satellite ESI *and* the station
+temperature anomaly, with the note that they are shown side by side rather than
+differenced.
+
+Rationale: A alone risks the §12.2 misreading, and C inline would put four
+numbers in a 200px column beside a single SPI delta. Putting C behind hover
+resolves both — the glance stays cheap, the explanation is one hover away, and
+the column layout does not change at all. It also degrades honestly: with no
+station temperature the popover shows the satellite half alone.
+
+**Consequence for D-9**: the visual-separation problem shrinks to "an unsigned
+number next to a signed one, with a hover affordance". No Figma pass needed
+before building; revisit if reviewers still misread it.
+
+### 12.6 API contract
+
+Prerequisite (already staged, uncommitted): the `lst` → `esi` rename, so the
+field names the raster that exists rather than the MODIS product it replaced.
+
+```json
+"stations_vs_satellite": {
+  "spi": 0.185,
+  "esi": {
+    "satellite": 0.608,
+    "station_temp_anomaly": -4.1,
+    "comparable": false,
+    "reason": "no_satellite_temperature"
+  }
+}
+```
+
+- `spi` stays a scalar delta — unchanged, no consumer breakage.
+- `esi` becomes an object. It was **always `null`**, so nothing ever read a
+  value from it; this is safe despite looking like a type change.
+- `comparable: false` is explicit and permanent, so the frontend never has to
+  infer "this is not a delta" from the shape.
+- Units stay out of the payload: rank is dimensionless, anomaly is °C, and the
+  frontend already owns unit rendering.
+
+### 12.7 Design decisions to settle before building
+
+**D-7: Day-count floor for the temperature anomaly.** Precipitation is gated
+by `MIN_STATION_DAYS_PER_MONTH = 20` because a thin month understates a total
+and fakes a drought (§1). A *mean* is far less sensitive to missing days than a
+sum — but a 3-day mean is still not a month. **Proposal**: reuse the same
+20-day floor and return `station_temp_anomaly: null` below it, rather than
+inventing a second threshold. Needs partner confirmation.
+
+**D-8: Regional labelling.** The anomaly mixes a region-level station reading
+with an Inkhundla-level normal. The tooltip must say so, or a reviewer will
+read it as a local measurement.
+
+**D-9: Visual separation from the SPI delta.** Settled by §12.5: the ESI value
+renders **unsigned** (the SPI delta keeps its `+`/`−`), and the row carries a
+hover popover the SPI row does not. Those two differences are what tell the
+reviewer the numbers are different kinds of thing. Revisit with a Figma pass
+only if that proves insufficient in use.
+
+### 12.8 Testing strategy
+
+| Test | Coverage |
+|---|---|
+| Unit (backend) | ESI rank is carried through from the raster, not recomputed |
+| Unit (backend) | `comparable` is `false` on every row, in every publication |
+| Unit (backend) | Missing ESI raster → `satellite: null`, row still renders |
+| Unit (backend) | Station below the day floor → `station_temp_anomaly: null` (D-7) |
+| Unit (backend) | Anomaly = station mean − Inkhundla normal, signed correctly |
+| Unit (frontend) | The ESI value never renders with a `+`/`−` sign prefix |
+| Unit (frontend) | Both halves null → falls back to the dash and the tooltip |
+| Regression | An Inkhundla with a scored SPI delta and an ESI value shows both, and they are visually distinguishable |
+
+### 12.9 Risks
+
+- **Misreading a rank as a delta** — the dominant risk, mitigated by D-9 and
+  by `comparable: false` driving the rendering rather than a magic format.
+- **Scope creep into the confidence score.** This is display only. It must NOT
+  feed `combine()` — ESI is not a temperature, and folding it into the score
+  would resurrect the 0.4/0.6 weighting on a quantity the framework never
+  specified. The score stays precipitation-only.
+- **Deck alignment.** Slide 24 says the score derives from "SPI and land
+  surface temperature". If the UI starts showing ESI + station temperature,
+  the speaker notes need a matching line so the room is not told two stories.
+
+### 12.10 Open questions
+
+- [x] **D-7 floor** — reuse `MIN_STATION_DAYS_PER_MONTH` (20). One threshold,
+      already the house rule for station-derived figures; a second number would
+      need its own justification nobody has.
+- [x] **D-9 visual treatment** — settled in §12.5 (unsigned + popover). No
+      Figma pass before build.
+- [x] **Individual review page** — yes, but it needs no new data. See §12.11.
+
+---
+
+### 12.11 The individual review page needs no new data
+
+Verified against the live payload 2026-09-02:
+
+- `ReviewAdministrationDetailAPI` returns `public_row(...)`, so
+  **`stations_vs_satellite` already reaches `IndividualReview.js`** — whatever
+  the table gains, the detail page gains for free, with no extra fetch.
+- The ESI value is **already rendered there**: `cdi.indicators` carries
+  `{"key": "esi", "value": 0.526}` and the sub-indicator grid labels it
+  "Evaporative Stress Index".
+- The station temperatures are **already rendered there** too, as raw °C in the
+  Weather column's `StationBlock` (`min_temperature`, `max_temperature`,
+  `air_temperature`).
+
+So the gap on the detail page is not a number, it is the **connection**:
+nothing tells the reviewer that the ESI card and the station temperatures are
+the two halves of the framework's temperature comparison, or why they are not
+differenced.
+
+**Change**: a `title` tooltip on the ESI sub-indicator card only, from a new
+`CDI_SUBINDICATOR_NOTE` map. ~6 lines, no API change, no new fetch.
+
+**Not done on the detail page**: the temperature *anomaly*. That surface
+already shows the raw °C readings, which are more useful there than a derived
+departure; the anomaly earns its place in the table popover precisely because
+the table has no room for raw values. Split:
+
+| Surface | ESI | Station temperature |
+|---|---|---|
+| Queue table | value in the row (A) | anomaly in the hover popover (C) |
+| Detail page | sub-indicator card + tooltip | raw °C in the Weather column |
+
+**Wording lives in one place.** Both surfaces read the same explanatory string
+rather than each holding its own copy, so the two cannot drift apart the first
+time someone edits one.
 
 ---
 

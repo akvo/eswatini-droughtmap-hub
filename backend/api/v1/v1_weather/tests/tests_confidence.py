@@ -347,7 +347,12 @@ class PublicationConfidenceTestCase(TestCase):
         self.assertEqual(row["confidence"]["band"], "high")
         # The queue's SPI column is the same comparison, not a placeholder.
         self.assertEqual(row["stations_vs_satellite"]["spi"], 0.0)
-        self.assertIsNone(row["stations_vs_satellite"]["lst"])
+        # ESI rides alongside but is never a delta: this fixture attaches no
+        # ESI raster, so the satellite half is null and `comparable` still
+        # says the two sides could not be differenced even if it were not.
+        esi = row["stations_vs_satellite"]["esi"]
+        self.assertIsNone(esi["satellite"])
+        self.assertFalse(esi["comparable"])
 
     def test_no_data_inkhundla_is_not_scored(self):
         """DroughtCategory.none means the CDI had no signal, so there is no

@@ -129,6 +129,18 @@ export const DEFAULT_CDI_WEIGHTS = {
 // CDI-E sub-indicator display labels for the individual review page.
 // API sends { key, value } only (WX-3 D-4); the label/order live here.
 // G9: EVI2 is shown as "NDVI" (its equivalent successor) per product.
+// Why a sub-indicator is not what its name suggests. Only ESI needs one: it
+// replaced MODIS LST upstream, so a reviewer looking for a temperature finds a
+// stress rank instead. Same explanation the review queue's ESI row shows on
+// hover — one string, so the two surfaces cannot drift apart.
+export const CDI_SUBINDICATOR_NOTE = {
+  esi:
+    "Replaces land surface temperature (LST) in the CDI. A percentile rank, " +
+    "not degrees — and no weather station measures evaporative stress, so it " +
+    "cannot be differenced against station data the way SPI can. The " +
+    "station's own temperature is in the Weather Stations column.",
+};
+
 export const CDI_SUBINDICATOR_LABELS = {
   spi: "Precipitation (CHIRPS — SPI)",
   sm: "Soil moisture",

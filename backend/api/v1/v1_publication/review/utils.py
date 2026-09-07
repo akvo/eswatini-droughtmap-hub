@@ -14,14 +14,15 @@ from api.v1.v1_publication.models import (
 )
 from api.v1.v1_publication.constants import (
     DroughtCategory,
+    RasterIndicatorTypes,
 )
 from api.v1.v1_weather.confidence import (
     not_computable,
     publication_confidence,
+    publication_temperature_anomaly,
 )
 from api.v1.v1_weather.constants import (
     CONFIDENCE_NO_SATELLITE_SPI,
-    CONFIDENCE_NO_SATELLITE_TEMPERATURE,
 )
 
 
@@ -139,6 +140,22 @@ def build_administration_cdi(publication, administration_id, cdi_class,
     }
 
 
+def _indicator_ranks(publication, indicator):
+    """administration_id -> percentile rank for one component raster.
+
+    One query for the whole publication, read alongside the confidence map in
+    `build_rows` rather than per row.
+    """
+    raster = publication.rasters.filter(indicator=indicator).first()
+    if not raster:
+        return {}
+    return {
+        item["administration_id"]: item.get("value")
+        for item in (raster.values or [])
+        if item.get("administration_id") is not None
+    }
+
+
 def _confidence(scores, administration_id, cdi_class):
     """This Inkhundla's satellite-vs-station agreement score, 0-5.
 
@@ -154,17 +171,43 @@ def _confidence(scores, administration_id, cdi_class):
     return computed.as_dict()
 
 
-def _stations_vs_satellite(confidence):
-    """The queue's "Stations vs Satellite" column, from the same comparison.
+def _stations_vs_satellite(confidence, esi_rank, temperature_anomaly):
+    """The queue's "Stations vs Satellite" column (WX-2b §12).
 
-    SPI is the real delta the confidence score was built on. LST stays null:
-    the satellite side publishes no temperature in degrees C (see
-    `v1_weather/confidence.py`), so there is nothing to difference.
+    `spi` is a real DELTA — satellite z minus station z — because both sides
+    exist and meet in SPI space.
+
+    `esi` is NOT a delta and says so with `comparable: false`. It is named
+    after the raster the pipeline actually publishes
+    (`STEP_0303_ESI_pct_rank_Eswatini_*`, `CDIGeonodeCategory.esi`); it used
+    to be called `lst`, after the MODIS land-surface-temperature product ESI
+    replaced upstream and which this hub has never held. Naming a field after
+    a product that does not exist invited the reading that a temperature was
+    merely missing rather than absent by design.
+
+    The two halves of the framework's temperature comparison ride here side
+    by side, deliberately un-differenced: `satellite` is a dimensionless
+    stress rank, `station_temp_anomaly` is degrees against the 30-year
+    normal. Subtracting them would invent a comparison, so the client shows
+    both and lets the reviewer judge. Neither feeds the confidence score.
+
+    `comparable` carries the whole of that. There is deliberately no `reason`
+    beside it: only one explanation for `comparable: false` exists, so a
+    reason code would be a constant repeated on all 59 rows of every
+    publication, and a second place for the wording to go stale. The client
+    owns the sentence.
     """
     return {
         "spi": (confidence.get("meta") or {}).get("spi", {}).get("delta"),
-        "lst": None,
-        "lst_reason": CONFIDENCE_NO_SATELLITE_TEMPERATURE,
+        "esi": {
+            # Rounded like the SPI delta: the raster stores float32, so a raw
+            # rank serialises as 0.5257999897003174.
+            "satellite": (
+                None if esi_rank is None else round(float(esi_rank), 3)
+            ),
+            "station_temp_anomaly": temperature_anomaly,
+            "comparable": False,
+        },
     }
 
 
@@ -204,6 +247,8 @@ def build_rows(publication, user=None):
     mine = _my_suggestions(publication, user)
     # Once for the whole publication, not once per Inkhundla.
     scores = publication_confidence(publication)
+    esi_ranks = _indicator_ranks(publication, RasterIndicatorTypes.esi)
+    temperature_anomalies = publication_temperature_anomaly(publication)
 
     # Submissions per administration, across every review — including reviews
     # still in progress. A reviewer marks Tinkhundla one by one and only
@@ -240,7 +285,11 @@ def build_rows(publication, user=None):
             "region": admin.region if admin else None,
             "zone": admin.zone if admin else None,
             "cdi_class": cdi_class,
-            "stations_vs_satellite": _stations_vs_satellite(confidence),
+            "stations_vs_satellite": _stations_vs_satellite(
+                confidence,
+                esi_ranks.get(administration_id),
+                temperature_anomalies.get(administration_id),
+            ),
             "confidence": confidence,
             "reviews": {
                 "completed": reviewed_count,

@@ -1,21 +1,59 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Input, Progress, Select, Table } from "antd";
+import { Button, Input, Popover, Progress, Select, Table } from "antd";
 import { TabButtons } from "@/components";
 import { ConfidenceBadge, DroughtScore } from "@/components/DS";
-import { PAGE_SIZE, REGION_OPTIONS, CONFIDENCE_REASON } from "@/static/config";
+import { PAGE_SIZE, REGION_OPTIONS } from "@/static/config";
 import { useAppContext } from "@/context/AppContextProvider";
 import { QUEUE_FILTERS, buildQueueQuery } from "@/lib/query";
 
 /**
- * Satellite − station deltas. SPI is the real difference the confidence score
- * is built on; LST is null because the satellite side publishes no
- * temperature in °C, and a null must read as absent, not as zero agreement.
+ * The two satellite/station signals (WX-2b §12).
+ *
+ * SPI is a real DELTA — satellite minus station — and keeps its sign.
+ *
+ * ESI is NOT a delta and renders unsigned to say so: it is a dimensionless
+ * stress rank, and no weather station measures evaporative stress, so there
+ * is no second side to subtract. The framework's temperature half is instead
+ * shown as its two un-differenced parts in the hover popover — satellite ESI
+ * and the station's departure from its 30-year normal — so the glance stays
+ * cheap and the explanation is one hover away.
  */
+const EsiPopover = ({ esi }) => (
+  <div className="flex max-w-xs flex-col gap-2 text-xs">
+    <div className="font-semibold text-[#333333]">
+      ESI · replaces land surface temperature
+    </div>
+    <div className="flex justify-between gap-4">
+      <span className="text-[#606060]">Satellite (ESI rank)</span>
+      <span className="font-medium">
+        {esi?.satellite == null ? "—" : esi.satellite.toFixed(2)}
+      </span>
+    </div>
+    <div className="flex justify-between gap-4">
+      <span className="text-[#606060]">Station temp vs normal</span>
+      <span className="font-medium">
+        {esi?.station_temp_anomaly == null
+          ? "—"
+          : `${esi.station_temp_anomaly > 0 ? "+" : ""}${esi.station_temp_anomaly.toFixed(1)} °C`}
+      </span>
+    </div>
+    <p className="m-0 text-[#606060]">
+      ESI is a percentile rank of evaporative stress and no weather station
+      measures it, so these two are shown side by side and never subtracted.
+    </p>
+    <p className="m-0 text-[#a4a4a4]">
+      Station temperature is the region&apos;s, compared against this
+      Inkhundla&apos;s own 30-year normal.
+    </p>
+  </div>
+);
+
 const StationSignals = ({ stations }) => {
   const signed = (n) =>
     n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2)}`;
+  const esi = stations?.esi;
   return (
     <div className="flex flex-col gap-0.5 text-sm leading-5">
       <span className="flex gap-2">
@@ -24,15 +62,16 @@ const StationSignals = ({ stations }) => {
           {signed(stations?.spi)}
         </span>
       </span>
-      <span
-        className="flex gap-2"
-        title={CONFIDENCE_REASON[stations?.lst_reason]}
-      >
-        <span className="w-8 text-[#606060]">LST</span>
-        <span className="font-medium text-[#B54708]">
-          {stations?.lst == null ? "—" : `${signed(stations.lst)} °C`}
+      {/* Unsigned, and no unit suffix: ESI is a percentile rank, never
+          degrees and never a difference. The popover carries both halves. */}
+      <Popover content={<EsiPopover esi={esi} />} placement="left">
+        <span className="flex w-fit cursor-help gap-2 border-b border-dotted border-[#d0d5dd]">
+          <span className="w-8 text-[#606060]">ESI</span>
+          <span className="font-medium text-[#B54708]">
+            {esi?.satellite == null ? "—" : esi.satellite.toFixed(2)}
+          </span>
         </span>
-      </span>
+      </Popover>
     </div>
   );
 };
@@ -243,3 +282,4 @@ const ReviewQueueTable = ({
 };
 
 export default ReviewQueueTable;
+export { StationSignals, EsiPopover };

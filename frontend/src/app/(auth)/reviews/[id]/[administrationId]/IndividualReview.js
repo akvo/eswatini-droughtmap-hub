@@ -19,6 +19,7 @@ import {
   DROUGHT_CATEGORY_ASSIGNABLE,
   DROUGHT_CATEGORY_LABEL,
   CDI_SUBINDICATOR_LABELS,
+  CDI_SUBINDICATOR_NOTE,
   IKS_REVIEW_INDICATORS,
 } from "@/static/config";
 import dayjs from "dayjs";
@@ -132,8 +133,11 @@ const CDIColumn = ({ cdi }) => {
         {(cdi.indicators || []).length > 0 ? (
           <div className="grid grid-cols-2 gap-3 p-3">
             {(cdi.indicators || []).map((ind) => (
+              // ESI carries a note: it is the LST replacement, so a reviewer
+              // hunting for a temperature needs telling what this rank is.
               <div
                 key={ind.key}
+                title={CDI_SUBINDICATOR_NOTE[ind.key]}
                 className="rounded"
                 style={{ backgroundColor: "#ECEFF8", padding: "6px 8px" }}
               >

@@ -356,3 +356,99 @@ def publication_confidence(publication) -> dict:
             ranks.get(administration_id), total, mean, sd
         )
     return scores
+
+
+def _station_month_tmean(year_month: date) -> dict:
+    """station_id -> mean temperature for the month, or None when too thin.
+
+    Same 20-day floor as the rainfall window (`MIN_STATION_DAYS_PER_MONTH`).
+    A mean tolerates gaps better than a sum does, but a three-day mean is
+    still not a month, and a second threshold would need a justification
+    nobody has (WX-2b D-7).
+    """
+    rows = StationDailyAggregate.objects.filter(
+        parameter=WeatherParameter.tmean,
+        value__isnull=False,
+        date__gte=date(year_month.year, year_month.month, 1),
+        date__lt=_next_month(year_month),
+    ).values_list("station_id", "value")
+
+    per_station = {}
+    for station_id, value in rows:
+        per_station.setdefault(station_id, []).append(value)
+
+    return {
+        station_id: (
+            round(sum(values) / len(values), 1)
+            if len(values) >= MIN_STATION_DAYS_PER_MONTH
+            else None
+        )
+        for station_id, values in per_station.items()
+    }
+
+
+def publication_temperature_anomaly(publication) -> dict:
+    """administration_id -> station mean temperature minus its 30-year normal.
+
+    The station HALF of the framework's temperature comparison, on its own.
+    It is deliberately never differenced against the satellite: the CDI ships
+    ESI, a dimensionless stress rank, and no station measures evaporative
+    stress (see the module docstring). Showing both halves side by side is
+    the closest honest substitute — see WX-2b §12.
+
+    None when the region has no station, the month is under-reported, or no
+    tmean normal was extracted for the Inkhundla. Never zero: 0.0 is a real
+    anomaly meaning "exactly on the normal".
+
+    NOT an input to `score()`. Folding it in would resurrect the framework's
+    0.4/0.6 weighting over a quantity the framework never specified.
+    """
+    year_month = publication.year_month
+    means = _station_month_tmean(year_month)
+
+    stations_by_region = {}
+    for station in WeatherStation.objects.filter(is_active=True).order_by(
+        "pk"
+    ):
+        if station.region:
+            stations_by_region.setdefault(station.region, []).append(
+                station.pk
+            )
+
+    administration_ids = [
+        item["administration_id"]
+        for item in (publication.initial_values or [])
+        if item.get("administration_id") is not None
+    ]
+    regions = dict(
+        Administration.objects.filter(
+            pk__in=administration_ids
+        ).values_list("pk", "region")
+    )
+    normals = dict(
+        AdministrationNormal.objects.filter(
+            administration_id__in=administration_ids,
+            month=year_month.month,
+            parameter=WeatherParameter.tmean,
+        ).values_list("administration_id", "value")
+    )
+
+    anomalies = {}
+    for administration_id in administration_ids:
+        observed = next(
+            (
+                means[station_id]
+                for station_id in stations_by_region.get(
+                    regions.get(administration_id), []
+                )
+                if means.get(station_id) is not None
+            ),
+            None,
+        )
+        normal = normals.get(administration_id)
+        anomalies[administration_id] = (
+            None
+            if observed is None or normal is None
+            else round(observed - normal, 1)
+        )
+    return anomalies

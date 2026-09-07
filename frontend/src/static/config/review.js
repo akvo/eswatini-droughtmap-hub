@@ -49,8 +49,13 @@ export const CONFIDENCE_REASON = {
   no_satellite_spi: "No satellite SPI for this Inkhundla",
   no_precipitation_climatology:
     "The 30-year rainfall climatology has not been extracted yet",
+  // Describes the SCORE, not the ESI row. `confidence.meta.reason` carries it
+  // on a SUCCESSFUL result — the framework weights temperature 0.4 and
+  // precipitation 0.6, but no satellite temperature exists, so the score runs
+  // on precipitation alone. The ESI row owns its own wording (EsiPopover).
   no_satellite_temperature:
-    "Scored on precipitation only — the satellite publishes no temperature",
+    "Scored on precipitation alone — the framework's temperature half has " +
+    "no satellite source",
 };
 
 // Review-progress map: reviews collected out of the total reviewers, ramped

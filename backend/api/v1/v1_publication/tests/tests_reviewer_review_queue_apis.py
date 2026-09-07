@@ -313,7 +313,7 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertIn(row["confidence"]["value"], range(6))
         self.assertIn("reason", row["confidence"]["meta"])
         self.assertEqual(
-            set(row["stations_vs_satellite"]), {"spi", "lst", "lst_reason"}
+            set(row["stations_vs_satellite"]), {"spi", "esi"}
         )
 
     def test_table_zone_filter(self):
@@ -624,6 +624,93 @@ class ReviewQueueAPIsTestCase(APITestCase):
         self.assertTrue(
             all(r["my_suggestion"]["reviewed"] for r in res.data["data"])
         )
+
+    # ---- ESI signal (WX-2b §12) ------------------------------------------
+    def test_esi_carries_the_satellite_rank_and_is_never_a_delta(self):
+        """The row shows the real ESI percentile rank, and says out loud that
+        it is not a difference — no station measures evaporative stress."""
+        administration_ids = [
+            v["administration_id"] for v in self.publication.initial_values
+        ]
+        PublicationRaster.objects.create(
+            publication=self.publication,
+            indicator=RasterIndicatorTypes.esi,
+            geonode_id=2,
+            values=[
+                {"administration_id": a, "value": 0.42}
+                for a in administration_ids
+            ],
+        )
+        res = self.client.get(self.table_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        for row in res.data["data"]:
+            esi = row["stations_vs_satellite"]["esi"]
+            self.assertEqual(esi["satellite"], 0.42)
+            # `comparable` is the whole contract — there is deliberately no
+            # reason code beside it (only one explanation exists).
+            self.assertFalse(esi["comparable"])
+            self.assertNotIn("reason", esi)
+
+    def test_esi_is_null_when_no_raster_is_attached(self):
+        """No ESI raster must leave the row renderable, not crash it."""
+        res = self.client.get(self.table_url)
+        for row in res.data["data"]:
+            self.assertIsNone(
+                row["stations_vs_satellite"]["esi"]["satellite"]
+            )
+
+    def test_temperature_anomaly_is_station_minus_its_own_normal(self):
+        """The station HALF of the framework's temperature comparison, shown
+        alone. Never differenced against ESI — different quantities."""
+        self._seed_confidence()
+        year_month = self.publication.year_month
+        station = WeatherStation.objects.first()
+        for day in range(1, 26):
+            StationDailyAggregate.objects.create(
+                station=station,
+                date=date(year_month.year, year_month.month, day),
+                parameter=WeatherParameter.tmean,
+                value=20.0,
+            )
+        target = Administration.objects.filter(
+            region=station.region
+        ).first()
+        AdministrationNormal.objects.create(
+            administration=target,
+            month=year_month.month,
+            parameter=WeatherParameter.tmean,
+            value=18.0,
+            dataset="AgERA5 1990-2020",
+        )
+        res = self.client.get(self.detail_url(target.pk))
+        esi = res.data["administration"]["stations_vs_satellite"]["esi"]
+        self.assertEqual(esi["station_temp_anomaly"], 2.0)
+
+    def test_temperature_anomaly_respects_the_day_floor(self):
+        """A thin month yields null, not a confident-looking mean (D-7)."""
+        self._seed_confidence()
+        year_month = self.publication.year_month
+        station = WeatherStation.objects.first()
+        for day in range(1, 4):   # 3 days, well under MIN_STATION_DAYS
+            StationDailyAggregate.objects.create(
+                station=station,
+                date=date(year_month.year, year_month.month, day),
+                parameter=WeatherParameter.tmean,
+                value=20.0,
+            )
+        target = Administration.objects.filter(
+            region=station.region
+        ).first()
+        AdministrationNormal.objects.create(
+            administration=target,
+            month=year_month.month,
+            parameter=WeatherParameter.tmean,
+            value=18.0,
+            dataset="AgERA5 1990-2020",
+        )
+        res = self.client.get(self.detail_url(target.pk))
+        esi = res.data["administration"]["stations_vs_satellite"]["esi"]
+        self.assertIsNone(esi["station_temp_anomaly"])
 
     # ---- confidence coverage (WX-2b) -------------------------------------
     def _coverage(self):
