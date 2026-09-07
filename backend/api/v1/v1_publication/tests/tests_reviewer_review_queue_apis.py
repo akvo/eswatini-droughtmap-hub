@@ -17,7 +17,11 @@ from api.v1.v1_publication.constants import (
     DroughtCategory,
     RasterIndicatorTypes,
 )
-from api.v1.v1_weather.constants import WeatherParameter
+from api.v1.v1_weather.constants import (
+    CONFIDENCE_NO_SATELLITE_TEMPERATURE,
+    CONFIDENCE_NO_STATION,
+    WeatherParameter,
+)
 from api.v1.v1_weather.models import (
     AdministrationNormal,
     StationDailyAggregate,
@@ -130,6 +134,7 @@ class ReviewQueueAPIsTestCase(APITestCase):
                 "pending_review", "disagreements", "high_confidence",
                 "tinkhundla_reviewed", "overall_readiness",
                 "reviews_collected", "status_breakdown",
+                "confidence_coverage",
             },
         )
         self.assertIsInstance(summary["high_confidence"]["value"], int)
@@ -618,6 +623,82 @@ class ReviewQueueAPIsTestCase(APITestCase):
             self.assertNotIn(theirs_only, ids)
         self.assertTrue(
             all(r["my_suggestion"]["reviewed"] for r in res.data["data"])
+        )
+
+    # ---- confidence coverage (WX-2b) -------------------------------------
+    def _coverage(self):
+        res = self.client.get(self.stats_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        return res.data["summary"]["confidence_coverage"]
+
+    def test_coverage_reports_every_unscored_inkhundla_with_a_reason(self):
+        """No satellite SPI seeded, so nothing scores. Every Inkhundla must
+        appear under a named reason — the banner's whole purpose."""
+        coverage = self._coverage()
+        self.assertEqual(coverage["scored"], 0)
+        self.assertEqual(coverage["total"], self.total)
+        self.assertTrue(coverage["unscored"])
+        self.assertEqual(
+            sum(item["value"] for item in coverage["unscored"]), self.total
+        )
+        self.assertNotIn("unknown", [i["key"] for i in coverage["unscored"]])
+
+    def test_coverage_ignores_the_reason_carried_by_a_scored_row(self):
+        """The trap: a row that scored 5 still carries
+        `no_satellite_temperature`, the standing note that the temperature
+        half has no source. Counting it would report a fully scored
+        publication as entirely unscored."""
+        self._seed_confidence()
+        coverage = self._coverage()
+        self.assertEqual(coverage["scored"], self.total)
+        self.assertEqual(coverage["unscored"], [])
+
+        # ...and the reason really is present on the rows, so the test would
+        # fail if the band check were dropped.
+        res = self.client.get(self.table_url)
+        reasons = {
+            row["confidence"]["meta"]["reason"] for row in res.data["data"]
+        }
+        self.assertEqual(reasons, {CONFIDENCE_NO_SATELLITE_TEMPERATURE})
+
+    def test_coverage_orders_causes_by_size_and_stays_consistent(self):
+        """Partial coverage: dominant cause first, and scored + unscored
+        always accounts for every Inkhundla."""
+        self._seed_confidence()
+        by_region = {}
+        for adm in Administration.objects.filter(
+            pk__in=[
+                v["administration_id"]
+                for v in self.publication.initial_values
+            ]
+        ):
+            by_region.setdefault(adm.region, []).append(adm.pk)
+        regions = [r for r in by_region if r]
+        if len(regions) < 2:
+            self.skipTest("fixture has fewer than two regions")
+
+        # One region loses its station -> no_station_in_region.
+        WeatherStation.objects.filter(region=regions[0]).delete()
+        # One Inkhundla elsewhere loses its satellite rank -> no_satellite_spi.
+        raster = PublicationRaster.objects.get(
+            publication=self.publication,
+            indicator=RasterIndicatorTypes.spi,
+        )
+        dropped = by_region[regions[1]][0]
+        raster.values = [
+            v for v in raster.values if v["administration_id"] != dropped
+        ]
+        raster.save(update_fields=["values"])
+
+        coverage = self._coverage()
+        counts = [item["value"] for item in coverage["unscored"]]
+        self.assertEqual(counts, sorted(counts, reverse=True))
+        self.assertEqual(
+            coverage["scored"] + sum(counts), coverage["total"]
+        )
+        self.assertGreater(coverage["scored"], 0)
+        self.assertIn(
+            CONFIDENCE_NO_STATION, [i["key"] for i in coverage["unscored"]]
         )
 
     # ---- auth ------------------------------------------------------------

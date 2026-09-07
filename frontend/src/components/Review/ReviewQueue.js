@@ -19,6 +19,7 @@ import { useAppDispatch } from "@/context/AppContextProvider";
 import AssessmentSummary from "./AssessmentSummary";
 import BulkAcceptBanner from "./BulkAcceptBanner";
 import BulkAcceptModal from "./BulkAcceptModal";
+import ConfidenceCoverageAlert from "./ConfidenceCoverageAlert";
 import ReviewQueueTable from "./ReviewQueueTable";
 import { buildQueueQuery, mergeAcceptedRows } from "@/lib/query";
 
@@ -210,6 +211,11 @@ const ReviewQueue = ({
               } Tinkhundla`}
             />
           </div>
+
+          <ConfidenceCoverageAlert
+            coverage={summary?.confidence_coverage}
+            yearMonth={review?.publication?.year_month}
+          />
 
           {error && (
             <Alert

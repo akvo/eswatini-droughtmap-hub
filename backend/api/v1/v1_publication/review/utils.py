@@ -335,9 +335,26 @@ def _tally(rows):
         "high_confidence": 0,
         "validated": 0,
         "mine_reviewed": 0,
+        # Confidence coverage (WX-2b): how many Inkhundla carry a real band,
+        # and why the rest do not.
+        "scored": 0,
+        "unscored_reasons": {},
     }
     for row in rows:
         counts[row["review_status"]] += 1
+        confidence = row["confidence"]
+        if confidence["band"]:
+            tally["scored"] += 1
+        else:
+            # ONLY when there is no band. A scored row still carries
+            # `no_satellite_temperature` — the standing note that the
+            # temperature half of the framework has no source, not a failure —
+            # so tallying reasons unconditionally would report a healthy
+            # publication as entirely unscored.
+            reason = (confidence.get("meta") or {}).get("reason") or "unknown"
+            tally["unscored_reasons"][reason] = (
+                tally["unscored_reasons"].get(reason, 0) + 1
+            )
         if row["disputed"]:
             tally["disputed"] += 1
         # "ready to bulk-accept" — high confidence AND not yet reviewed by the
@@ -419,6 +436,21 @@ def build_stats(rows, previous_rows=None):
         },
         # The requesting reviewer's own progress out of the 59 Tinkhundla
         # (Figma "Reviews collected 25/59") — not crossed with other reviewers.
+        # Publication-wide, and deliberately not delta'd: this describes the
+        # month's input data, not the reviewer's progress through it.
+        "confidence_coverage": {
+            "scored": now["scored"],
+            "total": now["total"],
+            # Dominant cause first; key ties broken alphabetically so the
+            # order is stable between requests.
+            "unscored": [
+                {"key": key, "value": value}
+                for key, value in sorted(
+                    now["unscored_reasons"].items(),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            ],
+        },
         "overall_readiness": _pct(now["mine_reviewed"], now["total"]),
         "reviews_collected": {
             "value": now["mine_reviewed"],
