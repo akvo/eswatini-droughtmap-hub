@@ -90,6 +90,11 @@ class ActivityListSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "title",
+            # Consumers that only ever read the list still need to say what an
+            # activity IS — the brief's response-activities section had nothing
+            # but a title without it. Same field the detail serializer already
+            # exposes, behind the same permission gate.
+            "description",
             "sector",
             "sector_label",
             "status",

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Avatar, Tooltip } from "antd";
-import { ExportOutlined } from "@ant-design/icons";
+import { DownOutlined } from "@ant-design/icons";
 import { BRIEF_NOTIFY_LIST, SECTOR_CARD_ICONS } from "@/static/config";
 import BriefSection from "../BriefSection";
 
@@ -14,6 +15,94 @@ const initials = (label = "") =>
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+
+/**
+ * One activity, collapsed to its title until asked to expand.
+ *
+ * The `↗` that used to sit here was decoration: it carried no href and no
+ * handler, and there is nowhere for it to go — /activity-library is behind
+ * Login and holds the open activity in local state, so it has no per-activity
+ * URL to link to. Expanding in place needs no route and keeps the brief
+ * readable by someone who cannot sign in.
+ *
+ * The detail is `hidden print:block`: on screen it obeys the toggle, on paper
+ * it always prints. A brief that dropped its triggers because the reader left
+ * a card collapsed would be a worse document than the one before this change.
+ * The toggle itself is a real <button>, which print.css already hides.
+ */
+const ActivityCard = ({ activity }) => {
+  const [expanded, setExpanded] = useState(false);
+  // Only what /activities actually returns. The old subtitle read
+  // `description || objective`: the first was absent from the list payload
+  // until it was added to ActivityListSerializer, and the second is not a
+  // field on the model at all, so it always rendered empty.
+  const detail = [
+    ["Trigger", activity.trigger_summary],
+    ["Owner", activity.owner],
+    ["Sector", activity.sector_label],
+  ].filter(([, value]) => value);
+  const hasDetail = Boolean(activity.description) || detail.length > 0;
+
+  return (
+    <div className="border border-cardBorder p-3">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0">
+          {SECTOR_CARD_ICONS[activity.sector] ?? null}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="mb-0 text-sm font-semibold text-neutral-800">
+            {activity.title}
+          </p>
+          {activity.code && (
+            <p className="mb-0 text-xs leading-4 text-neutral-500">
+              {activity.code}
+            </p>
+          )}
+        </div>
+        {hasDetail && (
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? "Hide" : "Show"} details for ${
+              activity.title
+            }`}
+            className="-m-1 shrink-0 cursor-pointer border-0 bg-transparent p-1 text-neutral-400 hover:text-primary"
+          >
+            <DownOutlined
+              className={`text-xs transition-transform ${
+                expanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
+      </div>
+
+      {hasDetail && (
+        <div
+          data-testid="activity-detail"
+          className={`mt-2 flex-col gap-2 border-t border-cardBorder pt-2 text-xs leading-4 ${
+            expanded ? "flex" : "hidden print:flex"
+          }`}
+        >
+          {activity.description && (
+            <p className="mb-0 text-neutral-700">{activity.description}</p>
+          )}
+          {detail.length > 0 && (
+            <dl className="mb-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              {detail.map(([label, value]) => (
+                <div key={label} className="contents">
+                  <dt className="font-semibold text-neutral-500">{label}</dt>
+                  <dd className="mb-0 text-neutral-700">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * "Response activities" + "Notify" — the two-column band (Figma 4155:180002).
@@ -41,23 +130,7 @@ const ResponseAndNotify = ({ showActivities, showNotify, activities }) => (
           {activities.length ? (
             <div className="flex max-h-[320px] flex-col gap-2 overflow-y-auto pr-1">
               {activities.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-start gap-3 border border-cardBorder p-3"
-                >
-                  <span className="mt-0.5 shrink-0">
-                    {SECTOR_CARD_ICONS[a.sector] ?? null}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="mb-0 truncate text-sm font-semibold text-neutral-800">
-                      {a.title}
-                    </p>
-                    <p className="mb-0 line-clamp-2 text-xs leading-4 text-neutral-500">
-                      {a.description || a.objective || ""}
-                    </p>
-                  </div>
-                  <ExportOutlined className="mt-1 shrink-0 text-neutral-400" />
-                </div>
+                <ActivityCard key={a.id} activity={a} />
               ))}
             </div>
           ) : (
