@@ -133,27 +133,41 @@ class GenerateWeatherSeederTestCase(TestCase):
         self.assertGreater(max(values), 0)
 
     def test_temperature_ordering_holds_every_day(self):
-        self.seed()
-        by_day = defaultdict(dict)
-        rows = StationDailyAggregate.objects.filter(
-            parameter__in=[
-                WeatherParameter.tmin,
-                WeatherParameter.tmean,
-                WeatherParameter.tmax,
-            ]
-        ).values("station_id", "date", "parameter", "value")
-        for row in rows:
-            by_day[(row["station_id"], row["date"])][row["parameter"]] = row[
-                "value"
-            ]
-        self.assertTrue(by_day)
-        for values in by_day.values():
-            self.assertLess(
-                values[WeatherParameter.tmin], values[WeatherParameter.tmean]
-            )
-            self.assertLess(
-                values[WeatherParameter.tmean], values[WeatherParameter.tmax]
-            )
+        """tmin < tmean < tmax, on the STORED values, for every seed.
+
+        Several seeds, not one: the window is `today`-relative, so a single
+        seed exercises a different draw sequence each calendar day. That is
+        how a rounding collision — a spread under 0.05 putting tmin and tmean
+        on the same tenth — sat here passing on most days and failing on a
+        few. One seed is roughly a 1-in-3 chance of catching it.
+        """
+        for seed in (42, 7, 1234, 99):
+            with self.subTest(seed=seed):
+                self.seed("--seed", seed)
+                by_day = defaultdict(dict)
+                rows = StationDailyAggregate.objects.filter(
+                    parameter__in=[
+                        WeatherParameter.tmin,
+                        WeatherParameter.tmean,
+                        WeatherParameter.tmax,
+                    ]
+                ).values("station_id", "date", "parameter", "value")
+                for row in rows:
+                    by_day[(row["station_id"], row["date"])][
+                        row["parameter"]
+                    ] = row["value"]
+                self.assertTrue(by_day)
+                for (station_id, day), values in by_day.items():
+                    self.assertLess(
+                        values[WeatherParameter.tmin],
+                        values[WeatherParameter.tmean],
+                        f"station {station_id} on {day}",
+                    )
+                    self.assertLess(
+                        values[WeatherParameter.tmean],
+                        values[WeatherParameter.tmax],
+                        f"station {station_id} on {day}",
+                    )
 
     def test_falls_back_to_climatology_and_says_so(self):
         """A run without normals must be visibly lower fidelity, not

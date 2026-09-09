@@ -77,6 +77,11 @@ PARAMETERS = [
 
 READINGS_PER_DAY = 24
 
+# Readings are stored rounded to one decimal, so the smallest gap that can
+# survive rounding is one step. Anything less lets tmin, tmean and tmax land
+# on the same tenth and breaks tmin < tmean < tmax for that day.
+MIN_TEMPERATURE_SPREAD_C = 0.1
+
 # Fallback climatology, used ONLY when AdministrationNormal is empty. Eswatini
 # is summer-rainfall: wet Oct-Mar, dry Apr-Sep. Magnitudes sanity-checked
 # against the real station sample in eswatini-v2/data/weather_daily.csv
@@ -479,20 +484,31 @@ class Command(BaseCommand):
             else:
                 readings = READINGS_PER_DAY
 
-            tmean = tmean_normal + rng.gauss(0, 1.5)
-            # abs() on both, so tmin < tmean < tmax always holds — a negative
-            # draw would silently invert the pair on some days.
-            tmax = tmean + abs(rng.gauss(7, 2))
-            tmin = tmean - abs(rng.gauss(5, 1.5))
+            # Rounded FIRST, then separated: the ordering has to hold for the
+            # values actually stored, not for the draws. abs() alone keeps the
+            # unrounded draws apart, but a spread under 0.05 rounds onto the
+            # same tenth and stores tmin == tmean. MIN_TEMPERATURE_SPREAD_C is
+            # one rounding step, so tmean already being an exact tenth makes
+            # the rounded neighbours differ by at least that much.
+            tmean = round(tmean_normal + rng.gauss(0, 1.5), 1)
+            tmax = round(
+                tmean + max(abs(rng.gauss(7, 2)), MIN_TEMPERATURE_SPREAD_C), 1
+            )
+            tmin = round(
+                tmean - max(abs(rng.gauss(5, 1.5)), MIN_TEMPERATURE_SPREAD_C),
+                1,
+            )
             # wet_days holds each wet day's SHARE of the month; multiplying by
             # the monthly normal is what makes the month total the normal.
             rain = round(precipitation * wet_days.get(day.day, 0.0), 1)
 
             for parameter, value in (
                 (WeatherParameter.precipitation, rain),
-                (WeatherParameter.tmean, round(tmean, 1)),
-                (WeatherParameter.tmax, round(tmax, 1)),
-                (WeatherParameter.tmin, round(tmin, 1)),
+                # Already rounded above — rounding again here would hide that
+                # the separation is enforced on the stored values.
+                (WeatherParameter.tmean, tmean),
+                (WeatherParameter.tmax, tmax),
+                (WeatherParameter.tmin, tmin),
                 (WeatherParameter.humidity, round(rng.uniform(60, 92), 1)),
                 (WeatherParameter.wind_speed, round(rng.uniform(0.2, 1.6), 2)),
             ):
