@@ -29,7 +29,7 @@ class TechnicalWorkingGroup:
     uneswa = 5
 
     FieldStr = {
-        ndma: "NDMA (National Disaster Management Agency)",
+        ndma: "NDRMA (National Disaster Risk Management Authority)",
         moag: "MoAg (Ministry of Agriculture)",
         met: "MET (Meteorological Office)",
         dwa: "DWA (Department of Water Affairs)",

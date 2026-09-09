@@ -20,10 +20,10 @@ export const HOME_PAGE = {
 export const PAGE_SIZE = 10;
 
 export const APP_SETTINGS = {
-  copy: "Eswatini National Disaster Management Agency",
-  title: "Eswatini Drought Monitor",
+  copy: "Eswatini National Disaster Risk Management Authority",
+  title: "Eswatini Drought Intelligence Hub",
   about:
-    "The Eswatini Drought Monitor is developed through a collaboration between the National Disaster Management Agency of Eswatini, the Ministry of Agriculture, and the Eswatini Meteorological Service.",
+    "The Eswatini Drought Intelligence Hub (DIH) is a vital initiative created through the joint efforts of the National Drought Management Center, the Ministry of Agriculture, the Ministry of tourism &environmental affairs, the Ministry of tinkhundla administration and the Eswatini Meteorological Service. This collaborative platform aims to provide timely and accurate information on drought conditions, helping to mitigate the impacts on agriculture and water resources.",
   // Placeholder for the header notice bar — wire to real bulletin /
   // last-refresh data when that source is available.
   notice: "Bulletin period - May 2026. Last refresh: 15 May 2026, 06:12 SAST",
@@ -121,7 +121,7 @@ export const FOOTER_LINK_COLUMNS = [
 export const TWG_OPTIONS = [
   {
     value: 1,
-    label: "NDMA (National Disaster Management Agency)",
+    label: "NDRMA (National Disaster Risk Management Authority)",
   },
   {
     value: 2,
@@ -145,7 +145,7 @@ export const TWG_LOGOS = [
   {
     id: 1,
     image: "/images/logo-ndma.jpg",
-    alt: "National Disaster Management Agency",
+    alt: "NDRMA (National Disaster Risk Management Authority)",
     url: "https://ndma.org.sz/",
   },
   {

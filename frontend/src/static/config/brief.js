@@ -160,7 +160,7 @@ export const BRIEF_NOTIFY_LIST = [
   {
     key: "ndrma_regional",
     label: "NDRMA Regional",
-    group: "NDMA (National Disaster Management Agency)",
+    group: "NDRMA (National Disaster Risk Management Authority)",
   },
   {
     key: "community_health",

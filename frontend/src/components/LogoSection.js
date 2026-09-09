@@ -15,7 +15,7 @@ const LogoSection = () => {
         <h2 className="text-xl xl:text-2xl text-primary font-bold">
           ABOUT EDM
         </h2>
-        <p className="w-5/12 text-center">{APP_SETTINGS.about}</p>
+        <p className="w-full max-w-[875px] text-center">{APP_SETTINGS.about}</p>
         <ul className="flex flex-row items-center gap-12 mb-12 logo-list">
           {TWG_LOGOS.map((logo) => (
             <li key={logo.id}>
