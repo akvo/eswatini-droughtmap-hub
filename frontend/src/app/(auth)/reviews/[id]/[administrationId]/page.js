@@ -33,9 +33,15 @@ const IndividualReviewPage = async ({ params, searchParams }) => {
       "GET",
       `/reviewer/${publicationId}/administrations/${administrationId}`,
     ),
-    api("GET", `/weather/administrations/${administrationId}/latest`).catch(
-      () => null,
-    ),
+    // Pinned to the publication month: without `period` the endpoint returns
+    // the station's latest month, which on an older review showed a later
+    // month's rainfall beside that month's confidence score.
+    api(
+      "GET",
+      `/weather/administrations/${administrationId}/latest${
+        period ? `?period=${period}` : ""
+      }`,
+    ).catch(() => null),
     period
       ? api(
           "GET",

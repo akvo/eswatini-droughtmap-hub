@@ -46,12 +46,19 @@ export const CONFIDENCE_REASON = {
   no_station_in_region: "No weather station in this Inkhundla's region",
   incomplete_station_record:
     "The station did not report enough of the last 3 months",
+  station_history_too_short:
+    "Pending — the region's station started reporting after this month's 3-month window opened; scored from its third full month",
   no_satellite_spi: "No satellite SPI for this Inkhundla",
   no_precipitation_climatology:
     "The 30-year rainfall climatology has not been extracted yet",
   no_satellite_temperature:
-    "Scored on precipitation only — the satellite publishes no temperature",
+    "Scored on precipitation only — the satellite temperature for this month has not been fetched yet",
 };
+
+// Reasons that mean "not yet" rather than "missing": the badge renders them
+// as a Pending chip instead of a dash, so a new station is not read as a
+// broken score (WX-11 D-12).
+export const CONFIDENCE_PENDING_REASONS = ["station_history_too_short"];
 
 // Review-progress map: reviews collected out of the total reviewers, ramped
 // none -> all. Five buckets whatever the reviewer count — `most` absorbs

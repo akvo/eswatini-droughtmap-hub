@@ -84,6 +84,27 @@ describe("WeatherColumn (MET + citizen-science blocks)", () => {
     expect(screen.getByText("Big Bend Community")).toBeInTheDocument();
   });
 
+  it("names the month and the days reported so a thin month reads as thin", () => {
+    const june = {
+      ...metWeather,
+      meta: { ...metWeather.meta, period: "2026-06", days_reported: 6 },
+    };
+    render(<WeatherColumn weather={june} citizenScience={null} />);
+    expect(screen.getAllByText(/Jun 2026 · 6 days reported/)).toHaveLength(2);
+  });
+
+  it("says which month is empty when the region's station has no readings", () => {
+    const empty = {
+      data: null,
+      meta: { reason: "no_station_data_for_period", period: "2026-06" },
+    };
+    render(<WeatherColumn weather={empty} citizenScience={null} />);
+    // resolution is absent, so the strict per-region gate still applies
+    expect(
+      screen.getByText(/No data available — no weather station/),
+    ).toBeInTheDocument();
+  });
+
   it("headlines the monthly rainfall total in mm, never an SPI value", () => {
     const withRain = {
       ...metWeather,
