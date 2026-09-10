@@ -129,6 +129,13 @@ All endpoints exist. **The queue endpoints are keyed by `publication_id`, the ro
 
 **`is_mock: true` on `confidence` and `stations_vs_satellite`** — the real formula and station data are not in yet. The UI must render these behind a shared `MockBadge`/tooltip affordance (D-6) so a reviewer is never misled into treating a mock confidence band as real.
 
+> **Superseded (2026-08-07 / 2026-09-10).** Both fields are real now and `is_mock` is gone from the
+> payload. `confidence` is the Validation Framework score derived at read time
+> (`v1_weather/confidence.py`); `stations_vs_satellite.spi` is its SPI delta and `.lst` its
+> temperature delta from AgERA5 Tmax ([WX-11](../track-3/weather-satellite-temperature-confidence.md)).
+> A 0 carries `meta.reason`; `station_history_too_short` renders as a **Pending** chip, every other
+> reason as a dash with a tooltip. The MockBadge affordance no longer exists.
+
 ---
 
 ## 5. Decision Log
@@ -338,7 +345,7 @@ Existing `tests_reviewer_review_queue_apis` covers the endpoints; it gains the t
 | 3 | "Methodology" button | **Rendered, inert** — no target page yet |
 | 4 | Metric-card trend arrows | **Add `delta` to `/stats`** (D-8) — the one backend change; see the caveat there about the Figma's "of queue" captions |
 | 5 | Individual review: page or modal? | **Modal** for this iteration (D-7) |
-| 6 | Real confidence / station data | **Stays mock**; `is_mock: true` drives a provisional affordance (D-6) |
+| 6 | Real confidence / station data | ~~Stays mock~~ **Real since 2026-08-07 (confidence, SPI) and 2026-09-10 (LST via WX-11)**; `is_mock` removed |
 
 No open questions remain.
 

@@ -703,8 +703,17 @@ Then backfill and check:
 
 ```bash
 docker compose exec backend python manage.py fetch_agera5_observations --from 2026-01
-docker compose exec backend python manage.py confidence_demo --publication 2026-07
 # production: docker exec backend-cron bash -l -c "cd /app && ./job.sh confidence --period 2026-08"
+
+# spot-check the newest publication's scores and, for any 0, which input is missing
+docker compose exec backend python manage.py shell -c "
+from collections import Counter
+from api.v1.v1_publication.models import Publication
+from api.v1.v1_weather.confidence import publication_confidence
+pub = Publication.objects.order_by('-year_month').first()
+scores = publication_confidence(pub)
+print(pub.year_month, Counter(s.value for s in scores.values()))
+print(Counter(s.reason for s in scores.values() if not s.value))"
 ```
 
 The score itself is never stored: the moment a month's `tmax` rows exist, the

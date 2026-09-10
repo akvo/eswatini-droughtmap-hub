@@ -178,7 +178,7 @@ Validated drafts built from real data: `eswatini-v2/data/weather_api_contracts/*
 |--------|-----|---------|------|
 | GET | `/api/v1/weather/stations` | Station list with region, coords, status; completeness meta only for TWG | Public (TWG fields gated) |
 | GET | `/api/v1/weather/stations/<wigos_id>/monthly?parameter=precipitation` | Monthly series for one station + parameter | Public |
-| GET | `/api/v1/weather/administrations/<administration_id>/latest` | Review-page feed: latest-month readings via region station, or explicit no-data | JWT (reviewer/admin) |
+| GET | `/api/v1/weather/administrations/<administration_id>/latest[?period=YYYY-MM]` | Review-page feed: one month of readings via region station, or explicit no-data. `period` pins the month (the review page passes the publication month, WX-11 D-11); without it, the station's latest month. `meta.period` + `meta.days_reported` | JWT (reviewer/admin) |
 | GET/PUT | `/api/v1/weather/source` | View/update the active WIS2 source | JWT admin |
 
 ### Request/Response Examples
@@ -265,7 +265,9 @@ Rundeck entry point with a REQUIRED task argument — `./job.sh reviews` |
 `./job.sh weather [--from YYYY-MM-DD]`; no/unknown argument exits 1 with a
 usage message so a mis-configured job fails loudly. Deployment note: the
 existing Rundeck job calling bare `./job.sh` must be updated to
-`./job.sh reviews`.
+`./job.sh reviews`. The task list has since grown (`rasters`, `cdi`, `cs-reminders`,
+`precipitation`, `dataset-uploads`, and from WX-11 `confidence` + `chirps-observations`); every task
+has a crontab line in `backend/eswatini-cron`, and a test fails the build if the two drift.
 
 ### D-2: WIS2 client defenses are mandatory, not optional
 

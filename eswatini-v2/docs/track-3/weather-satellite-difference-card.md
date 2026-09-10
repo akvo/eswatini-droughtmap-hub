@@ -3,7 +3,7 @@
 **Task ID**: WX-10 (Track 3 — closes the last frontend mock in the Weather Explorer; builds on [WX-5 `weather-normals-extraction.md`](weather-normals-extraction.md) and [WX-4 `weather-explorer-public-api.md`](weather-explorer-public-api.md))
 **Author**: Iwan Firmawan
 **Date**: 2026-08-10 (rev. 2 — as-built)
-**Status**: **Implemented** — model, command, both endpoints, both frontend surfaces and the seeder all shipped. DEF-1 (command-name collision) is **fixed**. Two decisions were built differently from this design (D-2, D-5) and are unratified, and **no data has been extracted yet** (§12).
+**Status**: **Implemented** — model, command, both endpoints, both frontend surfaces and the seeder all shipped. DEF-1 (command-name collision) is **fixed**. Two decisions were built differently from this design (D-2, D-5) and are unratified. ~~No data has been extracted yet~~ — `AdministrationObservation` holds CHIRPS mm for 2024-02 → 2025-08 and 2025-09 → 2026-07 (dev, 2026-09-10), and the command is now **scheduled**: `job.sh chirps-observations`, 20th of the month (WX-11 D-6 / OQ-5).
 
 ---
 
