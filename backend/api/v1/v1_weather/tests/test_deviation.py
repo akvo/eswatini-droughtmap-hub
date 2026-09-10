@@ -1,8 +1,9 @@
 """observed - 30-year normal (DEMO-1 D-12)."""
-from datetime import timedelta
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
+from unittest.mock import patch
 
 from django.test import TestCase
-from django.utils import timezone
 
 from api.v1.v1_publication.models import Administration
 from api.v1.v1_weather.constants import WeatherParameter
@@ -19,15 +20,21 @@ from api.v1.v1_weather.services import (
 from utils.periods import shift_period
 
 
+# Aware, because this class runs with the project default USE_TZ=True.
+FROZEN_NOW = datetime(2026, 7, 5, 12, 0, tzinfo=dt_timezone.utc)
+
+
 class DeviationTestCase(TestCase):
     def setUp(self):
-        # Anchored to the last day of the LAST complete month, not to today.
-        # `_observe` counts backwards from the anchor, so an anchor of "today"
-        # walks into the previous month on the 1st and 2nd — those days bucket
-        # into a different period and quietly shrink the precipitation SUM
-        # below into a partial total (2 x 10mm, not 3). The test then failed
-        # two days a month and passed the other twenty-eight.
-        self.anchor = timezone.now().date().replace(day=1) - timedelta(days=1)
+        # The clock is frozen, so neither the fixture nor the service reads
+        # the real date. The anchor is still the last day of the LAST complete
+        # month: `_observe` counts backwards from it, and an anchor inside the
+        # current month would walk into the previous one and split the
+        # precipitation SUM below into a partial total (2 x 10mm, not 3).
+        clock = patch("django.utils.timezone.now", return_value=FROZEN_NOW)
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.anchor = FROZEN_NOW.date().replace(day=1) - timedelta(days=1)
         self.period = self.anchor.strftime("%Y-%m")
         self.source = WeatherSource.objects.create(
             base_url="https://example.invalid", collection_id="c"

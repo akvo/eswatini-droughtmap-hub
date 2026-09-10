@@ -254,18 +254,22 @@ class ExplorerStatsTests(ExplorerDataMixin, APITestCase):
         )
 
     def test_completeness_denominator_is_always_12_months(self):
+        # The window ends at the last COMPLETE month (June, on the frozen
+        # 5 July clock); the fixture's 10-day block reaches back into June,
+        # and this explicit June reading keeps the count at exactly one even
+        # if the fixture's span ever changes. Before the clock was frozen
+        # this test failed from the 10th of every month.
+        self._seed_month(1)
         completeness = self._completeness()
         self.assertEqual(completeness["meta"]["window_months"], 12)
         self.assertEqual(
             completeness["meta"]["definition"],
             "months_with_data / window_months",
         )
-        # The fixture spans 10 days, so 1 or 2 calendar months depending on
-        # the run date — never a full year. The point is that a young
-        # station reads as a small share of 12, not as ~100 %.
-        months = completeness["meta"]["months_with_data"]
-        self.assertIn(months, (1, 2))
-        self.assertEqual(completeness["value"], round(months / 12, 3))
+        # The point: a young station reads as a small share of 12, not as
+        # ~100 % of the months it happens to have.
+        self.assertEqual(completeness["meta"]["months_with_data"], 1)
+        self.assertEqual(completeness["value"], round(1 / 12, 3))
 
     def test_each_reported_month_adds_one_twelfth(self):
         before = self._completeness()
