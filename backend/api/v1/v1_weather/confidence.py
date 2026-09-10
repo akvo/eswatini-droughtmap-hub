@@ -9,12 +9,16 @@ sends the Inkhundla to a reviewer.
 Two things the framework assumes are not true of this hub's data, and both
 are handled by returning a reason rather than a number:
 
-* **No satellite temperature.** The framework compares a satellite LST
-  reading against the station maximum. The CDI pipeline publishes four
-  percentile-rank rasters (esi/evi2/sm/spi) and nothing in degrees C — ESI
-  replaced MODIS LST upstream and is an evaporative stress index, not a
-  temperature. The temperature half is therefore always unavailable today
-  and the score runs on precipitation alone.
+* **No satellite temperature in the CDI.** The framework compares a
+  satellite LST reading against the station maximum. The CDI pipeline
+  publishes four percentile-rank rasters (esi/evi2/sm/spi) and nothing in
+  degrees C — ESI replaced MODIS LST upstream and is an evaporative stress
+  index, not a temperature. The temperature half is fed separately: AgERA5
+  daily maximum 2 m temperature (the gridded counterpart of the station's
+  Tmax), fetched monthly by `fetch_agera5_observations` into
+  AdministrationObservation and averaged over the month on both sides
+  (WX-11 D-1/D-2). A month without those rows scores on precipitation
+  alone, as before.
 * **No station SPI.** The station side is a rainfall total in mm; the
   satellite side is a percentile rank of `chirps_spi_3mn`. They meet in SPI
   space: the rank inverts to a z-value through the normal quantile function
@@ -42,6 +46,7 @@ from api.v1.v1_weather.constants import (
     CONFIDENCE_NO_SATELLITE_SPI,
     CONFIDENCE_NO_SATELLITE_TEMPERATURE,
     CONFIDENCE_NO_STATION,
+    CONFIDENCE_STATION_TOO_NEW,
     HARD_VETO_SCORE,
     MIN_STATION_DAYS_PER_MONTH,
     NOT_COMPUTABLE,
@@ -55,6 +60,7 @@ from api.v1.v1_weather.constants import (
 )
 from api.v1.v1_weather.models import (
     AdministrationNormal,
+    AdministrationObservation,
     StationDailyAggregate,
     WeatherStation,
 )
@@ -77,7 +83,13 @@ class ConfidenceScore:
     spi_delta: Optional[float] = None
     satellite_spi: Optional[float] = None
     station_spi: Optional[float] = None
+    temperature_delta: Optional[float] = None
+    satellite_tmax: Optional[float] = None
+    station_tmax: Optional[float] = None
     reason: Optional[str] = None
+    # ISO date of the region station's first reading, when that is why the
+    # rainfall side is missing (D-12). Lets the UI say "since 26 May 2026".
+    station_since: Optional[str] = None
 
     def as_dict(self) -> dict:
         """Queue/API shape. `meta` carries the working, so a reviewer asking
@@ -87,6 +99,7 @@ class ConfidenceScore:
             "band": self.band,
             "meta": {
                 "reason": self.reason,
+                "station_since": self.station_since,
                 "components": {
                     "temperature": self.temperature,
                     "precipitation": self.precipitation,
@@ -96,13 +109,26 @@ class ConfidenceScore:
                     "station": self.station_spi,
                     "delta": self.spi_delta,
                 },
+                # Same sign convention as spi: satellite minus station. None
+                # until the month has an AgERA5 row and a station Tmax.
+                "temperature": (
+                    {
+                        "satellite": self.satellite_tmax,
+                        "station": self.station_tmax,
+                        "delta": self.temperature_delta,
+                    }
+                    if self.temperature is not None
+                    else None
+                ),
             },
         }
 
 
-def not_computable(reason: str) -> ConfidenceScore:
+def not_computable(reason: str, **evidence) -> ConfidenceScore:
+    """A 0 that still carries whatever side did compute (D-10): the
+    temperature comparison is shown even when precipitation cannot be."""
     return ConfidenceScore(
-        value=NOT_COMPUTABLE, band=None, reason=reason
+        value=NOT_COMPUTABLE, band=None, reason=reason, **evidence
     )
 
 
@@ -181,32 +207,66 @@ def score(
     station_total_mm: Optional[float],
     climatology_mean: Optional[float],
     climatology_sd: Optional[float],
+    satellite_tmax: Optional[float] = None,
+    station_tmax: Optional[float] = None,
+    incomplete_reason: str = CONFIDENCE_INCOMPLETE_STATION,
+    station_since: Optional[str] = None,
 ) -> ConfidenceScore:
-    """The whole framework for one Inkhundla, from raw inputs."""
+    """The whole framework for one Inkhundla, from raw inputs.
+
+    Precipitation is mandatory, temperature optional — never the other way
+    round: a station with a complete Tmax month but fewer than three
+    rainfall months must not be bulk-accepted on temperature alone, which is
+    the opposite of the framework's 0.6 weight on precipitation (WX-11 D-7).
+    The temperature comparison is still computed and carried on the 0 so
+    the queue can show the evidence it does have (D-10).
+
+    `incomplete_reason` is what a missing station total is reported as:
+    an outage inside the window by default, or `station_history_too_short`
+    when the caller knows the station only started reporting after the
+    window opened (D-12).
+    """
+    temperature = temperature_delta = None
+    if satellite_tmax is not None and station_tmax is not None:
+        temperature_delta = round(satellite_tmax - station_tmax, 1)
+        temperature = temperature_score(temperature_delta)
+    evidence = dict(
+        temperature=temperature,
+        temperature_delta=temperature_delta,
+        satellite_tmax=satellite_tmax,
+        station_tmax=station_tmax,
+        station_since=station_since,
+    )
+
     sat_spi = satellite_spi(satellite_rank)
     if sat_spi is None:
-        return not_computable(CONFIDENCE_NO_SATELLITE_SPI)
+        return not_computable(CONFIDENCE_NO_SATELLITE_SPI, **evidence)
     if climatology_mean is None or not climatology_sd:
-        return not_computable(CONFIDENCE_NO_CLIMATOLOGY)
+        return not_computable(CONFIDENCE_NO_CLIMATOLOGY, **evidence)
     sta_spi = station_spi(
         station_total_mm, climatology_mean, climatology_sd
     )
     if sta_spi is None:
-        return not_computable(CONFIDENCE_INCOMPLETE_STATION)
+        return not_computable(incomplete_reason, **evidence)
 
     delta = round(sat_spi - sta_spi, 3)
     precipitation = precipitation_score(delta)
-    # Temperature stays None until a satellite reading in degrees C exists.
-    value = combine(None, precipitation)
+    value = combine(temperature, precipitation)
+    if temperature is not None:
+        reason = None
+    elif satellite_tmax is None:
+        reason = CONFIDENCE_NO_SATELLITE_TEMPERATURE
+    else:
+        reason = CONFIDENCE_INCOMPLETE_STATION
     return ConfidenceScore(
         value=value,
         band=CONFIDENCE_BANDS.get(value),
-        temperature=None,
         precipitation=precipitation,
         spi_delta=delta,
         satellite_spi=sat_spi,
         station_spi=sta_spi,
-        reason=CONFIDENCE_NO_SATELLITE_TEMPERATURE,
+        reason=reason,
+        **evidence,
     )
 
 
@@ -255,6 +315,79 @@ def _station_window_totals(year_month: date) -> dict:
     return totals
 
 
+def _station_month_tmax(year_month: date) -> dict:
+    """station_id -> mean of the daily maxima for this one month (deg C),
+    or None when the month is too thin to trust.
+
+    One month, not the SPI window: Tmax is a monthly statistic, SPI-3 is a
+    three-month accumulation. Same completeness rule as precipitation so a
+    station that reported four hot days does not read as a heatwave.
+    """
+    rows = StationDailyAggregate.objects.filter(
+        parameter=WeatherParameter.tmax,
+        value__isnull=False,
+        date__gte=year_month,
+        date__lt=_next_month(year_month),
+    ).values_list("station_id", "value")
+    per_station = {}
+    for station_id, value in rows:
+        per_station.setdefault(station_id, []).append(value)
+    return {
+        station_id: (
+            round(sum(values) / len(values), 1)
+            if len(values) >= MIN_STATION_DAYS_PER_MONTH
+            else None
+        )
+        for station_id, values in per_station.items()
+    }
+
+
+def _station_first_readings() -> dict:
+    """station_id -> date of its first rainfall reading ever.
+
+    Tells a station that did not exist yet apart from one that went silent:
+    both leave the SPI window short, only the first is "pending" (D-12).
+    """
+    from django.db.models import Min
+
+    return dict(
+        StationDailyAggregate.objects.filter(
+            parameter=WeatherParameter.precipitation, value__isnull=False
+        )
+        .values_list("station_id")
+        .annotate(first=Min("date"))
+        .values_list("station_id", "first")
+    )
+
+
+def _window_start(year_month: date) -> date:
+    earliest_year, earliest_month = window_keys(
+        year_month.year, year_month.month
+    )[-1]
+    return date(earliest_year, earliest_month, 1)
+
+
+def _satellite_tmax(year_month: date) -> dict:
+    """administration_id -> AgERA5 monthly mean of daily Tmax (deg C)."""
+    return dict(
+        AdministrationObservation.objects.filter(
+            year_month=year_month, parameter=WeatherParameter.tmax
+        ).values_list("administration_id", "value")
+    )
+
+
+def _first_reported(candidates: list, per_station: dict):
+    """The first station in the region that actually has a value."""
+    return next(
+        (
+            per_station[station_id]
+            for station_id in candidates
+            if per_station.get(station_id) is not None
+        ),
+        None,
+    )
+
+
 def _satellite_ranks(publication) -> dict:
     """administration_id -> chirps_spi_3mn percentile rank."""
     raster = publication.rasters.filter(
@@ -293,7 +426,7 @@ def _climatology(year_month: date) -> dict:
 def publication_confidence(publication) -> dict:
     """administration_id -> ConfidenceScore, for every Inkhundla at once.
 
-    Four queries regardless of the 59 Tinkhundla: the queue calls this once
+    Eight queries regardless of the 59 Tinkhundla: the queue calls this once
     per request and reads the map, never per row.
 
     MET stations are per region, not per Inkhundla, so an Inkhundla borrows
@@ -304,6 +437,10 @@ def publication_confidence(publication) -> dict:
     ranks = _satellite_ranks(publication)
     climatology = _climatology(publication.year_month)
     totals = _station_window_totals(publication.year_month)
+    tmax_by_station = _station_month_tmax(publication.year_month)
+    tmax_by_administration = _satellite_tmax(publication.year_month)
+    first_readings = _station_first_readings()
+    window_start = _window_start(publication.year_month)
     # A region can hold more than one station. Prefer one that actually
     # reported through the window: picking arbitrarily would let a silent
     # station shadow a live one in the same region, and would do it
@@ -338,21 +475,32 @@ def publication_confidence(publication) -> dict:
                 CONFIDENCE_NO_STATION
             )
             continue
-        total = next(
+        # An incomplete rainfall window is score()'s verdict, not an early
+        # return here: the temperature side must still ride on the 0 (D-10).
+        # If none of the region's stations had reported before the window
+        # opened, the gap is the station's age, not an outage (D-12).
+        since = min(
             (
-                totals[station_id]
+                first_readings[station_id]
                 for station_id in candidates
-                if totals.get(station_id) is not None
+                if station_id in first_readings
             ),
-            None,
+            default=None,
         )
-        if total is None:
-            scores[administration_id] = not_computable(
-                CONFIDENCE_INCOMPLETE_STATION
-            )
-            continue
+        too_new = since is None or since > window_start
         mean, sd = climatology.get(administration_id, (None, None))
         scores[administration_id] = score(
-            ranks.get(administration_id), total, mean, sd
+            ranks.get(administration_id),
+            _first_reported(candidates, totals),
+            mean,
+            sd,
+            satellite_tmax=tmax_by_administration.get(administration_id),
+            station_tmax=_first_reported(candidates, tmax_by_station),
+            incomplete_reason=(
+                CONFIDENCE_STATION_TOO_NEW
+                if too_new
+                else CONFIDENCE_INCOMPLETE_STATION
+            ),
+            station_since=since.isoformat() if too_new and since else None,
         )
     return scores

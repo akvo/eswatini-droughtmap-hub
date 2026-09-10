@@ -226,6 +226,13 @@ RUNDECK_API_TOKEN = environ.get("RUNDECK_API_TOKEN")
 # WIS2 (wis2box) weather-station source; seeds the default WeatherSource row
 WIS2_BASE_URL = environ.get("WIS2_BASE_URL")
 WIS2_COLLECTION_ID = environ.get("WIS2_COLLECTION_ID")
+# Copernicus Climate Data Store (cdsapi): AgERA5 satellite temperature for the
+# confidence score. Personal access token; the account must have accepted the
+# AgERA5 licence once on the portal.
+ECMWF_API_URL = environ.get(
+    "ECMWF_API_URL", "https://cds.climate.copernicus.eu/api"
+)
+ECMWF_API_KEY = environ.get("ECMWF_API_KEY")
 # Override the default user model
 AUTH_USER_MODEL = "v1_users.SystemUser"
 # MAIL SETUP

@@ -656,6 +656,9 @@ Notes:
 ./job.sh cs-reminders                 # citizen-science monthly reminders
 ./job.sh precipitation                # CHIRPS rainfall for the current month
 ./job.sh dataset-uploads              # fetch provider files from GeoNode
+./job.sh confidence                   # AgERA5 satellite Tmax, previous month (10th)
+./job.sh confidence --from 2026-01    # backfill every month since January
+./job.sh chirps-observations          # CHIRPS mm per Inkhundla for the card (20th)
 ```
 
 Every task in `job.sh` has a matching crontab entry in `backend/eswatini-cron`,
@@ -668,6 +671,46 @@ Cron example (daily at midnight):
 ```bash
 0 0 * * * cd /backend && ./job.sh weather >> /home/user/logs/weather_ingest.log 2>&1
 ```
+
+#### **Confidence score — satellite temperature: `fetch_agera5_observations`**
+
+The review queue's confidence score compares the ground station against the
+satellite on two axes. The rainfall axis comes from the CDI's SPI raster; the
+temperature axis has no CDI source, so it is fetched separately from the
+Copernicus Climate Data Store: **AgERA5 daily maximum 2 m temperature**
+(`sis-agrometeorological-indicators`, 0.1°, ~8 days behind real time),
+averaged over the month per Inkhundla into
+`AdministrationObservation(parameter="tmax")`. The UI keeps the framework's
+word for it, "LST". Design:
+[`weather-satellite-temperature-confidence.md`](eswatini-v2/docs/track-3/weather-satellite-temperature-confidence.md).
+
+One-time setup, per environment:
+
+1. Create a CDS account at https://cds.climate.copernicus.eu (a shared
+   NDRMA/Akvo account, not a personal one — the token dies with the account)
+   and copy the **Personal Access Token** from the profile page.
+2. Accept the AgERA5 licence **once**, logged in as that account, at the
+   bottom of the dataset's download form:
+   https://cds.climate.copernicus.eu/datasets/sis-agrometeorological-indicators?tab=download#manage-licences
+   Without it every request is refused with `403 required licences not
+   accepted`, and `cron.log` prints that URL.
+3. Put `ECMWF_API_URL` and `ECMWF_API_KEY` in `.env` (local) or
+   `self-hosted/app.env` (production). Every container reads `app.env`, so
+   `backend-cron` needs no compose change; rebuild it so the crontab and the
+   `cdsapi` dependency land.
+
+Then backfill and check:
+
+```bash
+docker compose exec backend python manage.py fetch_agera5_observations --from 2026-01
+docker compose exec backend python manage.py confidence_demo --publication 2026-07
+# production: docker exec backend-cron bash -l -c "cd /app && ./job.sh confidence --period 2026-08"
+```
+
+The score itself is never stored: the moment a month's `tmax` rows exist, the
+queue returns the full `0.4·temperature + 0.6·precipitation` for that month.
+A month AgERA5 has not finished publishing is skipped, never partially
+written, so running early is harmless and the 10th-of-month cron catches it.
 
 ### **National Overview map tabs: `fetch_chirps_monthly`**
 
