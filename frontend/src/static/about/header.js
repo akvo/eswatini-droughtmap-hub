@@ -1,6 +1,6 @@
 export const headerConfig = {
-  title: "About the Eswatini Drought map",
+  title: "About the Eswatini Drought Intelligence Hub",
   description:
-    "The Eswatini Drought Monitor provides a monthly assessment of drought conditions across the country using a scientifically robust indicator known as the Composite Drought Indicator (CDI). The system is designed to offer real-time insights to everyone involved in proactive drought preparedness and response in the Kingdom of Eswatini.",
+    "The Eswatini Drought Intelligence Hub is a platform that provides information and resources related to drought conditions in Eswatini. It aims to support decision-making and response efforts by offering data, analysis, and tools for stakeholders.",
   image_url: "/images/about-hero.jpg",
 };

@@ -10,9 +10,9 @@ import antTheme from "@/static/ant-theme";
 import { auth } from "@/lib";
 
 export const metadata = {
-  title: "eSwatini - DroughtMap Hub",
+  title: "Eswatini Drought Intelligence Hub",
   description:
-    "The purpose of the DroughtMap Hub is to provide a user-friendly interface to validate, publish and browse CDI products.",
+    "The Eswatini Drought Intelligence Hub is a platform that provides information and resources related to drought conditions in Eswatini. It aims to support decision-making and response efforts by offering data, analysis, and tools for stakeholders.",
 };
 
 const DynamicScript = dynamic(() => import("@/components/DynamicScript"), {

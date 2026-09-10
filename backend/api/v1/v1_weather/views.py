@@ -1,3 +1,4 @@
+import re
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -271,8 +272,6 @@ class AdministrationLatestAPI(APIView):
         ],
     )
     def get(self, request, version, administration_id):
-        import re
-
         administration = get_object_or_404(
             Administration, pk=administration_id
         )

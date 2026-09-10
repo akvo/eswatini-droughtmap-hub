@@ -81,6 +81,19 @@ export const api = (method, url, payload = {}) =>
     }
   });
 
+// Next.js masks *thrown* Server Action errors in production — the client only
+// receives {digest}, so `err.message` is never the backend's sentence and every
+// form falls through to its generic fallback. A *returned* value is not masked.
+// Forms that need the backend's validation message (e.g. "A user with this
+// email already exists.") call this instead of api().
+export const apiResult = async (method, url, payload = {}) => {
+  try {
+    return { ok: true, data: await api(method, url, payload) };
+  } catch (err) {
+    return { ok: false, error: err?.message || null };
+  }
+};
+
 export const apiText = (method, url, payload = {}) =>
   new Promise(async (resolve, reject) => {
     const _session = await getSession();

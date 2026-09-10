@@ -10,8 +10,8 @@ const Footer = () => {
   return (
     <footer className="w-full bg-white border-t border-t-neutral-300 flex flex-col items-center gap-16 pt-16 print:hidden">
       <div className="container mx-auto w-full flex flex-col gap-10 lg:flex-row lg:justify-between">
-        <p className="w-full lg:w-80 text-base text-[#606060]">
-          {APP_SETTINGS.about}
+        <p className="w-full max-w-[320px] text-base text-[#606060]">
+          {APP_SETTINGS.footer}
         </p>
 
         <div className="flex flex-col gap-8 md:flex-row">
@@ -37,13 +37,13 @@ const Footer = () => {
           </div>
 
           {/* ponytail: presentational — no newsletter endpoint yet */}
-          <div className="w-full md:w-80 flex flex-col gap-1.5">
+          {/* <div className="w-full md:w-80 flex flex-col gap-1.5">
             <label className="text-sm text-[#333333]">Stay up to date</label>
             <div className="flex gap-4 items-center">
               <Input type="email" placeholder="Enter your email" />
               <Button type="primary">Subscribe</Button>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 

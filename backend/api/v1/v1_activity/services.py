@@ -130,6 +130,12 @@ def apply_transition(activity, to_status, user, note=None):
             activity.version = bump_minor(activity.version)
             activity.activated_by = user
             activity.activated_at = timezone.now()
+        elif to_status == ActivityStatus.draft:
+            # Pulled back for editing: a draft was never activated, so the
+            # stamp must go with the status or the detail panel keeps
+            # claiming an activation that no longer holds.
+            activity.activated_by = None
+            activity.activated_at = None
         activity.save()
         ActivityHistory.objects.create(
             activity=activity, from_status=from_status,

@@ -39,7 +39,7 @@ const Navbar = ({ session }) => {
   return (
     <header className="w-full">
       {/* Notice bar */}
-      <div className="w-full bg-neutral-200">
+      {/* <div className="w-full bg-neutral-200">
         <div className="w-full px-8 flex flex-row items-center justify-between py-2 text-neutral-600">
           <div className="flex flex-row items-center gap-1.5 text-xs">
             <WarningCicle size={16} />
@@ -49,7 +49,7 @@ const Navbar = ({ session }) => {
             Contact us
           </Link>
         </div>
-      </div>
+      </div> */}
 
       {/* Header navigation */}
       <div className="w-full bg-primary">
