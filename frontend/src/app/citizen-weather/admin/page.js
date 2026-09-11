@@ -6,7 +6,7 @@ import { ExportOutlined, MailOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import NudgeModal from "@/components/CitizenWeather/NudgeModal";
 import { Can, FeedbackSection, PageHeader, TabButtons } from "@/components";
-import { api, apiText } from "@/lib";
+import { api, apiResult, apiText } from "@/lib";
 
 const REGION_FILTERS = [
   { label: "All regions", value: "all" },
@@ -120,20 +120,26 @@ const AdminDashboardPage = () => {
 
   const sendReminders = async () => {
     setTriggeringReminders(true);
-    try {
-      const res = await api("POST", "/weather/citizen-science/reminders", {});
-      const sent = res?.dispatched ?? 0;
-      message.success(
-        sent
-          ? `Reminder sent to ${sent} observer${sent === 1 ? "" : "s"}.`
-          : "No reminders sent — every observer has already reported.",
-      );
-    } catch (err) {
-      console.error(err);
-      message.error(err?.message || "Failed to trigger reminders.");
-    } finally {
-      setTriggeringReminders(false);
+    // apiResult, not api: a thrown Server Action error reaches the client as
+    // Next.js boilerplate in production, which is truthy — so `err.message`
+    // would show that paragraph and the fallback below would never fire.
+    const res = await apiResult(
+      "POST",
+      "/weather/citizen-science/reminders",
+      {},
+    );
+    setTriggeringReminders(false);
+    if (!res.ok) {
+      console.error(res.error);
+      message.error(res.error || "Failed to trigger reminders.");
+      return;
     }
+    const sent = res.data?.dispatched ?? 0;
+    message.success(
+      sent
+        ? `Reminder sent to ${sent} observer${sent === 1 ? "" : "s"}.`
+        : "No reminders sent — every observer has already reported.",
+    );
   };
 
   // Emails leave immediately and cannot be recalled, so confirm first. The

@@ -1,9 +1,6 @@
 "use server";
 
-import fs from "fs";
-import path from "path";
 import { getSession } from "./auth";
-import { IKS_INDICATOR_CATALOGUE } from "@/static/config";
 
 // Server-side calls go straight to the backend, bypassing the Next.js rewrite
 // proxy (which resets long-running upstream requests at ~30s). Falls back to
@@ -68,10 +65,15 @@ export const api = (method, url, payload = {}) =>
         );
       }
       // ponytail: 4xx/5xx used to resolve, so every caller's catch block was
-      // dead code and a rejected POST looked like a success. Next.js masks
-      // Server Action error messages in production builds — the user then sees
-      // the caller's fallback text instead of the backend's. Upgrade path if
-      // that matters: return {ok, status, data} and migrate the ~40 callers.
+      // dead code and a rejected POST looked like a success.
+      //
+      // Next.js masks *thrown* Server Action errors in production, so a client
+      // component that shows `err.message` gets Next.js boilerplate — not the
+      // backend's sentence, and not its own `|| fallback` either, because the
+      // boilerplate is truthy. Dev builds do not mask, so it never reproduces
+      // locally. Forms that need the backend's message call `apiResult` below.
+      // Upgrade path: return {ok, status, data} here and migrate the ~40
+      // callers, at which point apiResult goes away.
       if (!res.ok) {
         return reject(new Error(errorMessage(body, res.status)));
       }
