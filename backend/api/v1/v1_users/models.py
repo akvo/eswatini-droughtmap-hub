@@ -93,18 +93,11 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name", "role"]
 
-    def delete(self, using=None, keep_parents=False, hard: bool = False):
-        if hard:
-            return super().delete(using, keep_parents)
-        self.deleted_at = timezone.now()
-        self.save(update_fields=["deleted_at"])
-
-    def soft_delete(self) -> None:
-        self.delete(hard=False)
-
-    def restore(self) -> None:
-        self.deleted_at = None
-        self.save(update_fields=["deleted_at"])
+    # ponytail: delete/soft_delete/restore used to be copy-pasted here from
+    # SoftDeletes. The copy broke hard deletes: MRO is SystemUser ->
+    # AbstractBaseUser -> PermissionsMixin -> SoftDeletes, so `super().delete()`
+    # landed back on SoftDeletes.delete() with hard defaulting to False and
+    # silently soft-deleted again. Inherit instead.
 
     def get_sign_pk(self):
         return signing.dumps(self.pk)
