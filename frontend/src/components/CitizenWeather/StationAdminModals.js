@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Modal, Input, Select, Switch, message } from "antd";
-import { api } from "@/lib";
+// apiResult, not api, for every write below: a thrown Server Action error is
+// masked in production, so the DRF validation sentence only survives as a
+// returned value.
+import { api, apiResult } from "@/lib";
 import { SENSOR_OPTIONS, STATION_TYPES } from "@/static/citizen-weather";
 
 const sensorChoices = SENSOR_OPTIONS.map((s) => ({
@@ -59,32 +62,30 @@ export const StationEditModal = ({ open, onClose, station, onSaved }) => {
 
   const handleOk = async () => {
     setLoading(true);
-    try {
-      const res = await api(
-        "PATCH",
-        `/weather/citizen-science/stations/${station.key}`,
-        {
-          station_name: stationName,
-          station_type: stationType,
-          sensors,
-          administration_id: administrationId,
-        },
-      );
-      message.success(
-        moved
-          ? "Station moved. Readings stay with the previous Inkhundla."
-          : "Station updated.",
-      );
-      // Moving re-keys the station, so hand back the new id — the caller's
-      // current URL points at the old Inkhundla and would 404 on refetch.
-      onSaved?.(res?.administration_id);
-      onClose();
-    } catch (err) {
-      console.error(err);
-      message.error(err?.message || "Failed to update station.");
-    } finally {
-      setLoading(false);
+    const res = await apiResult(
+      "PATCH",
+      `/weather/citizen-science/stations/${station.key}`,
+      {
+        station_name: stationName,
+        station_type: stationType,
+        sensors,
+        administration_id: administrationId,
+      },
+    );
+    setLoading(false);
+    if (!res.ok) {
+      message.error(res.error || "Failed to update station.");
+      return;
     }
+    message.success(
+      moved
+        ? "Station moved. Readings stay with the previous Inkhundla."
+        : "Station updated.",
+    );
+    // Moving re-keys the station, so hand back the new id — the caller's
+    // current URL points at the old Inkhundla and would 404 on refetch.
+    onSaved?.(res.data?.administration_id);
+    onClose();
   };
 
   return (
@@ -180,19 +181,19 @@ export const ObserverEditModal = ({ open, onClose, station, onSaved }) => {
 
   const handleOk = async () => {
     setLoading(true);
-    try {
-      await api("PATCH", `/weather/citizen-science/stations/${station.key}`, {
-        name,
-        email,
-      });
-      message.success("Observer details updated.");
-      onSaved?.();
-      onClose();
-    } catch (err) {
-      message.error(err?.message || "Failed to update observer.");
-    } finally {
-      setLoading(false);
+    const res = await apiResult(
+      "PATCH",
+      `/weather/citizen-science/stations/${station.key}`,
+      { name, email },
+    );
+    setLoading(false);
+    if (!res.ok) {
+      message.error(res.error || "Failed to update observer.");
+      return;
     }
+    message.success("Observer details updated.");
+    onSaved?.();
+    onClose();
   };
 
   return (
@@ -251,20 +252,19 @@ export const ReassignObserverModal = ({ open, onClose, station, onSaved }) => {
       return;
     }
     setLoading(true);
-    try {
-      await api("POST", `/weather/citizen-science/stations/${station.key}`, {
-        name,
-        email,
-        send_welcome_email: sendEmail,
-      });
-      message.success("Station reassigned to new observer.");
-      onSaved?.();
-      onClose();
-    } catch (err) {
-      message.error(err?.message || "Failed to reassign observer.");
-    } finally {
-      setLoading(false);
+    const res = await apiResult(
+      "POST",
+      `/weather/citizen-science/stations/${station.key}`,
+      { name, email, send_welcome_email: sendEmail },
+    );
+    setLoading(false);
+    if (!res.ok) {
+      message.error(res.error || "Failed to reassign observer.");
+      return;
     }
+    message.success("Station reassigned to new observer.");
+    onSaved?.();
+    onClose();
   };
 
   return (

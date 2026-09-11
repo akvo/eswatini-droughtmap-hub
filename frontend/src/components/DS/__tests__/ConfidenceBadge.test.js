@@ -22,6 +22,17 @@ describe("ConfidenceBadge", () => {
     );
   });
 
+  it("shows Pending, not a dash, when the station is simply too new", () => {
+    // Stations came online late May 2026: a June review cannot have a
+    // 3-month rainfall window yet. That is "not yet", not "broken".
+    render(<ConfidenceBadge band={null} reason="station_history_too_short" />);
+    expect(screen.getByText("Pending")).toHaveAttribute(
+      "title",
+      expect.stringMatching(/started reporting after/),
+    );
+    expect(screen.queryByText("—")).not.toBeInTheDocument();
+  });
+
   it("does not invent a tooltip for an unknown reason key", () => {
     render(<ConfidenceBadge band={null} reason="something_new" />);
     expect(screen.getByText("—")).not.toHaveAttribute("title");

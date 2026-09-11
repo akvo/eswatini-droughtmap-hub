@@ -245,6 +245,53 @@ class WeatherEndpointTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def _latest(self, administration_id, **params):
+        self.client.force_authenticate(user=self.reviewer)
+        return self.client.get(
+            reverse(
+                "weather-administration-latest",
+                kwargs={
+                    "version": "v1",
+                    "administration_id": administration_id,
+                },
+            ),
+            params,
+        )
+
+    def test_period_pins_the_month_instead_of_the_latest(self):
+        """A June review must not show September's rain: the review page
+        passes the publication month and gets that month, or nothing."""
+        StationDailyAggregate.objects.create(
+            station=self.mbabane,
+            date=date(2026, 9, 3),
+            parameter=WeatherParameter.precipitation,
+            value=44.0,
+            readings_count=24,
+        )
+        latest = self._latest(HHUKWINI_ADM).json()
+        self.assertEqual(latest["meta"]["period"], "2026-09")
+        self.assertEqual(latest["meta"]["days_reported"], 1)
+
+        pinned = self._latest(HHUKWINI_ADM, period="2026-04").json()
+        self.assertEqual(pinned["meta"]["period"], "2026-04")
+        self.assertEqual(pinned["meta"]["days_reported"], 2)
+        self.assertEqual(pinned["meta"]["resolution"], "region_station")
+        values = {item["key"]: item["value"] for item in pinned["data"]}
+        self.assertEqual(values["precipitation"], 30.0)
+
+    def test_period_with_no_readings_is_the_explicit_empty_payload(self):
+        """Own-region station exists but reported nothing that month: no
+        walking forward to a later month, and no cross-region fallback
+        offering a different month either."""
+        body = self._latest(HHUKWINI_ADM, period="2026-06").json()
+        self.assertIsNone(body["data"])
+        self.assertEqual(body["meta"]["reason"], "no_station_data_for_period")
+        self.assertEqual(body["meta"]["period"], "2026-06")
+
+    def test_period_must_be_year_month(self):
+        response = self._latest(HHUKWINI_ADM, period="June 2026")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     # --- source config -----------------------------------------------------
 
     def test_source_get_admin_only(self):

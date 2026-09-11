@@ -6,7 +6,7 @@ import { MailOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Can, PageHeader } from "@/components";
-import { api } from "@/lib";
+import { api, apiResult } from "@/lib";
 import { SENSOR_OPTIONS, STATION_TYPES } from "@/static/citizen-weather";
 
 const AddStationPage = () => {
@@ -77,33 +77,29 @@ const AddStationPage = () => {
       return;
     }
     setSaving(true);
-    try {
-      await api("POST", "/weather/citizen-science/stations", {
-        name: observerName,
-        email: observerEmail,
-        administration_id: administrationId,
-        station_name: stationName,
-        sensors,
-        station_type: stationType,
-        send_welcome_email: sendWelcome,
-      });
-      message.success(
-        sendWelcome
-          ? "Station created and welcome email sent!"
-          : "Station created (no email sent).",
-      );
-      router.push("/citizen-weather/admin");
-    } catch (err) {
-      // api() flattens the DRF 400 body ("A user with this email already
-      // exists.", "This Inkhundla already has an active observer.") into the
-      // error message, so show it rather than guessing from keywords.
-      console.error(err);
-      message.error(
-        err?.message || "Failed to create station. Please try again.",
-      );
-    } finally {
-      setSaving(false);
+    // apiResult, not api: the DRF 400 body ("A user with this email already
+    // exists.", "This Inkhundla already has an active observer.") only reaches
+    // the client as a *returned* value — a thrown one is masked in production.
+    const res = await apiResult("POST", "/weather/citizen-science/stations", {
+      name: observerName,
+      email: observerEmail,
+      administration_id: administrationId,
+      station_name: stationName,
+      sensors,
+      station_type: stationType,
+      send_welcome_email: sendWelcome,
+    });
+    setSaving(false);
+    if (!res.ok) {
+      message.error(res.error || "Failed to create station. Please try again.");
+      return;
     }
+    message.success(
+      sendWelcome
+        ? "Station created and welcome email sent!"
+        : "Station created (no email sent).",
+    );
+    router.push("/citizen-weather/admin");
   };
 
   return (

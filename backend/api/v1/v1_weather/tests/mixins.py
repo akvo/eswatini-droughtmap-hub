@@ -1,8 +1,8 @@
 """Shared test mixins for v1_weather."""
-from datetime import timedelta
+from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from django.urls import reverse
-from django.utils import timezone
 
 from api.v1.v1_publication.constants import PublicationStatus
 from api.v1.v1_publication.models import Administration, Publication
@@ -19,16 +19,30 @@ MBABANE = "0-20000-0-68391"
 HHUKWINI_ADM = 4588078  # Hhohho
 KWALUSENI_ADM = 2042786  # Manzini — no station in region
 
+# The clock every explorer test runs on. Naive because the test classes run
+# with USE_TZ=False. The 5th of a month on purpose: the fixture's 10-day
+# block then straddles a month boundary, which is the case the stats window
+# (12 months ending at the last COMPLETE month) has to get right — and the
+# outcome no longer changes with the calendar day the suite happens to run.
+FROZEN_NOW = datetime(2026, 7, 5, 12, 0, 0)
+
 
 class ExplorerDataMixin:
     """Seeds one Hhohho station with 8 of the last 10 days of data plus a
     covered (Hhukwini) and an uncovered (Kwaluseni/Manzini) administration.
     Compose with APITestCase: class MyTests(ExplorerDataMixin, APITestCase).
+
+    Freezes `django.utils.timezone.now` to FROZEN_NOW for the whole test, so
+    the services' "today", the window anchors and `self.today` all agree and
+    none of them read the real clock.
     """
 
     def setUp(self):
         super().setUp()
-        self.today = timezone.now().date()
+        clock = patch("django.utils.timezone.now", return_value=FROZEN_NOW)
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.today = FROZEN_NOW.date()
         self.reviewer = User.objects._create_user(
             name="reviewer", email="reviewer@example.com", password="pass"
         )
@@ -84,7 +98,7 @@ class ExplorerDataMixin:
             year_month=month_start(period),
             due_date=month_end(period),
             status=PublicationStatus.published,
-            published_at=timezone.now(),
+            published_at=FROZEN_NOW,
             initial_values=[],
             validated_values=[],
         )

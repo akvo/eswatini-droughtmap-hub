@@ -132,9 +132,9 @@ class Command(BaseCommand):
             services.apply_transition(activity, status, actor)
             return
 
-        # Not a legal forward transition — this is the --demo toggle rolling
-        # active back to draft. Write it directly and drop the activation
-        # stamp, since a draft was never activated.
+        # Not a legal transition (an archived row is frozen). Write it
+        # directly and drop the activation stamp, since a non-active row
+        # must not keep claiming an activation.
         activity.status = status
         activity.activated_by = None
         activity.activated_at = None

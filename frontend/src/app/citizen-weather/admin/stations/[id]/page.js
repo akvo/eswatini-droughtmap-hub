@@ -19,7 +19,7 @@ import {
   ObserverEditModal,
   ReassignObserverModal,
 } from "@/components/CitizenWeather/StationAdminModals";
-import { api, apiText } from "@/lib";
+import { api, apiResult, apiText } from "@/lib";
 import { SENSOR_OPTIONS } from "@/static/citizen-weather";
 
 const TIMELINE_COLORS = {
@@ -158,13 +158,19 @@ const StationDetailPage = () => {
       okText: "Archive",
       okButtonProps: { danger: true },
       onOk: async () => {
-        try {
-          await api("DELETE", `/weather/citizen-science/stations/${id}`);
-          message.success("Station archived.");
-          router.push("/citizen-weather/admin");
-        } catch (err) {
-          message.error(err?.message || "Failed to archive station.");
+        // apiResult, not api: a thrown Server Action error is masked in
+        // production, so `err.message` would be Next.js boilerplate rather
+        // than the backend's reason for refusing the archive.
+        const res = await apiResult(
+          "DELETE",
+          `/weather/citizen-science/stations/${id}`,
+        );
+        if (!res.ok) {
+          message.error(res.error || "Failed to archive station.");
+          return;
         }
+        message.success("Station archived.");
+        router.push("/citizen-weather/admin");
       },
     });
   };

@@ -120,7 +120,16 @@ const InsightsShell = ({ children, isSignedIn = false }) => {
       <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 sm:px-8 md:px-12 xl:px-16">
         <PageHeader
           title="Detailed insights"
-          description="Lorem ipsum dolor sit amet consectetur."
+          description={
+            <p>
+              Explore a comprehensive drought monitoring and risk assessment
+              overview of Inkundla through four views: CDI Explorer for
+              top-level trends, Weather Station Data for local rainfall and
+              temperature stats, Indigenous Knowledge Systems for visual
+              landscape evidence, and Risk Assessment for color-coded severity
+              gauges and mitigation actions.
+            </p>
+          }
           date={lastUpdatedDate}
           actions={
             <a

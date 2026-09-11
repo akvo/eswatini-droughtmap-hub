@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Import historical station records (SwaziMet)</h1>
+<p>
+  Upload the CSV SwaziMet filled from the template
+  (<code>wigos_id, station_name, date, parameter, value, readings_count</code>).
+  One row per station, day and parameter; <code>parameter</code> is one of
+  <code>precipitation</code> (mm), <code>tmax</code>, <code>tmin</code>,
+  <code>tmean</code> (°C); <code>date</code> is <code>YYYY-MM-DD</code>.
+</p>
+<ul>
+  <li>An empty <code>value</code> is a missing day and is skipped — it is never written as 0.</li>
+  <li>Days already in the table (ingested from WIS2, or imported before) are kept, not overwritten. To replace them, delete those rows first.</li>
+  <li>Stations are matched by <code>wigos_id</code>, then by <code>station_name</code>.</li>
+</ul>
+<p>Known stations:</p>
+<ul>
+  {% for station in stations %}
+    <li><code>{{ station.wigos_id }}</code> — {{ station.name }} ({{ station.region }})</li>
+  {% endfor %}
+</ul>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="file" name="csv_file" accept=".csv,text/csv" required>
+  <input type="submit" value="Import">
+</form>
+<p>
+  Afterwards, backfill the satellite side to the same start
+  (<code>./job.sh confidence --from YYYY-MM</code>); the confidence score
+  recomputes on the next page load.
+</p>
+{% endblock %}

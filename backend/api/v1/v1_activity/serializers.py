@@ -173,6 +173,7 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
             "source_doc",
             "source_file",
             "notes",
+            "status",
         ]
 
     def validate_triggers(self, value):
@@ -191,6 +192,9 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         request = self.context["request"]
         user = request.user
         upload = validated_data.pop("source_file", None)
+        # Everything is born a draft; activation is a transition, never a
+        # field write on create.
+        validated_data.pop("status", None)
         sector = validated_data["sector"]
 
         # Generate a unique code inside the insert; retry on the rare race.
@@ -232,19 +236,26 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         # `code` encodes the sector at creation, so sector is immutable
         # once the activity exists — ignore any attempt to change it.
         validated_data.pop("sector", None)
-        for field, value in validated_data.items():
-            setattr(instance, field, value)
-        if upload:
-            instance.source_file = files.save_source_file(
-                upload, instance.code
+        # Status is a lifecycle move, not a plain field write: route it
+        # through apply_transition so legality (ACTIVITY_TRANSITIONS) and
+        # the version/activated_by bookkeeping stay in one place.
+        to_status = validated_data.pop("status", None)
+        with transaction.atomic():
+            for field, value in validated_data.items():
+                setattr(instance, field, value)
+            if upload:
+                instance.source_file = files.save_source_file(
+                    upload, instance.code
+                )
+            instance.save()
+            ActivityHistory.objects.create(
+                activity=instance,
+                from_status=instance.status,
+                to_status=instance.status,
+                user=request.user,
             )
-        instance.save()
-        ActivityHistory.objects.create(
-            activity=instance,
-            from_status=instance.status,
-            to_status=instance.status,
-            user=request.user,
-        )
+            if to_status is not None and to_status != instance.status:
+                services.apply_transition(instance, to_status, request.user)
         return instance
 
     def to_representation(self, instance):

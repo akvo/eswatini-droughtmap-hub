@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 
 from django.utils import timezone
 
@@ -204,17 +205,38 @@ def monthly_series(
     ]
 
 
-def _latest_month_values(station):
-    """The station's most recent month with data -> (period, values dict)."""
-    last = (
-        station.daily_values.filter(value__isnull=False)
-        .order_by("-date")
-        .values_list("date", flat=True)
-        .first()
+def _latest_month_values(station, period=None):
+    """One month of the station's readings -> (period, values dict, days).
+
+    `period` (YYYY-MM) pins the month — the review page passes the
+    publication month so a June review never shows September's rain. With
+    no period, the station's most recent month with data. `days` is how
+    many days of that month reported anything, so a 6-day month is not read
+    as a full one.
+    """
+    if period:
+        year, month = int(period[:4]), int(period[5:7])
+        last = date(year, month, 1)
+    else:
+        last = (
+            station.daily_values.filter(value__isnull=False)
+            .order_by("-date")
+            .values_list("date", flat=True)
+            .first()
+        )
+        if not last:
+            return None, None, 0
+        period = last.strftime("%Y-%m")
+    days = (
+        station.daily_values.filter(
+            value__isnull=False, date__year=last.year, date__month=last.month
+        )
+        .values("date")
+        .distinct()
+        .count()
     )
-    if not last:
-        return None, None
-    period = last.strftime("%Y-%m")
+    if not days:
+        return period, None, 0
     values = {}
     for parameter in (
         WeatherParameter.tmin,
@@ -239,7 +261,7 @@ def _latest_month_values(station):
             values[parameter] = round(sum(month_rows), 1)
         else:
             values[parameter] = round(sum(month_rows) / len(month_rows), 1)
-    return period, values
+    return period, values, days
 
 
 def _resolution_candidates(administration) -> list:
@@ -271,20 +293,25 @@ def _resolution_candidates(administration) -> list:
     ]
 
 
-def resolve_administration_latest(administration) -> dict:
+def resolve_administration_latest(administration, period=None) -> dict:
     """D-5 resolution ladder: own-region station -> nearest station
-    (labelled fallback) -> explicit no-data payload."""
+    (labelled fallback) -> explicit no-data payload.
+
+    `period` pins every candidate to that month (the review page's
+    publication month); without it each station offers its latest month.
+    """
     for station, resolution, distance_km in _resolution_candidates(
         administration
     ):
-        period, values = _latest_month_values(station)
+        month, values, days = _latest_month_values(station, period)
         if not values:
             continue
         meta = {
             "station": station.name.title(),
             "station_code": _station_code(station),
             "network": NETWORK,
-            "period": period,
+            "period": month,
+            "days_reported": days,
             "resolution": resolution,
             # Review-page map marker (Track 2 #146 / G2): station location.
             "station_lat": station.latitude,
@@ -344,7 +371,7 @@ def resolve_administration_latest(administration) -> dict:
         "label": administration.name,
         "group": administration.region,
         "data": None,
-        "meta": {"reason": "no_station_data_for_period"},
+        "meta": {"reason": "no_station_data_for_period", "period": period},
     }
 
 

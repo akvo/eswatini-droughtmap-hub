@@ -1,9 +1,14 @@
+import re
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+)
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -182,20 +187,102 @@ class WeatherStationMonthlyAPI(APIView):
 
 
 class AdministrationLatestAPI(APIView):
-    """Review-page feed: latest-month readings via the D-5 resolution
-    ladder (own region -> nearest fallback -> explicit no-data)."""
+    """Review-page feed: one month of readings via the D-5 resolution
+    ladder (own region -> nearest fallback -> explicit no-data).
+
+    `?period=YYYY-MM` pins the month; the review page passes the
+    publication month so the block never shows a later month's readings
+    beside that month's confidence score. Without it: the latest month.
+    """
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        tags=["Weather"], summary="Latest readings for an administration"
+        tags=["Weather"],
+        summary="Readings for an administration (latest or ?period=)",
+        parameters=[
+            OpenApiParameter(
+                name="period",
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description=(
+                    "Month to read, YYYY-MM (e.g. 2026-06). The review page "
+                    "passes the publication month. Omit for the station's "
+                    "latest month with data. Any other format is a 400."
+                ),
+            ),
+        ],
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                "Own-region station, pinned month",
+                value={
+                    "key": 4588078,
+                    "label": "Hhukwini",
+                    "group": "Hhohho",
+                    "data": [
+                        {
+                            "key": "precipitation",
+                            "label": "Precipitation (monthly)",
+                            "value": 15.8,
+                            "units": "mm",
+                        },
+                        {
+                            "key": "soil_temperature",
+                            "label": "Soil temperature",
+                            "value": None,
+                            "units": "°C",
+                            "meta": {"reason": "pending_sensor"},
+                        },
+                    ],
+                    "meta": {
+                        "station": "Mbabane",
+                        "station_code": "68391",
+                        "network": "MET",
+                        "period": "2026-06",
+                        "days_reported": 30,
+                        "resolution": "region_station",
+                        "station_lat": -26.336,
+                        "station_lon": 31.1427,
+                    },
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+            OpenApiExample(
+                "No readings for that month",
+                value={
+                    "key": 4588078,
+                    "label": "Hhukwini",
+                    "group": "Hhohho",
+                    "data": None,
+                    "meta": {
+                        "reason": "no_station_data_for_period",
+                        "period": "2026-04",
+                    },
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
     )
     def get(self, request, version, administration_id):
         administration = get_object_or_404(
             Administration, pk=administration_id
         )
+        period = request.query_params.get("period")
+        if period and not re.match(PERIOD_RE, period):
+            return Response(
+                {"detail": f"Invalid period (expected YYYY-MM): {period}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(
-            resolve_administration_latest(administration),
+            resolve_administration_latest(administration, period),
             status=status.HTTP_200_OK,
         )
 

@@ -157,14 +157,24 @@ def _confidence(scores, administration_id, cdi_class):
 def _stations_vs_satellite(confidence):
     """The queue's "Stations vs Satellite" column, from the same comparison.
 
-    SPI is the real delta the confidence score was built on. LST stays null:
-    the satellite side publishes no temperature in degrees C (see
-    `v1_weather/confidence.py`), so there is nothing to difference.
+    Both deltas are the ones the confidence score was built on, satellite
+    minus station. "LST" is the TWG's word for the temperature side; the
+    satellite value is AgERA5 daily-maximum 2 m temperature averaged over the
+    month (see `v1_weather/confidence.py`). When the month has no satellite
+    temperature yet, or the score was not computable at all, `lst` is null
+    and `lst_reason` says why.
     """
+    meta = confidence.get("meta") or {}
+    temperature = meta.get("temperature") or {}
+    lst = temperature.get("delta")
     return {
-        "spi": (confidence.get("meta") or {}).get("spi", {}).get("delta"),
-        "lst": None,
-        "lst_reason": CONFIDENCE_NO_SATELLITE_TEMPERATURE,
+        "spi": (meta.get("spi") or {}).get("delta"),
+        "lst": lst,
+        "lst_reason": (
+            None
+            if lst is not None
+            else meta.get("reason") or CONFIDENCE_NO_SATELLITE_TEMPERATURE
+        ),
     }
 
 

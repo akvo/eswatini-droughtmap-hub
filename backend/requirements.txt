@@ -32,3 +32,4 @@ rasterstats==0.20.0
 pillow==11.1.0
 topojson==1.9
 matplotlib==3.9.4
+cdsapi==0.7.7

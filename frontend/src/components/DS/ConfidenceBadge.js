@@ -1,5 +1,9 @@
 import classNames from "classnames";
-import { CONFIDENCE_STYLE, CONFIDENCE_REASON } from "@/static/config";
+import {
+  CONFIDENCE_STYLE,
+  CONFIDENCE_REASON,
+  CONFIDENCE_PENDING_REASONS,
+} from "@/static/config";
 
 const BAR_LEVELS = { low: 1, medium: 2, high: 3 };
 
@@ -41,6 +45,21 @@ const ConfidenceBars = ({ level, activeColor, inactiveColor }) => (
 const ConfidenceBadge = ({ band, reason = null, className = "" }) => {
   const style = CONFIDENCE_STYLE?.[band];
   if (!style) {
+    // "Not yet" is not "missing": a station too new for the 3-month window
+    // is expected to score later, and reads as Pending rather than a dash.
+    if (CONFIDENCE_PENDING_REASONS.includes(reason)) {
+      return (
+        <span
+          className={classNames(
+            "inline-flex items-center rounded px-2 py-0.5 text-sm font-medium bg-[#F2F4F7] text-[#606060]",
+            className,
+          )}
+          title={CONFIDENCE_REASON[reason]}
+        >
+          Pending
+        </span>
+      );
+    }
     return (
       <span className="text-[#a4a4a4]" title={CONFIDENCE_REASON[reason]}>
         &mdash;

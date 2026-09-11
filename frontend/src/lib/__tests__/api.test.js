@@ -1,4 +1,4 @@
-import { api } from "../api";
+import { api, apiResult } from "../api";
 
 jest.mock("../auth", () => ({
   getSession: jest.fn().mockResolvedValue(null),
@@ -39,5 +39,25 @@ describe("api error handling", () => {
   it("falls back to the status code when the body carries no message", async () => {
     respondWith(500, {});
     await expect(api("GET", "/x")).rejects.toThrow("HTTP 500");
+  });
+});
+
+// Next.js masks thrown Server Action errors in production (the client gets only
+// {digest}), so forms read the backend's sentence off a *returned* value.
+describe("apiResult", () => {
+  it("returns the backend message instead of throwing it", async () => {
+    respondWith(400, { email: ["A user with this email already exists."] });
+    await expect(apiResult("POST", "/x", { a: 1 })).resolves.toEqual({
+      ok: false,
+      error: "A user with this email already exists.",
+    });
+  });
+
+  it("returns the parsed body on 2xx", async () => {
+    respondWith(201, { administration_id: 7 });
+    await expect(apiResult("POST", "/x", { a: 1 })).resolves.toEqual({
+      ok: true,
+      data: { administration_id: 7 },
+    });
   });
 });

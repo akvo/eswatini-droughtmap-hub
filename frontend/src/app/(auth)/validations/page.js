@@ -151,7 +151,12 @@ const ValidationsPage = () => {
     <div className="w-full h-auto">
       <PageHeader
         title="My validations"
-        description="Lorem ipsum dolor sit amet consectetur."
+        description={
+          <p>
+            Manage the current cycle of drought validation submissions across
+            all locations.
+          </p>
+        }
         date={headerDate}
       />
 
@@ -164,7 +169,7 @@ const ValidationsPage = () => {
           <section className="relative z-10 mx-auto -mt-16 w-full max-w-[1280px] border border-cardBorder bg-white">
             <div className="border-b border-cardBorder px-4 py-4 sm:px-6">
               <h2 className="text-xl font-semibold leading-7 text-[#333333]">
-                Reviews
+                Validations queue
               </h2>
             </div>
             <div className="flex flex-col gap-4 border-b border-cardBorder p-4 lg:flex-row lg:items-center lg:justify-between">

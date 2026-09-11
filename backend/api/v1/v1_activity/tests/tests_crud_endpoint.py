@@ -100,6 +100,52 @@ class ActivityCrudTestCase(APITestCase):
         self.assertEqual(ResponseActivity.objects.count(), 0)
         self.assertEqual(ResponseActivity.objects_with_deleted.count(), 1)
 
+    def test_update_can_send_active_back_to_draft(self):
+        self.client.force_authenticate(self.admin)
+        activity = ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash,
+            status=ActivityStatus.active, activated_by=self.admin,
+            activated_at="2026-01-01 00:00:00")
+        resp = self.client.patch(
+            self._detail(activity.pk),
+            {"title": "B", "status": ActivityStatus.draft}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        activity.refresh_from_db()
+        self.assertEqual(activity.title, "B")
+        self.assertEqual(activity.status, ActivityStatus.draft)
+        self.assertIsNone(activity.activated_at)
+        self.assertIsNone(activity.activated_by)
+        self.assertEqual(
+            activity.history.latest("id").to_status, ActivityStatus.draft)
+
+    def test_update_can_activate_a_draft_and_bumps_version(self):
+        self.client.force_authenticate(self.admin)
+        activity = ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash,
+            version="v1.0")
+        resp = self.client.patch(
+            self._detail(activity.pk),
+            {"status": ActivityStatus.active}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        activity.refresh_from_db()
+        self.assertEqual(activity.status, ActivityStatus.active)
+        self.assertEqual(activity.version, "v1.1")
+        self.assertEqual(activity.activated_by, self.admin)
+
+    def test_update_rejects_illegal_transition(self):
+        self.client.force_authenticate(self.admin)
+        activity = ResponseActivity.objects.create(
+            code="ACT-WASH-1", title="A", sector=ActivitySector.wash,
+            status=ActivityStatus.active)
+        resp = self.client.patch(
+            self._detail(activity.pk),
+            {"title": "B", "status": 99}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        activity.refresh_from_db()
+        # The whole update rolls back, title included.
+        self.assertEqual(activity.title, "A")
+        self.assertEqual(activity.status, ActivityStatus.active)
+
     def test_sector_immutable_on_update(self):
         self.client.force_authenticate(self.admin)
         activity = ResponseActivity.objects.create(

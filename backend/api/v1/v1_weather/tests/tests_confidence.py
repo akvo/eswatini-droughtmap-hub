@@ -27,10 +27,12 @@ from api.v1.v1_weather.constants import (
     CONFIDENCE_NO_SATELLITE_SPI,
     CONFIDENCE_NO_SATELLITE_TEMPERATURE,
     CONFIDENCE_NO_STATION,
+    CONFIDENCE_STATION_TOO_NEW,
     WeatherParameter,
 )
 from api.v1.v1_weather.models import (
     AdministrationNormal,
+    AdministrationObservation,
     StationDailyAggregate,
     WeatherSource,
     WeatherStation,
@@ -168,6 +170,77 @@ class ScoreTestCase(TestCase):
         result = confidence.score(0.5, 100, 100, 40)
         self.assertIsNone(result.temperature)
         self.assertEqual(result.reason, CONFIDENCE_NO_SATELLITE_TEMPERATURE)
+        self.assertIsNone(result.as_dict()["meta"]["temperature"])
+
+    def test_both_sides_merge_with_the_framework_weights(self):
+        """Precipitation 5 (delta 0), temperature 3 (delta 2.0 C):
+        0.4*3 + 0.6*5 = 4.2 -> 4."""
+        result = confidence.score(
+            0.5, 100, 100, 40, satellite_tmax=28.6, station_tmax=26.6
+        )
+        self.assertEqual(result.temperature, 3)
+        self.assertEqual(result.precipitation, 5)
+        self.assertEqual(result.value, 4)
+        self.assertEqual(result.temperature_delta, 2.0)
+        self.assertIsNone(result.reason)
+        self.assertEqual(
+            result.as_dict()["meta"]["temperature"],
+            {"satellite": 28.6, "station": 26.6, "delta": 2.0},
+        )
+
+    def test_framework_temperature_example(self):
+        """The slide's example: LST 26.1 satellite vs 26.6 station."""
+        result = confidence.score(
+            0.5, 100, 100, 40, satellite_tmax=26.1, station_tmax=26.6
+        )
+        self.assertEqual(result.temperature_delta, -0.5)
+        self.assertEqual(result.temperature, 5)
+
+    def test_temperature_hard_veto_overrides_perfect_rainfall(self):
+        result = confidence.score(
+            0.5, 100, 100, 40, satellite_tmax=33.0, station_tmax=26.6
+        )
+        self.assertEqual(result.temperature, 1)
+        self.assertEqual(result.value, 1)
+
+    def test_temperature_soft_veto_caps_at_two(self):
+        result = confidence.score(
+            0.5, 100, 100, 40, satellite_tmax=30.6, station_tmax=26.6
+        )
+        self.assertEqual(result.temperature, 2)
+        self.assertEqual(result.value, 2)
+
+    def test_satellite_without_station_tmax_names_the_station(self):
+        result = confidence.score(
+            0.5, 100, 100, 40, satellite_tmax=28.0, station_tmax=None
+        )
+        self.assertIsNone(result.temperature)
+        self.assertEqual(result.value, 5)
+        self.assertEqual(result.reason, CONFIDENCE_INCOMPLETE_STATION)
+
+    def test_temperature_never_stands_in_for_precipitation(self):
+        """A complete Tmax month with an incomplete SPI window is not a
+        score: precipitation is mandatory, temperature optional (D-7). The
+        temperature comparison is still reported on the 0 (D-10)."""
+        result = confidence.score(
+            0.5, None, 100, 40, satellite_tmax=26.1, station_tmax=26.6
+        )
+        self.assertEqual(result.value, 0)
+        self.assertIsNone(result.band)
+        self.assertEqual(result.reason, CONFIDENCE_INCOMPLETE_STATION)
+        self.assertEqual(result.temperature, 5)
+        self.assertEqual(result.temperature_delta, -0.5)
+        payload = result.as_dict()
+        self.assertEqual(payload["value"], 0)
+        self.assertEqual(payload["meta"]["components"]["temperature"], 5)
+        self.assertEqual(payload["meta"]["temperature"]["delta"], -0.5)
+
+    def test_missing_satellite_spi_still_carries_temperature(self):
+        result = confidence.score(
+            None, 100, 100, 40, satellite_tmax=30.0, station_tmax=26.0
+        )
+        self.assertEqual(result.reason, CONFIDENCE_NO_SATELLITE_SPI)
+        self.assertEqual(result.temperature, 2)
 
     def test_missing_inputs_name_themselves(self):
         self.assertEqual(
@@ -264,6 +337,24 @@ class PublicationConfidenceTestCase(TestCase):
                     value=daily_mm,
                 )
 
+    def _fill_station_tmax(self, days=28, value=26.6, station=None):
+        for day in range(1, days + 1):
+            StationDailyAggregate.objects.create(
+                station=station or self.station,
+                date=date(2026, 7, day),
+                parameter=WeatherParameter.tmax,
+                value=value,
+            )
+
+    def _satellite_tmax(self, value=27.4, administration=None):
+        AdministrationObservation.objects.create(
+            administration=administration or self.administration,
+            year_month=self.year_month,
+            parameter=WeatherParameter.tmax,
+            value=value,
+            dataset="AgERA5 v2.0 2m_temperature 24_hour_maximum",
+        )
+
     def test_scores_the_inkhundla_in_the_station_region(self):
         # 3 months x 28 days x 1.19mm = 100mm, matching the climatology
         # mean exactly -> station SPI 0, satellite SPI 0, perfect agreement.
@@ -279,9 +370,74 @@ class PublicationConfidenceTestCase(TestCase):
         self.assertEqual(scores[self.other.pk].value, 0)
         self.assertEqual(scores[self.other.pk].reason, CONFIDENCE_NO_STATION)
 
+    def test_station_that_did_not_exist_yet_is_pending_not_broken(self):
+        """Stations came online 26 May 2026; a July publication needs
+        May-July. That is the station's age, not an outage: a distinct
+        reason and the first-reading date, so the queue can say "pending"
+        (D-12). The temperature side still rides along (D-10)."""
+        StationDailyAggregate.objects.filter(
+            date__lt=date(2026, 5, 26)
+        ).delete()
+        self._fill_station(months=(6, 7))
+        for day in range(26, 32):
+            StationDailyAggregate.objects.create(
+                station=self.station,
+                date=date(2026, 5, day),
+                parameter=WeatherParameter.precipitation,
+                value=1.0,
+            )
+        self._fill_station_tmax(value=26.6)
+        self._satellite_tmax(value=26.6)
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.value, 0)
+        self.assertEqual(result.reason, CONFIDENCE_STATION_TOO_NEW)
+        self.assertEqual(result.station_since, "2026-05-26")
+        self.assertEqual(result.temperature, 5)
+        payload = result.as_dict()["meta"]
+        self.assertEqual(payload["reason"], CONFIDENCE_STATION_TOO_NEW)
+        self.assertEqual(payload["station_since"], "2026-05-26")
+
+    def test_station_with_no_readings_at_all_is_pending(self):
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.reason, CONFIDENCE_STATION_TOO_NEW)
+        self.assertIsNone(result.station_since)
+
+    def test_an_old_station_with_a_gap_is_an_outage(self):
+        """Readings before the window opened, then a thin month inside it:
+        that is incomplete_station_record, and no since date."""
+        StationDailyAggregate.objects.create(
+            station=self.station,
+            date=date(2026, 1, 10),
+            parameter=WeatherParameter.precipitation,
+            value=3.0,
+        )
+        self._fill_station(months=(5, 6), days=28)
+        self._fill_station(months=(7,), days=4)
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.reason, CONFIDENCE_INCOMPLETE_STATION)
+        self.assertIsNone(result.station_since)
+        self.assertIsNone(result.as_dict()["meta"]["station_since"])
+
+    def _old_station(self):
+        """One reading before the window opened, so gaps inside it count
+        as outages (incomplete_station_record), not as a new station."""
+        StationDailyAggregate.objects.create(
+            station=self.station,
+            date=date(2026, 1, 10),
+            parameter=WeatherParameter.precipitation,
+            value=3.0,
+        )
+
     def test_short_window_is_not_scored(self):
         """Two months of readings cannot make an SPI-3 — totalling them
         anyway would invent a drought out of the missing month."""
+        self._old_station()
         self._fill_station(months=(6, 7))
         scores = confidence.publication_confidence(self.publication)
         self.assertEqual(
@@ -291,6 +447,7 @@ class PublicationConfidenceTestCase(TestCase):
 
     def test_thin_month_is_not_scored(self):
         """A month with 4 reported days totals a drought out of absence."""
+        self._old_station()
         self._fill_station(days=4)
         scores = confidence.publication_confidence(self.publication)
         self.assertEqual(
@@ -348,6 +505,137 @@ class PublicationConfidenceTestCase(TestCase):
         # The queue's SPI column is the same comparison, not a placeholder.
         self.assertEqual(row["stations_vs_satellite"]["spi"], 0.0)
         self.assertIsNone(row["stations_vs_satellite"]["lst"])
+        self.assertEqual(
+            row["stations_vs_satellite"]["lst_reason"],
+            CONFIDENCE_NO_SATELLITE_TEMPERATURE,
+        )
+
+    def test_temperature_side_scores_when_both_months_exist(self):
+        """AgERA5 row for the month + a complete station Tmax month."""
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax(value=26.6)
+        self._satellite_tmax(value=27.4)
+        scores = confidence.publication_confidence(self.publication)
+        result = scores[self.administration.pk]
+        self.assertEqual(result.temperature_delta, 0.8)
+        self.assertEqual(result.temperature, 4)
+        self.assertEqual(result.precipitation, 5)
+        self.assertEqual(result.value, 5)  # 0.4*4 + 0.6*5 = 4.6 -> 5
+        self.assertIsNone(result.reason)
+        # The other region has no station, temperature or not.
+        self.assertEqual(scores[self.other.pk].reason, CONFIDENCE_NO_STATION)
+
+    def test_station_tmax_is_this_month_only(self):
+        """Tmax is a monthly statistic: June's readings must not leak into
+        July's mean the way the SPI-3 window totals three months."""
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax(value=26.6)
+        for day in range(1, 29):
+            StationDailyAggregate.objects.create(
+                station=self.station,
+                date=date(2026, 6, day),
+                parameter=WeatherParameter.tmax,
+                value=10.0,
+            )
+        self._satellite_tmax(value=26.6)
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.station_tmax, 26.6)
+        self.assertEqual(result.temperature, 5)
+
+    def test_thin_tmax_month_voids_the_temperature_side_only(self):
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax(days=9)
+        self._satellite_tmax()
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertIsNone(result.temperature)
+        self.assertEqual(result.value, 5)
+        self.assertEqual(result.reason, CONFIDENCE_INCOMPLETE_STATION)
+
+    def test_short_rainfall_window_still_shows_the_temperature_delta(self):
+        """June 2026 in production: stations started late May, so the SPI-3
+        window is short while the Tmax month is complete. Score 0, but the
+        queue's LST cell is not a dash (D-10), and the reason is the
+        station's age, not an outage (D-12)."""
+        self._fill_station(months=(6, 7))
+        self._fill_station_tmax(value=26.6)
+        self._satellite_tmax(value=27.4)
+        rows = {
+            row["administration_id"]: row
+            for row in build_rows(self.publication)
+        }
+        row = rows[self.administration.pk]
+        self.assertEqual(row["confidence"]["value"], 0)
+        self.assertEqual(
+            row["confidence"]["meta"]["reason"], CONFIDENCE_STATION_TOO_NEW
+        )
+        self.assertEqual(
+            row["confidence"]["meta"]["station_since"], "2026-06-01"
+        )
+        self.assertEqual(
+            row["confidence"]["meta"]["components"],
+            {"temperature": 4, "precipitation": None},
+        )
+        self.assertEqual(row["stations_vs_satellite"]["lst"], 0.8)
+        self.assertIsNone(row["stations_vs_satellite"]["lst_reason"])
+        self.assertIsNone(row["stations_vs_satellite"]["spi"])
+
+    def test_satellite_tmax_alone_keeps_the_precipitation_score(self):
+        self._fill_station(daily_mm=100 / 84)
+        self._satellite_tmax()
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.value, 5)
+        self.assertEqual(result.reason, CONFIDENCE_INCOMPLETE_STATION)
+
+    def test_review_queue_row_carries_the_lst_delta(self):
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax(value=26.6)
+        self._satellite_tmax(value=27.4)
+        rows = {
+            row["administration_id"]: row
+            for row in build_rows(self.publication)
+        }
+        signals = rows[self.administration.pk]["stations_vs_satellite"]
+        self.assertEqual(signals["lst"], 0.8)
+        self.assertIsNone(signals["lst_reason"])
+        self.assertEqual(
+            rows[self.administration.pk]["confidence"]["meta"]["components"],
+            {"temperature": 4, "precipitation": 5},
+        )
+
+    def test_a_silent_station_does_not_shadow_a_live_tmax(self):
+        """Two stations in the region, only one reported Tmax: the
+        region scores off the live one, as it does for rainfall."""
+        WeatherStation.objects.create(
+            source=self.station.source,
+            wigos_id="0-999-0-0000",
+            name="Silent",
+            region="Hhohho",
+            latitude=-26.4,
+            longitude=31.2,
+        )
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax(value=26.6)
+        self._satellite_tmax(value=26.6)
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.temperature, 5)
+
+    def test_query_count_is_fixed(self):
+        """Eight queries however many Tinkhundla: the queue reads the map.
+        Five before WX-11, one per side of the temperature half, and the
+        stations' first-reading dates (D-12)."""
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax()
+        self._satellite_tmax()
+        with self.assertNumQueries(8):
+            confidence.publication_confidence(self.publication)
 
     def test_no_data_inkhundla_is_not_scored(self):
         """DroughtCategory.none means the CDI had no signal, so there is no

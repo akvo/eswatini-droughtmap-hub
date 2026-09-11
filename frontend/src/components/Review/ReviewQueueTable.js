@@ -9,11 +9,13 @@ import { useAppContext } from "@/context/AppContextProvider";
 import { QUEUE_FILTERS, buildQueueQuery } from "@/lib/query";
 
 /**
- * Satellite − station deltas. SPI is the real difference the confidence score
- * is built on; LST is null because the satellite side publishes no
- * temperature in °C, and a null must read as absent, not as zero agreement.
+ * Satellite − station deltas, both straight off the confidence score. "LST"
+ * is the TWG's label; the satellite side is AgERA5 daily-maximum 2 m
+ * temperature averaged over the month (WX-11). A null LST means the month has
+ * no satellite temperature yet (or the score was not computable), and must
+ * read as absent — the tooltip says why — never as zero agreement.
  */
-const StationSignals = ({ stations }) => {
+export const StationSignals = ({ stations }) => {
   const signed = (n) =>
     n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2)}`;
   return (

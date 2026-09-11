@@ -43,7 +43,7 @@ const hero = {
   summary: "<p>Severe conditions across the lowveld.</p>",
 };
 
-const ORIGINAL_TITLE = "eSwatini - DroughtMap Hub";
+const ORIGINAL_TITLE = "Eswatini Drought Intelligence Hub";
 
 // The handler awaits the sections (D-9) and then a frame (D-5), so timer
 // advances and microtask flushes have to interleave — a single advance runs

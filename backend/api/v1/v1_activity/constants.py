@@ -12,7 +12,7 @@ class ActivityStatus:
 # draft can activate (guarded) or be discarded; active can only be archived.
 ACTIVITY_TRANSITIONS = {
     ActivityStatus.draft: [ActivityStatus.active, ActivityStatus.archived],
-    ActivityStatus.active: [ActivityStatus.archived],
+    ActivityStatus.active: [ActivityStatus.archived, ActivityStatus.draft],
     ActivityStatus.archived: [],
 }
 

@@ -131,9 +131,9 @@ export default function AddActivitySlideIn({
       fd.append("sector", formData.sector || "");
       fd.append("title", formData.title || "");
 
-      // If we are updating an existing activity, we don't change the status
-      // unless transitioned. So we keep statusVal or pass the current one.
-      const targetStatus = editActivity ? editActivity.status : statusVal;
+      // On edit the PUT carries the status itself — the backend routes it
+      // through the lifecycle service, so no separate transition call.
+      const targetStatus = statusVal || editActivity?.status;
       fd.append("status", targetStatus);
 
       if (formData.description) fd.append("description", formData.description);

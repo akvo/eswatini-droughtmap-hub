@@ -13,6 +13,12 @@ set -e
 #                                         (WX-6; schedule 1st of month 07:00)
 #   ./job.sh dataset-uploads              fetch provider files from the
 #                                         GeoNode dataset categories (PA-6)
+#   ./job.sh confidence [--period YYYY-MM] AgERA5 satellite Tmax for the
+#                                         confidence score (WX-11; monthly,
+#                                         10th) — default: previous month
+#   ./job.sh chirps-observations          CHIRPS mm per Inkhundla for the
+#                                         satellite-difference card (WX-10;
+#                                         monthly, 20th)
 TASK="${1:-}"
 shift || true
 
@@ -53,8 +59,25 @@ case "$TASK" in
     # per category.
     ./manage.py fetch_dataset_uploads "$@"
     ;;
+  confidence)
+    # The satellite temperature half of the confidence score: one CDS
+    # request per month, monthly mean of the daily 24 h maximum per
+    # Inkhundla into AdministrationObservation(parameter="tmax"). AgERA5
+    # lags real time by ~8 days, so the 10th is the first safe day for the
+    # previous month; the upsert is idempotent and --from/--to backfill.
+    # The score itself stays derived at read time (WX-11 D-3).
+    ./manage.py fetch_agera5_observations "$@"
+    ;;
+  chirps-observations)
+    # NOT `precipitation` above: that one keeps a raster window for the
+    # National overview map; this one writes per-Inkhundla mm rows for the
+    # station-vs-satellite card (WX-10). Default range re-fetches every
+    # month since the first station reading (idempotent), so a CHIRPS month
+    # published late is picked up on the next monthly tick.
+    ./manage.py fetch_chirps_observations "$@"
+    ;;
   *)
-    echo "Usage: $0 {reviews|weather|rasters|cdi|cs-reminders|precipitation|dataset-uploads} [extra args]" >&2
+    echo "Usage: $0 {reviews|weather|rasters|cdi|cs-reminders|precipitation|dataset-uploads|confidence|chirps-observations} [extra args]" >&2
     exit 1
     ;;
 esac

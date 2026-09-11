@@ -224,10 +224,17 @@ CONFIDENCE_NO_STATION = "no_station_in_region"
 CONFIDENCE_NO_SATELLITE_SPI = "no_satellite_spi"
 CONFIDENCE_NO_CLIMATOLOGY = "no_precipitation_climatology"
 CONFIDENCE_INCOMPLETE_STATION = "incomplete_station_record"
-# The satellite side has no temperature in degrees C at all: the CDI
-# components are percentile ranks and ESI (which replaced MODIS LST) is an
-# evaporative stress index, not a reading. So the temperature half of the
-# framework cannot be computed and the score runs on precipitation alone.
+# The region's station did not exist yet when the SPI window opened: its
+# first reading is after the window's first day. Structural, not an outage
+# — the score becomes computable on the station's third full month and
+# never needs a fix (WX-11 D-12). Kept apart from incomplete_station_record
+# so the queue can say "pending" instead of looking broken.
+CONFIDENCE_STATION_TOO_NEW = "station_history_too_short"
+# No satellite temperature for this month yet. The CDI components are
+# percentile ranks (ESI replaced MODIS LST and is a stress index, not a
+# reading), so the temperature half is fed separately: AgERA5 daily maximum
+# 2 m temperature, fetched monthly by `fetch_agera5_observations` (WX-11).
+# Until that month's rows exist the score runs on precipitation alone.
 CONFIDENCE_NO_SATELLITE_TEMPERATURE = "no_satellite_temperature"
 
 # SPI-3 spans three months, so the station needs all three. Days per month
@@ -242,6 +249,32 @@ CHIRPS_MONTHLY_URL = (
     "chirps-v2.0.{year}.{month:02d}.tif.gz"
 )
 CHIRPS_BBOX = (30.75, -27.5, 32.25, -25.0)
+
+# --- AgERA5 satellite temperature (WX-11) ----------------------------
+# Copernicus CDS `sis-agrometeorological-indicators`: ERA5 aggregated to daily
+# and bias-corrected to 0.1 deg. `24_hour_maximum` of `2m_temperature` is the
+# gridded counterpart of the station's daily Tmax, which is what the
+# Validation Framework's temperature table compares ("satellite LST vs
+# station max"). Same grid as the AgERA5 normals in source/30years.
+AGERA5_DATASET = "sis-agrometeorological-indicators"
+AGERA5_REQUEST = {
+    "variable": "2m_temperature",
+    "statistic": ["24_hour_maximum"],
+    "version": "2_0",
+}
+# CDS `area` is North, West, South, East — CHIRPS_BBOX reordered.
+AGERA5_AREA = (CHIRPS_BBOX[3], CHIRPS_BBOX[0], CHIRPS_BBOX[1], CHIRPS_BBOX[2])
+AGERA5_DATASET_LABEL = "AgERA5 v2.0 2m_temperature 24_hour_maximum"
+AGERA5_LICENCE_URL = (
+    "https://cds.climate.copernicus.eu/datasets/"
+    "sis-agrometeorological-indicators?tab=download#manage-licences"
+)
+# The CDS queues requests; a whole month for Eswatini took ~90 s in the
+# 2026-09-09 probe. Cap the wait so a stuck queue fails the cron run rather
+# than holding the container.
+AGERA5_TIMEOUT_SECONDS = 60
+AGERA5_RETRY_MAX = 30
+KELVIN_OFFSET = 273.15
 
 CARD_SATELLITE_DIFFERENCE = "station_satellite_difference"
 REASON_SATELLITE_NOT_PUBLISHED = "satellite_not_published"

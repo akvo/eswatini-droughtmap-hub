@@ -297,6 +297,16 @@ const WeatherColumn = ({ weather, citizenScience }) => {
   const rainRow = region
     ? weather?.data?.find((r) => r.key === "precipitation")
     : null;
+  // Which month the block is showing, and how much of it the station
+  // reported — the endpoint is pinned to the publication month by page.js.
+  const periodLabel = weather?.meta?.period
+    ? dayjs(weather.meta.period).format("MMM YYYY")
+    : null;
+  const days = weather?.meta?.days_reported;
+  const coverage =
+    periodLabel && days != null
+      ? `${periodLabel} · ${days} day${days === 1 ? "" : "s"} reported`
+      : periodLabel;
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2 pb-4 border-b border-cardBorder">
@@ -323,17 +333,20 @@ const WeatherColumn = ({ weather, citizenScience }) => {
         </div>
         <div className="text-sm text-[#606060] mt-1">
           Monthly rainfall total, from the MET station serving this region
+          {region && coverage ? ` (${coverage})` : ""}
         </div>
       </div>
 
       {!region || !weather?.data ? (
         <div className="bg-[#f9fafb] border border-cardBorder rounded p-4 text-sm text-[#a4a4a4]">
-          No data available — no weather station in this Inkhundla&apos;s
-          region.
+          {region && periodLabel
+            ? `No data available — the region's station has no readings for ${periodLabel}.`
+            : "No data available — no weather station in this Inkhundla's region."}
         </div>
       ) : (
         <StationBlock
           title="MET weather information"
+          subTitle={coverage}
           stationCode={weather.meta.station}
           rows={weather.data.filter((r) => r.key !== "spi")}
         />

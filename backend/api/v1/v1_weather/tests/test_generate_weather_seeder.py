@@ -347,7 +347,12 @@ class SeederUsesTheExistingRegistryTestCase(TestCase):
             longitude=31.1,
             metadata_status="operational",
         )
-        self.archive_start = date.today() - timedelta(days=5)
+        # Frozen for the whole test (setUp + every call_command below), so
+        # the seeder's own timezone.now() and this fixture agree on "today".
+        clock = patch("django.utils.timezone.now", return_value=FROZEN_NOW)
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.archive_start = FROZEN_NOW.date() - timedelta(days=5)
         for offset in range(5):
             StationDailyAggregate.objects.create(
                 station=self.station,
