@@ -315,6 +315,21 @@ def _station_window_totals(year_month: date) -> dict:
     return totals
 
 
+def _month_start(year_month: date) -> date:
+    """`Publication.year_month` names a month, but it is a plain DateField and
+    nothing pins it to the 1st — production holds rows dated mid-month (e.g.
+    2026-02-16 on publication 1211). Both temperature lookups mean "that whole
+    month", and one of them matches `AdministrationObservation.year_month`,
+    which is always written on the 1st. Without this the half fails silently:
+    the satellite lookup finds zero rows and the station window starts
+    mid-month, so it can never reach MIN_STATION_DAYS_PER_MONTH.
+
+    The precipitation side was never exposed — it buckets by (year, month)
+    and its bounds already come from `window_keys`.
+    """
+    return year_month.replace(day=1)
+
+
 def _station_month_tmax(year_month: date) -> dict:
     """station_id -> mean of the daily maxima for this one month (deg C),
     or None when the month is too thin to trust.
@@ -323,11 +338,12 @@ def _station_month_tmax(year_month: date) -> dict:
     three-month accumulation. Same completeness rule as precipitation so a
     station that reported four hot days does not read as a heatwave.
     """
+    month = _month_start(year_month)
     rows = StationDailyAggregate.objects.filter(
         parameter=WeatherParameter.tmax,
         value__isnull=False,
-        date__gte=year_month,
-        date__lt=_next_month(year_month),
+        date__gte=month,
+        date__lt=_next_month(month),
     ).values_list("station_id", "value")
     per_station = {}
     for station_id, value in rows:
@@ -371,7 +387,8 @@ def _satellite_tmax(year_month: date) -> dict:
     """administration_id -> AgERA5 monthly mean of daily Tmax (deg C)."""
     return dict(
         AdministrationObservation.objects.filter(
-            year_month=year_month, parameter=WeatherParameter.tmax
+            year_month=_month_start(year_month),
+            parameter=WeatherParameter.tmax,
         ).values_list("administration_id", "value")
     )
 

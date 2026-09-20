@@ -18,6 +18,34 @@ import {
 const PROGRESS_MODE = REVIEW_MAP_MODE[1].value;
 
 /**
+ * Confidence is derived from satellite-vs-station agreement, so a month with
+ * no AgERA5/station overlap comes back with `band: null` on every row. Painting
+ * 59 identical grey polygons reads as a broken map, so the body is replaced
+ * (Figma 5790-119225) — the legend below it still stands.
+ */
+const EmptyConfidence = () => (
+  <div className="flex min-h-0 flex-1 items-center justify-center bg-[#f2f2f2] px-4 py-12">
+    <div className="flex w-[352px] max-w-full flex-col items-center gap-4 text-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/assets/icons/review/no-map-data.svg"
+        alt=""
+        className="h-[87px] w-[114px]"
+      />
+      <div className="flex flex-col gap-2">
+        <h3 className="mb-0 text-2xl font-bold leading-[30px] text-[#333333]">
+          No confidence score data yet
+        </h3>
+        <p className="mb-0 text-base leading-6 text-[#606060]">
+          Hang tight! We are still working on the database. The data will appear
+          here after the update. Check back later.
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
+/**
  * Review-queue map. Polygons are coloured by confidence band or by how many
  * reviews an Inkhundla has collected — not by drought class, which the table's
  * D-score column carries.
@@ -33,6 +61,9 @@ const ReviewerMap = ({
   const { selectedAdms = [], activeAdm } = useAppContext();
   const isProgress = mode === PROGRESS_MODE;
   const buckets = isProgress ? progressBuckets(reviewerCount(data)) : [];
+  const isEmpty =
+    !isProgress &&
+    !data?.some((row) => CONFIDENCE_STYLE[row?.confidence?.band]);
 
   const rowFor = (feature) =>
     data?.find(
@@ -92,7 +123,13 @@ const ReviewerMap = ({
           stroke: CONFIDENCE_STYLE[band].dot,
           label: CONFIDENCE_STYLE[band].label,
         })),
-        { color: NO_DATA.color, stroke: "#D2D2D2", label: NO_DATA.label },
+        // Nothing on the map is keyed "No data" once the body is the empty
+        // state, so the swatch drops with it (Figma 5790-119225).
+        ...(isEmpty
+          ? []
+          : [
+              { color: NO_DATA.color, stroke: "#D2D2D2", label: NO_DATA.label },
+            ]),
       ];
 
   // The legend is its own row beneath the map, ruled off from it (Figma
@@ -101,12 +138,16 @@ const ReviewerMap = ({
   // beside it, exactly as the design pairs them.
   return (
     <div className="flex h-full w-full flex-col">
-      <CDIMap
-        {...{ onFeature, onClick }}
-        style={mapStyle}
-        wrapperClassName="min-h-0 flex-1"
-        height="100%"
-      />
+      {isEmpty ? (
+        <EmptyConfidence />
+      ) : (
+        <CDIMap
+          {...{ onFeature, onClick }}
+          style={mapStyle}
+          wrapperClassName="min-h-0 flex-1"
+          height="100%"
+        />
+      )}
       <div className="flex flex-wrap content-center items-center gap-2 border-t border-cardBorder p-4 text-xs leading-4 text-[#606060]">
         {legend.map(({ color, stroke, label }) => (
           <span key={label} className="flex items-center gap-1">

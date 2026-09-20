@@ -525,6 +525,27 @@ class PublicationConfidenceTestCase(TestCase):
         # The other region has no station, temperature or not.
         self.assertEqual(scores[self.other.pk].reason, CONFIDENCE_NO_STATION)
 
+    def test_a_mid_month_publication_still_finds_both_temperatures(self):
+        """`year_month` is a plain DateField and production holds publications
+        dated mid-month (1211 is 2026-02-16). Both temperature lookups mean
+        "that whole month": before `_month_start` the satellite lookup matched
+        no AgERA5 row (those are written on the 1st) and the station window
+        opened mid-month, so it could never reach 20 days. Every fixture here
+        has day 1, which is why this never showed locally."""
+        self._fill_station(daily_mm=100 / 84)
+        self._fill_station_tmax(value=26.6)
+        self._satellite_tmax(value=27.4)
+        self.publication.year_month = date(2026, 7, 16)
+        self.publication.save()
+        result = confidence.publication_confidence(self.publication)[
+            self.administration.pk
+        ]
+        self.assertEqual(result.satellite_tmax, 27.4)
+        self.assertEqual(result.station_tmax, 26.6)
+        self.assertEqual(result.temperature_delta, 0.8)
+        self.assertEqual(result.value, 5)
+        self.assertIsNone(result.reason)
+
     def test_station_tmax_is_this_month_only(self):
         """Tmax is a monthly statistic: June's readings must not leak into
         July's mean the way the SPI-3 window totals three months."""
