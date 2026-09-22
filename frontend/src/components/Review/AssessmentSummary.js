@@ -51,6 +51,11 @@ const Gauge = ({ percent = 0 }) => {
   );
 };
 
+// A zero card has no breakdown to state and nothing to compare against, so the
+// note and the delta badge give way to one sentence (Figma 5790-119214).
+const NO_DATA_NOTE =
+  "No data available. It looks like there is nothing to display here";
+
 const AssessmentSummary = ({ summary }) => {
   const collected = summary?.reviews_collected || { value: 0, total: 0 };
   const breakdown = summary?.status_breakdown || [];
@@ -99,9 +104,9 @@ const AssessmentSummary = ({ summary }) => {
           <MetricCard
             className="border-none"
             label={label}
-            value={value}
-            delta={delta}
-            sublabel={note}
+            value={value ?? 0}
+            delta={value ? delta : null}
+            sublabel={value ? note : NO_DATA_NOTE}
           />
         </div>
       ))}
